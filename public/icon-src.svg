@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="brass" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e8c179"/>
+      <stop offset="100%" stop-color="#a67f3f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#14181c"/>
+  <g transform="translate(76,70) scale(1.8)">
+    <path d="M100 12 C55 12 20 47 20 90 C20 140 100 188 100 188 C100 188 180 140 180 90 C180 47 145 12 100 12 Z"
+          fill="url(#brass)" stroke="#7a5d2a" stroke-width="3"/>
+    <circle cx="100" cy="88" r="56" fill="#14181c"/>
+    <g fill="url(#brass)">
+      <rect x="52" y="108" width="14" height="34"/>
+      <rect x="70" y="96" width="14" height="46"/>
+      <polygon points="91,142 91,80 106,64 121,80 121,142"/>
+      <rect x="128" y="102" width="14" height="40"/>
+      <rect x="146" y="114" width="12" height="28"/>
+      <rect x="112" y="70" width="6" height="14"/>
+    </g>
+    <circle cx="100" cy="88" r="56" fill="none" stroke="#e8c179" stroke-width="3"/>
+  </g>
+</svg>

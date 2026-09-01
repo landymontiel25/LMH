@@ -1,0 +1,73 @@
+import { useState } from 'react';
+import { paletteFor, iconFor } from '../lib/landmarkVisuals';
+
+// swipeable: renders a horizontal scroll-snap gallery with dot indicators
+// when the landmark has more than one photo. Non-swipeable contexts (list
+// rows, popups, itinerary stops) just show the first photo as a static
+// thumbnail so swipe gestures there don't fight the surrounding scroll.
+export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', swipeable = false }) {
+  const palette = paletteFor(landmark.id);
+  const icon = iconFor(landmark.categories);
+  const dims =
+    size === 'sm' ? { width: 150, height: 105 } : size === 'lg' ? { width: 320, height: 220 } : { width: 220, height: 150 };
+  const images = landmark.images?.length ? landmark.images : null;
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const handleScroll = (e) => {
+    const idx = Math.round(e.target.scrollLeft / e.target.clientWidth);
+    setActiveIdx(idx);
+  };
+
+  let body;
+  if (images && swipeable && images.length > 1) {
+    body = (
+      <div className="postcard-gallery" style={{ width: dims.width, height: dims.height }}>
+        <div className="postcard-gallery-scroll" onScroll={handleScroll}>
+          {images.map((src, i) => (
+            <img
+              key={src}
+              src={src}
+              alt={`${landmark.name} photo ${i + 1} of ${images.length}`}
+              className="postcard-photo"
+              style={{ width: dims.width, height: dims.height }}
+              loading="lazy"
+            />
+          ))}
+        </div>
+        <div className="postcard-gallery-dots">
+          {images.map((_, i) => (
+            <span key={i} className={`postcard-gallery-dot ${i === activeIdx ? 'active' : ''}`} />
+          ))}
+        </div>
+      </div>
+    );
+  } else if (images) {
+    body = (
+      <img
+        src={images[0]}
+        alt={landmark.name}
+        className="postcard-photo"
+        style={{ width: dims.width, height: dims.height }}
+        loading="lazy"
+      />
+    );
+  } else {
+    body = (
+      <div
+        className="postcard-photo"
+        style={{
+          width: dims.width,
+          height: dims.height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: `linear-gradient(135deg, ${palette[0]}, ${palette[1]})`,
+        }}
+      >
+        <span style={{ fontSize: size === 'lg' ? '2.6rem' : '1.8rem', filter: 'grayscale(0.15)' }}>{icon}</span>
+      </div>
+    );
+  }
+
+  return <div className={`postcard ${rotate === 'r' ? 'rot-r' : ''}`}>{body}</div>;
+}

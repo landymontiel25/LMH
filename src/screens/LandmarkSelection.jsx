@@ -1,0 +1,317 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTrip } from '../lib/TripContext';
+import { useGeo } from '../lib/GeoContext';
+import { useCheckIn } from '../lib/useCheckIn';
+import { useRatings } from '../lib/RatingsContext';
+import { distanceMeters } from '../lib/geo';
+import { mapsDeepLink } from '../lib/routing';
+import CheckInButton from '../components/CheckInButton';
+import LandmarkThumb from '../components/LandmarkThumb';
+import { ALL_LANDMARKS, REGIONS, INTERESTS, getRegion } from '../data/regions';
+
+const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
+
+const SORT_OPTIONS = [
+  { id: 'nearMe', label: '\u{1F4CD} Near Me' },
+  { id: 'popularity', label: '\u{1F525} Popularity' },
+  { id: 'topRated', label: '\u{2B50} Top Rated' },
+];
+
+// Searchable city picker -- a plain multi-city tab row gets unwieldy once
+// there are more than a handful of regions, so this collapses to one control
+// with a filterable list instead of an ever-growing row of buttons.
+function CityDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const term = search.trim().toLowerCase();
+  const filtered = REGIONS.filter((r) => r.city.toLowerCase().includes(term));
+  const selectedLabel = value === 'all' ? 'All Cities' : getRegion(value)?.city ?? 'All Cities';
+
+  const choose = (id) => {
+    onChange(id);
+    setOpen(false);
+    setSearch('');
+  };
+
+  return (
+    <div className="city-dropdown" ref={boxRef}>
+      <button type="button" className="city-dropdown-toggle" onClick={() => setOpen((o) => !o)}>
+        <span>{'\u{1F3D9}\u{FE0F}'} {selectedLabel}</span>
+        <span className="city-dropdown-caret">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="city-dropdown-panel">
+          <input
+            type="text"
+            placeholder={'\u{1F50D} Search cities…'}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+          />
+          <div className="city-dropdown-list">
+            <button type="button" className={`city-dropdown-item ${value === 'all' ? 'active' : ''}`} onClick={() => choose('all')}>
+              All Cities
+            </button>
+            {filtered.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className={`city-dropdown-item ${value === r.id ? 'active' : ''}`}
+                onClick={() => choose(r.id)}
+              >
+                {r.city}
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="city-dropdown-empty">No cities match.</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function LandmarkSelection() {
+  const { trip, toggleLandmark, setRegionSelection, getRegionSelection, regionsWithItineraries, clearRegion, clearAll, updateTrip, setMapFocus } =
+    useTrip();
+  const { coords } = useGeo();
+  const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { ratings } = useRatings();
+  const navigate = useNavigate();
+  // Default to the trip's already-chosen region (from Setup) so picking up where you
+  // left off doesn't require re-filtering to something you already told the app.
+  // Arriving with no trip region yet (e.g. straight from the bottom-nav tab) still
+  // shows everything.
+  const [cityFilter, setCityFilter] = useState(() => trip.activeRegion ?? 'all');
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('popularity');
+
+  // Keep the map's focus on the city shown in the list, so tapping Map opens on
+  // it — including the default city you land on here.
+  useEffect(() => {
+    if (cityFilter !== 'all') setMapFocus(cityFilter);
+  }, [cityFilter, setMapFocus]);
+
+  const landmarks = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = ALL_LANDMARKS.filter((l) => {
+      if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
+      if (filter !== 'all' && !l.categories.includes(filter)) return false;
+      if (term && !l.name.toLowerCase().includes(term)) return false;
+      return true;
+    });
+
+    if (sortBy === 'popularity') {
+      // Curated editorial Top 10 (if a city has them) lead in rank order, then
+      // everything else falls back to the data-driven popularity score.
+      return [...filtered].sort(
+        (a, b) =>
+          (a.editorialRank ?? 99) - (b.editorialRank ?? 99) ||
+          (b.popularity ?? 0) - (a.popularity ?? 0) ||
+          a.name.localeCompare(b.name)
+      );
+    }
+    if (sortBy === 'topRated') {
+      return [...filtered].sort(
+        (a, b) =>
+          (ratings[b.id]?.avg ?? 0) - (ratings[a.id]?.avg ?? 0) ||
+          (ratings[b.id]?.count ?? 0) - (ratings[a.id]?.count ?? 0) ||
+          (b.popularity ?? 0) - (a.popularity ?? 0)
+      );
+    }
+    if (sortBy === 'nearMe' && coords) {
+      return [...filtered].sort(
+        (a, b) =>
+          distanceMeters(coords.lat, coords.lng, a.lat, a.lng) - distanceMeters(coords.lat, coords.lng, b.lat, b.lng)
+      );
+    }
+    return filtered;
+  }, [cityFilter, filter, search, sortBy, coords, ratings]);
+
+  const handleToggle = (landmark) => {
+    toggleLandmark(landmark.id, landmark.regionId);
+  };
+
+  const suggestForMe = () => {
+    const interests = trip.interests.length ? trip.interests : INTERESTS.map((i) => i.id);
+    const matches = landmarks.filter((l) => l.categories.some((c) => interests.includes(c)));
+    const picked = (matches.length >= 8 ? matches : landmarks).slice(0, 10);
+    if (!picked.length) return;
+    // Group picks by city so each city's itinerary is set independently.
+    const byR = {};
+    picked.forEach((l) => {
+      (byR[l.regionId] ||= []).push(l.id);
+    });
+    Object.entries(byR).forEach(([r, ids]) => setRegionSelection(r, ids));
+  };
+
+  // Total across every city; and the count within the currently filtered city.
+  const selectedCount = regionsWithItineraries().reduce((n, r) => n + getRegionSelection(r).length, 0);
+  const scopeCount = cityFilter === 'all' ? selectedCount : getRegionSelection(cityFilter).length;
+
+  return (
+    <div>
+      <h1 className="screen-title">
+        <span>{'\u{1F4CD}'}</span> Choose Landmarks
+      </h1>
+      <p className="screen-subtitle">All {landmarks.length} landmarks — pick everything you want to see.</p>
+
+      <div className="field" style={{ marginBottom: 12 }}>
+        <input
+          type="text"
+          placeholder={'\u{1F50D} Search landmarks…'}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+        <button className="btn btn-primary btn-sm" onClick={suggestForMe}>
+          {'✨'} Suggest For Me
+        </button>
+        {scopeCount > 0 && (
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => (cityFilter === 'all' ? clearAll() : clearRegion(cityFilter))}
+          >
+            Clear ({scopeCount})
+          </button>
+        )}
+      </div>
+
+      <CityDropdown
+        value={cityFilter}
+        onChange={(id) => {
+          setCityFilter(id);
+          // Remember the city being browsed so the Map opens on it this session.
+          if (id !== 'all') {
+            updateTrip({ activeRegion: id });
+            setMapFocus(id);
+          }
+        }}
+      />
+
+      <div className="tabs" style={{ flexWrap: 'wrap' }}>
+        <button className={`tab-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
+          All
+        </button>
+        {INTERESTS.map((i) => (
+          <button
+            key={i.id}
+            className={`tab-btn ${filter === i.id ? 'active' : ''}`}
+            onClick={() => setFilter(i.id)}
+          >
+            {i.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="tabs" style={{ marginBottom: sortBy === 'nearMe' && !coords ? 4 : 18 }}>
+        {SORT_OPTIONS.map((s) => (
+          <button
+            key={s.id}
+            className={`tab-btn ${sortBy === s.id ? 'active' : ''}`}
+            onClick={() => setSortBy((cur) => (cur === s.id ? null : s.id))}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      {sortBy === 'nearMe' && !coords && (
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginBottom: 18 }}>
+          Finding what's closest to me…
+        </p>
+      )}
+
+      <div>
+        {landmarks.map((l) => {
+          const isSelected = getRegionSelection(l.regionId).includes(l.id);
+          return (
+            <div key={l.id} className={`landmark-row ${isSelected ? 'selected' : ''}`}>
+              <div className="lr-top">
+                <div className="check-circle" onClick={() => handleToggle(l)}>
+                  {isSelected ? '✓' : ''}
+                </div>
+                <div onClick={() => handleToggle(l)} style={{ flexShrink: 0 }}>
+                  <LandmarkThumb landmark={l} />
+                </div>
+                <div className="lr-main" onClick={() => handleToggle(l)}>
+                  <h4>
+                    <span className="lr-category-icons">{l.categories.map((c) => CATEGORY_ICON[c]).join('')}</span>
+                    {l.name}
+                  </h4>
+                  <div className="lr-meta">
+                    <span className={`tag ${l.free ? 'tag-free' : ''}`}>{l.free ? 'Free' : 'Ticketed'}</span>
+                    {typeof l.popularity === 'number' && <span className="tag popularity-tag">{'\u{1F525}'} {l.popularity}/10</span>}
+                    {ratings[l.id]?.count > 0 && (
+                      <span className="tag rating-tag">{'⭐'} {ratings[l.id].avg.toFixed(1)} ({ratings[l.id].count})</span>
+                    )}
+                    {coords && (
+                      <span className="tag distance-tag">
+                        {'\u{1F4CD}'} {(distanceMeters(coords.lat, coords.lng, l.lat, l.lng) / 1609.34).toFixed(1)} mi away
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="lr-actions">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-tight"
+                  onClick={() => navigate(`/landmarks/${l.regionId}/${l.id}`)}
+                >
+                  Info
+                </button>
+                <a
+                  className="btn btn-ghost btn-tight"
+                  href={mapsDeepLink(l.name, l.lat, l.lng)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {'\u{1F9ED}'} Directions
+                </a>
+                <CheckInButton
+                  landmark={l}
+                  coords={coords}
+                  user={user}
+                  firebaseEnabled={firebaseEnabled}
+                  claimedMap={claimedMap}
+                  checkingIn={checkingIn}
+                  onCheckIn={checkIn}
+                  className="btn-tight"
+                />
+              </div>
+            </div>
+          );
+        })}
+        {landmarks.length === 0 && <p className="empty-state">No landmarks match these filters.</p>}
+      </div>
+
+      <div className="action-bar-spacer" />
+      <div className="fixed-action-bar">
+        <div className="fixed-action-bar-inner">
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            disabled={selectedCount === 0}
+            onClick={() => navigate('/itinerary')}
+          >
+            Build Itinerary ({selectedCount}) {'→'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

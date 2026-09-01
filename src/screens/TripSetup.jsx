@@ -1,0 +1,150 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTrip } from '../lib/TripContext';
+import { REGIONS, INTERESTS } from '../data/regions';
+import LocationAutocomplete from '../components/LocationAutocomplete';
+import OtherInterestChip from '../components/OtherInterestChip';
+
+const CURRENT_LOCATION_LABEL = 'Your Current Location';
+
+export default function TripSetup() {
+  const { trip, updateTrip } = useTrip();
+  const navigate = useNavigate();
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState(null);
+
+  const useCurrentLocation = () => {
+    if (!('geolocation' in navigator)) {
+      setLocateError('Geolocation is not supported on this device.');
+      return;
+    }
+    setLocating(true);
+    setLocateError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        updateTrip({
+          startingLocation: CURRENT_LOCATION_LABEL,
+          startingCoords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        });
+        setLocating(false);
+      },
+      (err) => {
+        setLocateError(err.message || 'Unable to get your location.');
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
+
+  const toggleInterest = (id) => {
+    const has = trip.interests.includes(id);
+    updateTrip({
+      interests: has ? trip.interests.filter((i) => i !== id) : [...trip.interests, id],
+    });
+  };
+
+  const selectRegion = (regionId) => {
+    if (regionId === trip.activeRegion) return;
+    updateTrip({ activeRegion: regionId });
+  };
+
+  const canContinue = !!trip.activeRegion;
+
+  return (
+    <div>
+      <h1 className="screen-title">
+        <span>{'\u{1F9ED}'}</span> Plan Your Trip
+      </h1>
+      <p className="screen-subtitle">Tell us where you're starting and what you're into — we'll build the route.</p>
+
+      <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 24 }} onClick={() => navigate('/')}>
+        {'\u{1F310}'} Just Browse the Map First
+      </button>
+
+      <div className="field">
+        <label htmlFor="start">
+          Starting Location <span style={{ fontWeight: 400, color: 'var(--color-parchment-dim)' }}>(optional)</span>
+        </label>
+        <button
+          type="button"
+          className={`btn btn-sm ${trip.startingLocation === CURRENT_LOCATION_LABEL ? 'btn-primary' : 'btn-ghost'}`}
+          style={{ marginBottom: 10 }}
+          onClick={useCurrentLocation}
+          disabled={locating}
+        >
+          {'\u{1F4CD}'} {locating ? 'Locating…' : 'Use My Current Location'}
+        </button>
+        <LocationAutocomplete
+          id="start"
+          placeholder="Or type an address, hotel, etc."
+          value={trip.startingLocation}
+          regionId={trip.activeRegion}
+          onChange={(text) => updateTrip({ startingLocation: text, startingCoords: null })}
+          onSelect={(s) => updateTrip({ startingLocation: s.primary, startingCoords: { lat: s.lat, lng: s.lng } })}
+        />
+        {locateError && (
+          <p className="tag tag-error" style={{ marginTop: 6 }}>
+            {locateError}
+          </p>
+        )}
+        {!trip.startingLocation && (
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: 6 }}>
+            No starting point set — the itinerary will route from wherever you are.
+          </p>
+        )}
+      </div>
+
+      <div className="field">
+        <label>Region</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {REGIONS.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              className={`chip ${trip.activeRegion === r.id ? 'selected' : ''}`}
+              style={{ width: '100%' }}
+              onClick={() => selectRegion(r.id)}
+            >
+              <span className="chip-icon">{'\u{1F30D}'}</span>
+              <span>
+                <strong>{r.name}</strong>
+                <br />
+                <span style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)' }}>{r.tagline}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="field">
+        <label>What are you interested in?</label>
+        <div className="chip-grid">
+          {INTERESTS.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              className={`chip ${trip.interests.includes(i.id) ? 'selected' : ''}`}
+              onClick={() => toggleInterest(i.id)}
+            >
+              <span className="chip-icon">{i.icon}</span>
+              <span>{i.label}</span>
+            </button>
+          ))}
+          <OtherInterestChip
+            value={trip.customInterest}
+            onChange={(text) => updateTrip({ customInterest: text })}
+          />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="btn btn-primary btn-block"
+        disabled={!canContinue}
+        onClick={() => navigate('/landmarks')}
+      >
+        Choose Landmarks {'\u{2192}'}
+      </button>
+    </div>
+  );
+}
