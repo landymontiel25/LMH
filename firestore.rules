@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Existing production rules, kept as-is (stricter than the new
+    // defaults below): public read, ownership-validated writes, immutable
+    // checkins, and leaderboard entries locked to their own owner. ---
+    match /checkins/{checkinId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && checkinId == request.auth.uid + '_' + request.resource.data.landmarkId
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /leaderboard_entries/{entryId} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /usernames/{name} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      // The client re-writes its own username doc on save even when it
+      // already exists (e.g. re-submitting the same name, or touching other
+      // fields) -- that's an update in Firestore's terms since the doc
+      // already exists, which was never granted before.
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    match /friend_requests/{id} {
+      allow read, delete: if request.auth != null
+        && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.from == request.auth.uid;
+    }
+    match /friend_edges/{id} {
+      // get: id is always "{ownerUid}_{friendUid}" (the client checks for an
+      // edge's existence before it exists, to decide whether to send a
+      // friend request) -- checking resource.data.owner crashes with
+      // "permission denied" instead of a clean not-found when the doc
+      // doesn't exist yet, since resource is null. Checking the id itself
+      // works either way.
+      allow get: if request.auth != null && id.split('_')[0] == request.auth.uid;
+      // list: the client also queries where('owner','==',uid) to load "my
+      // friends" -- Firestore can only verify a list query against a rule
+      // that mirrors the query's own field filter, not an id-based check, so
+      // this needs the resource.data version specifically (using the id
+      // version here silently rejects the whole query instead).
+      allow list: if request.auth != null && resource.data.owner == request.auth.uid;
+      allow create: if request.auth != null
+        && (request.resource.data.owner == request.auth.uid || request.resource.data.friend == request.auth.uid);
+      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && reviewId == request.auth.uid + '_' + request.resource.data.landmarkId
+        && exists(/databases/$(database)/documents/checkins/$(reviewId));
+      allow delete: if request.auth != null && reviewId.split('_')[0] == request.auth.uid;
+    }
+    match /landmark_ratings/{id} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /reports/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.reporterUid == request.auth.uid;
+    }
+  }
+}
