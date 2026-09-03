@@ -1569,6 +1569,36 @@ textarea {
   width: 100%;
 }
 
+.ask-landmark-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--nav-h) + 16px);
+  z-index: 1000;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--color-brass);
+  background: rgba(var(--color-bg-rgb), 0.94);
+  box-shadow: var(--shadow-float);
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ask-landmark-panel {
+  position: fixed;
+  right: 16px;
+  left: 16px;
+  bottom: calc(var(--nav-h) + 76px);
+  z-index: 1000;
+  max-width: 420px;
+  margin: 0 0 0 auto;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
 .map-fab-bar {
   position: fixed;
   left: 16px;

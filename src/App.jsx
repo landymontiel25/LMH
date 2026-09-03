@@ -8,6 +8,7 @@ import { FriendsProvider } from './lib/FriendsContext';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import CheckInReview from './components/CheckInReview';
+import AskLandmarkWidget from './components/AskLandmarkWidget';
 import TripSetup from './screens/TripSetup';
 import LandmarkSelection from './screens/LandmarkSelection';
 import MapExplore from './screens/MapExplore';
@@ -39,6 +40,7 @@ export default function App() {
           </main>
           <BottomNav />
           <CheckInReview />
+          <AskLandmarkWidget />
           </HashRouter>
           </RatingsProvider>
         </GeoProvider>
