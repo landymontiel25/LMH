@@ -108,7 +108,10 @@ export default function LandmarkSelection() {
     const filtered = ALL_LANDMARKS.filter((l) => {
       if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
       if (filter !== 'all' && !l.categories.includes(filter)) return false;
-      if (term && !l.name.toLowerCase().includes(term)) return false;
+      if (term) {
+        const haystack = [l.name, l.summary, ...(l.facts ?? [])].join(' ').toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
       return true;
     });
 
