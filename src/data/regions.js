@@ -1,11 +1,11 @@
-import { MIAMI_LANDMARKS } from './landmarks.miami';
-import { MADRID_LANDMARKS } from './landmarks.madrid';
-import { EL_ESCORIAL_LANDMARKS } from './landmarks.elescorial';
-import { ARANJUEZ_LANDMARKS } from './landmarks.aranjuez';
-import { MILAN_LANDMARKS } from './landmarks.milan';
-import { LAKE_COMO_LANDMARKS } from './landmarks.lakecomo';
-import { PHILLY_LANDMARKS } from './landmarks.philly';
-import { VILLANOVA_LANDMARKS } from './landmarks.villanova';
+import { MIAMI_LANDMARKS } from './landmarks.miami.js';
+import { MADRID_LANDMARKS } from './landmarks.madrid.js';
+import { EL_ESCORIAL_LANDMARKS } from './landmarks.elescorial.js';
+import { ARANJUEZ_LANDMARKS } from './landmarks.aranjuez.js';
+import { MILAN_LANDMARKS } from './landmarks.milan.js';
+import { LAKE_COMO_LANDMARKS } from './landmarks.lakecomo.js';
+import { PHILLY_LANDMARKS } from './landmarks.philly.js';
+import { VILLANOVA_LANDMARKS } from './landmarks.villanova.js';
 
 export const REGIONS = [
   {
