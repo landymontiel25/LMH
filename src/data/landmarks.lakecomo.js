@@ -13,7 +13,7 @@ export const LAKE_COMO_LANDMARKS = [
     lng: 9.16111,
     checkInRadiusMeters: 600,
     categories: ['history-culture'],
-    summary: 'A FAI-run villa on a wooded promontory jutting into the lake, famous for its terraced gardens and loggia with sweeping water views on both sides.',
+    summary: "The real-life 'James Bond house' — its loggia and gardens on a wooded lakefront promontory were used as Bond's recovery villa in Casino Royale, and it's also a FAI-run site famous for sweeping water views on both sides.",
     tip: 'Parking is about 1km downhill in Lenno, so plan roughly 25 minutes each way on foot (or take the seasonal boat shuttle). Closed Monday and Wednesday.',
     facts: ["Built in 1787 for Cardinal Angelo Maria Durini on the site of a Franciscan monastery","Sits on the wooded Dosso di Lavedo promontory, jutting into the lake near Isola Comacina","Its terraced gardens and portico are considered among the most romantic spots on the lake","Later restored by explorer Guido Monzino, who left it to the FAI (Italian National Trust) in 1988","Monzino used it to plan Everest and North Pole expeditions; his gear is on display inside","Reachable on foot from Lenno or by a short boat crossing from the village pier","Its loggia and grounds have appeared in Star Wars: Episode II and Casino Royale","Only garden access (not the villa interior) is included on many tickets","One of the most photographed viewpoints on Lake Como","Managed today by the FAI, Italy's National Trust for historic and natural sites"],
     free: false,
