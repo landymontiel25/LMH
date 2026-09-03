@@ -67,7 +67,7 @@ export const REGIONS = [
     id: 'lake-como',
     name: 'Lake Como',
     tagline: 'Historic villas, lakeside villages & mountain views',
-    city: 'Como',
+    city: 'Lake Como',
     state: 'Lombardy',
     country: 'Italy',
     center: { lat: 45.93, lng: 9.15 },
