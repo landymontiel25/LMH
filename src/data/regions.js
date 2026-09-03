@@ -3,6 +3,7 @@ import { MADRID_LANDMARKS } from './landmarks.madrid';
 import { EL_ESCORIAL_LANDMARKS } from './landmarks.elescorial';
 import { ARANJUEZ_LANDMARKS } from './landmarks.aranjuez';
 import { MILAN_LANDMARKS } from './landmarks.milan';
+import { LAKE_COMO_LANDMARKS } from './landmarks.lakecomo';
 import { PHILLY_LANDMARKS } from './landmarks.philly';
 import { VILLANOVA_LANDMARKS } from './landmarks.villanova';
 
@@ -61,6 +62,17 @@ export const REGIONS = [
     center: { lat: 45.4642, lng: 9.19 },
     viewbox: { minLat: 45.4, minLng: 9.0, maxLat: 45.65, maxLng: 9.35 },
     landmarks: MILAN_LANDMARKS,
+  },
+  {
+    id: 'lake-como',
+    name: 'Lake Como',
+    tagline: 'Historic villas, lakeside villages & mountain views',
+    city: 'Como',
+    state: 'Lombardy',
+    country: 'Italy',
+    center: { lat: 45.93, lng: 9.15 },
+    viewbox: { minLat: 45.78, minLng: 9.0, maxLat: 46.05, maxLng: 9.35 },
+    landmarks: LAKE_COMO_LANDMARKS,
   },
   {
     id: 'philly',
