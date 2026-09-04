@@ -6,6 +6,7 @@ import { MILAN_LANDMARKS } from './landmarks.milan.js';
 import { LAKE_COMO_LANDMARKS } from './landmarks.lakecomo.js';
 import { PHILLY_LANDMARKS } from './landmarks.philly.js';
 import { VILLANOVA_LANDMARKS } from './landmarks.villanova.js';
+import { FRANKFURT_LANDMARKS } from './landmarks.frankfurt.js';
 
 export const REGIONS = [
   {
@@ -95,6 +96,17 @@ export const REGIONS = [
     center: { lat: 40.037, lng: -75.342 },
     viewbox: { minLat: 40.025, minLng: -75.355, maxLat: 40.048, maxLng: -75.33 },
     landmarks: VILLANOVA_LANDMARKS,
+  },
+  {
+    id: 'frankfurt',
+    name: 'Frankfurt',
+    tagline: 'Major European airport hub & gateway',
+    city: 'Frankfurt',
+    state: 'Hesse',
+    country: 'Germany',
+    center: { lat: 50.0379, lng: 8.5622 },
+    viewbox: { minLat: 49.95, minLng: 8.45, maxLat: 50.12, maxLng: 8.72 },
+    landmarks: FRANKFURT_LANDMARKS,
   },
 ];
 

@@ -1560,4 +1560,24 @@ export const MILAN_LANDMARKS = [
     bookingUrl: null,
     typicalMinutes: 15
   },
+  {
+    id: "milan-malpensa-airport",
+    editorialRank: 80,
+    popularity: 8,
+    firstTimerPriority: "Low",
+    neighborhood: "Malpensa",
+    cost: "Free",
+    images: ["https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Milan_malpensa_terminal_airport.jpg/1280px-Milan_malpensa_terminal_airport.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail","https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a5/Aeroporto_di_Malpensa_01.jpg/1280px-Aeroporto_di_Malpensa_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c1/Aeroporto_di_Malpensa_02.jpg/1280px-Aeroporto_di_Malpensa_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail","https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/Aeroporto_di_Malpensa_07.jpg/1280px-Aeroporto_di_Malpensa_07.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"],
+    name: "Milan Malpensa Airport",
+    region: "milan",
+    lat: 45.6301,
+    lng: 8.7255,
+    checkInRadiusMeters: 1500,
+    categories: ["food-local-life"],
+    summary: "Milan's largest and main international airport.",
+    facts: ["Milan's largest and main international airport","Located about 50 km northwest of central Milan","The main gateway for intercontinental flights to Milan","Has two terminals — Terminal 1 and Terminal 2","Connected to the city by the Malpensa Express train","A hub serving northern Italy and the Lombardy region","One of the busiest airports in Italy","Coded MXP; a key stop for travelers to Milan and the lakes"],
+    free: true,
+    bookingUrl: null,
+    typicalMinutes: 120
+  },
 ];

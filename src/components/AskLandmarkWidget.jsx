@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Global "what's that place called?" helper, available from anywhere in the
@@ -12,6 +12,7 @@ export default function AskLandmarkWidget() {
   const [answer, setAnswer] = useState('');
   const [match, setMatch] = useState(null);
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef(null);
   const [error, setError] = useState('');
 
   const ask = async (e) => {
@@ -23,7 +24,7 @@ export default function AskLandmarkWidget() {
     setAnswer('');
     setMatch(null);
     try {
-      const r = await fetch('/api/ask-landmark', {
+      const r = await fetch('/api/ask-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q }),
@@ -32,6 +33,10 @@ export default function AskLandmarkWidget() {
       if (!r.ok || !data) throw new Error(data?.error || 'Something went wrong.');
       setAnswer(data.answer);
       setMatch(data.match);
+      // Clear the box and refocus so the next question is one tap away — no more
+      // selecting and deleting the previous question.
+      setQuestion('');
+      inputRef.current?.focus();
     } catch (err) {
       setError(err.message || 'Could not reach the AI. Try again.');
     } finally {
@@ -50,24 +55,52 @@ export default function AskLandmarkWidget() {
       {open && (
         <div className="ask-landmark-panel card section ai-box">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong>{'✨'} What's that place?</strong>
+            <strong>{'✨'} Ask AI</strong>
             <button type="button" className="btn btn-ghost btn-tight" onClick={() => setOpen(false)}>
               {'✕'}
             </button>
           </div>
           <p className="screen-subtitle" style={{ marginTop: 6 }}>
-            Describe a landmark and I'll find it — a nickname, a movie it's in, anything.
+            Ask me anything about a landmark or city — or describe a place and I'll find it.
           </p>
           <form onSubmit={ask} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <input
-              type="text"
-              placeholder="e.g. the james bond house"
-              value={question}
-              maxLength={300}
-              onChange={(e) => setQuestion(e.target.value)}
-              style={{ flex: 1 }}
-              autoFocus
-            />
+            <div style={{ position: 'relative', flex: 1 }}>
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="e.g. what's the james bond house? · best gelato in Milan?"
+                value={question}
+                maxLength={300}
+                onChange={(e) => setQuestion(e.target.value)}
+                style={{ width: '100%', paddingRight: question ? 34 : undefined }}
+                autoFocus
+              />
+              {question && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuestion('');
+                    inputRef.current?.focus();
+                  }}
+                  aria-label="Clear"
+                  style={{
+                    position: 'absolute',
+                    right: 6,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-parchment-dim)',
+                    fontSize: '1rem',
+                    lineHeight: 1,
+                    padding: 6,
+                  }}
+                >
+                  {'✕'}
+                </button>
+              )}
+            </div>
             <button className="btn btn-primary btn-sm" type="submit" disabled={busy || !question.trim()}>
               {busy ? '…' : 'Ask'}
             </button>
