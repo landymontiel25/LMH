@@ -1540,4 +1540,24 @@ export const MILAN_LANDMARKS = [
     bookingUrl: null,
     typicalMinutes: 90
   },
+  {
+    id: 'unicredit-tower',
+    editorialRank: 65,
+    popularity: 8,
+    cost: 'Free',
+    neighborhood: 'Porta Nuova',
+    firstTimerPriority: 'Medium',
+    images: ["https://commons.wikimedia.org/wiki/Special:FilePath/UniCredit%20tower%20Milan.jpg?width=1200","https://commons.wikimedia.org/wiki/Special:FilePath/Milan%20skyline%20around%20Unicredit%20Tower%20from%20Duomo.jpg?width=1200","https://commons.wikimedia.org/wiki/Special:FilePath/Unicredit%20Bank%20building%2C%20Milan%2C%20Italy%20(9474271140).jpg?width=1200"],
+    name: 'UniCredit Tower',
+    region: 'milan',
+    lat: 45.483845,
+    lng: 9.189879,
+    checkInRadiusMeters: 300,
+    categories: ['history-culture'],
+    summary: "Italy's tallest building, its illuminated spire rising over Piazza Gae Aulenti as the defining landmark of Milan's modern Porta Nuova skyline.",
+    facts: ["UniCredit's headquarters, built 2009–2011 in the Porta Nuova district","Designed by Argentine-American architect César Pelli","Reaches about 231 meters (758 ft) including its spire, Italy's tallest building","The spire was hoisted into place in October 2011, completing its full height","Rises directly above Piazza Gae Aulenti and its underground shopping level","Twists gently as it rises, a signature of Pelli's design","Its spire can be lit in different colors for holidays and events","Neighbors the Bosco Verticale towers as part of the same Porta Nuova redevelopment","Not open to public visitors — an office building, best viewed and photographed from the piazza","A symbol of Milan's 21st-century skyline alongside the Duomo's historic one"],
+    free: true,
+    bookingUrl: null,
+    typicalMinutes: 15
+  },
 ];
