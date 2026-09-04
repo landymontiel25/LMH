@@ -1570,9 +1570,11 @@ textarea {
 }
 
 .ask-landmark-fab {
+  /* Stacked directly above .map-locate-btn (bottom: nav-h + 16px, 44px tall)
+     so the two never overlap -- recenter stays put, AI sits above it. */
   position: fixed;
   right: 16px;
-  bottom: calc(var(--nav-h) + 16px);
+  bottom: calc(var(--nav-h) + 74px);
   z-index: 1000;
   width: 52px;
   height: 52px;
@@ -1591,7 +1593,7 @@ textarea {
   position: fixed;
   right: 16px;
   left: 16px;
-  bottom: calc(var(--nav-h) + 76px);
+  bottom: calc(var(--nav-h) + 134px);
   z-index: 1000;
   max-width: 420px;
   margin: 0 0 0 auto;
