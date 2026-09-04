@@ -23,7 +23,7 @@ export default function AskLandmarkWidget() {
     setAnswer('');
     setMatch(null);
     try {
-      const r = await fetch('/api/ask-landmark', {
+      const r = await fetch('/api/ask-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q }),
@@ -50,18 +50,18 @@ export default function AskLandmarkWidget() {
       {open && (
         <div className="ask-landmark-panel card section ai-box">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong>{'✨'} What's that place?</strong>
+            <strong>{'✨'} Ask AI</strong>
             <button type="button" className="btn btn-ghost btn-tight" onClick={() => setOpen(false)}>
               {'✕'}
             </button>
           </div>
           <p className="screen-subtitle" style={{ marginTop: 6 }}>
-            Describe a landmark and I'll find it — a nickname, a movie it's in, anything.
+            Ask me anything about a landmark or city — or describe a place and I'll find it.
           </p>
           <form onSubmit={ask} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <input
               type="text"
-              placeholder="e.g. the james bond house"
+              placeholder="e.g. what's the james bond house? · best gelato in Milan?"
               value={question}
               maxLength={300}
               onChange={(e) => setQuestion(e.target.value)}
