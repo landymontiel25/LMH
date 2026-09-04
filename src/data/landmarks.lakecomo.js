@@ -808,7 +808,7 @@ export const LAKE_COMO_LANDMARKS = [
     cost: 'Free',
     neighborhood: 'Griante',
     firstTimerPriority: 'Low',
-    images: [],
+    images: ['/landmarks/the-10-10-bench-1.jpg', '/landmarks/the-10-10-bench-2.jpg', '/landmarks/the-10-10-bench-3.jpg'],
     name: 'The 10/10 Bench',
     region: 'lake-como',
     lat: 45.9956945,
