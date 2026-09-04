@@ -821,4 +821,24 @@ export const LAKE_COMO_LANDMARKS = [
     bookingUrl: null,
     typicalMinutes: 15
   },
+  {
+    id: 'chiesa-di-san-lorenzo-tremezzo',
+    editorialRank: 42,
+    popularity: 6,
+    cost: 'Free',
+    neighborhood: 'Tremezzo',
+    firstTimerPriority: 'Medium',
+    images: ["https://commons.wikimedia.org/wiki/Special:FilePath/Chiesa%20di%20San%20Lorenzo,%20Tremezzo,%20from%20Lake%20Como.jpg?width=1200"],
+    name: 'Chiesa di San Lorenzo',
+    region: 'lake-como',
+    lat: 45.9881,
+    lng: 9.2202,
+    checkInRadiusMeters: 300,
+    categories: ['history-culture'],
+    summary: "Tremezzo's parish church, an eclectic Neo-Romanesque/Neo-Gothic building overlooking the waterfront promenade, its bell tower a familiar landmark from the lake and the ferries.",
+    facts: ["Construction began in 1775–76 but stalled for nearly a century after financing fell through","Completed in 1894 by architect Parrocchetti, in a design that departed from the original 18th-century plan by Carlo Colombo","Built in an eclectic style blending Neo-Romanesque and Neo-Gothic elements","Has a central octagonal floor plan under a pavilion roof","Interior frescoes were painted by Luigi Tagliaferri between 1906 and 1910, including the choir and vault","The central cupola alternates circular windows with fresco panels","Its bell tower is a prominent landmark visible from the water","Sits just above the Tremezzo waterfront promenade","Fronted by a forecourt with a war memorial","One of the more imposing church silhouettes seen from the lake ferries"],
+    free: true,
+    bookingUrl: null,
+    typicalMinutes: 20
+  },
 ];
