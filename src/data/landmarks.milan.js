@@ -1580,4 +1580,24 @@ export const MILAN_LANDMARKS = [
     bookingUrl: null,
     typicalMinutes: 120
   },
+  {
+    id: 'san-giorgio-ristorante-pizzeria',
+    editorialRank: 81,
+    popularity: 7,
+    cost: '$$',
+    neighborhood: 'Stazione Centrale',
+    firstTimerPriority: 'Low',
+    images: [],
+    name: 'San Giorgio - Ristorante Pizzeria',
+    region: 'milan',
+    lat: 45.49004,
+    lng: 9.20401,
+    checkInRadiusMeters: 150,
+    categories: ['food-local-life'],
+    summary: 'A family-run neighborhood pizzeria near the Sondrio metro stop, serving wood-fired pizza and Italian-Mediterranean classics since 1999.',
+    facts: ["Open since 1999, run as a family trattoria and pizzeria", "Known for wood-fired pizza alongside a broader Italian and Mediterranean menu", "Tucked into the residential streets near the Sondrio M5 stop, a few minutes from Stazione Centrale", "A neighborhood spot rather than a tourist destination — reviews consistently praise the food quality, prices, and welcoming atmosphere"],
+    free: false,
+    bookingUrl: null,
+    typicalMinutes: 75
+  },
 ];
