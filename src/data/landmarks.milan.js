@@ -1587,7 +1587,7 @@ export const MILAN_LANDMARKS = [
     cost: '$$',
     neighborhood: 'Stazione Centrale',
     firstTimerPriority: 'Low',
-    images: [],
+    images: ['/landmarks/san-giorgio-1.jpg'],
     name: 'San Giorgio - Ristorante Pizzeria',
     region: 'milan',
     lat: 45.49004,
