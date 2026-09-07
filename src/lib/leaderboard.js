@@ -97,32 +97,6 @@ export async function claimCheckIn({ userId, userName, landmarkId, landmarkName,
 }
 
 /**
- * TEMPORARY: undoes a check-in — deletes the checkins doc and reverses the
- * points on every leaderboard period it was added to (using the check-in's
- * own timestamp, so it comes off the period it actually landed in). This is
- * a cleanup tool for mis-taps during testing; remove once no longer needed.
- */
-export async function removeCheckIn({ userId, landmarkId }) {
-  const checkinRef = doc(db, 'checkins', `${userId}_${landmarkId}`);
-
-  await runTransaction(db, async (tx) => {
-    const existing = await tx.get(checkinRef);
-    if (!existing.exists()) return;
-    const data = existing.data();
-    const points = data.points || 0;
-    const when = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
-    const keys = periodKeys(when);
-
-    tx.delete(checkinRef);
-
-    for (const period of PERIODS) {
-      const entryRef = doc(db, 'leaderboard_entries', `${period}_${keys[period]}_${userId}`);
-      tx.set(entryRef, { points: increment(-points), updatedAt: serverTimestamp() }, { merge: true });
-    }
-  });
-}
-
-/**
  * Rewrites the display name on every existing check-in and leaderboard entry for
  * a user — used when they set/change their username so past scores stop showing
  * an email (or an old handle) on the public board.

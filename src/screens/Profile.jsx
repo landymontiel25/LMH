@@ -68,10 +68,8 @@ function InviteButton({ myUsername }) {
 
 // The user's check-in history, viewable as a list or a 3-across photo grid.
 function CheckinsView({ user, claimedMap, navigate }) {
-  const { removeCheckIn } = useCheckIn();
   const [checkins, setCheckins] = useState(null);
   const [layout, setLayout] = useState('grid'); // 'list' | 'grid'
-  const [removing, setRemoving] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,22 +120,6 @@ function CheckinsView({ user, claimedMap, navigate }) {
 
   const go = (it) => navigate(`/landmarks/${it.regionId}/${it.landmarkId}`);
 
-  // TEMPORARY: undo-a-check-in cleanup tool — remove this handler (and the
-  // ✕ buttons below) once mis-tapped check-ins are cleaned up.
-  const remove = async (e, it) => {
-    e.stopPropagation();
-    if (!window.confirm(`Remove your check-in at ${it.name}? This can't be undone.`)) return;
-    setRemoving(it.id);
-    try {
-      await removeCheckIn(it.landmarkId);
-      setCheckins((prev) => prev.filter((c) => c.id !== it.id));
-    } catch {
-      alert('Could not remove check-in — try again.');
-    } finally {
-      setRemoving(null);
-    }
-  };
-
   return (
     <div className="section">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -176,16 +158,6 @@ function CheckinsView({ user, claimedMap, navigate }) {
                 </div>
               </div>
               <div className="checkin-pts">+{it.points}</div>
-              <button
-                type="button"
-                onClick={(e) => remove(e, it)}
-                disabled={removing === it.id}
-                aria-label={`Remove check-in at ${it.name}`}
-                className="btn btn-ghost btn-tight"
-                style={{ marginLeft: 8 }}
-              >
-                {removing === it.id ? '…' : '\u{1F5D1}\u{FE0F}'}
-              </button>
             </div>
           ))}
         </div>
@@ -194,26 +166,14 @@ function CheckinsView({ user, claimedMap, navigate }) {
       {checkins && checkins.length > 0 && layout === 'grid' && (
         <div className="checkin-grid">
           {checkins.map((it) => (
-            <div key={it.id} className="checkin-tile" onClick={() => go(it)}>
+            <button type="button" key={it.id} className="checkin-tile" onClick={() => go(it)}>
               {it.photo ? (
                 <img src={it.photo} alt={it.name} loading="lazy" />
               ) : (
                 <div className="checkin-thumb-blank" style={{ width: '100%', height: '100%' }} />
               )}
               <span className="checkin-tile-name">{it.name}</span>
-              <button
-                type="button"
-                onClick={(e) => remove(e, it)}
-                disabled={removing === it.id}
-                aria-label={`Remove check-in at ${it.name}`}
-                style={{
-                  position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: '50%',
-                  border: 'none', background: 'rgba(0,0,0,0.78)', color: '#fff', cursor: 'pointer', lineHeight: 1,
-                }}
-              >
-                {removing === it.id ? '…' : '\u{1F5D1}\u{FE0F}'}
-              </button>
-            </div>
+            </button>
           ))}
         </div>
       )}

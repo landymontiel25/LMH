@@ -1,14 +1,7 @@
 import { createContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useFriends } from './FriendsContext';
-import {
-  claimCheckIn,
-  removeCheckIn as removeCheckInDoc,
-  getUserCheckedInLandmarkIds,
-  subscribeLeaderboard,
-  attachCheckinPhoto,
-  POINTS_PER_CHECKIN,
-} from './leaderboard';
+import { claimCheckIn, getUserCheckedInLandmarkIds, subscribeLeaderboard, attachCheckinPhoto, POINTS_PER_CHECKIN } from './leaderboard';
 
 // Shared check-in state so there's ONE source of truth and a single place to
 // trigger the post-check-in "rate + add a photo" prompt, no matter which screen
@@ -118,32 +111,9 @@ export function CheckInProvider({ children }) {
     setCelebration(null);
   };
 
-  // TEMPORARY: undo a check-in (see removeCheckIn in lib/leaderboard) — a
-  // cleanup tool for mis-taps during testing, remove once no longer needed.
-  const removeCheckIn = async (landmarkId) => {
-    if (!user) return;
-    await removeCheckInDoc({ userId: user.uid, landmarkId });
-    setClaimedMap((m) => {
-      const next = { ...m };
-      delete next[landmarkId];
-      return next;
-    });
-  };
-
   return (
     <CheckInContext.Provider
-      value={{
-        user,
-        firebaseEnabled,
-        claimedMap,
-        checkingIn,
-        checkIn,
-        removeCheckIn,
-        justCheckedIn,
-        pendingPhoto,
-        celebration,
-        clearJustCheckedIn,
-      }}
+      value={{ user, firebaseEnabled, claimedMap, checkingIn, checkIn, justCheckedIn, pendingPhoto, celebration, clearJustCheckedIn }}
     >
       {children}
     </CheckInContext.Provider>
