@@ -18,6 +18,18 @@ const TABS = [
 ];
 const MEDAL = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
 
+// Shared "Sep 7, 2026, 10:04 AM" formatting for check-in / city-visit timestamps.
+function fmtDateTime(seconds) {
+  if (!seconds) return '';
+  return new Date(seconds * 1000).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 // Never render a raw email on the public board (privacy). Falls back to the
 // part before the "@" for any legacy entry that predates usernames.
 function cleanName(name) {
@@ -56,19 +68,13 @@ function InviteButton({ myUsername }) {
 
 // The user's check-in history, viewable as a list or a 3-across photo grid.
 function CheckinsView({ user, claimedMap, navigate }) {
+  const { removeCheckIn } = useCheckIn();
   const [checkins, setCheckins] = useState(null);
   const [layout, setLayout] = useState('grid'); // 'list' | 'grid'
+  const [removing, setRemoving] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    const fmtDate = (c) =>
-      c.createdAt?.seconds
-        ? new Date(c.createdAt.seconds * 1000).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })
-        : '';
     const build = (c, myPhoto) => {
       const lm = getLandmark(c.region, c.landmarkId);
       // Prefer the photo saved AT check-in, then a rating photo, then the
@@ -83,7 +89,7 @@ function CheckinsView({ user, claimedMap, navigate }) {
         isMine: !!mine,
         city: getRegion(c.region)?.name || c.region,
         points: c.points || 0,
-        date: fmtDate(c),
+        date: fmtDateTime(c.createdAt?.seconds),
       };
     };
 
@@ -115,6 +121,22 @@ function CheckinsView({ user, claimedMap, navigate }) {
   }, [user, claimedMap]);
 
   const go = (it) => navigate(`/landmarks/${it.regionId}/${it.landmarkId}`);
+
+  // TEMPORARY: undo-a-check-in cleanup tool — remove this handler (and the
+  // ✕ buttons below) once mis-tapped check-ins are cleaned up.
+  const remove = async (e, it) => {
+    e.stopPropagation();
+    if (!window.confirm(`Remove your check-in at ${it.name}? This can't be undone.`)) return;
+    setRemoving(it.id);
+    try {
+      await removeCheckIn(it.landmarkId);
+      setCheckins((prev) => prev.filter((c) => c.id !== it.id));
+    } catch {
+      alert('Could not remove check-in — try again.');
+    } finally {
+      setRemoving(null);
+    }
+  };
 
   return (
     <div className="section">
@@ -154,6 +176,16 @@ function CheckinsView({ user, claimedMap, navigate }) {
                 </div>
               </div>
               <div className="checkin-pts">+{it.points}</div>
+              <button
+                type="button"
+                onClick={(e) => remove(e, it)}
+                disabled={removing === it.id}
+                aria-label={`Remove check-in at ${it.name}`}
+                className="btn btn-ghost btn-tight"
+                style={{ marginLeft: 8 }}
+              >
+                {removing === it.id ? '…' : '\u{1F5D1}\u{FE0F}'}
+              </button>
             </div>
           ))}
         </div>
@@ -162,14 +194,26 @@ function CheckinsView({ user, claimedMap, navigate }) {
       {checkins && checkins.length > 0 && layout === 'grid' && (
         <div className="checkin-grid">
           {checkins.map((it) => (
-            <button type="button" key={it.id} className="checkin-tile" onClick={() => go(it)}>
+            <div key={it.id} className="checkin-tile" onClick={() => go(it)}>
               {it.photo ? (
                 <img src={it.photo} alt={it.name} loading="lazy" />
               ) : (
                 <div className="checkin-thumb-blank" style={{ width: '100%', height: '100%' }} />
               )}
               <span className="checkin-tile-name">{it.name}</span>
-            </button>
+              <button
+                type="button"
+                onClick={(e) => remove(e, it)}
+                disabled={removing === it.id}
+                aria-label={`Remove check-in at ${it.name}`}
+                style={{
+                  position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: '50%',
+                  border: 'none', background: 'rgba(0,0,0,0.78)', color: '#fff', cursor: 'pointer', lineHeight: 1,
+                }}
+              >
+                {removing === it.id ? '…' : '\u{1F5D1}\u{FE0F}'}
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -378,10 +422,18 @@ export default function Profile() {
       <div className="card section">
         <h3 style={{ marginTop: 0 }}>{'\u{1F4CA}'} Your Stats</h3>
         <div className="profile-stats">
-          <div className="profile-stat">
+          <button
+            type="button"
+            className="profile-stat profile-stat-btn"
+            onClick={() => {
+              if (!stats?.checkins) return;
+              setTab('checkins');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          >
             <span className="profile-stat-num">{stats ? stats.checkins.toLocaleString() : '…'}</span>
-            <span className="profile-stat-label">check-ins</span>
-          </div>
+            <span className="profile-stat-label">check-ins{stats?.checkins ? ' ›' : ''}</span>
+          </button>
           <button
             type="button"
             className="profile-stat profile-stat-btn"
@@ -424,7 +476,11 @@ export default function Profile() {
                 >
                   <div style={{ flex: 1 }}>
                     <div className="checkin-name">{r?.name || id}</div>
-                    {r?.country && <div className="checkin-sub">{r.country}</div>}
+                    <div className="checkin-sub">
+                      {r?.country}
+                      {r?.country && stats?.cityLastVisit?.[id] ? ' · ' : ''}
+                      {fmtDateTime(stats?.cityLastVisit?.[id])}
+                    </div>
                   </div>
                   <div className="checkin-pts">{'\u{2192}'}</div>
                 </div>

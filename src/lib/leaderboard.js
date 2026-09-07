@@ -97,6 +97,32 @@ export async function claimCheckIn({ userId, userName, landmarkId, landmarkName,
 }
 
 /**
+ * TEMPORARY: undoes a check-in — deletes the checkins doc and reverses the
+ * points on every leaderboard period it was added to (using the check-in's
+ * own timestamp, so it comes off the period it actually landed in). This is
+ * a cleanup tool for mis-taps during testing; remove once no longer needed.
+ */
+export async function removeCheckIn({ userId, landmarkId }) {
+  const checkinRef = doc(db, 'checkins', `${userId}_${landmarkId}`);
+
+  await runTransaction(db, async (tx) => {
+    const existing = await tx.get(checkinRef);
+    if (!existing.exists()) return;
+    const data = existing.data();
+    const points = data.points || 0;
+    const when = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+    const keys = periodKeys(when);
+
+    tx.delete(checkinRef);
+
+    for (const period of PERIODS) {
+      const entryRef = doc(db, 'leaderboard_entries', `${period}_${keys[period]}_${userId}`);
+      tx.set(entryRef, { points: increment(-points), updatedAt: serverTimestamp() }, { merge: true });
+    }
+  });
+}
+
+/**
  * Rewrites the display name on every existing check-in and leaderboard entry for
  * a user — used when they set/change their username so past scores stop showing
  * an email (or an old handle) on the public board.
@@ -153,12 +179,19 @@ export async function getUserStats(userId) {
   const snap = await getDocs(query(collection(db, 'checkins'), where('userId', '==', userId)));
   let totalPoints = 0;
   const regions = new Set();
+  const cityLastVisit = {}; // regionId -> most recent check-in, in epoch seconds
   snap.docs.forEach((d) => {
     const x = d.data();
     totalPoints += x.points || 0;
-    if (x.region) regions.add(x.region);
+    if (x.region) {
+      regions.add(x.region);
+      const sec = x.createdAt?.seconds || 0;
+      if (sec > (cityLastVisit[x.region] || 0)) cityLastVisit[x.region] = sec;
+    }
   });
-  return { totalPoints, checkins: snap.size, cities: regions.size, cityIds: [...regions] };
+  // Most-recently-visited city first, same ordering as the check-ins list.
+  const cityIds = [...regions].sort((a, b) => (cityLastVisit[b] || 0) - (cityLastVisit[a] || 0));
+  return { totalPoints, checkins: snap.size, cities: regions.size, cityIds, cityLastVisit };
 }
 
 /**
