@@ -17,10 +17,7 @@ service cloud.firestore {
       allow update: if request.auth != null
         && checkinId.split('_')[0] == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'userName']);
-      // TEMPORARY: owner may delete their own check-in (undo a mis-tap during
-      // testing, via removeCheckIn in lib/leaderboard). Revert to `if false`
-      // once check-ins should be permanent again.
-      allow delete: if request.auth != null && checkinId.split('_')[0] == request.auth.uid;
+      allow delete: if false;
     }
     match /leaderboard_entries/{entryId} {
       allow read: if true;
