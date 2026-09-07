@@ -1,7 +1,7 @@
 import { POINTS_PER_CHECKIN } from '../lib/leaderboard';
 
-// Checks in immediately, no photo required. The post-check-in rating prompt
-// (CheckInReview) is where a photo can optionally be attached afterward.
+// Opens the rate + post prompt (CheckInReview) — the check-in itself isn't
+// registered until Post is tapped there.
 export default function CheckInButton({ landmark, user, firebaseEnabled, claimedMap, checkingIn, onCheckIn, className = '' }) {
   if (!firebaseEnabled) return null;
 

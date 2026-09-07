@@ -12,10 +12,8 @@ import {
   serverTimestamp,
   increment,
   writeBatch,
-  updateDoc,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from './firebase';
+import { db } from './firebase';
 import { distanceMeters } from './geo';
 
 export { distanceMeters };
@@ -111,24 +109,6 @@ export async function backfillUserName(userId, userName) {
   checkins.docs.forEach((d) => batch.update(d.ref, { userName }));
   entries.docs.forEach((d) => batch.update(d.ref, { userName }));
   await batch.commit();
-}
-
-/**
- * Uploads the photo taken at check-in and stores its URL right on the check-in
- * doc — so every check-in keeps the user's own picture even if they skip the
- * star rating afterwards. Best-effort; never throws.
- */
-export async function attachCheckinPhoto(userId, landmarkId, file) {
-  if (!storage || !db || !file) return null;
-  try {
-    const sref = ref(storage, `checkin_photos/${landmarkId}/${userId}.jpg`);
-    await uploadBytes(sref, file, { contentType: file.type || 'image/jpeg' });
-    const url = await getDownloadURL(sref);
-    await updateDoc(doc(db, 'checkins', `${userId}_${landmarkId}`), { photoURL: url });
-    return url;
-  } catch {
-    return null;
-  }
 }
 
 export async function hasClaimedLandmark(userId, landmarkId) {
