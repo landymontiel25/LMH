@@ -151,6 +151,11 @@ export default function MapExplore() {
   const mapRef = useRef(null);
   const [satellite] = useState(true);
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  // The landmark you picked from search results — highlighted the same way
+  // as "See it on the Map" from a landmark's detail page.
+  const [searchFocus, setSearchFocus] = useState(null);
 
   // Capture the "fly to this landmark" request once (set when you view a
   // landmark), then clear the shared value so a later plain Map open doesn't
@@ -186,6 +191,26 @@ export default function MapExplore() {
 
   const handleAdd = (landmark) => {
     toggleLandmark(landmark.id, landmark.regionId);
+  };
+
+  const searchResults = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return [];
+    return ALL_LANDMARKS.filter(
+      (l) => l.name.toLowerCase().includes(term) || getRegion(l.regionId)?.name.toLowerCase().includes(term)
+    ).slice(0, 8);
+  }, [searchTerm]);
+
+  const selectSearchResult = (landmark) => {
+    setSearchFocus(landmark);
+    setSearchOpen(false);
+    setSearchTerm('');
+    mapRef.current?.flyTo([landmark.lat, landmark.lng], 17);
+  };
+
+  const toggleSearch = () => {
+    setSearchOpen((open) => !open);
+    setSearchTerm('');
   };
 
   // Build the markers once and reuse the same elements across re-renders. GPS
@@ -326,6 +351,13 @@ export default function MapExplore() {
               )}
             </Marker>
           )}
+          {searchFocus && (
+            <Marker position={[searchFocus.lat, searchFocus.lng]} icon={focusIcon} zIndexOffset={1000}>
+              <Tooltip permanent direction="top" offset={[0, -24]} className="focus-tooltip">
+                {searchFocus.name}
+              </Tooltip>
+            </Marker>
+          )}
           <MarkerClusterGroup
             chunkedLoading
             maxClusterRadius={55}
@@ -335,6 +367,40 @@ export default function MapExplore() {
             {markers}
           </MarkerClusterGroup>
         </MapContainer>
+
+      <button type="button" className="map-search-btn" title="Search landmarks" onClick={toggleSearch}>
+        {searchOpen ? '\u{2715}' : '\u{1F50D}'}
+      </button>
+      {searchOpen && (
+        <div className="map-search-panel">
+          <input
+            type="text"
+            autoFocus
+            className="map-search-input"
+            placeholder={'\u{1F50D} Search landmarks…'}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm.trim() && (
+            <div className="map-search-results">
+              {searchResults.length === 0 && (
+                <div className="map-search-empty">No landmarks match "{searchTerm}".</div>
+              )}
+              {searchResults.map((l) => (
+                <button
+                  type="button"
+                  key={l.id}
+                  className="map-search-result"
+                  onClick={() => selectSearchResult(l)}
+                >
+                  <span className="map-search-result-name">{l.name}</span>
+                  <span className="map-search-result-city">{getRegion(l.regionId)?.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="map-fab-bar">
         <select className="radius-select" value={radiusMiles} onChange={handleRadiusChange} title="Zoom radius">
