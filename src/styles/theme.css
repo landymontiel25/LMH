@@ -1802,7 +1802,7 @@ textarea {
   box-shadow: var(--shadow-float);
 }
 
-.map-layer-btn {
+.map-search-btn {
   position: absolute;
   top: calc(var(--header-h) + 12px);
   left: 12px;
@@ -1821,6 +1821,86 @@ textarea {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-float);
+}
+
+.map-search-panel {
+  position: absolute;
+  top: calc(var(--header-h) + 12px);
+  left: 64px;
+  right: 12px;
+  max-width: 360px;
+  z-index: 1000;
+}
+
+.map-search-input {
+  width: 100%;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border);
+  background: rgba(var(--color-bg-rgb), 0.85);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--color-parchment);
+  padding: 0 16px;
+  font-size: 0.88rem;
+  outline: none;
+  box-shadow: var(--shadow-float);
+}
+
+.map-search-results {
+  margin-top: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: rgba(var(--color-bg-rgb), 0.92);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-float);
+}
+
+.map-search-result {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--color-parchment);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.map-search-result:last-child {
+  border-bottom: none;
+}
+
+.map-search-result:hover,
+.map-search-result:focus-visible {
+  background: rgba(var(--color-bg-rgb), 0.6);
+}
+
+.map-search-result-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-search-result-city {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: var(--color-parchment-dim);
+}
+
+.map-search-empty {
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: var(--color-parchment-dim);
 }
 
 .map-popup {
