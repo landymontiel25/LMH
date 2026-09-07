@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { CHECKIN_RADIUS_METERS, POINTS_PER_CHECKIN } from '../lib/leaderboard';
+import { POINTS_PER_CHECKIN } from '../lib/leaderboard';
 
 export default function CheckInButton({ landmark, user, firebaseEnabled, claimedMap, checkingIn, onCheckIn, className = '' }) {
   const fileRef = useRef(null);

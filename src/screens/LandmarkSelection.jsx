@@ -287,7 +287,6 @@ export default function LandmarkSelection() {
                 </a>
                 <CheckInButton
                   landmark={l}
-                  coords={coords}
                   user={user}
                   firebaseEnabled={firebaseEnabled}
                   claimedMap={claimedMap}
