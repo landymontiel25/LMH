@@ -179,12 +179,19 @@ export async function getUserStats(userId) {
   const snap = await getDocs(query(collection(db, 'checkins'), where('userId', '==', userId)));
   let totalPoints = 0;
   const regions = new Set();
+  const cityLastVisit = {}; // regionId -> most recent check-in, in epoch seconds
   snap.docs.forEach((d) => {
     const x = d.data();
     totalPoints += x.points || 0;
-    if (x.region) regions.add(x.region);
+    if (x.region) {
+      regions.add(x.region);
+      const sec = x.createdAt?.seconds || 0;
+      if (sec > (cityLastVisit[x.region] || 0)) cityLastVisit[x.region] = sec;
+    }
   });
-  return { totalPoints, checkins: snap.size, cities: regions.size, cityIds: [...regions] };
+  // Most-recently-visited city first, same ordering as the check-ins list.
+  const cityIds = [...regions].sort((a, b) => (cityLastVisit[b] || 0) - (cityLastVisit[a] || 0));
+  return { totalPoints, checkins: snap.size, cities: regions.size, cityIds, cityLastVisit };
 }
 
 /**

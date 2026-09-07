@@ -18,6 +18,18 @@ const TABS = [
 ];
 const MEDAL = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
 
+// Shared "Sep 7, 2026, 10:04 AM" formatting for check-in / city-visit timestamps.
+function fmtDateTime(seconds) {
+  if (!seconds) return '';
+  return new Date(seconds * 1000).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 // Never render a raw email on the public board (privacy). Falls back to the
 // part before the "@" for any legacy entry that predates usernames.
 function cleanName(name) {
@@ -63,14 +75,6 @@ function CheckinsView({ user, claimedMap, navigate }) {
 
   useEffect(() => {
     let cancelled = false;
-    const fmtDate = (c) =>
-      c.createdAt?.seconds
-        ? new Date(c.createdAt.seconds * 1000).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })
-        : '';
     const build = (c, myPhoto) => {
       const lm = getLandmark(c.region, c.landmarkId);
       // Prefer the photo saved AT check-in, then a rating photo, then the
@@ -85,7 +89,7 @@ function CheckinsView({ user, claimedMap, navigate }) {
         isMine: !!mine,
         city: getRegion(c.region)?.name || c.region,
         points: c.points || 0,
-        date: fmtDate(c),
+        date: fmtDateTime(c.createdAt?.seconds),
       };
     };
 
@@ -472,7 +476,11 @@ export default function Profile() {
                 >
                   <div style={{ flex: 1 }}>
                     <div className="checkin-name">{r?.name || id}</div>
-                    {r?.country && <div className="checkin-sub">{r.country}</div>}
+                    <div className="checkin-sub">
+                      {r?.country}
+                      {r?.country && stats?.cityLastVisit?.[id] ? ' · ' : ''}
+                      {fmtDateTime(stats?.cityLastVisit?.[id])}
+                    </div>
                   </div>
                   <div className="checkin-pts">{'\u{2192}'}</div>
                 </div>
