@@ -6,6 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import { ALL_LANDMARKS, ALL_LANDMARKS_BOUNDS, INTERESTS, getRegion } from '../data/regions';
+import { SEARCHABLE_PLACES } from '../data/places';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
@@ -196,16 +197,18 @@ export default function MapExplore() {
   const searchResults = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return [];
-    return ALL_LANDMARKS.filter(
+    const landmarkMatches = ALL_LANDMARKS.filter(
       (l) => l.name.toLowerCase().includes(term) || getRegion(l.regionId)?.name.toLowerCase().includes(term)
-    ).slice(0, 8);
+    ).map((l) => ({ id: `landmark-${l.id}`, name: l.name, sub: getRegion(l.regionId)?.name, lat: l.lat, lng: l.lng, zoom: 17 }));
+    const placeMatches = SEARCHABLE_PLACES.filter((p) => p.name.toLowerCase().includes(term));
+    return [...landmarkMatches, ...placeMatches].slice(0, 8);
   }, [searchTerm]);
 
-  const selectSearchResult = (landmark) => {
-    setSearchFocus(landmark);
+  const selectSearchResult = (result) => {
+    setSearchFocus(result);
     setSearchOpen(false);
     setSearchTerm('');
-    mapRef.current?.flyTo([landmark.lat, landmark.lng], 17);
+    mapRef.current?.flyTo([result.lat, result.lng], result.zoom);
   };
 
   const toggleSearch = () => {
@@ -377,24 +380,24 @@ export default function MapExplore() {
             type="text"
             autoFocus
             className="map-search-input"
-            placeholder={'\u{1F50D} Search landmarks…'}
+            placeholder={'\u{1F50D} Search landmarks, states, countries…'}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           {searchTerm.trim() && (
             <div className="map-search-results">
               {searchResults.length === 0 && (
-                <div className="map-search-empty">No landmarks match "{searchTerm}".</div>
+                <div className="map-search-empty">Nothing matches "{searchTerm}".</div>
               )}
-              {searchResults.map((l) => (
+              {searchResults.map((r) => (
                 <button
                   type="button"
-                  key={l.id}
+                  key={r.id}
                   className="map-search-result"
-                  onClick={() => selectSearchResult(l)}
+                  onClick={() => selectSearchResult(r)}
                 >
-                  <span className="map-search-result-name">{l.name}</span>
-                  <span className="map-search-result-city">{getRegion(l.regionId)?.name}</span>
+                  <span className="map-search-result-name">{r.name}</span>
+                  <span className="map-search-result-city">{r.sub}</span>
                 </button>
               ))}
             </div>
