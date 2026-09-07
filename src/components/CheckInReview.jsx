@@ -85,7 +85,7 @@ export default function CheckInReview() {
           <div className="celebration-banner">{celebration.message}</div>
         )}
         <p className="screen-subtitle" style={{ marginTop: celebration?.message ? 4 : 0 }}>
-          Your photo's in! How was {justCheckedIn.name}? Give it a star rating.
+          {pendingPhoto ? "Your photo's in! " : ''}How was {justCheckedIn.name}? Give it a star rating.
         </p>
 
         <div style={{ textAlign: 'center', margin: '6px 0 12px' }}>
