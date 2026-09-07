@@ -1,11 +1,11 @@
 import { createContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useFriends } from './FriendsContext';
-import { claimCheckIn, getUserCheckedInLandmarkIds, subscribeLeaderboard, attachCheckinPhoto, POINTS_PER_CHECKIN } from './leaderboard';
+import { claimCheckIn, getUserCheckedInLandmarkIds, subscribeLeaderboard, POINTS_PER_CHECKIN } from './leaderboard';
 
 // Shared check-in state so there's ONE source of truth and a single place to
-// trigger the post-check-in "rate + add a photo" prompt, no matter which screen
-// you checked in from (map pin, itinerary, landmark list, or detail page).
+// trigger the "rate + post" prompt, no matter which screen you checked in
+// from (map pin, itinerary, landmark list, or detail page).
 export const CheckInContext = createContext(null);
 
 export function CheckInProvider({ children }) {
@@ -13,11 +13,11 @@ export function CheckInProvider({ children }) {
   const { myUsername } = useFriends();
   const [claimedMap, setClaimedMap] = useState({});
   const [checkingIn, setCheckingIn] = useState(null);
+  // The landmark currently in the rate + post prompt. Tapping "Check In" sets
+  // this immediately, but nothing is claimed/awarded yet — that only happens
+  // once the user taps Post (see commitCheckIn below).
   const [justCheckedIn, setJustCheckedIn] = useState(null);
-  // The photo the user snapped/picked to check in — required, and carried into
-  // the rate + review prompt so it's already attached.
-  const [pendingPhoto, setPendingPhoto] = useState(null);
-  // The "+100! You passed Eduardo — now #1 👑" payoff shown after a check-in.
+  // The "+100! You passed Eduardo — now #1 👑" payoff shown after posting.
   const [celebration, setCelebration] = useState(null);
 
   // Keep this week's standings warm so we can detect an overtake the instant a
@@ -73,8 +73,17 @@ export function CheckInProvider({ children }) {
     return { points, rank: newRank, message };
   };
 
-  const checkIn = async (landmark, photoFile = null) => {
+  // Opens the rate + post prompt for this landmark. No Firestore write here.
+  const checkIn = (landmark) => {
     if (!user) return;
+    setJustCheckedIn(landmark);
+  };
+
+  // The actual check-in: called from the Post button, this is the moment
+  // points are awarded and the landmark is marked claimed.
+  const commitCheckIn = async () => {
+    const landmark = justCheckedIn;
+    if (!user || !landmark) return null;
     setCheckingIn(landmark.id);
     try {
       const result = await claimCheckIn({
@@ -89,31 +98,26 @@ export function CheckInProvider({ children }) {
       if (result.claimed || result.alreadyClaimed) {
         setClaimedMap((m) => ({ ...m, [landmark.id]: true }));
       }
-      // Fresh check-in → carry the photo into the rate + review prompt, and
-      // work out the overtake payoff from where you stood a moment ago.
       if (result.claimed) {
         const pts = landmark.points ?? POINTS_PER_CHECKIN;
         setCelebration(buildCelebration(pts));
-        setPendingPhoto(photoFile || null);
-        setJustCheckedIn(landmark);
-        // Save the check-in photo right away so it's kept even if the user skips
-        // the star rating. Fire-and-forget.
-        if (photoFile) attachCheckinPhoto(user.uid, landmark.id, photoFile).catch(() => {});
       }
+      return result;
     } finally {
       setCheckingIn(null);
     }
   };
 
+  // Closes the prompt. If Post was never tapped, nothing was ever claimed —
+  // this is a true cancel, not a "skip the rating but keep the check-in".
   const clearJustCheckedIn = () => {
     setJustCheckedIn(null);
-    setPendingPhoto(null);
     setCelebration(null);
   };
 
   return (
     <CheckInContext.Provider
-      value={{ user, firebaseEnabled, claimedMap, checkingIn, checkIn, justCheckedIn, pendingPhoto, celebration, clearJustCheckedIn }}
+      value={{ user, firebaseEnabled, claimedMap, checkingIn, checkIn, commitCheckIn, justCheckedIn, celebration, clearJustCheckedIn }}
     >
       {children}
     </CheckInContext.Provider>
