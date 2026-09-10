@@ -1,67 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { REGIONS, INTERESTS } from '../data/regions';
+import { INTERESTS } from '../data/regions';
 import LandmarkThumb from '../components/LandmarkThumb';
 import { OTHER_INTERESTS } from '../components/OtherInterestChip';
-
-const ANY_REGION = { id: '', name: 'Any region', tagline: 'Search everywhere' };
-
-// Type-to-search region picker (not a card list to tap through, not a plain
-// <select> to scroll) -- matches the "type where you are" ask.
-function RegionSearch({ region, onSelect }) {
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const q = query.trim().toLowerCase();
-  const options = [ANY_REGION, ...REGIONS];
-  const matches = q
-    ? options.filter((r) => r.name.toLowerCase().includes(q) || r.city?.toLowerCase().includes(q) || r.country?.toLowerCase().includes(q))
-    : options;
-
-  return (
-    <div className="autocomplete" ref={ref}>
-      <input
-        type="text"
-        placeholder="Search for a region…"
-        value={open ? query : region.name}
-        onFocus={() => {
-          setQuery('');
-          setOpen(true);
-        }}
-        onChange={(e) => setQuery(e.target.value)}
-        autoComplete="off"
-        autoCapitalize="off"
-      />
-      {open && matches.length > 0 && (
-        <div className="autocomplete-list">
-          {matches.map((r) => (
-            <button
-              type="button"
-              key={r.id || 'any'}
-              className="autocomplete-item"
-              onClick={() => {
-                onSelect(r);
-                setOpen(false);
-              }}
-            >
-              <span className="autocomplete-primary">{r.name}</span>
-              {r.tagline && <span className="autocomplete-secondary">{r.tagline}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
 
 // Unlike OtherInterestChip (TripSetup's single custom-interest slot), this
 // adds as many custom interests as you type -- each commit (Enter, picking a
@@ -235,7 +177,7 @@ export default function Test() {
         <form onSubmit={plan}>
           <div className="field">
             <label>Region</label>
-            <RegionSearch region={region} onSelect={setRegion} />
+            <RegionSearch region={region} onSelect={setRegion} includeAny />
           </div>
 
           <div className="field">
