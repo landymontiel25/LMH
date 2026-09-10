@@ -11,6 +11,7 @@ import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
 import { useCheckIn } from '../lib/useCheckIn';
+import { getLandmarkOverrides, saveLandmarkPosition } from '../lib/landmarkOverrides';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 
@@ -160,7 +161,16 @@ export default function MapExplore() {
   // this is on so every pin is a direct drag target.
   const [fixMode, setFixMode] = useState(false);
   const [movedPins, setMovedPins] = useState({});
-  const [copied, setCopied] = useState(false);
+  const [savedOverrides, setSavedOverrides] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  // Corrected pin positions are shared (Firestore), so they load once and
+  // apply for every visitor, not just whoever dragged the pin.
+  useEffect(() => {
+    getLandmarkOverrides().then(setSavedOverrides);
+  }, []);
   // The landmark you picked from search results — highlighted the same way
   // as "See it on the Map" from a landmark's detail page.
   const [searchFocus, setSearchFocus] = useState(null);
@@ -247,7 +257,8 @@ export default function MapExplore() {
         const isClaimed = !!claimedMap[l.id];
         const goToDetails = () => navigate(`/landmarks/${l.regionId}/${l.id}`);
         const moved = movedPins[l.id];
-        const position = moved ? [moved.lat, moved.lng] : [l.lat, l.lng];
+        const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
+        const position = moved ? [moved.lat, moved.lng] : savedPos ? [savedPos.lat, savedPos.lng] : [l.lat, l.lng];
         return (
           <Marker
             key={l.id}
@@ -314,16 +325,29 @@ export default function MapExplore() {
         );
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, fixMode, movedPins]
+    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, fixMode, movedPins, savedOverrides]
   );
 
-  const copyMovedPins = async () => {
+  const submitMovedPins = async () => {
+    setSaving(true);
+    setSaveError('');
     try {
-      await navigator.clipboard.writeText(JSON.stringify(Object.values(movedPins), null, 2));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2200);
-    } catch {
-      /* clipboard blocked -- nothing else to do */
+      const entries = Object.values(movedPins);
+      await Promise.all(entries.map((p) => saveLandmarkPosition({ ...p, userId: user?.uid })));
+      setSavedOverrides((prev) => {
+        const next = { ...prev };
+        entries.forEach((p) => {
+          next[`${p.region}/${p.id}`] = { lat: p.lat, lng: p.lng };
+        });
+        return next;
+      });
+      setMovedPins({});
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2200);
+    } catch (err) {
+      setSaveError(err.message || 'Could not save — try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -424,14 +448,25 @@ export default function MapExplore() {
             <p className="screen-subtitle" style={{ margin: '4px 0 8px' }}>
               Drag any pin to where it actually belongs. {Object.keys(movedPins).length} moved so far.
             </p>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm btn-block"
-              disabled={Object.keys(movedPins).length === 0}
-              onClick={copyMovedPins}
-            >
-              {copied ? 'Copied!' : 'Copy Moved Pins'}
-            </button>
+            {user ? (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm btn-block"
+                disabled={Object.keys(movedPins).length === 0 || saving}
+                onClick={submitMovedPins}
+              >
+                {saving ? 'Saving…' : saved ? 'Saved!' : 'Submit'}
+              </button>
+            ) : (
+              <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>
+                Sign in first (Ranks tab) — saving a fix needs an account.
+              </p>
+            )}
+            {saveError && (
+              <p className="tag tag-error" style={{ display: 'block', marginTop: 8, marginBottom: 0 }}>
+                {saveError}
+              </p>
+            )}
           </div>
         </div>
       )}
