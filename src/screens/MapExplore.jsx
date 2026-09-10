@@ -154,6 +154,13 @@ export default function MapExplore() {
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Drag-to-fix mode: a pin in the wrong spot gets dragged to where it
+  // actually is, right on the map -- no geocoding, no data lookups, just
+  // moving it to match what you can see. Clustering is switched off while
+  // this is on so every pin is a direct drag target.
+  const [fixMode, setFixMode] = useState(false);
+  const [movedPins, setMovedPins] = useState({});
+  const [copied, setCopied] = useState(false);
   // The landmark you picked from search results — highlighted the same way
   // as "See it on the Map" from a landmark's detail page.
   const [searchFocus, setSearchFocus] = useState(null);
@@ -227,6 +234,11 @@ export default function MapExplore() {
   // uncluttered (world view shows a few number bubbles; zoom into a city and
   // they break apart into individual pins). This lets you zoom out, spot a city,
   // and zoom in to its landmarks even when you're on another continent.
+  const handlePinDragEnd = (l) => (e) => {
+    const { lat, lng } = e.target.getLatLng();
+    setMovedPins((prev) => ({ ...prev, [l.id]: { region: l.regionId, id: l.id, name: l.name, lat, lng } }));
+  };
+
   const markers = useMemo(
     () =>
       ALL_LANDMARKS.map((l) => {
@@ -234,8 +246,16 @@ export default function MapExplore() {
         const region = getRegion(l.regionId);
         const isClaimed = !!claimedMap[l.id];
         const goToDetails = () => navigate(`/landmarks/${l.regionId}/${l.id}`);
+        const moved = movedPins[l.id];
+        const position = moved ? [moved.lat, moved.lng] : [l.lat, l.lng];
         return (
-          <Marker key={l.id} position={[l.lat, l.lng]} icon={pinIcon(isClaimed, isSelected)}>
+          <Marker
+            key={l.id}
+            position={position}
+            icon={fixMode ? pinIcon(!!moved, false) : pinIcon(isClaimed, isSelected)}
+            draggable={fixMode}
+            eventHandlers={fixMode ? { dragend: handlePinDragEnd(l) } : undefined}
+          >
             <Popup>
               <div className="map-popup">
                 <div
@@ -294,8 +314,18 @@ export default function MapExplore() {
         );
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled]
+    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, fixMode, movedPins]
   );
+
+  const copyMovedPins = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(Object.values(movedPins), null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      /* clipboard blocked -- nothing else to do */
+    }
+  };
 
   return (
     <div className="map-fullscreen">
@@ -361,19 +391,50 @@ export default function MapExplore() {
               </Tooltip>
             </Marker>
           )}
-          <MarkerClusterGroup
-            chunkedLoading
-            maxClusterRadius={55}
-            spiderfyOnMaxZoom
-            iconCreateFunction={clusterIcon}
-          >
-            {markers}
-          </MarkerClusterGroup>
+          {fixMode ? (
+            markers
+          ) : (
+            <MarkerClusterGroup
+              chunkedLoading
+              maxClusterRadius={55}
+              spiderfyOnMaxZoom
+              iconCreateFunction={clusterIcon}
+            >
+              {markers}
+            </MarkerClusterGroup>
+          )}
         </MapContainer>
 
       <button type="button" className="map-search-btn" title="Search landmarks" onClick={toggleSearch}>
         {searchOpen ? '\u{2715}' : '\u{1F50D}'}
       </button>
+      <button
+        type="button"
+        className="map-search-btn"
+        style={{ top: 'calc(var(--header-h) + 64px)' }}
+        title={fixMode ? 'Done fixing pins' : 'Fix pin locations — drag any pin to where it actually is'}
+        onClick={() => setFixMode((f) => !f)}
+      >
+        {fixMode ? '\u{2715}' : '\u{1F4CD}'}
+      </button>
+      {fixMode && (
+        <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
+          <div className="card" style={{ padding: 12 }}>
+            <strong>Fix Pin Locations</strong>
+            <p className="screen-subtitle" style={{ margin: '4px 0 8px' }}>
+              Drag any pin to where it actually belongs. {Object.keys(movedPins).length} moved so far.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm btn-block"
+              disabled={Object.keys(movedPins).length === 0}
+              onClick={copyMovedPins}
+            >
+              {copied ? 'Copied!' : 'Copy Moved Pins'}
+            </button>
+          </div>
+        </div>
+      )}
       {searchOpen && (
         <div className="map-search-panel">
           <input
