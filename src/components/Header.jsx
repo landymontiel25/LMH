@@ -16,6 +16,20 @@ function ProfileMenu() {
   const [me, setMe] = useState(null); // { points, rank } for the current week
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const closeTimer = useRef(null);
+
+  // The popover sits a few pixels below the trigger (see .points-popover's
+  // top offset) -- moving the mouse straight down crosses that gap outside
+  // both elements' hover area. A short grace period survives the crossing;
+  // re-entering (the popover is a descendant, so this fires again) cancels it.
+  const openNow = () => {
+    clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  const closeSoon = () => {
+    closeTimer.current = setTimeout(() => setOpen(false), 250);
+  };
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   useEffect(() => {
     if (!firebaseEnabled || !user) {
@@ -51,7 +65,7 @@ function ProfileMenu() {
   const name = myUsername ? `@${myUsername}` : user.displayName || 'Explorer';
 
   return (
-    <div className="profile-menu" ref={ref} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+    <div className="profile-menu" ref={ref} onMouseEnter={openNow} onMouseLeave={closeSoon}>
       <button type="button" className="score-chip profile-menu-trigger" onClick={() => setOpen((o) => !o)}>
         <span className="score-chip-pts">{name}</span>
         <span className="profile-menu-caret">{'▾'}</span>
