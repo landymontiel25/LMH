@@ -736,6 +736,20 @@ textarea {
   text-transform: uppercase;
 }
 
+.profile-menu {
+  position: relative;
+}
+
+.profile-menu-trigger {
+  cursor: pointer;
+  font: inherit;
+}
+
+.profile-menu-caret {
+  color: var(--color-brass);
+  font-size: 0.65rem;
+}
+
 .points-popover {
   position: absolute;
   top: calc(100% + 8px);
