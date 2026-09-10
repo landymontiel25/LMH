@@ -6,6 +6,7 @@ const items = [
   { to: '/landmarks', label: 'Landmarks', icon: '\u{1F4CD}' },
   { to: '/itinerary', label: 'Itinerary', icon: '\u{1F5FA}\u{FE0F}' },
   { to: '/profile', label: 'Ranks', icon: '\u{1F3C6}' },
+  { to: '/test', label: 'Test', icon: '\u{1F9EA}' },
 ];
 
 export default function BottomNav() {

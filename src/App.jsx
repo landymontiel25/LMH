@@ -15,6 +15,7 @@ import MapExplore from './screens/MapExplore';
 import LandmarkDetail from './screens/LandmarkDetail';
 import Itinerary from './screens/Itinerary';
 import Profile from './screens/Profile';
+import Test from './screens/Test';
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/leaderboard" element={<Profile />} />
               <Route path="/account" element={<Profile />} />
+              <Route path="/test" element={<Test />} />
             </Routes>
           </main>
           <BottomNav />
