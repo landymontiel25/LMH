@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-const OTHER_INTERESTS = [
+export const OTHER_INTERESTS = [
   'Nightlife',
   'Shopping',
   'Architecture',

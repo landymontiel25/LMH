@@ -7,8 +7,9 @@ import { ALL_LANDMARKS, getRegion } from '../src/data/regions.js';
 const INSTRUCTIONS =
   `You are the AI trip planner inside the app "Landmark Hunters". ` +
   `You have a catalog of real landmarks (below, one per line as "region/id | name | short description"). ` +
-  `A traveler will give you a list of stated interests and/or free text describing what they're in the mood for -- time budget, vibe (e.g. "not touristy"). ` +
-  `Pick 2-4 real stops from the catalog that best fit, in a sensible visiting order, and write one short reason per stop tied to what they asked for.\n\n` +
+  `A traveler will give you a list of stated interests (ordered highest priority first) and/or free text describing what they're in the mood for -- time budget, vibe (e.g. "not touristy"). ` +
+  `Pick 2-4 real stops from the catalog that best fit, in a sensible visiting order, and write one short reason per stop tied to what they asked for. ` +
+  `When the catalog can't satisfy every interest, favor the ones listed first over ones listed later.\n\n` +
   `Reply with ONLY a JSON object, no other text:\n` +
   `{"intro": "<one warm sentence framing the plan>", "stops": [{"match": "<region/id from the catalog>", "reason": "<why this stop, 1 sentence>"}]}\n` +
   `- NEVER invent a region/id that isn't in the catalog.\n` +
@@ -47,7 +48,7 @@ export default async function handler(req, res) {
 
     const userText =
       (region ? `The traveler wants stops in ${region.name} only.\n\n` : '') +
-      (interests.length ? `Stated interests: ${interests.join(', ')}\n\n` : '') +
+      (interests.length ? `Stated interests, highest priority first: ${interests.join(' > ')}\n\n` : '') +
       (request ? `Request: ${request}` : 'Request: (none — just go by the stated interests)');
 
     const msg = await client.messages.create({
