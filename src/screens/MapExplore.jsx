@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
-import { ALL_LANDMARKS, ALL_LANDMARKS_BOUNDS, INTERESTS, getRegion } from '../data/regions';
+import { ALL_LANDMARKS, ALL_LANDMARKS_BOUNDS, REGIONS, INTERESTS, getRegion } from '../data/regions';
 import { SEARCHABLE_PLACES } from '../data/places';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
 import { useCheckIn } from '../lib/useCheckIn';
 import { getLandmarkOverrides, saveLandmarkPosition } from '../lib/landmarkOverrides';
+import { getCustomLandmarks, addCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
+import { distanceMeters } from '../lib/geo';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 
@@ -133,6 +135,30 @@ function InitialView({ loading, coords, bounds, regionBounds, focusPoint, radius
   return null;
 }
 
+// While Add Pin mode is on, tapping empty map space (not an existing marker
+// -- those stop the click from reaching the map) picks that spot.
+function AddPinOnClick({ enabled, onPick }) {
+  useMapEvents({
+    click(e) {
+      if (enabled) onPick(e.latlng);
+    },
+  });
+  return null;
+}
+
+function nearestRegionId(lat, lng) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const r of REGIONS) {
+    const d = distanceMeters(lat, lng, r.center.lat, r.center.lng);
+    if (d < bestDist) {
+      bestDist = d;
+      best = r.id;
+    }
+  }
+  return best;
+}
+
 function LocateControl({ coords, radiusMiles }) {
   const map = useMap();
   return (
@@ -176,6 +202,54 @@ export default function MapExplore() {
   useEffect(() => {
     getLandmarkOverrides().then(setSavedOverrides);
   }, []);
+
+  // Add Pin mode: tap empty map space to place a brand-new landmark (not a
+  // correction to an existing one) -- for the real thing not yet in the
+  // built-in catalog, like a dorm hall. Saved to Firestore, so it's there
+  // for every visitor. Check-ins on it reuse the normal flow untouched.
+  const [addMode, setAddMode] = useState(false);
+  const [customLandmarks, setCustomLandmarks] = useState([]);
+  const [pendingPin, setPendingPin] = useState(null); // {lat, lng} | null
+  const [pendingName, setPendingName] = useState('');
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState('');
+
+  useEffect(() => {
+    getCustomLandmarks().then(setCustomLandmarks);
+  }, []);
+
+  const savePendingPin = async () => {
+    const name = pendingName.trim();
+    if (!name || !pendingPin || addSaving) return;
+    setAddSaving(true);
+    setAddError('');
+    try {
+      const created = await addCustomLandmark({
+        region: nearestRegionId(pendingPin.lat, pendingPin.lng),
+        name,
+        lat: pendingPin.lat,
+        lng: pendingPin.lng,
+        userId: user?.uid,
+      });
+      setCustomLandmarks((prev) => [...prev, created]);
+      setPendingPin(null);
+      setPendingName('');
+    } catch (err) {
+      setAddError(err.message || 'Could not save — try again.');
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
+  const removeCustomLandmark = async (docId) => {
+    setCustomLandmarks((prev) => prev.filter((l) => l.docId !== docId));
+    try {
+      await deleteCustomLandmark(docId);
+    } catch {
+      // Firestore delete failed silently -- it'll reappear on next load,
+      // which is an acceptable failure mode for a rare, low-stakes action.
+    }
+  };
   // The landmark you picked from search results — highlighted the same way
   // as "See it on the Map" from a landmark's detail page.
   const [searchFocus, setSearchFocus] = useState(null);
@@ -333,6 +407,45 @@ export default function MapExplore() {
     [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, fixMode, movedPins, savedOverrides]
   );
 
+  const customMarkers = useMemo(
+    () =>
+      customLandmarks.map((l) => {
+        const region = getRegion(l.region);
+        const syntheticLandmark = { id: l.id, name: l.name, regionId: l.region };
+        const isClaimed = !!claimedMap[l.id];
+        return (
+          <Marker key={l.docId} position={[l.lat, l.lng]} icon={pinIcon(isClaimed, false)}>
+            <Popup>
+              <div className="map-popup">
+                <h4 style={{ marginTop: 0 }}>{l.name}</h4>
+                <p style={{ margin: '2px 0 8px', fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
+                  {region?.name || 'Custom pin'}
+                </p>
+                <CheckInButton
+                  landmark={syntheticLandmark}
+                  user={user}
+                  firebaseEnabled={firebaseEnabled}
+                  claimedMap={claimedMap}
+                  checkingIn={checkingIn}
+                  onCheckIn={checkIn}
+                  className="btn-block"
+                />
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm btn-block"
+                  style={{ marginTop: 8 }}
+                  onClick={() => removeCustomLandmark(l.docId)}
+                >
+                  {'\u{1F5D1}'} Remove Pin
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      }),
+    [customLandmarks, claimedMap, checkingIn, user, firebaseEnabled, checkIn]
+  );
+
   const submitMovedPins = async () => {
     setSaving(true);
     setSaveError('');
@@ -420,8 +533,15 @@ export default function MapExplore() {
               </Tooltip>
             </Marker>
           )}
+          <AddPinOnClick enabled={addMode && !pendingPin} onPick={setPendingPin} />
+          {pendingPin && (
+            <Marker position={[pendingPin.lat, pendingPin.lng]} icon={focusIcon} zIndexOffset={1000} />
+          )}
           {fixMode ? (
-            markers
+            <>
+              {markers}
+              {customMarkers}
+            </>
           ) : (
             <MarkerClusterGroup
               chunkedLoading
@@ -430,6 +550,7 @@ export default function MapExplore() {
               iconCreateFunction={clusterIcon}
             >
               {markers}
+              {customMarkers}
             </MarkerClusterGroup>
           )}
         </MapContainer>
@@ -442,10 +563,86 @@ export default function MapExplore() {
         className="map-search-btn"
         style={{ top: 'calc(var(--header-h) + 64px)' }}
         title={fixMode ? 'Done fixing pins' : 'Fix pin locations — drag any pin to where it actually is'}
-        onClick={() => setFixMode((f) => !f)}
+        onClick={() => {
+          setFixMode((f) => !f);
+          setAddMode(false);
+        }}
       >
         {fixMode ? '\u{2715}' : '\u{1F4CD}'}
       </button>
+      <button
+        type="button"
+        className="map-search-btn"
+        style={{ top: 'calc(var(--header-h) + 116px)' }}
+        title={addMode ? 'Done adding pins' : 'Add a new pin — tap the map where it belongs'}
+        onClick={() => {
+          setAddMode((a) => !a);
+          setFixMode(false);
+          setPendingPin(null);
+        }}
+      >
+        {addMode ? '\u{2715}' : '\u{2795}'}
+      </button>
+      {addMode && !pendingPin && (
+        <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
+          <div className="card" style={{ padding: 12 }}>
+            <strong>Add Pin</strong>
+            <p className="screen-subtitle" style={{ margin: '4px 0 0' }}>
+              Tap anywhere on the map where a landmark should be.
+            </p>
+          </div>
+        </div>
+      )}
+      {pendingPin && (
+        <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
+          <div className="card" style={{ padding: 12 }}>
+            <strong>Name This Pin</strong>
+            <input
+              type="text"
+              autoFocus
+              placeholder="e.g. Farley Hall"
+              value={pendingName}
+              maxLength={80}
+              onChange={(e) => setPendingName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') savePendingPin();
+              }}
+              style={{ width: '100%', marginTop: 8 }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                style={{ flex: 1 }}
+                disabled={!pendingName.trim() || addSaving || !user}
+                onClick={savePendingPin}
+              >
+                {addSaving ? 'Saving…' : 'Save Pin'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setPendingPin(null);
+                  setPendingName('');
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            {!user && (
+              <p className="tag tag-error" style={{ display: 'block', marginTop: 8, marginBottom: 0 }}>
+                Sign in first (Ranks tab) — saving a pin needs an account.
+              </p>
+            )}
+            {addError && (
+              <p className="tag tag-error" style={{ display: 'block', marginTop: 8, marginBottom: 0 }}>
+                {addError}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       {fixMode && (
         <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
           <div className="card" style={{ padding: 12 }}>
