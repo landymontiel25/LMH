@@ -5,8 +5,8 @@ export const VILLANOVA_LANDMARKS = [
     images: ['https://commons.wikimedia.org/wiki/Special:FilePath/Villanova%20Church.jpg?width=1200'],
     name: 'St. Thomas of Villanova Church',
     region: 'villanova',
-    lat: 40.0379,
-    lng: -75.3417,
+    lat: 40.03585,
+    lng: -75.34331,
     categories: ['history-culture'],
     summary: 'A grand Augustinian church at the heart of Villanova University, known for its twin spires and stained glass.',
     facts: [
@@ -24,8 +24,8 @@ export const VILLANOVA_LANDMARKS = [
     images: ['https://commons.wikimedia.org/wiki/Special:FilePath/Villanova%20Church.jpg?width=1200'],
     name: 'The Villanova Grotto',
     region: 'villanova',
-    lat: 40.0374,
-    lng: -75.3395,
+    lat: 40.03608,
+    lng: -75.34349,
     categories: ['history-culture'],
     summary: 'A peaceful outdoor shrine and garden tucked into the Villanova campus, popular for quiet reflection.',
     facts: [
@@ -42,8 +42,8 @@ export const VILLANOVA_LANDMARKS = [
     popularity: 1, // 0 avg monthly Wikipedia views (raw signal, log-scaled 1-10)
     name: 'Corr Hall Arch',
     region: 'villanova',
-    lat: 40.0382,
-    lng: -75.3402,
+    lat: 40.03656,
+    lng: -75.34127,
     categories: ['history-culture'],
     summary: "A stone archway at one of Villanova's classic academic buildings, a popular photo spot on campus.",
     facts: [
@@ -60,8 +60,8 @@ export const VILLANOVA_LANDMARKS = [
     popularity: 1, // 0 avg monthly Wikipedia views (raw signal, log-scaled 1-10)
     name: 'The Awakening ("The Oreo")',
     region: 'villanova',
-    lat: 40.0388,
-    lng: -75.3409,
+    lat: 40.03767,
+    lng: -75.34268,
     categories: ['art-museums'],
     summary: 'A striking black-and-white striped sculpture on Villanova\'s campus, nicknamed "The Oreo" by generations of students.',
     facts: [
@@ -78,8 +78,8 @@ export const VILLANOVA_LANDMARKS = [
     popularity: 1, // 0 avg monthly Wikipedia views (raw signal, log-scaled 1-10)
     name: 'Riley Ellipse',
     region: 'villanova',
-    lat: 40.0391,
-    lng: -75.3411,
+    lat: 40.03733,
+    lng: -75.34333,
     categories: ['food-local-life'],
     summary: "A large oval lawn at the center of Villanova's campus where students gather, study, and relax outdoors.",
     facts: [
@@ -97,8 +97,8 @@ export const VILLANOVA_LANDMARKS = [
     images: ['https://commons.wikimedia.org/wiki/Special:FilePath/Zawadzki%20and%20Mendel.jpg?width=1200', 'https://commons.wikimedia.org/wiki/Special:FilePath/046CupolaSPietro.jpg?width=1200', 'https://commons.wikimedia.org/wiki/Special:FilePath/Gregor%20Mendel%202.jpg?width=1200'],
     name: 'Mendel Field',
     region: 'villanova',
-    lat: 40.0361,
-    lng: -75.3438,
+    lat: 40.03804,
+    lng: -75.34252,
     categories: ['food-local-life'],
     summary: "An athletic field on Villanova's campus used for intramural sports and casual games.",
     facts: [
@@ -116,8 +116,8 @@ export const VILLANOVA_LANDMARKS = [
     images: ['https://commons.wikimedia.org/wiki/Special:FilePath/Villanova%20Old%20Falvey.JPG?width=1200', 'https://commons.wikimedia.org/wiki/Special:FilePath/Villanova%20alumni%20hall.JPG?width=1200', 'https://commons.wikimedia.org/wiki/Special:FilePath/VillanovaMonastery.jpg?width=1200'],
     name: 'Falvey Memorial Library',
     region: 'villanova',
-    lat: 40.0388,
-    lng: -75.3424,
+    lat: 40.03726,
+    lng: -75.34208,
     categories: ['history-culture'],
     summary: "Villanova University's main library, a busy hub for studying with a mix of historic and modern spaces.",
     facts: [
