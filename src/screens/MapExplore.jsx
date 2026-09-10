@@ -36,9 +36,13 @@ function pinIcon(checkedIn, addedToTrip) {
             ${addedToTrip ? '<span class="map-pin-star">★</span>' : ''}
           </div>
         `,
-        iconSize: [22, 22],
-        iconAnchor: [11, 20],
-        popupAnchor: [0, -18],
+        // The 20px pin sits at the wrap's top-left and rotates about its own
+        // center (10,10); its square corner lands 10*sqrt(2) below that, so
+        // the tip is at (10, 24) -- that's the point that must sit on the
+        // coordinate, not the wrap's bottom edge.
+        iconSize: [22, 26],
+        iconAnchor: [10, 24],
+        popupAnchor: [0, -28],
       })
     );
   }
@@ -66,9 +70,10 @@ const userIcon = L.divIcon({
 const focusIcon = L.divIcon({
   className: '',
   html: '<div class="map-pin-focus"></div>',
-  iconSize: [28, 28],
-  iconAnchor: [14, 26],
-  popupAnchor: [0, -24],
+  // Same geometry as pinIcon: 26px pin centered at (13,13), tip at 13+13*sqrt(2).
+  iconSize: [28, 32],
+  iconAnchor: [13, 31],
+  popupAnchor: [0, -36],
 });
 
 const TILE_LAYERS = {
@@ -402,7 +407,7 @@ export default function MapExplore() {
           {focusLandmark && (
             <Marker position={[focusLandmark.lat, focusLandmark.lng]} icon={focusIcon} zIndexOffset={1000}>
               {focusLandmark.name && (
-                <Tooltip permanent direction="top" offset={[0, -24]} className="focus-tooltip">
+                <Tooltip permanent direction="top" offset={[0, -34]} className="focus-tooltip">
                   {focusLandmark.name}
                 </Tooltip>
               )}
@@ -410,7 +415,7 @@ export default function MapExplore() {
           )}
           {searchFocus && (
             <Marker position={[searchFocus.lat, searchFocus.lng]} icon={focusIcon} zIndexOffset={1000}>
-              <Tooltip permanent direction="top" offset={[0, -24]} className="focus-tooltip">
+              <Tooltip permanent direction="top" offset={[0, -34]} className="focus-tooltip">
                 {searchFocus.name}
               </Tooltip>
             </Marker>
