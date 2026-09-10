@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
-import { REGIONS, INTERESTS } from '../data/regions';
+import { INTERESTS, getRegion } from '../data/regions';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import OtherInterestChip from '../components/OtherInterestChip';
+import RegionSearch from '../components/RegionSearch';
 
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
 
@@ -43,10 +44,12 @@ export default function TripSetup() {
     });
   };
 
-  const selectRegion = (regionId) => {
-    if (regionId === trip.activeRegion) return;
-    updateTrip({ activeRegion: regionId });
+  const selectRegion = (region) => {
+    if (region.id === trip.activeRegion) return;
+    updateTrip({ activeRegion: region.id });
   };
+
+  const activeRegion = getRegion(trip.activeRegion) || { name: '' };
 
   const canContinue = !!trip.activeRegion;
 
@@ -96,24 +99,7 @@ export default function TripSetup() {
 
       <div className="field">
         <label>Region</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {REGIONS.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              className={`chip ${trip.activeRegion === r.id ? 'selected' : ''}`}
-              style={{ width: '100%' }}
-              onClick={() => selectRegion(r.id)}
-            >
-              <span className="chip-icon">{'\u{1F30D}'}</span>
-              <span>
-                <strong>{r.name}</strong>
-                <br />
-                <span style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)' }}>{r.tagline}</span>
-              </span>
-            </button>
-          ))}
-        </div>
+        <RegionSearch region={activeRegion} onSelect={selectRegion} placeholder="Search for a region…" />
       </div>
 
       <div className="field">
