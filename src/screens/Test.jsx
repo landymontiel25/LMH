@@ -126,7 +126,9 @@ function AddInterestChip({ existing, onAdd }) {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          // Tab defaults to jumping focus away and dropping whatever was
+          // typed -- treat it the same as Enter so it saves first.
+          if (e.key === 'Enter' || e.key === 'Tab') {
             e.preventDefault();
             commit();
           }
