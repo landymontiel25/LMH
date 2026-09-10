@@ -11,6 +11,7 @@ import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
 import { useCheckIn } from '../lib/useCheckIn';
+import { getLandmarkOverrides, saveLandmarkPosition } from '../lib/landmarkOverrides';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 
@@ -159,6 +160,22 @@ export default function MapExplore() {
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Drag-to-fix mode: a pin in the wrong spot gets dragged to where it
+  // actually is, right on the map -- no geocoding, no data lookups, just
+  // moving it to match what you can see. Clustering is switched off while
+  // this is on so every pin is a direct drag target.
+  const [fixMode, setFixMode] = useState(false);
+  const [movedPins, setMovedPins] = useState({});
+  const [savedOverrides, setSavedOverrides] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  // Corrected pin positions are shared (Firestore), so they load once and
+  // apply for every visitor, not just whoever dragged the pin.
+  useEffect(() => {
+    getLandmarkOverrides().then(setSavedOverrides);
+  }, []);
   // The landmark you picked from search results — highlighted the same way
   // as "See it on the Map" from a landmark's detail page.
   const [searchFocus, setSearchFocus] = useState(null);
@@ -232,6 +249,11 @@ export default function MapExplore() {
   // uncluttered (world view shows a few number bubbles; zoom into a city and
   // they break apart into individual pins). This lets you zoom out, spot a city,
   // and zoom in to its landmarks even when you're on another continent.
+  const handlePinDragEnd = (l) => (e) => {
+    const { lat, lng } = e.target.getLatLng();
+    setMovedPins((prev) => ({ ...prev, [l.id]: { region: l.regionId, id: l.id, name: l.name, lat, lng } }));
+  };
+
   const markers = useMemo(
     () =>
       ALL_LANDMARKS.map((l) => {
@@ -239,8 +261,17 @@ export default function MapExplore() {
         const region = getRegion(l.regionId);
         const isClaimed = !!claimedMap[l.id];
         const goToDetails = () => navigate(`/landmarks/${l.regionId}/${l.id}`);
+        const moved = movedPins[l.id];
+        const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
+        const position = moved ? [moved.lat, moved.lng] : savedPos ? [savedPos.lat, savedPos.lng] : [l.lat, l.lng];
         return (
-          <Marker key={l.id} position={[l.lat, l.lng]} icon={pinIcon(isClaimed, isSelected)}>
+          <Marker
+            key={l.id}
+            position={position}
+            icon={fixMode ? pinIcon(!!moved, false) : pinIcon(isClaimed, isSelected)}
+            draggable={fixMode}
+            eventHandlers={fixMode ? { dragend: handlePinDragEnd(l) } : undefined}
+          >
             <Popup>
               <div className="map-popup">
                 <div
@@ -299,8 +330,31 @@ export default function MapExplore() {
         );
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled]
+    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, fixMode, movedPins, savedOverrides]
   );
+
+  const submitMovedPins = async () => {
+    setSaving(true);
+    setSaveError('');
+    try {
+      const entries = Object.values(movedPins);
+      await Promise.all(entries.map((p) => saveLandmarkPosition({ ...p, userId: user?.uid })));
+      setSavedOverrides((prev) => {
+        const next = { ...prev };
+        entries.forEach((p) => {
+          next[`${p.region}/${p.id}`] = { lat: p.lat, lng: p.lng };
+        });
+        return next;
+      });
+      setMovedPins({});
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2200);
+    } catch (err) {
+      setSaveError(err.message || 'Could not save — try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="map-fullscreen">
@@ -366,19 +420,61 @@ export default function MapExplore() {
               </Tooltip>
             </Marker>
           )}
-          <MarkerClusterGroup
-            chunkedLoading
-            maxClusterRadius={55}
-            spiderfyOnMaxZoom
-            iconCreateFunction={clusterIcon}
-          >
-            {markers}
-          </MarkerClusterGroup>
+          {fixMode ? (
+            markers
+          ) : (
+            <MarkerClusterGroup
+              chunkedLoading
+              maxClusterRadius={55}
+              spiderfyOnMaxZoom
+              iconCreateFunction={clusterIcon}
+            >
+              {markers}
+            </MarkerClusterGroup>
+          )}
         </MapContainer>
 
       <button type="button" className="map-search-btn" title="Search landmarks" onClick={toggleSearch}>
         {searchOpen ? '\u{2715}' : '\u{1F50D}'}
       </button>
+      <button
+        type="button"
+        className="map-search-btn"
+        style={{ top: 'calc(var(--header-h) + 64px)' }}
+        title={fixMode ? 'Done fixing pins' : 'Fix pin locations — drag any pin to where it actually is'}
+        onClick={() => setFixMode((f) => !f)}
+      >
+        {fixMode ? '\u{2715}' : '\u{1F4CD}'}
+      </button>
+      {fixMode && (
+        <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
+          <div className="card" style={{ padding: 12 }}>
+            <strong>Fix Pin Locations</strong>
+            <p className="screen-subtitle" style={{ margin: '4px 0 8px' }}>
+              Drag any pin to where it actually belongs. {Object.keys(movedPins).length} moved so far.
+            </p>
+            {user ? (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm btn-block"
+                disabled={Object.keys(movedPins).length === 0 || saving}
+                onClick={submitMovedPins}
+              >
+                {saving ? 'Saving…' : saved ? 'Saved!' : 'Submit'}
+              </button>
+            ) : (
+              <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>
+                Sign in first (Ranks tab) — saving a fix needs an account.
+              </p>
+            )}
+            {saveError && (
+              <p className="tag tag-error" style={{ display: 'block', marginTop: 8, marginBottom: 0 }}>
+                {saveError}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       {searchOpen && (
         <div className="map-search-panel">
           <input
