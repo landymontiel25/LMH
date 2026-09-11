@@ -5,16 +5,14 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
-import { ALL_LANDMARKS, ALL_LANDMARKS_BOUNDS, REGIONS, INTERESTS, getRegion } from '../data/regions';
+import { ALL_LANDMARKS, ALL_LANDMARKS_BOUNDS, INTERESTS, getRegion } from '../data/regions';
 import { SEARCHABLE_PLACES } from '../data/places';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
 import { useCheckIn } from '../lib/useCheckIn';
 import { getLandmarkOverrides, saveLandmarkPosition } from '../lib/landmarkOverrides';
-import { getCustomLandmarks, addCustomLandmark, deleteCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
-import { fileToSmallDataUrl } from '../lib/imageUtils';
-import { distanceMeters } from '../lib/geo';
+import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 
@@ -145,17 +143,6 @@ function InitialView({ loading, coords, bounds, regionBounds, focusPoint, radius
   return null;
 }
 
-// While Add Pin mode is on, tapping empty map space (not an existing marker
-// -- those stop the click from reaching the map) picks that spot.
-function AddPinOnClick({ enabled, onPick }) {
-  useMapEvents({
-    click(e) {
-      if (enabled) onPick(e.latlng);
-    },
-  });
-  return null;
-}
-
 // Remove-pins mode: drag a rectangle (like selecting Finder icons) to pick
 // which custom pins to delete. Map panning is disabled for the duration of
 // the drag so it draws a box instead of moving the map.
@@ -193,19 +180,6 @@ function BoxSelect({ enabled, customLandmarks, onDrag, onFinish }) {
     },
   });
   return null;
-}
-
-function nearestRegionId(lat, lng) {
-  let best = null;
-  let bestDist = Infinity;
-  for (const r of REGIONS) {
-    const d = distanceMeters(lat, lng, r.center.lat, r.center.lng);
-    if (d < bestDist) {
-      bestDist = d;
-      best = r.id;
-    }
-  }
-  return best;
 }
 
 function LocateControl({ coords, radiusMiles }) {
@@ -252,97 +226,13 @@ export default function MapExplore() {
     getLandmarkOverrides().then(setSavedOverrides);
   }, []);
 
-  // Add Pin mode: tap empty map space (or use your exact GPS location) to
-  // place a brand-new landmark -- for the real thing not yet in the built-in
-  // catalog, like a dorm hall. Name + at least one topic + a photo are all
-  // required; the AI checks the submission looks like a genuine place and
-  // writes the description before it's saved to Firestore for every visitor.
-  // Check-ins on it reuse the normal flow untouched.
-  const [addMode, setAddMode] = useState(false);
+  // Custom (user-submitted) landmarks, added via the dedicated "Add
+  // Landmark" page and merged onto the map alongside the built-in ones.
   const [customLandmarks, setCustomLandmarks] = useState([]);
-  const [pendingPin, setPendingPin] = useState(null); // {lat, lng} | null
-  const [pendingName, setPendingName] = useState('');
-  const [pendingCategories, setPendingCategories] = useState([]);
-  const [pendingPhoto, setPendingPhoto] = useState(null); // File | null
-  const [pendingPhotoPreview, setPendingPhotoPreview] = useState(null);
-  const [addStage, setAddStage] = useState('idle'); // idle | verifying | saving
-  const [addError, setAddError] = useState('');
-  const addSaving = addStage !== 'idle';
 
   useEffect(() => {
     getCustomLandmarks().then(setCustomLandmarks);
   }, []);
-
-  const toggleCategory = (id) =>
-    setPendingCategories((cur) => (cur.includes(id) ? cur.filter((c) => c !== id) : [...cur, id]));
-
-  const onPendingPhotoChange = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (!f) return;
-    setPendingPhoto(f);
-    setPendingPhotoPreview(URL.createObjectURL(f));
-  };
-
-  const resetPendingPin = () => {
-    setPendingPin(null);
-    setPendingName('');
-    setPendingCategories([]);
-    setPendingPhoto(null);
-    setPendingPhotoPreview(null);
-    setAddError('');
-  };
-
-  const savePendingPin = async () => {
-    const name = pendingName.trim();
-    if (!name || !pendingPin || !pendingCategories.length || !pendingPhoto || addSaving) return;
-    setAddError('');
-    try {
-      setAddStage('verifying');
-      const imageDataUrl = await fileToSmallDataUrl(pendingPhoto);
-      const verifyRes = await fetch('/api/verify-landmark', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          categories: pendingCategories,
-          lat: pendingPin.lat,
-          lng: pendingPin.lng,
-          imageDataUrl,
-        }),
-      });
-      const verified = await verifyRes.json().catch(() => null);
-      if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this submission — try again.');
-      if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different photo or name.");
-
-      setAddStage('saving');
-      const region = nearestRegionId(pendingPin.lat, pendingPin.lng);
-      // The real id isn't known until the Firestore doc is created below, so
-      // upload under a temp key first and note it in case a landmark ever
-      // needs its photo re-associated -- in practice this always succeeds in
-      // one shot since addCustomLandmark immediately follows.
-      const tempId = `pending-${Date.now()}`;
-      const imageUrl = await uploadLandmarkPhoto(tempId, user.uid, pendingPhoto);
-      const created = await addCustomLandmark({
-        region,
-        name,
-        lat: pendingPin.lat,
-        lng: pendingPin.lng,
-        userId: user.uid,
-        categories: pendingCategories,
-        images: [imageUrl],
-        summary: verified.summary,
-        facts: verified.facts,
-        free: verified.free,
-      });
-      setCustomLandmarks((prev) => [...prev, created]);
-      resetPendingPin();
-    } catch (err) {
-      setAddError(err.message || 'Could not save — try again.');
-    } finally {
-      setAddStage('idle');
-    }
-  };
 
   const removeCustomLandmark = async (docId) => {
     setCustomLandmarks((prev) => prev.filter((l) => l.docId !== docId));
@@ -676,10 +566,6 @@ export default function MapExplore() {
               </Tooltip>
             </Marker>
           )}
-          <AddPinOnClick enabled={addMode && !pendingPin} onPick={setPendingPin} />
-          {pendingPin && (
-            <Marker position={[pendingPin.lat, pendingPin.lng]} icon={focusIcon} zIndexOffset={1000} />
-          )}
           <BoxSelect
             enabled={removeMode}
             customLandmarks={customLandmarks}
@@ -720,7 +606,6 @@ export default function MapExplore() {
         title={fixMode ? 'Done fixing pins' : 'Fix pin locations — drag any pin to where it actually is'}
         onClick={() => {
           setFixMode((f) => !f);
-          setAddMode(false);
           setRemoveMode(false);
           clearSelection();
         }}
@@ -731,16 +616,10 @@ export default function MapExplore() {
         type="button"
         className="map-search-btn"
         style={{ top: 'calc(var(--header-h) + 116px)' }}
-        title={addMode ? 'Done adding pins' : 'Add a new pin — tap the map where it belongs'}
-        onClick={() => {
-          setAddMode((a) => !a);
-          setFixMode(false);
-          resetPendingPin();
-          setRemoveMode(false);
-          clearSelection();
-        }}
+        title="Add a landmark"
+        onClick={() => navigate('/add-landmark')}
       >
-        {addMode ? '\u{2715}' : '\u{2795}'}
+        {'\u{2795}'}
       </button>
       <button
         type="button"
@@ -750,125 +629,11 @@ export default function MapExplore() {
         onClick={() => {
           setRemoveMode((r) => !r);
           setFixMode(false);
-          setAddMode(false);
-          resetPendingPin();
           clearSelection();
         }}
       >
         {removeMode ? '\u{2715}' : '\u{1F5D1}'}
       </button>
-      {addMode && !pendingPin && (
-        <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
-          <div className="card" style={{ padding: 12 }}>
-            <strong>Add Landmark</strong>
-            <p className="screen-subtitle" style={{ margin: '4px 0 8px' }}>
-              Tap the map where it belongs, or use your exact location.
-            </p>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm btn-block"
-              disabled={!coords}
-              onClick={() => setPendingPin({ lat: coords.lat, lng: coords.lng })}
-            >
-              {'\u{1F4CD}'} {coords ? 'Use My Exact Location' : 'Locating…'}
-            </button>
-          </div>
-        </div>
-      )}
-      {pendingPin && (
-        <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
-          <div className="card" style={{ padding: 12, maxHeight: '70vh', overflowY: 'auto' }}>
-            <strong>Add Landmark</strong>
-
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-parchment-dim)', marginTop: 10 }}>
-              Name
-            </label>
-            <input
-              type="text"
-              autoFocus
-              placeholder="e.g. Farley Hall"
-              value={pendingName}
-              maxLength={80}
-              onChange={(e) => setPendingName(e.target.value)}
-              style={{ width: '100%', marginTop: 4 }}
-            />
-
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-parchment-dim)', marginTop: 12 }}>
-              Topic (pick at least one)
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-              {INTERESTS.map((i) => (
-                <button
-                  key={i.id}
-                  type="button"
-                  className={`tag ${pendingCategories.includes(i.id) ? 'tag-free' : ''}`}
-                  style={{ cursor: 'pointer', border: 'none' }}
-                  onClick={() => toggleCategory(i.id)}
-                >
-                  {i.icon} {i.label}
-                </button>
-              ))}
-            </div>
-
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-parchment-dim)', marginTop: 12 }}>
-              Photo
-            </label>
-            {pendingPhotoPreview ? (
-              <div style={{ position: 'relative', width: 92, marginTop: 4 }}>
-                <img
-                  src={pendingPhotoPreview}
-                  alt="Preview"
-                  style={{ width: 92, height: 92, objectFit: 'cover', borderRadius: 10, display: 'block' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPendingPhoto(null);
-                    setPendingPhotoPreview(null);
-                  }}
-                  aria-label="Remove photo"
-                  style={{
-                    position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%',
-                    border: 'none', background: 'rgba(0,0,0,0.78)', color: '#fff', cursor: 'pointer', lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ) : (
-              <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', marginTop: 4, display: 'inline-flex' }}>
-                {'\u{1F4F8}'} Add a photo
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPendingPhotoChange} />
-              </label>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                style={{ flex: 1 }}
-                disabled={!pendingName.trim() || !pendingCategories.length || !pendingPhoto || addSaving || !user}
-                onClick={savePendingPin}
-              >
-                {addStage === 'verifying' ? 'Verifying…' : addStage === 'saving' ? 'Saving…' : 'Add Landmark'}
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={resetPendingPin}>
-                Cancel
-              </button>
-            </div>
-            {!user && (
-              <p className="tag tag-error" style={{ display: 'block', marginTop: 8, marginBottom: 0 }}>
-                Sign in first (Ranks tab) — adding a landmark needs an account.
-              </p>
-            )}
-            {addError && (
-              <p className="tag tag-error" style={{ display: 'block', marginTop: 8, marginBottom: 0 }}>
-                {addError}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
       {fixMode && (
         <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
           <div className="card" style={{ padding: 12 }}>

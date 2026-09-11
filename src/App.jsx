@@ -12,6 +12,7 @@ import AskLandmarkWidget from './components/AskLandmarkWidget';
 import TripSetup from './screens/TripSetup';
 import LandmarkSelection from './screens/LandmarkSelection';
 import MapExplore from './screens/MapExplore';
+import AddLandmark from './screens/AddLandmark';
 import LandmarkDetail from './screens/LandmarkDetail';
 import Itinerary from './screens/Itinerary';
 import Profile from './screens/Profile';
@@ -30,6 +31,7 @@ export default function App() {
           <main className="app-main">
             <Routes>
               <Route path="/" element={<MapExplore />} />
+              <Route path="/add-landmark" element={<AddLandmark />} />
               <Route path="/setup" element={<TripSetup />} />
               <Route path="/landmarks" element={<LandmarkSelection />} />
               <Route path="/landmarks/:region/:id" element={<LandmarkDetail />} />
