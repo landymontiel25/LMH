@@ -8,6 +8,10 @@ const DEFAULT_TRIP = {
   activeRegion: null, // city currently being browsed (Setup / Landmarks context)
   interests: [],
   customInterests: [],
+  // { [customInterestText]: string[] of "regionId/landmarkId" } — which landmarks
+  // the AI decided fit a free-text interest like "nightlife" or "racing", since
+  // those don't map to any of the built-in categories on their own.
+  customInterestMatches: {},
   byRegion: {}, // { [regionId]: string[] of landmark ids } — one itinerary per city
 };
 
@@ -47,6 +51,21 @@ export function TripProvider({ children }) {
   }, [trip]);
 
   const updateTrip = (patch) => setTrip((t) => ({ ...t, ...patch }));
+
+  // Records which landmarks the AI matched to a custom interest, once classified.
+  const setCustomInterestMatches = (text, ids) =>
+    setTrip((t) => ({ ...t, customInterestMatches: { ...t.customInterestMatches, [text]: ids } }));
+
+  const removeCustomInterest = (text) =>
+    setTrip((t) => {
+      const customInterestMatches = { ...t.customInterestMatches };
+      delete customInterestMatches[text];
+      return {
+        ...t,
+        customInterests: t.customInterests.filter((i) => i !== text),
+        customInterestMatches,
+      };
+    });
 
   // Add/remove a landmark within its own city's itinerary (never touches other cities).
   const toggleLandmark = (id, regionId) => {
@@ -98,6 +117,8 @@ export function TripProvider({ children }) {
         getRegionSelection,
         regionsWithItineraries,
         resetTrip,
+        setCustomInterestMatches,
+        removeCustomInterest,
         mapFocus,
         setMapFocus,
         mapFocusPoint,

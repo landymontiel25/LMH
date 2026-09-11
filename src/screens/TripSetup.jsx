@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
 import { INTERESTS, getRegion } from '../data/regions';
+import { classifyInterest } from '../lib/interestClassifier';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import AddInterestChip from '../components/AddInterestChip';
 import RegionSearch from '../components/RegionSearch';
@@ -9,10 +10,15 @@ import RegionSearch from '../components/RegionSearch';
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
 
 export default function TripSetup() {
-  const { trip, updateTrip } = useTrip();
+  const { trip, updateTrip, setCustomInterestMatches, removeCustomInterest } = useTrip();
   const navigate = useNavigate();
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState(null);
+  // Custom interests (e.g. "nightlife", "racing") aren't tagged on any landmark,
+  // so the AI has to figure out which ones fit while this stays showing "finding
+  // matches…" on the chip. Not persisted -- it's re-derived from the trip's own
+  // pending state (a custom interest with no matches entry yet).
+  const [classifying, setClassifying] = useState(() => new Set());
 
   const useCurrentLocation = () => {
     if (!('geolocation' in navigator)) {
@@ -47,10 +53,15 @@ export default function TripSetup() {
   const addCustomInterest = (text) => {
     if (trip.customInterests.includes(text)) return;
     updateTrip({ customInterests: [...trip.customInterests, text] });
-  };
-
-  const removeCustomInterest = (text) => {
-    updateTrip({ customInterests: trip.customInterests.filter((t) => t !== text) });
+    setClassifying((cur) => new Set(cur).add(text));
+    classifyInterest(text).then((ids) => {
+      setCustomInterestMatches(text, ids);
+      setClassifying((cur) => {
+        const next = new Set(cur);
+        next.delete(text);
+        return next;
+      });
+    });
   };
 
   const selectRegion = (region) => {
@@ -131,9 +142,9 @@ export default function TripSetup() {
               type="button"
               className="chip selected"
               onClick={() => removeCustomInterest(text)}
-              title="Tap to remove"
+              title={classifying.has(text) ? 'Finding matching landmarks…' : 'Tap to remove'}
             >
-              <span className="chip-icon">{'\u{2728}'}</span>
+              <span className="chip-icon">{classifying.has(text) ? '\u{23F3}' : '\u{2728}'}</span>
               <span>{text}</span>
             </button>
           ))}
