@@ -124,16 +124,18 @@ export default function TripSetup() {
 
       <div className="field">
         <label>What are you interested in?</label>
-        {trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0 ? (
-          <button type="button" className="btn btn-ghost btn-sm" style={{ marginBottom: 10 }} onClick={applyPreferences}>
-            {'⭐'} Use My Preferences
-          </button>
-        ) : (
+        {trip.savedInterests.length === 0 && trip.savedCustomInterests.length === 0 && (
           <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginBottom: 10 }}>
             Save your usual picks on your <Link to="/profile">Profile</Link> to fill this in with one tap.
           </p>
         )}
         <div className="chip-grid">
+          {(trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0) && (
+            <button type="button" className="chip chip-action" onClick={applyPreferences}>
+              <span className="chip-icon">{'⭐'}</span>
+              <span>Use My Preferences</span>
+            </button>
+          )}
           {INTERESTS.map((i) => (
             <button
               key={i.id}
