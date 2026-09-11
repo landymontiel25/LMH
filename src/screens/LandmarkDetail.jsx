@@ -293,7 +293,13 @@ export default function LandmarkDetail() {
         <span className={`tag ${landmark.free ? 'tag-free' : ''}`}>{landmark.free ? 'Free to Visit' : 'Ticketed'}</span>
         <span className="tag">{'~' + landmark.typicalMinutes + ' min'}</span>
         {customLandmark && <span className="tag">{'\u{2728}'} Community-submitted</span>}
+        {customLandmark?.status === 'pending' && <span className="tag tag-error">{'\u{23F3}'} Pending Approval</span>}
       </div>
+      {customLandmark?.status === 'pending' && (
+        <p className="screen-subtitle" style={{ textAlign: 'center', marginTop: -10 }}>
+          Only visible to you right now — a moderator needs to approve it before it shows up for everyone else.
+        </p>
+      )}
 
       <div className="center" style={{ marginBottom: 18 }}>
         <RatingStars value={agg?.avg || 0} count={agg?.count || 0} size="1.15rem" />

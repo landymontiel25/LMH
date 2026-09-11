@@ -8,9 +8,12 @@ import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName }
 import { getMyReview } from '../lib/reviews';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
+import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
+import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
 import AddInterestChip from '../components/AddInterestChip';
+import LandmarkThumb from '../components/LandmarkThumb';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -273,6 +276,89 @@ function OnboardingPreferences({ onDone }) {
   );
 }
 
+// Admin-only review queue for landmarks submitted via "Add Landmark" -- they
+// sit invisible to everyone else until approved or rejected here. Renders
+// nothing at all for a non-admin account, and nothing once the queue is
+// empty, so it never clutters Profile for anyone but the person doing the
+// reviewing, and only when there's actually something to review.
+function PendingLandmarksPanel({ email }) {
+  const [pending, setPending] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState(null);
+
+  useEffect(() => {
+    if (!isAdmin(email)) return;
+    getPendingLandmarks().then((l) => {
+      setPending(l);
+      setLoading(false);
+    });
+  }, [email]);
+
+  if (!isAdmin(email) || loading || pending.length === 0) return null;
+
+  const approve = async (docId) => {
+    setBusyId(docId);
+    try {
+      await approveCustomLandmark(docId);
+      setPending((cur) => cur.filter((l) => l.docId !== docId));
+    } catch {
+      // leave it in the queue -- the admin can just try again
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const reject = async (docId) => {
+    setBusyId(docId);
+    try {
+      await deleteCustomLandmark(docId);
+      setPending((cur) => cur.filter((l) => l.docId !== docId));
+    } catch {
+      // leave it in the queue -- the admin can just try again
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="card section">
+      <h3 style={{ marginTop: 0 }}>{'\u{1F6E0}\u{FE0F}'} Pending Landmarks ({pending.length})</h3>
+      <p className="screen-subtitle" style={{ marginTop: -6 }}>
+        Submitted via "Add Landmark" — invisible to everyone until you approve one.
+      </p>
+      {pending.map((l) => (
+        <div key={l.docId} className="checkin-row" style={{ alignItems: 'flex-start', cursor: 'default' }}>
+          <LandmarkThumb landmark={l} size={56} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="checkin-name">{l.name}</div>
+            <div className="checkin-sub" style={{ whiteSpace: 'normal' }}>
+              {l.summary}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button
+                type="button"
+                className="btn btn-success btn-tight"
+                disabled={busyId === l.docId}
+                onClick={() => approve(l.docId)}
+              >
+                {'\u{2713}'} Approve
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-tight"
+                disabled={busyId === l.docId}
+                onClick={() => reject(l.docId)}
+              >
+                {'\u{2715}'} Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Profile() {
   const { user, firebaseEnabled, signOutUser } = useAuth();
   const { myUsername } = useFriends();
@@ -410,6 +496,8 @@ export default function Profile() {
           ))}
         </div>
       </div>
+
+      <PendingLandmarksPanel email={user.email} />
 
       {/* 2 — Leaderboard OR check-ins gallery */}
       {isCheckins ? (

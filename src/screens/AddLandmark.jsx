@@ -141,7 +141,9 @@ export default function AddLandmark() {
       <h1 className="screen-title">
         <span>{'\u{2795}'}</span> Add Landmark
       </h1>
-      <p className="screen-subtitle">Add a real place that's missing from the map. We'll AI-check it before it goes live.</p>
+      <p className="screen-subtitle">
+        Add a real place that's missing from the map. We'll AI-check it, then a moderator reviews it before it goes live.
+      </p>
 
       <div className="field">
         <label>Location</label>
