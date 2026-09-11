@@ -456,6 +456,8 @@ export default function Profile() {
 
   return (
     <div>
+      <PendingLandmarksPanel email={user.email} />
+
       <h1 className="screen-title">
         <span>{'\u{1F3C6}'}</span> Ranks
       </h1>
@@ -496,8 +498,6 @@ export default function Profile() {
           ))}
         </div>
       </div>
-
-      <PendingLandmarksPanel email={user.email} />
 
       {/* 2 — Leaderboard OR check-ins gallery */}
       {isCheckins ? (
