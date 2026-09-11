@@ -29,6 +29,29 @@ const INSTRUCTIONS =
   `- Web stop: {"name": "<real place name>", "place": "<city or neighborhood>", "url": "<source URL you found it from>", "reason": "<why this stop, 1 short sentence>"}\n` +
   `- "stops" can be an empty array. Only use region/id values that actually appear in the catalog -- for anything else, use the web stop shape instead of inventing a match id.`;
 
+// claude-haiku-4-5 per-token pricing (USD per token, i.e. price-per-MTok / 1e6),
+// plus $10/1,000 web searches -- used to report a running cost estimate to the
+// client. Update these if the model or its pricing changes.
+const PRICE_PER_TOKEN = {
+  input: 1 / 1_000_000,
+  output: 5 / 1_000_000,
+  // cache_control below doesn't set a ttl, so writes default to the 5-minute tier.
+  cacheWrite: 1.25 / 1_000_000,
+  cacheRead: 0.1 / 1_000_000,
+};
+const PRICE_PER_SEARCH = 10 / 1000;
+
+function estimateCostUsd(usage) {
+  if (!usage) return 0;
+  const tokenCost =
+    (usage.input_tokens || 0) * PRICE_PER_TOKEN.input +
+    (usage.output_tokens || 0) * PRICE_PER_TOKEN.output +
+    (usage.cache_creation_input_tokens || 0) * PRICE_PER_TOKEN.cacheWrite +
+    (usage.cache_read_input_tokens || 0) * PRICE_PER_TOKEN.cacheRead;
+  const searchCost = (usage.server_tool_use?.web_search_requests || 0) * PRICE_PER_SEARCH;
+  return tokenCost + searchCost;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -73,11 +96,14 @@ export default async function handler(req, res) {
         { type: 'text', text: INSTRUCTIONS },
         { type: 'text', text: catalog, cache_control: { type: 'ephemeral' } },
       ],
-      // Lets the AI look beyond our own catalog -- bounded to a few searches
-      // per turn so one chat message can't run away on cost.
-      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+      // Lets the AI look beyond our own catalog -- uncapped, so a request that
+      // genuinely needs several searches isn't cut off. The client shows a
+      // running cost total instead, so the trade-off stays visible.
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
       messages: turns,
     });
+
+    const costUsd = estimateCostUsd(msg.usage);
 
     const raw = msg.content
       .filter((b) => b.type === 'text')
@@ -89,7 +115,7 @@ export default async function handler(req, res) {
     try {
       parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
     } catch {
-      res.status(200).json({ reply: raw || 'Lost my train of thought there -- try that again?', stops: [] });
+      res.status(200).json({ reply: raw || 'Lost my train of thought there -- try that again?', stops: [], cost: costUsd });
       return;
     }
 
@@ -129,6 +155,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       reply: String(parsed.reply || '').slice(0, 500) || "Here's what I found:",
       stops,
+      cost: costUsd,
     });
   } catch (err) {
     const status = err?.status === 429 ? 429 : 500;
