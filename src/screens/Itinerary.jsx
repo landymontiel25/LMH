@@ -400,7 +400,6 @@ export default function Itinerary() {
                   </button>
                   <CheckInButton
                     landmark={stop}
-                    coords={coords}
                     user={user}
                     firebaseEnabled={firebaseEnabled}
                     claimedMap={claimedMap}
