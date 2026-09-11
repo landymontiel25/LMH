@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
+import { getCustomLandmark } from '../lib/customLandmarks';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
@@ -30,7 +31,47 @@ export default function LandmarkDetail() {
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { coords } = useGeo();
   const region = getRegion(regionId);
-  const landmark = getLandmark(regionId, id);
+  const staticLandmark = getLandmark(regionId, id);
+  // Not in the built-in catalog -- might be a user-submitted one from
+  // "Add Landmark" on the map, so fetch it from Firestore by the same id.
+  const [customLandmark, setCustomLandmark] = useState(null);
+  const [customLoading, setCustomLoading] = useState(!staticLandmark);
+
+  useEffect(() => {
+    if (staticLandmark) {
+      setCustomLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCustomLoading(true);
+    getCustomLandmark(id).then((l) => {
+      if (cancelled) return;
+      setCustomLandmark(l);
+      setCustomLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, staticLandmark]);
+
+  // Memoized so it's referentially stable across renders once resolved --
+  // several effects below key off "landmark changed" (e.g. the one-shot map
+  // focus point on first open), which would misfire on every render otherwise
+  // since the custom-landmark branch would build a brand-new object each time.
+  const landmark = useMemo(
+    () =>
+      staticLandmark ||
+      (customLandmark && {
+        ...customLandmark,
+        regionId: customLandmark.region,
+        categories: customLandmark.categories || [],
+        images: customLandmark.images || [],
+        facts: customLandmark.facts || [],
+        free: customLandmark.free ?? true,
+        typicalMinutes: customLandmark.typicalMinutes ?? 15,
+      }),
+    [staticLandmark, customLandmark]
+  );
   const { ratings, reload: reloadRatings } = useRatings();
   const { friendUids, myUsername } = useFriends();
   const [myStars, setMyStars] = useState(0);
@@ -98,7 +139,7 @@ export default function LandmarkDetail() {
   useEffect(() => {
     if (landmark) setMapFocusPoint({ lat: landmark.lat, lng: landmark.lng, name: landmark.name });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, landmark]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,7 +171,7 @@ export default function LandmarkDetail() {
     loadReviews();
   }, [loadReviews]);
 
-  if (!region || !landmark) {
+  if (!region || (!landmark && !customLoading)) {
     return (
       <div className="empty-state">
         <p>Landmark not found.</p>
@@ -139,6 +180,10 @@ export default function LandmarkDetail() {
         </button>
       </div>
     );
+  }
+
+  if (!landmark) {
+    return <p className="screen-subtitle" style={{ textAlign: 'center', marginTop: 40 }}>Loading…</p>;
   }
 
   const isSelected = getRegionSelection(regionId).includes(landmark.id);
@@ -247,6 +292,7 @@ export default function LandmarkDetail() {
         ))}
         <span className={`tag ${landmark.free ? 'tag-free' : ''}`}>{landmark.free ? 'Free to Visit' : 'Ticketed'}</span>
         <span className="tag">{'~' + landmark.typicalMinutes + ' min'}</span>
+        {customLandmark && <span className="tag">{'\u{2728}'} Community-submitted</span>}
       </div>
 
       <div className="center" style={{ marginBottom: 18 }}>
@@ -275,6 +321,7 @@ export default function LandmarkDetail() {
         </div>
       )}
 
+      {landmark.facts.length > 0 && (
       <div className="section">
         <h3>Quick Facts</h3>
         <ul style={{ paddingLeft: 20, margin: 0 }}>
@@ -297,6 +344,7 @@ export default function LandmarkDetail() {
           </button>
         )}
       </div>
+      )}
 
       <a
         className="btn btn-ghost btn-block"
