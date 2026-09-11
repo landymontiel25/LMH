@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useAuth } from './AuthContext';
+import { fetchSavedPreferences, pushSavedPreferences } from './preferences';
 
 const STORAGE_KEY = 'landmarkhunters.trip.v1';
 
@@ -43,6 +45,7 @@ function loadTrip() {
 const TripContext = createContext(null);
 
 export function TripProvider({ children }) {
+  const { user, firebaseEnabled } = useAuth();
   const [trip, setTrip] = useState(loadTrip);
   // Which city the Map should frame — set only when you actively view a city
   // this session (list / detail / itinerary). Deliberately NOT persisted, so a
@@ -50,10 +53,44 @@ export function TripProvider({ children }) {
   const [mapFocus, setMapFocus] = useState(null);
   // One-shot "fly to this exact landmark" request from a detail page — {lat,lng}.
   const [mapFocusPoint, setMapFocusPoint] = useState(null);
+  // Set right after pulling saved preferences down from the account, so the
+  // very next write-back effect run (which that pull itself triggers) skips
+  // echoing the same data straight back up to Firestore.
+  const skipNextPushRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(trip));
   }, [trip]);
+
+  // "My Preferences" needs to follow the account, not just this browser --
+  // otherwise it looks like it vanished in a private window, a different
+  // device, or after clearing site data. Firestore is the source of truth
+  // once signed in; local storage is just the offline/signed-out fallback.
+  useEffect(() => {
+    if (!firebaseEnabled || !user) return;
+    let cancelled = false;
+    fetchSavedPreferences(user.uid).then((saved) => {
+      if (cancelled || !saved) return;
+      skipNextPushRef.current = true;
+      setTrip((t) => ({ ...t, ...saved }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseEnabled, user]);
+
+  useEffect(() => {
+    if (!firebaseEnabled || !user) return;
+    if (skipNextPushRef.current) {
+      skipNextPushRef.current = false;
+      return;
+    }
+    pushSavedPreferences(user.uid, {
+      savedInterests: trip.savedInterests,
+      savedCustomInterests: trip.savedCustomInterests,
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip.savedInterests, trip.savedCustomInterests, firebaseEnabled, user]);
 
   const updateTrip = (patch) => setTrip((t) => ({ ...t, ...patch }));
 
