@@ -9,6 +9,11 @@ import { CHECKIN_RADIUS_METERS, POINTS_PER_CHECKIN, distanceMeters } from '../li
 // marker lists that render this are memoized to skip rebuilding on every GPS
 // tick (avoids the open popup flashing/closing), so a coords prop would go
 // stale right when it matters most -- mid check-in.
+//
+// REQUIRE_PROXIMITY is off for now (temporary, per request) -- flip back to
+// true to restore the GPS gate. Nothing else needs to change.
+const REQUIRE_PROXIMITY = false;
+
 export default function CheckInButton({ landmark, user, firebaseEnabled, claimedMap, checkingIn, onCheckIn, className = '' }) {
   const { coords } = useGeo();
   if (!firebaseEnabled) return null;
@@ -18,8 +23,8 @@ export default function CheckInButton({ landmark, user, firebaseEnabled, claimed
   const radius = landmark.checkInRadiusMeters ?? CHECKIN_RADIUS_METERS;
   const hasPosition = landmark.lat != null && landmark.lng != null;
   const distance = hasPosition && coords ? distanceMeters(coords.lat, coords.lng, landmark.lat, landmark.lng) : null;
-  const noLocation = hasPosition && !coords;
-  const tooFar = distance != null && distance > radius;
+  const noLocation = REQUIRE_PROXIMITY && hasPosition && !coords;
+  const tooFar = REQUIRE_PROXIMITY && distance != null && distance > radius;
 
   const handleClick = () => {
     if (isClaimed || !user || busy || noLocation || tooFar) return;
