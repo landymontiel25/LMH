@@ -1,206 +1,159 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { INTERESTS } from '../data/regions';
 import LandmarkThumb from '../components/LandmarkThumb';
-import AddInterestChip from '../components/AddInterestChip';
 import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
 
-// Prototype: instead of chips and multi-screen trip setup, describe what you
-// want in one sentence and get a short generated plan back. Tests the
-// specific bet that people will type an ask ("3 hours, food and history, not
-// touristy") and want a generated answer, not just Q&A about one landmark.
+const GREETING =
+  "Hey — I'm the Landmark AI. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
+
+// Prototype: a live chat instead of a form. You type what you want in your
+// own words, the AI replies conversationally, and it drops in real catalog
+// stops when it has enough to go on. Follow-ups ("more nightlife", "skip
+// that one") refine the same thread instead of starting over.
 export default function Test() {
   const navigate = useNavigate();
-  const [request, setRequest] = useState('');
   const [region, setRegion] = useState(ANY_REGION);
-  // The order of this list IS the priority order sent to the AI -- earlier
-  // entries win when the catalog can't satisfy everything. Move buttons on
-  // each row let you rearrange it; toggling a chip or the × removes it.
-  const [selected, setSelected] = useState([]); // [{ key, label }]
+  const [regionOpen, setRegionOpen] = useState(false);
+  const [messages, setMessages] = useState([{ role: 'assistant', text: GREETING, stops: [] }]);
+  const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [result, setResult] = useState(null);
+  const feedEndRef = useRef(null);
+  const regionBoxRef = useRef(null);
 
-  const isSelected = (key) => selected.some((s) => s.key === key);
+  useEffect(() => {
+    feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, busy]);
 
-  const toggleFixed = (i) => {
-    setSelected((cur) => (cur.some((s) => s.key === i.id) ? cur.filter((s) => s.key !== i.id) : [...cur, { key: i.id, label: i.label }]));
-  };
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (regionBoxRef.current && !regionBoxRef.current.contains(e.target)) setRegionOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  const addCustom = (text) => {
-    setSelected((cur) => (cur.some((s) => s.key === text) ? cur : [...cur, { key: text, label: text, custom: true }]));
-  };
-
-  const removeSelected = (key) => {
-    setSelected((cur) => cur.filter((s) => s.key !== key));
-  };
-
-  const moveSelected = (index, dir) => {
-    setSelected((cur) => {
-      const j = index + dir;
-      if (j < 0 || j >= cur.length) return cur;
-      const next = [...cur];
-      [next[index], next[j]] = [next[j], next[index]];
-      return next;
-    });
-  };
-
-  const plan = async (e) => {
+  const send = async (e) => {
     e.preventDefault();
-    const text = request.trim();
-    if (!text && selected.length === 0) return;
-    if (busy) return;
+    const text = draft.trim();
+    if (!text || busy) return;
+
+    const history = [...messages, { role: 'user', text }];
+    setMessages(history);
+    setDraft('');
     setBusy(true);
-    setError('');
-    setResult(null);
+
     try {
+      // The AI only needs its own prior replies (not the canned local greeting)
+      // plus every turn you typed, to keep following the thread.
+      const payload = history
+        .filter((m) => m.role === 'user' || m.raw)
+        .map((m) => ({ role: m.role, content: m.role === 'assistant' ? m.raw : m.text }));
+
       const r = await fetch('/api/plan-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request: text, regionId: region.id, interests: selected.map((s) => s.label) }),
+        body: JSON.stringify({ messages: payload, regionId: region.id }),
       });
       const data = await r.json().catch(() => null);
       if (!r.ok || !data) throw new Error(data?.error || 'Something went wrong.');
-      setResult(data);
+
+      const stops = data.stops || [];
+      // A compact record of what this reply actually said, fed back as this
+      // turn's "content" next time so the AI remembers its own picks.
+      const raw = data.reply + (stops.length ? `\n(Suggested: ${stops.map((s) => s.name).join(', ')})` : '');
+      setMessages((cur) => [...cur, { role: 'assistant', text: data.reply, stops, raw }]);
     } catch (err) {
-      setError(err.message || 'Could not reach the AI. Try again.');
+      setMessages((cur) => [...cur, { role: 'assistant', text: err.message || 'Signal lost — try again?', stops: [], error: true }]);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div>
-      <h1 className="screen-title">
-        <span>{'\u{1F9EA}'}</span> Test
-      </h1>
-      <p className="screen-subtitle">
-        Tell it what you're in the mood for, and it builds a short plan from real landmarks — no trip
-        setup, no clicking through screens.
-      </p>
-
-      <div className="card" style={{ padding: 16 }}>
-        <form onSubmit={plan}>
-          <div className="field">
-            <label>Region</label>
-            <RegionSearch region={region} onSelect={setRegion} includeAny />
-          </div>
-
-          <div className="field">
-            <label>What are you interested in? (optional)</label>
-            <div className="chip-grid">
-              {INTERESTS.map((i) => (
-                <button
-                  key={i.id}
-                  type="button"
-                  className={`chip ${isSelected(i.id) ? 'selected' : ''}`}
-                  onClick={() => toggleFixed(i)}
-                >
-                  <span className="chip-icon">{i.icon}</span>
-                  <span>{i.label}</span>
-                </button>
-              ))}
-              <AddInterestChip existing={selected.map((s) => s.label)} onAdd={addCustom} />
-            </div>
-          </div>
-
-          {selected.length > 0 && (
-            <div className="field">
-              <label>Priority — top matters most</label>
-              {selected.map((s, i) => (
-                <div
-                  key={s.key}
-                  className="card"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginTop: 6 }}
-                >
-                  <span style={{ flex: 1 }}>
-                    {i + 1}. {s.label}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-tight"
-                    disabled={i === 0}
-                    onClick={() => moveSelected(i, -1)}
-                    aria-label={`Move ${s.label} up`}
-                  >
-                    {'↑'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-tight"
-                    disabled={i === selected.length - 1}
-                    onClick={() => moveSelected(i, 1)}
-                    aria-label={`Move ${s.label} down`}
-                  >
-                    {'↓'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-tight"
-                    onClick={() => removeSelected(s.key)}
-                    aria-label={`Remove ${s.label}`}
-                  >
-                    {'✕'}
-                  </button>
-                </div>
-              ))}
+    <div className="chatlab">
+      <div className="chatlab-header">
+        <div className="chatlab-orb" />
+        <div className="chatlab-header-text">
+          <h1 className="chatlab-title">Landmark AI</h1>
+          <p className="chatlab-tagline">Live trip planning</p>
+        </div>
+        <div className="chatlab-region" ref={regionBoxRef}>
+          <button type="button" className="chatlab-region-pill" onClick={() => setRegionOpen((o) => !o)}>
+            {'\u{1F30D}'} {region.id ? region.name : 'Any city'}
+          </button>
+          {regionOpen && (
+            <div className="chatlab-region-popover">
+              <RegionSearch
+                region={region}
+                onSelect={(r) => {
+                  setRegion(r);
+                  setRegionOpen(false);
+                }}
+                includeAny
+                placeholder="Narrow to a city…"
+              />
             </div>
           )}
-
-          <div className="field">
-            <label>Anything else? (optional)</label>
-            <textarea
-              rows={3}
-              placeholder="e.g. I have 3 hours, nothing touristy"
-              value={request}
-              maxLength={500}
-              onChange={(e) => setRequest(e.target.value)}
-              style={{ width: '100%', resize: 'vertical' }}
-              autoCapitalize="off"
-            />
-          </div>
-
-          <button className="btn btn-primary btn-block" type="submit" disabled={busy || (!request.trim() && selected.length === 0)}>
-            {busy ? 'Planning…' : 'Plan it'}
-          </button>
-        </form>
-
-        {error && (
-          <p className="tag tag-error" style={{ display: 'block', marginTop: 10, marginBottom: 0 }}>
-            {error}
-          </p>
-        )}
-
-        {result && (
-          <div style={{ marginTop: 16 }}>
-            {result.intro && <p style={{ marginTop: 0 }}>{result.intro}</p>}
-            {result.stops.length === 0 && !result.intro && (
-              <p style={{ color: 'var(--color-parchment-dim)' }}>Nothing matched that — try rephrasing.</p>
-            )}
-            {result.stops.map((stop, i) => (
-              <button
-                key={`${stop.region}/${stop.id}`}
-                type="button"
-                className="card itin-city-card"
-                style={{ marginTop: 8, width: '100%', textAlign: 'left' }}
-                onClick={() => navigate(`/landmarks/${stop.region}/${stop.id}`)}
-              >
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <LandmarkThumb landmark={stop} size={44} />
-                  <div>
-                    <h3 style={{ margin: 0 }}>
-                      {i + 1}. {stop.name}
-                    </h3>
-                    <p style={{ margin: '4px 0 0', color: 'var(--color-parchment-dim)', fontSize: '0.85rem' }}>
-                      {stop.reason}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
+
+      <div className="chatlab-feed">
+        {messages.map((m, i) => (
+          <div key={i} className={`chatlab-msg ${m.role}`}>
+            {m.role === 'assistant' && <div className="chatlab-avatar" />}
+            <div className={`chatlab-bubble ${m.error ? 'error' : ''}`}>
+              <p>{m.text}</p>
+              {m.stops?.length > 0 && (
+                <div className="chatlab-stops">
+                  {m.stops.map((stop) => (
+                    <button
+                      key={`${stop.region}/${stop.id}`}
+                      type="button"
+                      className="chatlab-stop"
+                      onClick={() => navigate(`/landmarks/${stop.region}/${stop.id}`)}
+                    >
+                      <LandmarkThumb landmark={stop} size={44} />
+                      <div className="chatlab-stop-text">
+                        <strong>{stop.name}</strong>
+                        <span>{stop.reason}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {busy && (
+          <div className="chatlab-msg assistant">
+            <div className="chatlab-avatar" />
+            <div className="chatlab-bubble chatlab-typing">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        )}
+        <div ref={feedEndRef} />
+      </div>
+
+      <div className="action-bar-spacer" />
+      <form className="fixed-action-bar chatlab-composer" onSubmit={send}>
+        <div className="fixed-action-bar-inner chatlab-composer-inner">
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Tell it what you're up for…"
+            maxLength={500}
+            autoComplete="off"
+            autoCapitalize="off"
+          />
+          <button type="submit" className="chatlab-send" disabled={busy || !draft.trim()} aria-label="Send">
+            {'\u{27A4}'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
