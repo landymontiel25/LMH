@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
 import { INTERESTS, getRegion } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
@@ -10,7 +10,7 @@ import RegionSearch from '../components/RegionSearch';
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
 
 export default function TripSetup() {
-  const { trip, updateTrip, setCustomInterestMatches, removeCustomInterest } = useTrip();
+  const { trip, updateTrip, setCustomInterestMatches, removeCustomInterest, applyPreferences } = useTrip();
   const navigate = useNavigate();
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState(null);
@@ -124,6 +124,15 @@ export default function TripSetup() {
 
       <div className="field">
         <label>What are you interested in?</label>
+        {trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0 ? (
+          <button type="button" className="btn btn-ghost btn-sm" style={{ marginBottom: 10 }} onClick={applyPreferences}>
+            {'⭐'} Use My Preferences
+          </button>
+        ) : (
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginBottom: 10 }}>
+            Save your usual picks on your <Link to="/profile">Profile</Link> to fill this in with one tap.
+          </p>
+        )}
         <div className="chip-grid">
           {INTERESTS.map((i) => (
             <button
