@@ -58,12 +58,22 @@ export default function AddLandmark() {
   const [categories, setCategories] = useState([]);
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [facts, setFacts] = useState([]);
+  const [factDraft, setFactDraft] = useState('');
   const [stage, setStage] = useState('idle'); // idle | verifying | saving
   const [error, setError] = useState('');
   const busy = stage !== 'idle';
 
   const toggleCategory = (id) =>
     setCategories((cur) => (cur.includes(id) ? cur.filter((c) => c !== id) : [...cur, id]));
+
+  const addFact = () => {
+    const text = factDraft.trim();
+    if (!text || facts.length >= 5) return;
+    setFacts((cur) => [...cur, text]);
+    setFactDraft('');
+  };
+  const removeFact = (i) => setFacts((cur) => cur.filter((_, idx) => idx !== i));
 
   const onPhotoChange = (e) => {
     const f = e.target.files?.[0];
@@ -90,6 +100,7 @@ export default function AddLandmark() {
           lat: position.lat,
           lng: position.lng,
           imageDataUrl,
+          userFacts: facts,
         }),
       });
       const verified = await verifyRes.json().catch(() => null);
@@ -183,6 +194,46 @@ export default function AddLandmark() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="field">
+        <label>Facts (optional)</label>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
+          Know something true about it? Add a few — we won't make anything up ourselves.
+        </p>
+        {facts.map((f, i) => (
+          <div
+            key={i}
+            className="card"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6 }}
+          >
+            <span style={{ flex: 1 }}>{f}</span>
+            <button type="button" className="btn btn-ghost btn-tight" onClick={() => removeFact(i)} aria-label="Remove fact">
+              ✕
+            </button>
+          </div>
+        ))}
+        {facts.length < 5 && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              placeholder="e.g. Built by the class of 1998"
+              value={factDraft}
+              maxLength={160}
+              onChange={(e) => setFactDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addFact();
+                }
+              }}
+              style={{ flex: 1 }}
+            />
+            <button type="button" className="btn btn-ghost btn-sm" disabled={!factDraft.trim()} onClick={addFact}>
+              Add
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="field">
