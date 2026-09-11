@@ -83,7 +83,15 @@ service cloud.firestore {
     }
     match /custom_landmarks/{id} {
       allow read: if true;
-      allow write, delete: if request.auth != null;
+      // A brand-new submission always starts "pending" -- enforced here, not
+      // just in the app's own code, so calling the database directly can't
+      // skip the approval queue and self-publish as "approved".
+      allow create: if request.auth != null && request.resource.data.status == 'pending';
+      // Only an admin account can change status (approve) or anything else
+      // about an existing submission afterward.
+      allow update: if request.auth != null
+        && request.auth.token.email in ['landymontiel25@gmail.com'];
+      allow delete: if request.auth != null;
     }
     match /reports/{id} {
       allow read: if request.auth != null;
