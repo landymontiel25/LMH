@@ -2216,6 +2216,46 @@ textarea {
   background: rgba(94, 234, 212, 0.08);
 }
 
+.chatlab-stop-external {
+  cursor: default;
+  align-items: flex-start;
+}
+
+.chatlab-stop-external:hover {
+  border-color: var(--chatlab-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chatlab-stop-globe {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  background: linear-gradient(135deg, rgba(94, 234, 212, 0.18), rgba(167, 139, 250, 0.14));
+  border: 1px solid var(--chatlab-border);
+}
+
+.chatlab-stop-links {
+  display: flex;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.chatlab-stop-links a {
+  font-size: 0.72rem;
+  color: var(--chatlab-cyan);
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.chatlab-stop-links a:hover {
+  text-decoration: underline;
+}
+
 .chatlab-stop-text {
   display: flex;
   flex-direction: column;

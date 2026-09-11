@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LandmarkThumb from '../components/LandmarkThumb';
 import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
+import { mapsDeepLink } from '../lib/routing';
 
 const GREETING =
   "Hey — I'm the Landmark AI. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
@@ -105,20 +106,41 @@ export default function Test() {
               <p>{m.text}</p>
               {m.stops?.length > 0 && (
                 <div className="chatlab-stops">
-                  {m.stops.map((stop) => (
-                    <button
-                      key={`${stop.region}/${stop.id}`}
-                      type="button"
-                      className="chatlab-stop"
-                      onClick={() => navigate(`/landmarks/${stop.region}/${stop.id}`)}
-                    >
-                      <LandmarkThumb landmark={stop} size={44} />
-                      <div className="chatlab-stop-text">
-                        <strong>{stop.name}</strong>
-                        <span>{stop.reason}</span>
+                  {m.stops.map((stop) =>
+                    stop.external ? (
+                      <div key={`ext-${stop.url}`} className="chatlab-stop chatlab-stop-external">
+                        <div className="chatlab-stop-globe">{'\u{1F310}'}</div>
+                        <div className="chatlab-stop-text">
+                          <strong>
+                            {stop.name}
+                            {stop.place ? ` — ${stop.place}` : ''}
+                          </strong>
+                          <span>{stop.reason}</span>
+                          <div className="chatlab-stop-links">
+                            <a href={mapsDeepLink(`${stop.name} ${stop.place}`)} target="_blank" rel="noreferrer">
+                              Directions
+                            </a>
+                            <a href={stop.url} target="_blank" rel="noreferrer">
+                              Source {'↗'}
+                            </a>
+                          </div>
+                        </div>
                       </div>
-                    </button>
-                  ))}
+                    ) : (
+                      <button
+                        key={`${stop.region}/${stop.id}`}
+                        type="button"
+                        className="chatlab-stop"
+                        onClick={() => navigate(`/landmarks/${stop.region}/${stop.id}`)}
+                      >
+                        <LandmarkThumb landmark={stop} size={44} />
+                        <div className="chatlab-stop-text">
+                          <strong>{stop.name}</strong>
+                          <span>{stop.reason}</span>
+                        </div>
+                      </button>
+                    )
+                  )}
                 </div>
               )}
             </div>
