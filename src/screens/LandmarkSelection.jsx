@@ -93,7 +93,10 @@ export default function LandmarkSelection() {
   // Arriving with no trip region yet (e.g. straight from the bottom-nav tab) still
   // shows everything.
   const [cityFilter, setCityFilter] = useState(() => trip.activeRegion ?? 'all');
-  const [filter, setFilter] = useState('all');
+  // Default to the interests picked on Setup, so "Choose Landmarks" opens already
+  // narrowed to what you said you wanted instead of dumping every landmark on you.
+  // Empty selection (no interests chosen, or "All" tapped) means show everything.
+  const [activeCategories, setActiveCategories] = useState(() => trip.interests.filter((id) => CATEGORY_ICON[id]));
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('popularity');
 
@@ -107,7 +110,7 @@ export default function LandmarkSelection() {
     const term = search.trim().toLowerCase();
     const filtered = ALL_LANDMARKS.filter((l) => {
       if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
-      if (filter !== 'all' && !l.categories.includes(filter)) return false;
+      if (activeCategories.length && !l.categories.some((c) => activeCategories.includes(c))) return false;
       if (term) {
         const haystack = [l.name, l.summary, ...(l.facts ?? [])].join(' ').toLowerCase();
         if (!haystack.includes(term)) return false;
@@ -140,7 +143,7 @@ export default function LandmarkSelection() {
       );
     }
     return filtered;
-  }, [cityFilter, filter, search, sortBy, coords, ratings]);
+  }, [cityFilter, activeCategories, search, sortBy, coords, ratings]);
 
   const handleToggle = (landmark) => {
     toggleLandmark(landmark.id, landmark.regionId);
@@ -168,7 +171,11 @@ export default function LandmarkSelection() {
       <h1 className="screen-title">
         <span>{'\u{1F4CD}'}</span> Choose Landmarks
       </h1>
-      <p className="screen-subtitle">All {landmarks.length} landmarks — pick everything you want to see.</p>
+      <p className="screen-subtitle">
+        {activeCategories.length
+          ? `${landmarks.length} landmarks matching your interests — pick what you want to see.`
+          : `All ${landmarks.length} landmarks — pick everything you want to see.`}
+      </p>
 
       <div className="field" style={{ marginBottom: 12 }}>
         <input
@@ -206,14 +213,21 @@ export default function LandmarkSelection() {
       />
 
       <div className="tabs" style={{ flexWrap: 'wrap' }}>
-        <button className={`tab-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
+        <button
+          className={`tab-btn ${activeCategories.length === 0 ? 'active' : ''}`}
+          onClick={() => setActiveCategories([])}
+        >
           All
         </button>
         {INTERESTS.map((i) => (
           <button
             key={i.id}
-            className={`tab-btn ${filter === i.id ? 'active' : ''}`}
-            onClick={() => setFilter(i.id)}
+            className={`tab-btn ${activeCategories.includes(i.id) ? 'active' : ''}`}
+            onClick={() =>
+              setActiveCategories((cur) =>
+                cur.includes(i.id) ? cur.filter((id) => id !== i.id) : [...cur, i.id]
+              )
+            }
           >
             {i.label}
           </button>
