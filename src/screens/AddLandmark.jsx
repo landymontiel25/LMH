@@ -10,6 +10,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useTrip } from '../lib/TripContext';
 import { addCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
 import { fileToSmallDataUrl } from '../lib/imageUtils';
+import LocationAutocomplete from '../components/LocationAutocomplete';
 
 const SAT_TILE = {
   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -54,6 +55,7 @@ export default function AddLandmark() {
   };
 
   const [position, setPosition] = useState(startingCenter);
+  const [addressText, setAddressText] = useState('');
   const [name, setName] = useState('');
   const [categories, setCategories] = useState([]);
   const [photo, setPhoto] = useState(null);
@@ -144,7 +146,7 @@ export default function AddLandmark() {
       <div className="field">
         <label>Location</label>
         <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
-          Drag the pin to the exact spot, or use your current location.
+          Drag the pin to the exact spot, use your current location, or search an address.
         </p>
         <div className="itinerary-map" style={{ height: 260 }}>
           <MapContainer center={[position.lat, position.lng]} zoom={17} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
@@ -158,6 +160,7 @@ export default function AddLandmark() {
                 dragend: (e) => {
                   const { lat, lng } = e.target.getLatLng();
                   setPosition({ lat, lng });
+                  setAddressText('');
                 },
               }}
             />
@@ -168,10 +171,25 @@ export default function AddLandmark() {
           className="btn btn-ghost btn-sm btn-block"
           style={{ marginTop: 10 }}
           disabled={!coords}
-          onClick={() => setPosition({ lat: coords.lat, lng: coords.lng })}
+          onClick={() => {
+            setPosition({ lat: coords.lat, lng: coords.lng });
+            setAddressText('');
+          }}
         >
           {'\u{1F4CD}'} {coords ? 'Use My Exact Location' : 'Locating…'}
         </button>
+        <div style={{ marginTop: 10 }}>
+          <LocationAutocomplete
+            placeholder="Or search an address…"
+            value={addressText}
+            regionId={nearestRegionId(position.lat, position.lng)}
+            onChange={setAddressText}
+            onSelect={(s) => {
+              setPosition({ lat: s.lat, lng: s.lng });
+              setAddressText(s.primary);
+            }}
+          />
+        </div>
       </div>
 
       <div className="field">
