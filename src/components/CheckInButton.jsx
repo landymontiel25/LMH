@@ -35,7 +35,7 @@ export default function CheckInButton({ landmark, user, firebaseEnabled, claimed
     : noLocation
     ? 'Enable location to check in'
     : tooFar
-    ? `Get closer to check in (${Math.round(distance)}m away)`
+    ? 'Get closer to check in'
     : "\u{1F4CD} Check In";
 
   return (
