@@ -1771,6 +1771,12 @@ textarea {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
+/* Every landmark inside this cluster is already checked in. */
+.map-cluster-done {
+  background: radial-gradient(circle at 35% 30%, #bfe0c8, var(--color-green));
+  border-color: #1c2e21;
+}
+
 .map-locate-btn {
   position: absolute;
   bottom: calc(var(--nav-h) + 16px);

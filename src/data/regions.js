@@ -136,4 +136,5 @@ export const INTERESTS = [
   { id: 'history-culture', label: 'History & Culture', icon: '\u{1F3DB}\u{FE0F}' },
   { id: 'art-museums', label: 'Art & Museums', icon: '\u{1F5BC}\u{FE0F}' },
   { id: 'food-local-life', label: 'Food & Local Life', icon: '\u{1F962}' },
+  { id: 'campus-life', label: 'Campus Life', icon: '\u{1F3EB}' },
 ];
