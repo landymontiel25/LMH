@@ -213,6 +213,15 @@ export default function LandmarkSelection() {
           : `All ${landmarks.length} landmarks — pick everything you want to see.`}
       </p>
 
+      <button
+        type="button"
+        className="btn btn-ghost btn-block"
+        style={{ marginBottom: 12 }}
+        onClick={() => navigate('/add-landmark')}
+      >
+        {'\u{2795}'} Add a Landmark
+      </button>
+
       <div className="field" style={{ marginBottom: 12 }}>
         <input
           type="text"
