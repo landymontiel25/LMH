@@ -13,38 +13,52 @@ export const OTHER_INTERESTS = [
   'Family-Friendly',
 ];
 
-export default function OtherInterestChip({ value, onChange }) {
+// Adds as many custom interests as you type -- each commit (Enter, Tab,
+// picking a suggestion, or clicking away) saves it immediately as its own
+// entry and reopens the input for the next one, instead of holding one
+// pending value and disappearing once it's set. Stays put after an add so
+// there's always a way to add another.
+export default function AddInterestChip({ existing, onAdd }) {
   const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+
+  const commit = () => {
+    const value = text.trim();
+    if (value && !existing.includes(value)) onAdd(value);
+    setText('');
+  };
 
   useEffect(() => {
     function handleClickOutside(e) {
       if (ref.current && !ref.current.contains(e.target)) {
+        commit();
         setOpen(false);
         setEditing(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
 
-  const suggestions = value.trim()
-    ? OTHER_INTERESTS.filter((s) => s.toLowerCase().includes(value.trim().toLowerCase()))
-    : OTHER_INTERESTS;
+  const suggestions = OTHER_INTERESTS.filter(
+    (s) => !existing.includes(s) && (!text.trim() || s.toLowerCase().includes(text.trim().toLowerCase()))
+  );
 
   if (!editing) {
     return (
       <button
         type="button"
-        className={`chip ${value ? 'selected' : 'chip-dashed'}`}
+        className="chip chip-dashed"
         onClick={() => {
           setEditing(true);
           setOpen(true);
         }}
       >
-        <span className="chip-icon">{value ? '\u{2728}' : '\u{2795}'}</span>
-        <span>{value || 'Add Your Own'}</span>
+        <span className="chip-icon">{'\u{2795}'}</span>
+        <span>Add Your Own</span>
       </button>
     );
   }
@@ -55,20 +69,23 @@ export default function OtherInterestChip({ value, onChange }) {
         type="text"
         autoFocus
         className="autocomplete-chip-input"
-        placeholder="Type your own…"
-        value={value}
+        placeholder="Type your own, Enter to add…"
+        value={text}
         onChange={(e) => {
-          onChange(e.target.value);
+          setText(e.target.value);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            setEditing(false);
-            setOpen(false);
+          // Tab defaults to jumping focus away and dropping whatever was
+          // typed -- treat it the same as Enter so it saves first.
+          if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            commit();
           }
         }}
         autoComplete="off"
+        autoCapitalize="off"
       />
       {open && suggestions.length > 0 && (
         <div className="autocomplete-list">
@@ -78,9 +95,8 @@ export default function OtherInterestChip({ value, onChange }) {
               key={s}
               className="autocomplete-item"
               onClick={() => {
-                onChange(s);
-                setEditing(false);
-                setOpen(false);
+                onAdd(s);
+                setText('');
               }}
             >
               <span className="autocomplete-primary">{s}</span>

@@ -7,7 +7,7 @@ const DEFAULT_TRIP = {
   startingCoords: null,
   activeRegion: null, // city currently being browsed (Setup / Landmarks context)
   interests: [],
-  customInterest: '',
+  customInterests: [],
   byRegion: {}, // { [regionId]: string[] of landmark ids } — one itinerary per city
 };
 
