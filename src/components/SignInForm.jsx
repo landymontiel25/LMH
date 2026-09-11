@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
 
-export default function SignInForm() {
+export default function SignInForm({ onSignedUp }) {
   const { signInGoogle, signUpEmail, signInEmail, resetPassword, redirectError } = useAuth();
   const [mode, setMode] = useState('signin');
   const [name, setName] = useState('');
@@ -24,6 +24,7 @@ export default function SignInForm() {
     try {
       if (mode === 'signup') {
         await signUpEmail(normalizedEmail, password, name);
+        onSignedUp?.();
       } else {
         await signInEmail(normalizedEmail, password);
       }
