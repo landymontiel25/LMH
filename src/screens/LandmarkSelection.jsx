@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
@@ -6,6 +6,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useRatings } from '../lib/RatingsContext';
 import { distanceMeters } from '../lib/geo';
 import { mapsDeepLink } from '../lib/routing';
+import { classifyInterest } from '../lib/interestClassifier';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 import { ALL_LANDMARKS, REGIONS, INTERESTS, getRegion } from '../data/regions';
@@ -82,8 +83,18 @@ function CityDropdown({ value, onChange }) {
 }
 
 export default function LandmarkSelection() {
-  const { trip, toggleLandmark, setRegionSelection, getRegionSelection, regionsWithItineraries, clearRegion, clearAll, updateTrip, setMapFocus } =
-    useTrip();
+  const {
+    trip,
+    toggleLandmark,
+    setRegionSelection,
+    getRegionSelection,
+    regionsWithItineraries,
+    clearRegion,
+    clearAll,
+    updateTrip,
+    setMapFocus,
+    setCustomInterestMatches,
+  } = useTrip();
   const { coords } = useGeo();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { ratings } = useRatings();
@@ -93,10 +104,14 @@ export default function LandmarkSelection() {
   // Arriving with no trip region yet (e.g. straight from the bottom-nav tab) still
   // shows everything.
   const [cityFilter, setCityFilter] = useState(() => trip.activeRegion ?? 'all');
-  // Default to the interests picked on Setup, so "Choose Landmarks" opens already
-  // narrowed to what you said you wanted instead of dumping every landmark on you.
-  // Empty selection (no interests chosen, or "All" tapped) means show everything.
-  const [activeCategories, setActiveCategories] = useState(() => trip.interests.filter((id) => CATEGORY_ICON[id]));
+  // Default to every interest picked on Setup -- built-in categories AND custom
+  // ones you typed in -- so "Choose Landmarks" opens already narrowed to what you
+  // said you wanted instead of dumping every landmark on you. Empty selection (no
+  // interests chosen, or "All" tapped) means show everything.
+  const [activeCategories, setActiveCategories] = useState(() => [
+    ...trip.interests.filter((id) => CATEGORY_ICON[id]),
+    ...trip.customInterests,
+  ]);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('popularity');
 
@@ -106,11 +121,31 @@ export default function LandmarkSelection() {
     if (cityFilter !== 'all') setMapFocus(cityFilter);
   }, [cityFilter, setMapFocus]);
 
+  // A custom interest only filters anything once the AI has told us which
+  // landmarks fit it. Normally that already happened when it was added on
+  // Setup, but classify any that are still missing (e.g. the request never
+  // finished, or it was added before this existed).
+  useEffect(() => {
+    trip.customInterests.forEach((text) => {
+      if (trip.customInterestMatches[text] !== undefined) return;
+      classifyInterest(text).then((ids) => setCustomInterestMatches(text, ids));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip.customInterests]);
+
+  const landmarkMatchesCategory = useCallback(
+    (l, key) =>
+      trip.customInterests.includes(key)
+        ? (trip.customInterestMatches[key] || []).includes(`${l.regionId}/${l.id}`)
+        : l.categories.includes(key),
+    [trip.customInterests, trip.customInterestMatches]
+  );
+
   const landmarks = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = ALL_LANDMARKS.filter((l) => {
       if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
-      if (activeCategories.length && !l.categories.some((c) => activeCategories.includes(c))) return false;
+      if (activeCategories.length && !activeCategories.some((key) => landmarkMatchesCategory(l, key))) return false;
       if (term) {
         const haystack = [l.name, l.summary, ...(l.facts ?? [])].join(' ').toLowerCase();
         if (!haystack.includes(term)) return false;
@@ -143,15 +178,16 @@ export default function LandmarkSelection() {
       );
     }
     return filtered;
-  }, [cityFilter, activeCategories, search, sortBy, coords, ratings]);
+  }, [cityFilter, activeCategories, landmarkMatchesCategory, search, sortBy, coords, ratings]);
 
   const handleToggle = (landmark) => {
     toggleLandmark(landmark.id, landmark.regionId);
   };
 
   const suggestForMe = () => {
-    const interests = trip.interests.length ? trip.interests : INTERESTS.map((i) => i.id);
-    const matches = landmarks.filter((l) => l.categories.some((c) => interests.includes(c)));
+    const keys = [...trip.interests, ...trip.customInterests];
+    const interestKeys = keys.length ? keys : INTERESTS.map((i) => i.id);
+    const matches = landmarks.filter((l) => interestKeys.some((key) => landmarkMatchesCategory(l, key)));
     const picked = (matches.length >= 8 ? matches : landmarks).slice(0, 10);
     if (!picked.length) return;
     // Group picks by city so each city's itinerary is set independently.
@@ -232,6 +268,25 @@ export default function LandmarkSelection() {
             {i.label}
           </button>
         ))}
+        {trip.customInterests.map((text) => {
+          const pending = trip.customInterestMatches[text] === undefined;
+          return (
+            <button
+              key={text}
+              className={`tab-btn ${activeCategories.includes(text) ? 'active' : ''}`}
+              disabled={pending}
+              title={pending ? 'Finding matching landmarks…' : undefined}
+              onClick={() =>
+                setActiveCategories((cur) =>
+                  cur.includes(text) ? cur.filter((k) => k !== text) : [...cur, text]
+                )
+              }
+            >
+              {pending ? '\u{23F3} ' : ''}
+              {text}
+            </button>
+          );
+        })}
       </div>
 
       <div className="tabs" style={{ marginBottom: sortBy === 'nearMe' && !coords ? 4 : 18 }}>
