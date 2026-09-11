@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { findUserByUsername, sendFriendRequest, acceptRequest, declineRequest, listFriends } from '../lib/friends';
+import { getUserStats, getUserCheckins } from '../lib/leaderboard';
+import { getRegion } from '../data/regions';
 
 export default function FriendsPanel() {
   const { user } = useAuth();
@@ -13,6 +15,17 @@ export default function FriendsPanel() {
   const [unameInput, setUnameInput] = useState('');
   const [unameBusy, setUnameBusy] = useState(false);
   const [unameMsg, setUnameMsg] = useState(null);
+  const [friendStats, setFriendStats] = useState(null); // { name, stats, recent, error } | null
+
+  const openFriendStats = async (f) => {
+    setFriendStats({ name: f.friendName, loading: true });
+    try {
+      const [stats, checkins] = await Promise.all([getUserStats(f.friend), getUserCheckins(f.friend)]);
+      setFriendStats({ name: f.friendName, loading: false, stats, recent: checkins[0] || null });
+    } catch {
+      setFriendStats({ name: f.friendName, loading: false, error: true });
+    }
+  };
 
   const loadFriends = async () => {
     try {
@@ -174,12 +187,56 @@ export default function FriendsPanel() {
           <p className="screen-subtitle" style={{ margin: 0 }}>No friends yet.</p>
         ) : (
           friends.map((f) => (
-            <div key={f.friend} className="friend-row">
+            <div key={f.friend} className="friend-row" style={{ cursor: 'pointer' }} onClick={() => openFriendStats(f)}>
               <span>@{f.friendName}</span>
+              <span style={{ color: 'var(--color-parchment-dim)' }}>{'›'}</span>
             </div>
           ))
         )}
       </div>
+
+      {friendStats && (
+        <div className="modal-backdrop" onClick={() => setFriendStats(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>
+              {'\u{1F464}'} @{friendStats.name}
+            </h3>
+            {friendStats.loading && <p className="screen-subtitle">Loading…</p>}
+            {friendStats.error && <p className="screen-subtitle">Could not load their stats — try again.</p>}
+            {friendStats.stats && (
+              <>
+                <div className="profile-stats">
+                  <div className="profile-stat">
+                    <span className="profile-stat-num">{friendStats.stats.totalPoints.toLocaleString()}</span>
+                    <span className="profile-stat-label">total pts</span>
+                  </div>
+                  <div className="profile-stat">
+                    <span className="profile-stat-num">{friendStats.stats.checkins.toLocaleString()}</span>
+                    <span className="profile-stat-label">check-ins</span>
+                  </div>
+                  <div className="profile-stat">
+                    <span className="profile-stat-num">{friendStats.stats.cities}</span>
+                    <span className="profile-stat-label">cities</span>
+                  </div>
+                </div>
+                {friendStats.recent ? (
+                  <p className="screen-subtitle" style={{ marginTop: 14, marginBottom: 0 }}>
+                    Last check-in: <strong>{friendStats.recent.landmarkName || 'a landmark'}</strong>
+                    {friendStats.recent.region ? ` — ${getRegion(friendStats.recent.region)?.name || ''}` : ''}
+                  </p>
+                ) : (
+                  <p className="screen-subtitle" style={{ marginTop: 14, marginBottom: 0 }}>
+                    No check-ins yet.
+                  </p>
+                )}
+              </>
+            )}
+            <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setFriendStats(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
