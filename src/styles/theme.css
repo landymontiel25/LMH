@@ -2038,9 +2038,24 @@ textarea {
   color: var(--chatlab-text-dim);
 }
 
+.chatlab-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .chatlab-region {
   position: relative;
   flex-shrink: 0;
+}
+
+.chatlab-cost {
+  font-size: 0.6rem;
+  color: var(--chatlab-text-dim);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .chatlab-region-pill {

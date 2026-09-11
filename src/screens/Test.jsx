@@ -18,6 +18,7 @@ export default function Test() {
   const [messages, setMessages] = useState([{ role: 'assistant', text: GREETING, stops: [] }]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [totalCost, setTotalCost] = useState(0);
   const feedEndRef = useRef(null);
   const regionBoxRef = useRef(null);
 
@@ -63,6 +64,7 @@ export default function Test() {
       // turn's "content" next time so the AI remembers its own picks.
       const raw = data.reply + (stops.length ? `\n(Suggested: ${stops.map((s) => s.name).join(', ')})` : '');
       setMessages((cur) => [...cur, { role: 'assistant', text: data.reply, stops, raw }]);
+      if (data.cost) setTotalCost((c) => c + data.cost);
     } catch (err) {
       setMessages((cur) => [...cur, { role: 'assistant', text: err.message || 'Signal lost — try again?', stops: [], error: true }]);
     } finally {
@@ -78,23 +80,26 @@ export default function Test() {
           <h1 className="chatlab-title">Landmark AI</h1>
           <p className="chatlab-tagline">Live trip planning</p>
         </div>
-        <div className="chatlab-region" ref={regionBoxRef}>
-          <button type="button" className="chatlab-region-pill" onClick={() => setRegionOpen((o) => !o)}>
-            {'\u{1F30D}'} {region.id ? region.name : 'Any city'}
-          </button>
-          {regionOpen && (
-            <div className="chatlab-region-popover">
-              <RegionSearch
-                region={region}
-                onSelect={(r) => {
-                  setRegion(r);
-                  setRegionOpen(false);
-                }}
-                includeAny
-                placeholder="Narrow to a city…"
-              />
-            </div>
-          )}
+        <div className="chatlab-header-right">
+          <div className="chatlab-region" ref={regionBoxRef}>
+            <button type="button" className="chatlab-region-pill" onClick={() => setRegionOpen((o) => !o)}>
+              {'\u{1F30D}'} {region.id ? region.name : 'Any city'}
+            </button>
+            {regionOpen && (
+              <div className="chatlab-region-popover">
+                <RegionSearch
+                  region={region}
+                  onSelect={(r) => {
+                    setRegion(r);
+                    setRegionOpen(false);
+                  }}
+                  includeAny
+                  placeholder="Narrow to a city…"
+                />
+              </div>
+            )}
+          </div>
+          {totalCost > 0 && <span className="chatlab-cost">{'⚡'} ${totalCost.toFixed(4)}</span>}
         </div>
       </div>
 
