@@ -5,7 +5,7 @@ const items = [
   { to: '/setup', label: 'Setup', icon: '\u{1F9ED}' },
   { to: '/landmarks', label: 'Landmarks', icon: '\u{1F4CD}' },
   { to: '/itinerary', label: 'Itinerary', icon: '\u{1F5FA}\u{FE0F}' },
-  { to: '/profile', label: 'Ranks', icon: '\u{1F3C6}' },
+  { to: '/profile', label: 'Profile', icon: '\u{1F3C6}' },
   { to: '/test', label: 'Test', icon: '\u{1F9EA}' },
 ];
 

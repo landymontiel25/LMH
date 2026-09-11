@@ -294,7 +294,7 @@ export default function AddLandmark() {
 
       {!user && (
         <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
-          {firebaseEnabled ? 'Sign in first (Ranks tab) — adding a landmark needs an account.' : 'Accounts aren’t set up yet.'}
+          {firebaseEnabled ? 'Sign in first (Profile tab) — adding a landmark needs an account.' : 'Accounts aren’t set up yet.'}
         </p>
       )}
       {error && (

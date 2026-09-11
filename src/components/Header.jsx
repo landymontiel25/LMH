@@ -7,7 +7,7 @@ import { subscribeLeaderboard } from '../lib/leaderboard';
 
 // Header identity control. Shows who you're signed in as; hovering (desktop)
 // or tapping (mobile) reveals this week's rank/points plus one explicit
-// "View Profile" link. The bottom nav's Ranks tab already goes to the same
+// "View Profile" link. The bottom nav's Profile tab already goes to the same
 // place in an obvious, labeled way -- so this doesn't need to double as a
 // second hidden nav button, just a glanceable stat with one clear way out.
 function ProfileMenu() {
