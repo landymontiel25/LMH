@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
 import { INTERESTS, getRegion } from '../data/regions';
 import LocationAutocomplete from '../components/LocationAutocomplete';
-import OtherInterestChip from '../components/OtherInterestChip';
+import AddInterestChip from '../components/AddInterestChip';
 import RegionSearch from '../components/RegionSearch';
 
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
@@ -42,6 +42,15 @@ export default function TripSetup() {
     updateTrip({
       interests: has ? trip.interests.filter((i) => i !== id) : [...trip.interests, id],
     });
+  };
+
+  const addCustomInterest = (text) => {
+    if (trip.customInterests.includes(text)) return;
+    updateTrip({ customInterests: [...trip.customInterests, text] });
+  };
+
+  const removeCustomInterest = (text) => {
+    updateTrip({ customInterests: trip.customInterests.filter((t) => t !== text) });
   };
 
   const selectRegion = (region) => {
@@ -116,10 +125,19 @@ export default function TripSetup() {
               <span>{i.label}</span>
             </button>
           ))}
-          <OtherInterestChip
-            value={trip.customInterest}
-            onChange={(text) => updateTrip({ customInterest: text })}
-          />
+          {trip.customInterests.map((text) => (
+            <button
+              key={text}
+              type="button"
+              className="chip selected"
+              onClick={() => removeCustomInterest(text)}
+              title="Tap to remove"
+            >
+              <span className="chip-icon">{'\u{2728}'}</span>
+              <span>{text}</span>
+            </button>
+          ))}
+          <AddInterestChip existing={trip.customInterests} onAdd={addCustomInterest} />
         </div>
       </div>
 
