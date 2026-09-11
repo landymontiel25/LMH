@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Rectangle, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -11,7 +11,7 @@ import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
 import { useCheckIn } from '../lib/useCheckIn';
-import { getLandmarkOverrides, saveLandmarkPosition } from '../lib/landmarkOverrides';
+import { getLandmarkOverrides } from '../lib/landmarkOverrides';
 import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
@@ -143,45 +143,6 @@ function InitialView({ loading, coords, bounds, regionBounds, focusPoint, radius
   return null;
 }
 
-// Remove-pins mode: drag a rectangle (like selecting Finder icons) to pick
-// which custom pins to delete. Map panning is disabled for the duration of
-// the drag so it draws a box instead of moving the map.
-function BoxSelect({ enabled, customLandmarks, onDrag, onFinish }) {
-  const map = useMap();
-  const startRef = useRef(null);
-  const draggingRef = useRef(false);
-
-  useEffect(() => {
-    if (!enabled && draggingRef.current) {
-      draggingRef.current = false;
-      map.dragging.enable();
-    }
-  }, [enabled, map]);
-
-  useMapEvents({
-    mousedown(e) {
-      if (!enabled) return;
-      map.dragging.disable();
-      draggingRef.current = true;
-      startRef.current = e.latlng;
-      onDrag(L.latLngBounds(e.latlng, e.latlng));
-    },
-    mousemove(e) {
-      if (!draggingRef.current) return;
-      onDrag(L.latLngBounds(startRef.current, e.latlng));
-    },
-    mouseup(e) {
-      if (!draggingRef.current) return;
-      draggingRef.current = false;
-      map.dragging.enable();
-      const bounds = L.latLngBounds(startRef.current, e.latlng);
-      const ids = customLandmarks.filter((l) => bounds.contains([l.lat, l.lng])).map((l) => l.docId);
-      onFinish(ids, bounds);
-    },
-  });
-  return null;
-}
-
 function LocateControl({ coords, radiusMiles }) {
   const map = useMap();
   return (
@@ -209,19 +170,11 @@ export default function MapExplore() {
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  // Drag-to-fix mode: a pin in the wrong spot gets dragged to where it
-  // actually is, right on the map -- no geocoding, no data lookups, just
-  // moving it to match what you can see. Clustering is switched off while
-  // this is on so every pin is a direct drag target.
-  const [fixMode, setFixMode] = useState(false);
-  const [movedPins, setMovedPins] = useState({});
-  const [savedOverrides, setSavedOverrides] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [saved, setSaved] = useState(false);
 
-  // Corrected pin positions are shared (Firestore), so they load once and
-  // apply for every visitor, not just whoever dragged the pin.
+  // Pin corrections saved by the old drag-to-fix mode (now removed) still
+  // apply for everyone -- this just keeps displaying them at their
+  // corrected spot rather than reverting to the source data's position.
+  const [savedOverrides, setSavedOverrides] = useState({});
   useEffect(() => {
     getLandmarkOverrides().then(setSavedOverrides);
   }, []);
@@ -241,34 +194,6 @@ export default function MapExplore() {
     } catch {
       // Firestore delete failed silently -- it'll reappear on next load,
       // which is an acceptable failure mode for a rare, low-stakes action.
-    }
-  };
-
-  // Remove-pins mode: drag a box around custom pins (like selecting Finder
-  // icons) to delete several at once. Only ever touches custom_landmarks --
-  // built-in landmarks live in source code, not a database, so there's
-  // nothing here to delete them with.
-  const [removeMode, setRemoveMode] = useState(false);
-  const [selectionBounds, setSelectionBounds] = useState(null);
-  const [selectedDocIds, setSelectedDocIds] = useState([]);
-  const [removing, setRemoving] = useState(false);
-
-  const clearSelection = () => {
-    setSelectionBounds(null);
-    setSelectedDocIds([]);
-  };
-
-  const confirmRemoveSelected = async () => {
-    setRemoving(true);
-    const ids = selectedDocIds;
-    setCustomLandmarks((prev) => prev.filter((l) => !ids.includes(l.docId)));
-    clearSelection();
-    try {
-      await Promise.all(ids.map((docId) => deleteCustomLandmark(docId)));
-    } catch {
-      // best-effort, same as the single-pin remove above
-    } finally {
-      setRemoving(false);
     }
   };
 
@@ -345,11 +270,6 @@ export default function MapExplore() {
   // uncluttered (world view shows a few number bubbles; zoom into a city and
   // they break apart into individual pins). This lets you zoom out, spot a city,
   // and zoom in to its landmarks even when you're on another continent.
-  const handlePinDragEnd = (l) => (e) => {
-    const { lat, lng } = e.target.getLatLng();
-    setMovedPins((prev) => ({ ...prev, [l.id]: { region: l.regionId, id: l.id, name: l.name, lat, lng } }));
-  };
-
   const markers = useMemo(
     () =>
       ALL_LANDMARKS.map((l) => {
@@ -357,17 +277,10 @@ export default function MapExplore() {
         const region = getRegion(l.regionId);
         const isClaimed = !!claimedMap[l.id];
         const goToDetails = () => navigate(`/landmarks/${l.regionId}/${l.id}`);
-        const moved = movedPins[l.id];
         const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
-        const position = moved ? [moved.lat, moved.lng] : savedPos ? [savedPos.lat, savedPos.lng] : [l.lat, l.lng];
+        const position = savedPos ? [savedPos.lat, savedPos.lng] : [l.lat, l.lng];
         return (
-          <Marker
-            key={l.id}
-            position={position}
-            icon={fixMode ? pinIcon(!!moved, false) : pinIcon(isClaimed, isSelected)}
-            draggable={fixMode}
-            eventHandlers={fixMode ? { dragend: handlePinDragEnd(l) } : undefined}
-          >
+          <Marker key={l.id} position={position} icon={pinIcon(isClaimed, isSelected)}>
             <Popup>
               <div className="map-popup">
                 <div
@@ -426,7 +339,7 @@ export default function MapExplore() {
         );
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, fixMode, movedPins, savedOverrides]
+    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides]
   );
 
   const customMarkers = useMemo(
@@ -435,9 +348,8 @@ export default function MapExplore() {
         const region = getRegion(l.region);
         const syntheticLandmark = { id: l.id, name: l.name, regionId: l.region, lat: l.lat, lng: l.lng };
         const isClaimed = !!claimedMap[l.id];
-        const isSelected = selectedDocIds.includes(l.docId);
         return (
-          <Marker key={l.docId} position={[l.lat, l.lng]} icon={pinIcon(isClaimed || isSelected, false)}>
+          <Marker key={l.docId} position={[l.lat, l.lng]} icon={pinIcon(isClaimed, false)}>
             <Popup>
               <div className="map-popup">
                 <h4 style={{ marginTop: 0 }}>{l.name}</h4>
@@ -476,31 +388,8 @@ export default function MapExplore() {
           </Marker>
         );
       }),
-    [customLandmarks, claimedMap, checkingIn, user, firebaseEnabled, checkIn, selectedDocIds, navigate]
+    [customLandmarks, claimedMap, checkingIn, user, firebaseEnabled, checkIn, navigate]
   );
-
-  const submitMovedPins = async () => {
-    setSaving(true);
-    setSaveError('');
-    try {
-      const entries = Object.values(movedPins);
-      await Promise.all(entries.map((p) => saveLandmarkPosition({ ...p, userId: user?.uid })));
-      setSavedOverrides((prev) => {
-        const next = { ...prev };
-        entries.forEach((p) => {
-          next[`${p.region}/${p.id}`] = { lat: p.lat, lng: p.lng };
-        });
-        return next;
-      });
-      setMovedPins({});
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2200);
-    } catch (err) {
-      setSaveError(err.message || 'Could not save — try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="map-fullscreen">
@@ -566,34 +455,15 @@ export default function MapExplore() {
               </Tooltip>
             </Marker>
           )}
-          <BoxSelect
-            enabled={removeMode}
-            customLandmarks={customLandmarks}
-            onDrag={setSelectionBounds}
-            onFinish={(ids, bounds) => {
-              setSelectedDocIds(ids);
-              setSelectionBounds(bounds);
-            }}
-          />
-          {selectionBounds && (
-            <Rectangle bounds={selectionBounds} pathOptions={{ color: '#b3503f', weight: 2, fillOpacity: 0.12 }} />
-          )}
-          {fixMode ? (
-            <>
-              {markers}
-              {customMarkers}
-            </>
-          ) : (
-            <MarkerClusterGroup
-              chunkedLoading
-              maxClusterRadius={55}
-              spiderfyOnMaxZoom
-              iconCreateFunction={clusterIcon}
-            >
-              {markers}
-              {customMarkers}
-            </MarkerClusterGroup>
-          )}
+          <MarkerClusterGroup
+            chunkedLoading
+            maxClusterRadius={55}
+            spiderfyOnMaxZoom
+            iconCreateFunction={clusterIcon}
+          >
+            {markers}
+            {customMarkers}
+          </MarkerClusterGroup>
         </MapContainer>
 
       <button type="button" className="map-search-btn" title="Search landmarks" onClick={toggleSearch}>
@@ -603,98 +473,11 @@ export default function MapExplore() {
         type="button"
         className="map-search-btn"
         style={{ top: 'calc(var(--header-h) + 64px)' }}
-        title={fixMode ? 'Done fixing pins' : 'Fix pin locations — drag any pin to where it actually is'}
-        onClick={() => {
-          setFixMode((f) => !f);
-          setRemoveMode(false);
-          clearSelection();
-        }}
-      >
-        {fixMode ? '\u{2715}' : '\u{1F4CD}'}
-      </button>
-      <button
-        type="button"
-        className="map-search-btn"
-        style={{ top: 'calc(var(--header-h) + 116px)' }}
         title="Add a landmark"
         onClick={() => navigate('/add-landmark')}
       >
         {'\u{2795}'}
       </button>
-      <button
-        type="button"
-        className="map-search-btn"
-        style={{ top: 'calc(var(--header-h) + 168px)' }}
-        title={removeMode ? 'Done removing pins' : 'Remove pins — drag a box around the ones to delete'}
-        onClick={() => {
-          setRemoveMode((r) => !r);
-          setFixMode(false);
-          clearSelection();
-        }}
-      >
-        {removeMode ? '\u{2715}' : '\u{1F5D1}'}
-      </button>
-      {fixMode && (
-        <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
-          <div className="card" style={{ padding: 12 }}>
-            <strong>Fix Pin Locations</strong>
-            <p className="screen-subtitle" style={{ margin: '4px 0 8px' }}>
-              Drag any pin to where it actually belongs. {Object.keys(movedPins).length} moved so far.
-            </p>
-            {user ? (
-              <button
-                type="button"
-                className="btn btn-primary btn-sm btn-block"
-                disabled={Object.keys(movedPins).length === 0 || saving}
-                onClick={submitMovedPins}
-              >
-                {saving ? 'Saving…' : saved ? 'Saved!' : 'Submit'}
-              </button>
-            ) : (
-              <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>
-                Sign in first (Ranks tab) — saving a fix needs an account.
-              </p>
-            )}
-            {saveError && (
-              <p className="tag tag-error" style={{ display: 'block', marginTop: 8, marginBottom: 0 }}>
-                {saveError}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-      {removeMode && (
-        <div className="map-search-panel" style={{ top: 'auto', bottom: 'calc(var(--nav-h) + 16px)', maxWidth: 320 }}>
-          <div className="card" style={{ padding: 12 }}>
-            <strong>Remove Pins</strong>
-            <p className="screen-subtitle" style={{ margin: '4px 0 8px' }}>
-              Drag a box around the custom pins to delete. Only pins added with ➕ can be removed this way —
-              built-in landmarks aren't affected.
-            </p>
-            {selectedDocIds.length > 0 && (
-              <>
-                <p style={{ margin: '0 0 8px' }}>
-                  {selectedDocIds.length} pin{selectedDocIds.length !== 1 ? 's' : ''} selected.
-                </p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    style={{ flex: 1 }}
-                    disabled={removing}
-                    onClick={confirmRemoveSelected}
-                  >
-                    {removing ? 'Removing…' : 'Remove Selected'}
-                  </button>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={clearSelection}>
-                    Clear
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
       {searchOpen && (
         <div className="map-search-panel">
           <input
