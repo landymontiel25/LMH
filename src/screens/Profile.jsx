@@ -184,11 +184,10 @@ function CheckinsView({ user, claimedMap, navigate }) {
   );
 }
 
-// "My Preferences" — save your usual interests once here so Setup can fill
-// them in with one tap instead of re-choosing them on every trip. Reuses the
-// same chip UI as Setup's own interest picker, just writing to the trip's
-// saved* fields instead of its live ones.
-function PreferencesPanel() {
+// The actual chip-grid for saved preferences -- shared by the "My
+// Preferences" card below and the one-time onboarding step right after
+// signup, so both stay in sync with the same trip.saved* fields.
+function PreferenceChips() {
   const { trip, toggleSavedInterest, addSavedCustomInterest, removeSavedCustomInterest, setCustomInterestMatches } = useTrip();
   const [classifying, setClassifying] = useState(() => new Set());
 
@@ -206,37 +205,70 @@ function PreferencesPanel() {
   };
 
   return (
+    <div className="chip-grid">
+      {INTERESTS.map((i) => (
+        <button
+          key={i.id}
+          type="button"
+          className={`chip ${trip.savedInterests.includes(i.id) ? 'selected' : ''}`}
+          onClick={() => toggleSavedInterest(i.id)}
+        >
+          <span className="chip-icon">{i.icon}</span>
+          <span>{i.label}</span>
+        </button>
+      ))}
+      {trip.savedCustomInterests.map((text) => (
+        <button
+          key={text}
+          type="button"
+          className="chip selected"
+          onClick={() => removeSavedCustomInterest(text)}
+          title={classifying.has(text) ? 'Finding matching landmarks…' : 'Tap to remove'}
+        >
+          <span className="chip-icon">{classifying.has(text) ? '\u{23F3}' : '\u{2728}'}</span>
+          <span>{text}</span>
+        </button>
+      ))}
+      <AddInterestChip existing={trip.savedCustomInterests} onAdd={addCustom} />
+    </div>
+  );
+}
+
+// "My Preferences" — save your usual interests once here so Setup can fill
+// them in with one tap instead of re-choosing them on every trip. Reuses the
+// same chip UI as Setup's own interest picker, just writing to the trip's
+// saved* fields instead of its live ones.
+function PreferencesPanel() {
+  return (
     <div className="card section">
       <h3 style={{ marginTop: 0 }}>{'⭐'} My Preferences</h3>
       <p className="screen-subtitle" style={{ marginTop: -6 }}>
         Save what you're usually into — Setup can fill it in for you with one tap.
       </p>
-      <div className="chip-grid">
-        {INTERESTS.map((i) => (
-          <button
-            key={i.id}
-            type="button"
-            className={`chip ${trip.savedInterests.includes(i.id) ? 'selected' : ''}`}
-            onClick={() => toggleSavedInterest(i.id)}
-          >
-            <span className="chip-icon">{i.icon}</span>
-            <span>{i.label}</span>
-          </button>
-        ))}
-        {trip.savedCustomInterests.map((text) => (
-          <button
-            key={text}
-            type="button"
-            className="chip selected"
-            onClick={() => removeSavedCustomInterest(text)}
-            title={classifying.has(text) ? 'Finding matching landmarks…' : 'Tap to remove'}
-          >
-            <span className="chip-icon">{classifying.has(text) ? '\u{23F3}' : '\u{2728}'}</span>
-            <span>{text}</span>
-          </button>
-        ))}
-        <AddInterestChip existing={trip.savedCustomInterests} onAdd={addCustom} />
-      </div>
+      <PreferenceChips />
+    </div>
+  );
+}
+
+// Shown once, right after creating an account -- gets your usual interests
+// saved before you ever see Setup, so "Use My Preferences" already has
+// something to apply on your very first trip.
+function OnboardingPreferences({ onDone }) {
+  return (
+    <div>
+      <h1 className="screen-title">
+        <span>{'\u{1F389}'}</span> Welcome!
+      </h1>
+      <p className="screen-subtitle">
+        What are you usually into? Save it now and Setup can fill it in for you on every trip from here on.
+      </p>
+      <PreferenceChips />
+      <button type="button" className="btn btn-primary btn-block" style={{ marginTop: 20 }} onClick={onDone}>
+        Continue {'\u{2192}'}
+      </button>
+      <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={onDone}>
+        Skip for now
+      </button>
     </div>
   );
 }
@@ -251,6 +283,7 @@ export default function Profile() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCities, setShowCities] = useState(false);
+  const [justSignedUp, setJustSignedUp] = useState(false);
   const healedRef = useRef(false);
 
   const isCheckins = tab === 'checkins';
@@ -309,7 +342,9 @@ export default function Profile() {
     );
   }
 
-  if (!user) return <SignInForm />;
+  if (!user) return <SignInForm onSignedUp={() => setJustSignedUp(true)} />;
+
+  if (justSignedUp) return <OnboardingPreferences onDone={() => setJustSignedUp(false)} />;
 
   const myIdx = entries.findIndex((e) => e.userId === user.uid);
   const myPoints = myIdx >= 0 ? entries[myIdx].points : 0;
