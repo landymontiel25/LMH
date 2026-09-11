@@ -688,4 +688,23 @@ export const VILLANOVA_LANDMARKS = [
     free: true,
     bookingUrl: null,
     typicalMinutes: 5,
-  },];
+  },
+  {
+    id: "burns-hall",
+    popularity: 1,
+    name: "Burns Hall",
+    region: "villanova",
+    lat: 40.0393,
+    lng: -75.3468,
+    categories: ["history-culture"],
+    summary: "A building in Villanova's West Campus area, near St. Mary's Hall.",
+    facts: [
+      "Position read from the official campus map",
+      "Not one of Villanova's residence halls",
+      "Near St. Mary's Hall on West Campus",
+    ],
+    free: true,
+    bookingUrl: null,
+    typicalMinutes: 5,
+  },
+];
