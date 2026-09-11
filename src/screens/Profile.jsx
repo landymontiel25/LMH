@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useCheckIn } from '../lib/useCheckIn';
+import { useTrip } from '../lib/TripContext';
 import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
-import { getLandmark, getRegion } from '../data/regions';
+import { getLandmark, getRegion, INTERESTS } from '../data/regions';
+import { classifyInterest } from '../lib/interestClassifier';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
+import AddInterestChip from '../components/AddInterestChip';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -177,6 +180,63 @@ function CheckinsView({ user, claimedMap, navigate }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// "My Preferences" — save your usual interests once here so Setup can fill
+// them in with one tap instead of re-choosing them on every trip. Reuses the
+// same chip UI as Setup's own interest picker, just writing to the trip's
+// saved* fields instead of its live ones.
+function PreferencesPanel() {
+  const { trip, toggleSavedInterest, addSavedCustomInterest, removeSavedCustomInterest, setCustomInterestMatches } = useTrip();
+  const [classifying, setClassifying] = useState(() => new Set());
+
+  const addCustom = (text) => {
+    addSavedCustomInterest(text);
+    setClassifying((cur) => new Set(cur).add(text));
+    classifyInterest(text).then((ids) => {
+      setCustomInterestMatches(text, ids);
+      setClassifying((cur) => {
+        const next = new Set(cur);
+        next.delete(text);
+        return next;
+      });
+    });
+  };
+
+  return (
+    <div className="card section">
+      <h3 style={{ marginTop: 0 }}>{'⭐'} My Preferences</h3>
+      <p className="screen-subtitle" style={{ marginTop: -6 }}>
+        Save what you're usually into — Setup can fill it in for you with one tap.
+      </p>
+      <div className="chip-grid">
+        {INTERESTS.map((i) => (
+          <button
+            key={i.id}
+            type="button"
+            className={`chip ${trip.savedInterests.includes(i.id) ? 'selected' : ''}`}
+            onClick={() => toggleSavedInterest(i.id)}
+          >
+            <span className="chip-icon">{i.icon}</span>
+            <span>{i.label}</span>
+          </button>
+        ))}
+        {trip.savedCustomInterests.map((text) => (
+          <button
+            key={text}
+            type="button"
+            className="chip selected"
+            onClick={() => removeSavedCustomInterest(text)}
+            title={classifying.has(text) ? 'Finding matching landmarks…' : 'Tap to remove'}
+          >
+            <span className="chip-icon">{classifying.has(text) ? '\u{23F3}' : '\u{2728}'}</span>
+            <span>{text}</span>
+          </button>
+        ))}
+        <AddInterestChip existing={trip.savedCustomInterests} onAdd={addCustom} />
+      </div>
     </div>
   );
 }
@@ -408,6 +468,9 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* 4.5 — My Preferences */}
+      <PreferencesPanel />
 
       {/* 5 — Account */}
       <div className="card section">

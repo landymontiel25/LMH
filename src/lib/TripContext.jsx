@@ -12,6 +12,11 @@ const DEFAULT_TRIP = {
   // the AI decided fit a free-text interest like "nightlife" or "racing", since
   // those don't map to any of the built-in categories on their own.
   customInterestMatches: {},
+  // "My Preferences" on Profile -- your usual picks, saved once so Setup can
+  // fill interests/customInterests in with one tap instead of re-choosing
+  // them on every trip. Independent of the live trip.interests below.
+  savedInterests: [],
+  savedCustomInterests: [],
   byRegion: {}, // { [regionId]: string[] of landmark ids } — one itinerary per city
 };
 
@@ -98,6 +103,22 @@ export function TripProvider({ children }) {
 
   const clearAll = () => setTrip((t) => ({ ...t, byRegion: {} }));
 
+  const toggleSavedInterest = (id) =>
+    setTrip((t) => ({
+      ...t,
+      savedInterests: t.savedInterests.includes(id) ? t.savedInterests.filter((i) => i !== id) : [...t.savedInterests, id],
+    }));
+
+  const addSavedCustomInterest = (text) =>
+    setTrip((t) => (t.savedCustomInterests.includes(text) ? t : { ...t, savedCustomInterests: [...t.savedCustomInterests, text] }));
+
+  const removeSavedCustomInterest = (text) =>
+    setTrip((t) => ({ ...t, savedCustomInterests: t.savedCustomInterests.filter((x) => x !== text) }));
+
+  // One tap on Setup: replace the live trip interests with your saved ones.
+  const applyPreferences = () =>
+    setTrip((t) => ({ ...t, interests: [...t.savedInterests], customInterests: [...t.savedCustomInterests] }));
+
   const getRegionSelection = (regionId) => trip.byRegion[regionId] || [];
 
   const regionsWithItineraries = () =>
@@ -119,6 +140,10 @@ export function TripProvider({ children }) {
         resetTrip,
         setCustomInterestMatches,
         removeCustomInterest,
+        toggleSavedInterest,
+        addSavedCustomInterest,
+        removeSavedCustomInterest,
+        applyPreferences,
         mapFocus,
         setMapFocus,
         mapFocusPoint,
