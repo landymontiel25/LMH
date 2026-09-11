@@ -129,13 +129,15 @@ export default function TripSetup() {
             Save your usual picks on your <Link to="/profile">Profile</Link> to fill this in with one tap.
           </p>
         )}
-        <div className="chip-grid">
-          {(trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0) && (
+        {(trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0) && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
             <button type="button" className="chip chip-action" onClick={applyPreferences}>
               <span className="chip-icon">{'⭐'}</span>
               <span>Use My Preferences</span>
             </button>
-          )}
+          </div>
+        )}
+        <div className="chip-grid">
           {INTERESTS.map((i) => (
             <button
               key={i.id}
