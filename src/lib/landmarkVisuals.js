@@ -10,6 +10,7 @@ const CATEGORY_ICON = {
   'history-culture': '\u{1F3DB}\u{FE0F}',
   'art-museums': '\u{1F5BC}\u{FE0F}',
   'food-local-life': '\u{1F962}',
+  'campus-life': '\u{1F3EB}',
 };
 
 function hashStr(s) {

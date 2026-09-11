@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { useTrip } from '../lib/TripContext';
+import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useRatings } from '../lib/RatingsContext';
 import { useFriends } from '../lib/FriendsContext';
@@ -27,6 +28,7 @@ export default function LandmarkDetail() {
   const navigate = useNavigate();
   const { toggleLandmark, getRegionSelection, updateTrip, setMapFocus, setMapFocusPoint } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { coords } = useGeo();
   const region = getRegion(regionId);
   const landmark = getLandmark(regionId, id);
   const { ratings, reload: reloadRatings } = useRatings();

@@ -45,7 +45,7 @@ The app now opens directly on an interactive map of all landmarks across every r
 
 The only piece of gamification kept for v1 — added specifically to incentivize actually going, not just planning and booking:
 
-* **Earning points**: photo required to check in, no other verification for this version. GPS-verification (physically within **30m** of a landmark's real coordinates, tightened down from an initial 150m during build/testing) is intentionally off for now — turned back on once the photo-only flow has been tested away from the actual landmarks.
+* **Earning points**: GPS-verification only — user must be physically within **30m** of a landmark's real coordinates to claim points. (Tightened down from an initial 150m during build/testing — 30m balances real-world GPS accuracy against making the claim meaningful.) No photo requirement, no self-report tap, no other verification for this version.
 * Check-in is available two places: the dedicated Check-In tab (all landmarks in the active trip) and directly on each landmark's own detail page (works standalone, no trip required).
 * No point values or currency meaning yet — flat points per landmark for now; deeper meaning/rewards is a future-phase decision.
 * Leaderboard: periodic only — weekly, monthly, and yearly tabs, each resetting on its own schedule. No all-time leaderboard in v1, specifically so early users don't permanently dominate people who join later.

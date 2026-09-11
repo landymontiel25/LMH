@@ -19,9 +19,11 @@ import { distanceMeters } from './geo';
 export { distanceMeters };
 
 export const POINTS_PER_CHECKIN = 100;
-// Default "you're here" radius. Individual landmarks can widen this via
+// Default "you're here" radius -- tightened down from an initial 150m
+// during build/testing to balance real-world GPS accuracy against making
+// the claim meaningful. Individual landmarks can widen this via
 // `checkInRadiusMeters` (malls, parks, beaches, national parks, etc.).
-export const CHECKIN_RADIUS_METERS = 100;
+export const CHECKIN_RADIUS_METERS = 30;
 
 function pad(n) {
   return String(n).padStart(2, '0');

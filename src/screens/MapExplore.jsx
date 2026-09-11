@@ -51,12 +51,21 @@ function pinIcon(checkedIn, addedToTrip) {
   return PIN_ICON_CACHE.get(key);
 }
 
+// A marker's icon is one of the (checkedIn, addedToTrip) instances cached by
+// pinIcon -- comparing identity against the two "checked in" cache entries is
+// enough to tell without needing a second source of truth per marker.
+function isCheckedInIcon(icon) {
+  return icon === PIN_ICON_CACHE.get('true-false') || icon === PIN_ICON_CACHE.get('true-true');
+}
+
 function clusterIcon(cluster) {
-  const count = cluster.getChildCount();
+  const children = cluster.getAllChildMarkers();
+  const count = children.length;
   const size = count < 10 ? 34 : count < 30 ? 42 : 50;
+  const allCheckedIn = count > 0 && children.every((m) => isCheckedInIcon(m.options.icon));
   return L.divIcon({
     className: '',
-    html: `<div class="map-cluster" style="width:${size}px;height:${size}px;">${count}</div>`,
+    html: `<div class="map-cluster ${allCheckedIn ? 'map-cluster-done' : ''}" style="width:${size}px;height:${size}px;">${count}</div>`,
     iconSize: [size, size],
   });
 }
@@ -479,7 +488,7 @@ export default function MapExplore() {
     () =>
       customLandmarks.map((l) => {
         const region = getRegion(l.region);
-        const syntheticLandmark = { id: l.id, name: l.name, regionId: l.region };
+        const syntheticLandmark = { id: l.id, name: l.name, regionId: l.region, lat: l.lat, lng: l.lng };
         const isClaimed = !!claimedMap[l.id];
         const isSelected = selectedDocIds.includes(l.docId);
         return (
