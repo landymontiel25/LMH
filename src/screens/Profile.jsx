@@ -73,9 +73,9 @@ function InviteButton({ myUsername }) {
 }
 
 // The user's check-in history, viewable as a list or a 3-across photo grid.
-function CheckinsView({ user, claimedMap, navigate }) {
+function CheckinsView({ user, claimedMap, navigate, totalPoints }) {
   const [checkins, setCheckins] = useState(null);
-  const [layout, setLayout] = useState('grid'); // 'list' | 'grid'
+  const [layout, setLayout] = useState('list'); // 'list' | 'grid'
 
   useEffect(() => {
     let cancelled = false;
@@ -128,6 +128,12 @@ function CheckinsView({ user, claimedMap, navigate }) {
 
   return (
     <div className="section">
+      <div className="card" style={{ textAlign: 'center', marginBottom: 14 }}>
+        <div className="rank-hero-pts" style={{ fontSize: '1.8rem' }}>
+          {totalPoints.toLocaleString()} <span>total points</span>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h3 style={{ margin: 0 }}>{'\u{1F4F8}'} My Check-ins {checkins ? `(${checkins.length})` : ''}</h3>
         <div className="tabs" style={{ margin: 0 }}>
@@ -501,7 +507,7 @@ export default function Profile() {
 
       {/* 2 — Leaderboard OR check-ins gallery */}
       {isCheckins ? (
-        <CheckinsView user={user} claimedMap={claimedMap} navigate={navigate} />
+        <CheckinsView user={user} claimedMap={claimedMap} navigate={navigate} totalPoints={stats?.totalPoints || 0} />
       ) : (
         <div className="section">
           <h3>{'\u{1F3C6}'} Leaderboard</h3>
@@ -585,10 +591,6 @@ export default function Profile() {
             <span className="profile-stat-num">{stats ? stats.cities : '…'}</span>
             <span className="profile-stat-label">cities{stats?.cityIds?.length ? ' ›' : ''}</span>
           </button>
-          <div className="profile-stat">
-            <span className="profile-stat-num">{stats ? stats.totalPoints.toLocaleString() : '…'}</span>
-            <span className="profile-stat-label">total pts</span>
-          </div>
         </div>
       </div>
 
