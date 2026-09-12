@@ -11,6 +11,7 @@ import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 import TripRecapCard from '../components/TripRecapCard';
 import ThemedChallenge from '../components/ThemedChallenge';
+import OfflineDownloadButton from '../components/OfflineDownloadButton';
 import { getRegion } from '../data/regions';
 import { geocodeLocation } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
@@ -340,6 +341,7 @@ export default function Itinerary() {
           setRegionSelection(region.id, merged);
         }}
       />
+      <OfflineDownloadButton region={region} />
 
       {showRecap && (
         <TripRecapCard
