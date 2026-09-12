@@ -198,8 +198,15 @@ function CheckinsView({ user, claimedMap, navigate, totalPoints }) {
 // Preferences" card below and the one-time onboarding step right after
 // signup, so both stay in sync with the same trip.saved* fields.
 function PreferenceChips() {
-  const { trip, toggleSavedInterest, addSavedCustomInterest, removeSavedCustomInterest, setCustomInterestMatches, setCustomInterestEmoji } =
-    useTrip();
+  const {
+    trip,
+    toggleSavedInterest,
+    addSavedCustomInterest,
+    removeSavedCustomInterest,
+    toggleSavedCustomInterestSelected,
+    setCustomInterestMatches,
+    setCustomInterestEmoji,
+  } = useTrip();
   const [classifying, setClassifying] = useState(() => new Set());
 
   const addCustom = (text) => {
@@ -229,27 +236,41 @@ function PreferenceChips() {
           <span>{i.label}</span>
         </button>
       ))}
-      {trip.savedCustomInterests.map((text) => (
-        <div
-          key={text}
-          className="chip selected"
-          style={{ cursor: 'default' }}
-          title={classifying.has(text) ? 'Finding matching landmarks…' : undefined}
-        >
-          <span className="chip-icon">
-            {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
-          </span>
-          <span>{text}</span>
-          <button
-            type="button"
-            className="chip-remove"
-            aria-label={`Remove ${text}`}
-            onClick={() => removeSavedCustomInterest(text)}
+      {trip.savedCustomInterests.map((text) => {
+        const isSelected = !trip.deselectedCustomInterests.includes(text);
+        return (
+          <div
+            key={text}
+            role="button"
+            tabIndex={0}
+            className={`chip ${isSelected ? 'selected' : ''}`}
+            title={classifying.has(text) ? 'Finding matching landmarks…' : isSelected ? 'Tap to turn off' : 'Tap to turn on'}
+            onClick={() => toggleSavedCustomInterestSelected(text)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleSavedCustomInterestSelected(text);
+              }
+            }}
           >
-            {'\u{1F5D1}\u{FE0F}'}
-          </button>
-        </div>
-      ))}
+            <span className="chip-icon">
+              {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
+            </span>
+            <span>{text}</span>
+            <button
+              type="button"
+              className="chip-remove"
+              aria-label={`Remove ${text}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                removeSavedCustomInterest(text);
+              }}
+            >
+              {'\u{1F5D1}\u{FE0F}'}
+            </button>
+          </div>
+        );
+      })}
       <AddInterestChip existing={trip.savedCustomInterests} onAdd={addCustom} />
     </div>
   );
