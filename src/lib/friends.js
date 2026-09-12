@@ -95,6 +95,17 @@ export async function findUserByEmail(email) {
   return snap.docs[0]?.data() || null;
 }
 
+// Have I already sent toUid a request? A direct getDoc on the deterministic
+// friend_requests/{fromUid}_{toUid} id would throw permission-denied when the
+// doc doesn't exist yet (rules can't tell "not found" from "not yours" on a
+// null resource), so this queries by "from" instead -- list rules evaluate
+// per returned (i.e. existing) document, sidestepping that.
+export async function hasPendingRequestTo(fromUid, toUid) {
+  if (!db || !fromUid || !toUid) return false;
+  const snap = await getDocs(query(collection(db, 'friend_requests'), where('from', '==', fromUid)));
+  return snap.docs.some((d) => d.data().to === toUid);
+}
+
 export async function sendFriendRequest(fromUser, toUser) {
   if (fromUser.uid === toUser.uid) throw new Error("That's your own account.");
   const edge = await getDoc(doc(db, 'friend_edges', `${fromUser.uid}_${toUser.uid}`));

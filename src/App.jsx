@@ -17,6 +17,7 @@ import AddLandmark from './screens/AddLandmark';
 import LandmarkDetail from './screens/LandmarkDetail';
 import Itinerary from './screens/Itinerary';
 import Profile from './screens/Profile';
+import FullLeaderboard from './screens/FullLeaderboard';
 import Test from './screens/Test';
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="/itinerary" element={<Itinerary />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/leaderboard" element={<Profile />} />
+              <Route path="/leaderboard/full" element={<FullLeaderboard />} />
               <Route path="/account" element={<Profile />} />
               <Route path="/test" element={<Test />} />
             </Routes>
