@@ -18,6 +18,7 @@ import LandmarkDetail from './screens/LandmarkDetail';
 import Itinerary from './screens/Itinerary';
 import Profile from './screens/Profile';
 import FullLeaderboard from './screens/FullLeaderboard';
+import Legal from './screens/Legal';
 import Test from './screens/Test';
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
               <Route path="/leaderboard" element={<Profile />} />
               <Route path="/leaderboard/full" element={<FullLeaderboard />} />
               <Route path="/account" element={<Profile />} />
+              <Route path="/legal" element={<Legal />} />
               <Route path="/test" element={<Test />} />
             </Routes>
           </main>

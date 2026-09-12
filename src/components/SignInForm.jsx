@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
 
@@ -177,6 +178,12 @@ export default function SignInForm({ onSignedUp }) {
       >
         {mode === 'signup' ? 'Already have an account? Sign In' : 'New here? Create an Account'}
       </button>
+
+      <p style={{ textAlign: 'center', marginTop: 18, fontSize: '0.78rem' }}>
+        <Link to="/legal" style={{ color: 'var(--color-parchment-dim)' }}>
+          Privacy Policy & Terms of Service
+        </Link>
+      </p>
     </div>
   );
 }

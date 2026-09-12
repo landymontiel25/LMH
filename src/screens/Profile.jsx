@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useCheckIn } from '../lib/useCheckIn';
@@ -706,6 +706,11 @@ export default function Profile() {
         <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
           Sign Out
         </button>
+        <p style={{ textAlign: 'center', marginTop: 12, marginBottom: 0, fontSize: '0.78rem' }}>
+          <Link to="/legal" style={{ color: 'var(--color-parchment-dim)' }}>
+            Privacy Policy & Terms of Service
+          </Link>
+        </p>
         <button
           className="btn btn-ghost btn-block"
           style={{ marginTop: 8, color: 'var(--color-error, #b3503f)' }}
