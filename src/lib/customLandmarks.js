@@ -1,4 +1,17 @@
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  serverTimestamp,
+  arrayUnion,
+} from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
 
@@ -22,6 +35,17 @@ export async function getPendingLandmarks() {
   if (!db) return [];
   const snap = await getDocs(collection(db, 'custom_landmarks'));
   return snap.docs.map((d) => ({ docId: d.id, ...d.data() })).filter((l) => l.status === 'pending');
+}
+
+// Live pending count for the admin nav badge (item f4) -- no email/push
+// setup needed, so nothing new to configure. Returns an unsubscribe fn.
+export function subscribePendingCount(callback) {
+  if (!db) return () => {};
+  return onSnapshot(
+    query(collection(db, 'custom_landmarks'), where('status', '==', 'pending')),
+    (snap) => callback(snap.size),
+    () => callback(0)
+  );
 }
 
 // Direct lookup by id -- the doc id and the `id` field are always the same
