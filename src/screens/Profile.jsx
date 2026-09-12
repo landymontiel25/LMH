@@ -4,9 +4,9 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useTrip } from '../lib/TripContext';
-import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName } from '../lib/leaderboard';
+import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName, cleanName } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
-import { setProfileVisibility, getUserProfile, sendFriendRequest } from '../lib/friends';
+import { setProfileVisibility, getUserProfile } from '../lib/friends';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
@@ -15,6 +15,7 @@ import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
 import AddInterestChip from '../components/AddInterestChip';
 import LandmarkThumb from '../components/LandmarkThumb';
+import FriendPopoverName from '../components/FriendPopoverName';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -35,13 +36,6 @@ function fmtDateTime(seconds) {
     hour: 'numeric',
     minute: '2-digit',
   });
-}
-
-// Never render a raw email on the public board (privacy). Falls back to the
-// part before the "@" for any legacy entry that predates usernames.
-function cleanName(name) {
-  if (!name) return 'Explorer';
-  return /@.+\./.test(name) ? name.split('@')[0] : name;
 }
 
 function InviteButton({ myUsername }) {
@@ -70,100 +64,6 @@ function InviteButton({ myUsername }) {
     <button className="btn btn-primary btn-block" onClick={share}>
       {copied ? '✓ Invite copied!' : '\u{1F465} Invite Friends to Compete'}
     </button>
-  );
-}
-
-// Wraps a leaderboard name so hovering it (desktop) or tapping it (mobile)
-// pops open a small card with that person's @username and a one-tap way to
-// friend them -- fetched on demand since the leaderboard entry itself only
-// carries a display name, not their real username or current friend status.
-function FriendPopoverName({ userId, fallbackName, children }) {
-  const { user } = useAuth();
-  const { friendUids, myUsername } = useFriends();
-  const [open, setOpen] = useState(false);
-  const [profile, setProfile] = useState(null);
-  const [status, setStatus] = useState(null); // null | 'sending' | 'sent' | error message
-  const ref = useRef(null);
-  const closeTimer = useRef(null);
-
-  const isMe = user && userId === user.uid;
-  const isFriend = friendUids.has(userId);
-
-  // Same hover-with-grace-period + tap-to-toggle pattern as the header's own
-  // profile popover, so it behaves the same on a Mac trackpad and a phone.
-  const openNow = () => {
-    clearTimeout(closeTimer.current);
-    setOpen(true);
-  };
-  const closeSoon = () => {
-    closeTimer.current = setTimeout(() => setOpen(false), 250);
-  };
-  useEffect(() => () => clearTimeout(closeTimer.current), []);
-
-  useEffect(() => {
-    if (open && !profile && userId) {
-      getUserProfile(userId).then((p) => setProfile(p || {})).catch(() => setProfile({}));
-    }
-  }, [open, userId, profile]);
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const addFriend = async () => {
-    if (!user || !profile?.uid) return;
-    setStatus('sending');
-    try {
-      await sendFriendRequest(
-        { uid: user.uid, username: myUsername, displayName: user.displayName, email: user.email },
-        profile
-      );
-      setStatus('sent');
-    } catch (e) {
-      setStatus(e.message || 'Could not send request.');
-    }
-  };
-
-  return (
-    <span className="user-popover" ref={ref} onMouseEnter={openNow} onMouseLeave={closeSoon}>
-      <span
-        className="user-popover-trigger"
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setOpen((o) => !o);
-          }
-        }}
-      >
-        {children}
-      </span>
-      {open && (
-        <div className="user-popover-card" onClick={(e) => e.stopPropagation()}>
-          <div className="user-popover-username">@{profile?.username || fallbackName}</div>
-          {!isMe &&
-            (isFriend ? (
-              <span className="user-popover-note">{'\u{2713}'} Friends</span>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-primary btn-tight"
-                disabled={!profile || status === 'sending' || status === 'sent'}
-                onClick={addFriend}
-              >
-                {status === 'sent' ? `${'\u{2713}'} Sent` : status === 'sending' ? '…' : `${'\u{2795}'} Add Friend`}
-              </button>
-            ))}
-          {status && status !== 'sending' && status !== 'sent' && <p className="user-popover-note">{status}</p>}
-        </div>
-      )}
-    </span>
   );
 }
 
@@ -504,7 +404,6 @@ export default function Profile() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCities, setShowCities] = useState(false);
-  const [showFullBoard, setShowFullBoard] = useState(false);
   const [justSignedUp, setJustSignedUp] = useState(false);
   const healedRef = useRef(false);
 
@@ -664,7 +563,11 @@ export default function Profile() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0 }}>{'\u{1F3C6}'} Leaderboard</h3>
             {!loading && entries.length > 0 && (
-              <button type="button" className="btn btn-ghost btn-tight" onClick={() => setShowFullBoard(true)}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-tight"
+                onClick={() => navigate(`/leaderboard/full?period=${period}`)}
+              >
                 See Full List
               </button>
             )}
@@ -799,32 +702,6 @@ export default function Profile() {
           Sign Out
         </button>
       </div>
-
-      {showFullBoard && (
-        <div className="modal-backdrop" onClick={() => setShowFullBoard(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>
-              {'\u{1F3C6}'} Full Leaderboard {'\u{2014}'} {PERIOD_LABEL[period]}
-            </h3>
-            {entries.map((e, idx) => (
-              <div key={e.id} className={`leaderboard-row ${e.userId === user.uid ? 'me' : ''}`}>
-                <div className="leaderboard-rank">#{idx + 1}</div>
-                <div style={{ flex: 1 }}>
-                  <FriendPopoverName userId={e.userId} fallbackName={displayFor(e)}>
-                    {displayFor(e)}
-                  </FriendPopoverName>
-                </div>
-                <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-brass-bright)', fontWeight: 700 }}>
-                  {e.points.toLocaleString()} pts
-                </div>
-              </div>
-            ))}
-            <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setShowFullBoard(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
 
       {showCities && (
         <div className="modal-backdrop" onClick={() => setShowCities(false)}>
