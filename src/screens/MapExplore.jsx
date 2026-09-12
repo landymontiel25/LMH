@@ -14,6 +14,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { getLandmarkOverrides } from '../lib/landmarkOverrides';
 import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks';
+import { isAdmin } from '../lib/admins';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 
@@ -377,14 +378,16 @@ export default function MapExplore() {
                     {'ℹ️'} Info
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm btn-block"
-                  style={{ marginTop: 8 }}
-                  onClick={() => removeCustomLandmark(l.docId)}
-                >
-                  {'\u{1F5D1}'} Remove Pin
-                </button>
+                {user && (l.createdBy === user.uid || isAdmin(user.email)) && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm btn-block"
+                    style={{ marginTop: 8 }}
+                    onClick={() => removeCustomLandmark(l.docId)}
+                  >
+                    {'\u{1F5D1}'} Remove Pin
+                  </button>
+                )}
               </div>
             </Popup>
           </Marker>

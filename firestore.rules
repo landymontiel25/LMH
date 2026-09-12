@@ -163,7 +163,10 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportedBy'])
           )
         );
-      allow delete: if request.auth != null;
+      // Only the original submitter or an admin can delete a submission --
+      // any other signed-in account could wipe any landmark before this.
+      allow delete: if request.auth != null
+        && (resource.data.createdBy == request.auth.uid || request.auth.token.email in ['landymontiel25@gmail.com']);
     }
   }
 }
