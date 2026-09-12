@@ -12,6 +12,7 @@ import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
 import { computeStreakDays, computeBadges } from '../lib/streaks';
+import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
 import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
@@ -44,8 +45,9 @@ function InviteButton({ myUsername }) {
   const [copied, setCopied] = useState(false);
   const share = async () => {
     const handle = myUsername ? ` My username is @${myUsername} — add me and try to beat my score!` : '';
-    const text = `I'm hunting landmarks on Landmark Hunters 🏆 Come compete with me!${handle}`;
-    const url = 'https://landmarkhunters.com';
+    const bonus = myUsername ? ` (we both get ${REFERRAL_BONUS_POINTS} bonus points once you sign up!)` : '';
+    const text = `I'm hunting landmarks on Landmark Hunters 🏆 Come compete with me!${handle}${bonus}`;
+    const url = myUsername ? `https://landmarkhunters.com/?ref=${myUsername}` : 'https://landmarkhunters.com';
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Landmark Hunters', text, url });
@@ -419,6 +421,7 @@ export default function Profile() {
   const healedRef = useRef(false);
   const [streakDays, setStreakDays] = useState(0);
   const [badges, setBadges] = useState([]);
+  const [bonusPoints, setBonusPoints] = useState(0);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -472,6 +475,28 @@ export default function Profile() {
       cancelled = true;
     };
   }, [firebaseEnabled, user, claimedMap, stats]);
+
+  // Referral bonuses (item i8) -- claims anything owed (as the referred
+  // user, and/or as a referrer whose link brought in a new signup) once
+  // per Profile visit, then reads the resulting total back.
+  useEffect(() => {
+    if (!firebaseEnabled || !user) {
+      setBonusPoints(0);
+      return;
+    }
+    let cancelled = false;
+    claimMyReferralBonuses(user.uid)
+      .then(() => getUserProfile(user.uid))
+      .then((profile) => {
+        if (!cancelled) setBonusPoints(profile?.bonusPoints || 0);
+      })
+      .catch(() => {
+        if (!cancelled) setBonusPoints(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseEnabled, user]);
 
   // Self-heal: if your board row still shows an email/old name, rewrite it.
   useEffect(() => {
@@ -709,6 +734,12 @@ export default function Profile() {
             <span className="profile-stat-label">day streak</span>
           </div>
         </div>
+
+        {bonusPoints > 0 && (
+          <p className="tag" style={{ marginTop: 14 }}>
+            {'\u{1F381}'} {bonusPoints.toLocaleString()} referral bonus points
+          </p>
+        )}
 
         {badges.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
