@@ -224,5 +224,26 @@ service cloud.firestore {
       allow delete: if request.auth != null
         && (resource.data.createdBy == request.auth.uid || request.auth.token.email in ['landymontiel25@gmail.com']);
     }
+
+    // A trip a few friends build together (item i6). Only current members
+    // can see or touch it at all; only the owner can change who's a member
+    // (add/remove), while any member can edit the shared landmark list --
+    // two separate permissions enforced by which fields a write touches.
+    match /group_trips/{tripId} {
+      allow get: if request.auth != null && request.auth.uid in resource.data.memberUids;
+      allow list: if request.auth != null && request.auth.uid in resource.data.memberUids;
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.auth.uid in request.resource.data.memberUids;
+      allow update: if request.auth != null
+        && request.auth.uid in resource.data.memberUids
+        && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['landmarkIds'])
+          || (request.auth.uid == resource.data.ownerUid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'memberNames', 'name'])
+              && request.resource.data.ownerUid in request.resource.data.memberUids)
+        );
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+    }
   }
 }
