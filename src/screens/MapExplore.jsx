@@ -11,6 +11,7 @@ import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
 import { useCheckIn } from '../lib/useCheckIn';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import { getLandmarkOverrides } from '../lib/landmarkOverrides';
 import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks';
 import CheckInButton from '../components/CheckInButton';
@@ -163,6 +164,7 @@ function LocateControl({ coords, radiusMiles }) {
 export default function MapExplore() {
   const { toggleLandmark, getRegionSelection, trip, mapFocus, mapFocusPoint, setMapFocusPoint } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
   const { coords, error: geoError, loading: geoLoading } = useGeo();
   const mapRef = useRef(null);
@@ -296,7 +298,7 @@ export default function MapExplore() {
                   style={{ cursor: 'pointer' }}
                   title="Tap for details"
                 >
-                  <LandmarkThumb landmark={l} width={228} height={110} />
+                  <LandmarkThumb landmark={l} width={228} height={110} myPhoto={myPhotos[l.id]?.[0]} />
                 </div>
                 <h4 style={{ marginTop: 8 }}>{l.name}</h4>
                 <p style={{ margin: '2px 0 8px', fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>

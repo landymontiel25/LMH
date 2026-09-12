@@ -4,6 +4,7 @@ import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useRatings } from '../lib/RatingsContext';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import { distanceMeters } from '../lib/geo';
 import { mapsDeepLink } from '../lib/routing';
 import { classifyInterest } from '../lib/interestClassifier';
@@ -97,6 +98,7 @@ export default function LandmarkSelection() {
   } = useTrip();
   const { coords } = useGeo();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { myPhotos } = useMyPhotos();
   const { ratings } = useRatings();
   const navigate = useNavigate();
   // Default to the trip's already-chosen region (from Setup) so picking up where you
@@ -325,7 +327,7 @@ export default function LandmarkSelection() {
                   {isSelected ? '✓' : ''}
                 </div>
                 <div onClick={() => handleToggle(l)} style={{ flexShrink: 0 }}>
-                  <LandmarkThumb landmark={l} />
+                  <LandmarkThumb landmark={l} myPhoto={myPhotos[l.id]?.[0]} />
                 </div>
                 <div className="lr-main" onClick={() => handleToggle(l)}>
                   <h4>

@@ -4,6 +4,7 @@ import { CheckInProvider } from './lib/CheckInContext';
 import { TripProvider } from './lib/TripContext';
 import { GeoProvider } from './lib/GeoContext';
 import { RatingsProvider } from './lib/RatingsContext';
+import { MyPhotosProvider } from './lib/MyPhotosContext';
 import { FriendsProvider } from './lib/FriendsContext';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -26,6 +27,7 @@ export default function App() {
       <TripProvider>
         <GeoProvider>
           <RatingsProvider>
+          <MyPhotosProvider>
           <HashRouter>
           <Header />
           <main className="app-main">
@@ -46,6 +48,7 @@ export default function App() {
           <CheckInReview />
           <AskLandmarkWidget />
           </HashRouter>
+          </MyPhotosProvider>
           </RatingsProvider>
         </GeoProvider>
       </TripProvider>
