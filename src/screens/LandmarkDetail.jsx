@@ -76,6 +76,7 @@ export default function LandmarkDetail() {
   const { friendUids, myUsername } = useFriends();
   const [myStars, setMyStars] = useState(0);
   const [myComment, setMyComment] = useState('');
+  const [myPhotos, setMyPhotos] = useState([]);
   const [photoFiles, setPhotoFiles] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -141,20 +142,18 @@ export default function LandmarkDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, landmark]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (firebaseEnabled && user && landmark) {
-      getMyReview(user.uid, landmark.id).then((r) => {
-        if (!cancelled && r) {
-          setMyStars(r.stars || 0);
-          setMyComment(r.comment || '');
-        }
-      });
-    }
-    return () => {
-      cancelled = true;
-    };
+  const loadMyReview = useCallback(async () => {
+    if (!firebaseEnabled || !user || !landmark) return;
+    const r = await getMyReview(user.uid, landmark.id);
+    if (!r) return;
+    setMyStars(r.stars || 0);
+    setMyComment(r.comment || '');
+    setMyPhotos(r.photoURLs?.length ? r.photoURLs : r.photoURL ? [r.photoURL] : []);
   }, [firebaseEnabled, user, landmark]);
+
+  useEffect(() => {
+    loadMyReview();
+  }, [loadMyReview]);
 
   const loadReviews = useCallback(async () => {
     if (!firebaseEnabled || !landmark) return;
@@ -221,6 +220,7 @@ export default function LandmarkDetail() {
       });
       await reloadRatings();
       await loadReviews();
+      await loadMyReview();
       setPhotoFiles([]);
       setPhotoPreviews([]);
       setSaveMsg(res?.photoFailed ? "Rating saved — but your photo couldn't upload." : 'Thanks — your rating is in! ⭐');
@@ -235,6 +235,7 @@ export default function LandmarkDetail() {
     await deleteMyReview(user.uid, landmark.id);
     setMyStars(0);
     setMyComment('');
+    setMyPhotos([]);
     await reloadRatings();
     await loadReviews();
   };
@@ -278,7 +279,7 @@ export default function LandmarkDetail() {
         {'← Back'}
       </button>
 
-      <LandmarkPostcard landmark={landmark} size="lg" swipeable />
+      <LandmarkPostcard landmark={landmark} size="lg" swipeable myPhotos={myPhotos} onImageClick={setLightboxSrc} />
 
       <h1 className="screen-title" style={{ justifyContent: 'center', textAlign: 'center' }}>
         {landmark.name}
