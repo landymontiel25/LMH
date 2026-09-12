@@ -117,6 +117,22 @@ textarea {
   padding: 20px 16px calc(var(--nav-h) + 32px);
 }
 
+/* Shown briefly while a lazy-loaded screen's chunk downloads. */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0;
+  font-size: 2rem;
+  opacity: 0.6;
+  animation: app-loading-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes app-loading-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.75; }
+}
+
 .screen-title {
   font-size: 1.6rem;
   display: flex;

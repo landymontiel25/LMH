@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './lib/AuthContext';
 import { CheckInProvider } from './lib/CheckInContext';
@@ -11,16 +12,21 @@ import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import CheckInReview from './components/CheckInReview';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
-import TripSetup from './screens/TripSetup';
-import LandmarkSelection from './screens/LandmarkSelection';
-import MapExplore from './screens/MapExplore';
-import AddLandmark from './screens/AddLandmark';
-import LandmarkDetail from './screens/LandmarkDetail';
-import Itinerary from './screens/Itinerary';
-import Profile from './screens/Profile';
-import FullLeaderboard from './screens/FullLeaderboard';
-import Legal from './screens/Legal';
-import Test from './screens/Test';
+
+// Lazy so each screen (and, critically, Leaflet + its cluster plugin --
+// only pulled in by MapExplore/AddLandmark) ships as its own chunk instead
+// of all up front in one bundle, same as everything past the entry chunk
+// that Vite would otherwise inline.
+const TripSetup = lazy(() => import('./screens/TripSetup'));
+const LandmarkSelection = lazy(() => import('./screens/LandmarkSelection'));
+const MapExplore = lazy(() => import('./screens/MapExplore'));
+const AddLandmark = lazy(() => import('./screens/AddLandmark'));
+const LandmarkDetail = lazy(() => import('./screens/LandmarkDetail'));
+const Itinerary = lazy(() => import('./screens/Itinerary'));
+const Profile = lazy(() => import('./screens/Profile'));
+const FullLeaderboard = lazy(() => import('./screens/FullLeaderboard'));
+const Legal = lazy(() => import('./screens/Legal'));
+const Test = lazy(() => import('./screens/Test'));
 
 // Keyed by path so a crash's fallback UI clears itself on the next
 // navigation (React Router doesn't remount the boundary just because the
@@ -29,20 +35,22 @@ function AppRoutes() {
   const location = useLocation();
   return (
     <ErrorBoundary key={location.pathname}>
-      <Routes>
-        <Route path="/" element={<MapExplore />} />
-        <Route path="/add-landmark" element={<AddLandmark />} />
-        <Route path="/setup" element={<TripSetup />} />
-        <Route path="/landmarks" element={<LandmarkSelection />} />
-        <Route path="/landmarks/:region/:id" element={<LandmarkDetail />} />
-        <Route path="/itinerary" element={<Itinerary />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/leaderboard" element={<Profile />} />
-        <Route path="/leaderboard/full" element={<FullLeaderboard />} />
-        <Route path="/account" element={<Profile />} />
-        <Route path="/legal" element={<Legal />} />
-        <Route path="/test" element={<Test />} />
-      </Routes>
+      <Suspense fallback={<div className="app-loading">{'\u{1F9ED}'}</div>}>
+        <Routes>
+          <Route path="/" element={<MapExplore />} />
+          <Route path="/add-landmark" element={<AddLandmark />} />
+          <Route path="/setup" element={<TripSetup />} />
+          <Route path="/landmarks" element={<LandmarkSelection />} />
+          <Route path="/landmarks/:region/:id" element={<LandmarkDetail />} />
+          <Route path="/itinerary" element={<Itinerary />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/leaderboard" element={<Profile />} />
+          <Route path="/leaderboard/full" element={<FullLeaderboard />} />
+          <Route path="/account" element={<Profile />} />
+          <Route path="/legal" element={<Legal />} />
+          <Route path="/test" element={<Test />} />
+        </Routes>
+      </Suspense>
     </ErrorBoundary>
   );
 }
