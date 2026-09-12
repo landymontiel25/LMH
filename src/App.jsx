@@ -27,6 +27,7 @@ const Itinerary = lazy(() => import('./screens/Itinerary'));
 const Profile = lazy(() => import('./screens/Profile'));
 const FullLeaderboard = lazy(() => import('./screens/FullLeaderboard'));
 const Legal = lazy(() => import('./screens/Legal'));
+const GroupTrip = lazy(() => import('./screens/GroupTrip'));
 const Test = lazy(() => import('./screens/Test'));
 
 // Keyed by path so a crash's fallback UI clears itself on the next
@@ -49,6 +50,7 @@ function AppRoutes() {
           <Route path="/leaderboard/full" element={<FullLeaderboard />} />
           <Route path="/account" element={<Profile />} />
           <Route path="/legal" element={<Legal />} />
+          <Route path="/group/:tripId" element={<GroupTrip />} />
           <Route path="/test" element={<Test />} />
         </Routes>
       </Suspense>
