@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 import { getRegion } from '../data/regions';
@@ -116,6 +117,7 @@ export default function Itinerary() {
   const { trip, toggleLandmark, regionsWithItineraries, updateTrip, setMapFocus } = useTrip();
   const { coords } = useGeo();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
 
   // One itinerary per city. Overview lists them; opening one shows its route.
@@ -359,7 +361,7 @@ export default function Itinerary() {
               <div className="card" style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <LandmarkThumb landmark={stop} size={44} />
+                    <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
                     <h4 style={{ margin: 0, color: 'var(--color-parchment)' }}>{stop.name}</h4>
                   </div>
                   <button

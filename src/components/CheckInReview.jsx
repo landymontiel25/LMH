@@ -3,6 +3,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useRatings } from '../lib/RatingsContext';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import { submitReview } from '../lib/reviews';
 import RatingStars from './RatingStars';
 
@@ -15,6 +16,7 @@ export default function CheckInReview() {
   const { user } = useAuth();
   const { myUsername } = useFriends();
   const { reload: reloadRatings } = useRatings();
+  const { reload: reloadMyPhotos } = useMyPhotos();
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState('');
   const [photoFiles, setPhotoFiles] = useState([]);
@@ -67,6 +69,7 @@ export default function CheckInReview() {
         photoFiles,
       });
       await reloadRatings();
+      await reloadMyPhotos();
       if (res?.photoFailed) {
         // Check-in + rating saved; only the photo didn't. Don't trap the user.
         setMsg("Checked in! Your photo couldn't upload — tap Done to close.");

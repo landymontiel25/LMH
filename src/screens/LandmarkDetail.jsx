@@ -6,6 +6,7 @@ import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useRatings } from '../lib/RatingsContext';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
 import {
   submitReview,
@@ -73,6 +74,7 @@ export default function LandmarkDetail() {
     [staticLandmark, customLandmark]
   );
   const { ratings, reload: reloadRatings } = useRatings();
+  const { reload: reloadMyPhotos } = useMyPhotos();
   const { friendUids, myUsername } = useFriends();
   const [myStars, setMyStars] = useState(0);
   const [myComment, setMyComment] = useState('');
@@ -221,6 +223,7 @@ export default function LandmarkDetail() {
       await reloadRatings();
       await loadReviews();
       await loadMyReview();
+      await reloadMyPhotos();
       setPhotoFiles([]);
       setPhotoPreviews([]);
       setSaveMsg(res?.photoFailed ? "Rating saved — but your photo couldn't upload." : 'Thanks — your rating is in! ⭐');
@@ -238,6 +241,7 @@ export default function LandmarkDetail() {
     setMyPhotos([]);
     await reloadRatings();
     await loadReviews();
+    await reloadMyPhotos();
   };
 
   const handleReport = async (rv) => {
