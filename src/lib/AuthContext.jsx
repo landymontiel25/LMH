@@ -8,9 +8,13 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   signOut,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  deleteUser,
 } from 'firebase/auth';
 import { auth, googleProvider, firebaseEnabled } from './firebase';
 import { authErrorMessage } from './authErrors';
+import { deleteAccountData } from './accountDeletion';
 
 const AuthContext = createContext(null);
 
@@ -52,6 +56,20 @@ export function AuthProvider({ children }) {
 
   const signOutUser = () => signOut(auth);
 
+  // Requires a password because Firebase rejects deleteUser on a session
+  // that isn't "recent" -- reauthenticating first is the standard fix, and
+  // it doubles as a real confirmation step for an irreversible action.
+  // Firestore/Storage cleanup runs BEFORE deleteUser: once the Auth account
+  // is gone, request.auth is null and every rule above that checks it would
+  // reject the cleanup writes.
+  const deleteAccount = async (password) => {
+    const current = auth.currentUser;
+    const cred = EmailAuthProvider.credential(current.email, password);
+    await reauthenticateWithCredential(current, cred);
+    await deleteAccountData(current.uid);
+    await deleteUser(current);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -63,6 +81,7 @@ export function AuthProvider({ children }) {
         signInEmail,
         resetPassword,
         signOutUser,
+        deleteAccount,
         redirectError,
       }}
     >
