@@ -62,6 +62,31 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/blocks/$(request.resource.data.from + '_' + request.resource.data.to));
     }
 
+    // id is always the referred user's own uid -- at most one referral doc
+    // per account, so nobody can rack up bonuses "signing up" repeatedly.
+    // Each side (referrer, referred) can only ever flip its own uid's claim
+    // flag, and only once each field is created false -- see item i8.
+    match /referrals/{id} {
+      allow get: if request.auth != null && (id == request.auth.uid || resource.data.referrerUid == request.auth.uid);
+      allow list: if request.auth != null && resource.data.referrerUid == request.auth.uid;
+      allow create: if request.auth != null
+        && id == request.auth.uid
+        && request.resource.data.referredUid == request.auth.uid
+        && request.resource.data.referrerUid != request.auth.uid
+        && request.resource.data.referredClaimed == false
+        && request.resource.data.referrerClaimed == false;
+      allow update: if request.auth != null
+        && (
+          (id == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['referredClaimed'])
+            && request.resource.data.referredClaimed == true)
+          || (resource.data.referrerUid == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['referrerClaimed'])
+              && request.resource.data.referrerClaimed == true)
+        );
+      allow delete: if false;
+    }
+
     // id is always "{blockerUid}_{blockedUid}". Read/list/delete are scoped
     // to your own outgoing blocks; other rules below use exists() on a
     // specific id to check a block regardless of these rules (exists()/get()

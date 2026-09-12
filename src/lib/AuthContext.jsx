@@ -14,6 +14,7 @@ import {
 } from 'firebase/auth';
 import { auth, firebaseEnabled } from './firebase';
 import { deleteAccountData } from './accountDeletion';
+import { recordReferralIfPending } from './referrals';
 
 const AuthContext = createContext(null);
 
@@ -42,6 +43,7 @@ export function AuthProvider({ children }) {
     // Best-effort -- a signup that succeeds shouldn't fail just because the
     // verification email didn't send. resendVerification lets them retry.
     sendEmailVerification(cred.user).catch(() => {});
+    recordReferralIfPending(cred.user).catch(() => {});
     return cred.user;
   };
 
