@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './lib/AuthContext';
 import { CheckInProvider } from './lib/CheckInContext';
 import { TripProvider } from './lib/TripContext';
@@ -8,6 +8,7 @@ import { MyPhotosProvider } from './lib/MyPhotosContext';
 import { FriendsProvider } from './lib/FriendsContext';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
+import ErrorBoundary from './components/ErrorBoundary';
 import CheckInReview from './components/CheckInReview';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
 import TripSetup from './screens/TripSetup';
@@ -21,6 +22,31 @@ import FullLeaderboard from './screens/FullLeaderboard';
 import Legal from './screens/Legal';
 import Test from './screens/Test';
 
+// Keyed by path so a crash's fallback UI clears itself on the next
+// navigation (React Router doesn't remount the boundary just because the
+// matched route changed -- only re-keying it does).
+function AppRoutes() {
+  const location = useLocation();
+  return (
+    <ErrorBoundary key={location.pathname}>
+      <Routes>
+        <Route path="/" element={<MapExplore />} />
+        <Route path="/add-landmark" element={<AddLandmark />} />
+        <Route path="/setup" element={<TripSetup />} />
+        <Route path="/landmarks" element={<LandmarkSelection />} />
+        <Route path="/landmarks/:region/:id" element={<LandmarkDetail />} />
+        <Route path="/itinerary" element={<Itinerary />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/leaderboard" element={<Profile />} />
+        <Route path="/leaderboard/full" element={<FullLeaderboard />} />
+        <Route path="/account" element={<Profile />} />
+        <Route path="/legal" element={<Legal />} />
+        <Route path="/test" element={<Test />} />
+      </Routes>
+    </ErrorBoundary>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -33,20 +59,7 @@ export default function App() {
           <HashRouter>
           <Header />
           <main className="app-main">
-            <Routes>
-              <Route path="/" element={<MapExplore />} />
-              <Route path="/add-landmark" element={<AddLandmark />} />
-              <Route path="/setup" element={<TripSetup />} />
-              <Route path="/landmarks" element={<LandmarkSelection />} />
-              <Route path="/landmarks/:region/:id" element={<LandmarkDetail />} />
-              <Route path="/itinerary" element={<Itinerary />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/leaderboard" element={<Profile />} />
-              <Route path="/leaderboard/full" element={<FullLeaderboard />} />
-              <Route path="/account" element={<Profile />} />
-              <Route path="/legal" element={<Legal />} />
-              <Route path="/test" element={<Test />} />
-            </Routes>
+            <AppRoutes />
           </main>
           <BottomNav />
           <CheckInReview />
