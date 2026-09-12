@@ -4,7 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useTrip } from '../lib/TripContext';
-import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName } from '../lib/leaderboard';
+import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName, cleanName } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
 import { setProfileVisibility, getUserProfile, sendFriendRequest } from '../lib/friends';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
@@ -35,13 +35,6 @@ function fmtDateTime(seconds) {
     hour: 'numeric',
     minute: '2-digit',
   });
-}
-
-// Never render a raw email on the public board (privacy). Falls back to the
-// part before the "@" for any legacy entry that predates usernames.
-function cleanName(name) {
-  if (!name) return 'Explorer';
-  return /@.+\./.test(name) ? name.split('@')[0] : name;
 }
 
 function InviteButton({ myUsername }) {

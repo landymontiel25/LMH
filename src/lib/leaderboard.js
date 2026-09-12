@@ -175,6 +175,13 @@ export async function getUserCheckedInLandmarkIds(userId) {
  * Subscribes to the top entries for a leaderboard period. Calls onData with a sorted array.
  * Returns an unsubscribe function.
  */
+// Never render a raw email on the public board (privacy). Falls back to the
+// part before the "@" for any legacy entry that predates usernames.
+export function cleanName(name) {
+  if (!name) return 'Explorer';
+  return /@.+\./.test(name) ? name.split('@')[0] : name;
+}
+
 export function subscribeLeaderboard(period, onData, topN = 50) {
   const keys = periodKeys();
   const q = query(
