@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS } from '../src/data/regions.js';
+import { isRateLimited } from './_lib/rateLimit.js';
 
 // Custom interests (typed in on Setup, e.g. "nightlife", "racing") don't map to
 // any of the app's four built-in categories, so they can't filter Choose
@@ -25,6 +26,10 @@ export default async function handler(req, res) {
   }
   if (!process.env.ANTHROPIC_API_KEY) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
+    return;
+  }
+  if (isRateLimited(req, 'classify-interest', { limit: 30, windowMs: 10 * 60 * 1000 })) {
+    res.status(429).json({ error: 'Too many requests in a row — take a short break and try again.' });
     return;
   }
 

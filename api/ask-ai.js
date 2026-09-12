@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS } from '../src/data/regions.js';
+import { isRateLimited } from './_lib/rateLimit.js';
 
 // ONE unified AI assistant for Landmark Hunters. It knows the whole catalog, so
 // it can BOTH:
@@ -31,6 +32,10 @@ export default async function handler(req, res) {
   }
   if (!process.env.ANTHROPIC_API_KEY) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
+    return;
+  }
+  if (isRateLimited(req, 'ask-ai', { limit: 20, windowMs: 10 * 60 * 1000 })) {
+    res.status(429).json({ error: 'Too many questions in a row — take a short break and try again.' });
     return;
   }
 
