@@ -5,6 +5,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { submitReview } from '../lib/reviews';
+import { pickPhoto } from '../lib/imageUtils';
 import RatingStars from './RatingStars';
 
 // Pops up the moment "Check In" is tapped, to rate + optionally add photos —
@@ -38,9 +39,8 @@ export default function CheckInReview() {
 
   if (!justCheckedIn) return null;
 
-  const onPhoto = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
+  const onPhoto = async () => {
+    const f = await pickPhoto();
     if (f) {
       setPhotoFiles((prev) => (prev.length < 3 ? [...prev, f] : prev));
       setPhotoPreviews((prev) => (prev.length < 3 ? [...prev, URL.createObjectURL(f)] : prev));
@@ -149,10 +149,9 @@ export default function CheckInReview() {
             )}
             {photoFiles.length < 3 && (
               <div style={{ marginTop: 10 }}>
-                <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={onPhoto}>
                   {'\u{1F4F8}'} Add photo ({photoFiles.length}/3)
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPhoto} />
-                </label>
+                </button>
               </div>
             )}
 
