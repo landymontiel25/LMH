@@ -10,6 +10,7 @@ import { FriendsProvider } from './lib/FriendsContext';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
+import OfflineBanner from './components/OfflineBanner';
 import CheckInReview from './components/CheckInReview';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
 
@@ -65,6 +66,7 @@ export default function App() {
           <RatingsProvider>
           <MyPhotosProvider>
           <HashRouter>
+          <OfflineBanner />
           <Header />
           <main className="app-main">
             <AppRoutes />
