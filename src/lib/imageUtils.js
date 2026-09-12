@@ -1,3 +1,26 @@
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+
+// Opens the native camera/photo-library prompt (an actual iOS action sheet
+// once wrapped in Capacitor; the browser's own file picker on the web, via
+// the plugin's web fallback) and returns a single File, or null if the user
+// backed out without choosing one.
+export async function pickPhoto() {
+  let photo;
+  try {
+    photo = await Camera.getPhoto({
+      quality: 85,
+      resultType: CameraResultType.Uri,
+      source: CameraSource.Prompt,
+    });
+  } catch {
+    return null;
+  }
+  if (!photo.webPath) return null;
+  const blob = await (await fetch(photo.webPath)).blob();
+  const ext = photo.format || 'jpeg';
+  return new File([blob], `photo.${ext}`, { type: blob.type || `image/${ext}` });
+}
+
 // Shrinks an image file down to a small JPEG data URL for sending to the AI
 // verification endpoint -- the original file still gets uploaded to Storage
 // at full quality separately. Keeps the request tiny and fast regardless of

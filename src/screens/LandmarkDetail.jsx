@@ -21,6 +21,7 @@ import LandmarkPostcard from '../components/LandmarkPostcard';
 import CheckInButton from '../components/CheckInButton';
 import RatingStars from '../components/RatingStars';
 import { mapsDeepLink } from '../lib/routing';
+import { pickPhoto } from '../lib/imageUtils';
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
 const FACTS_PREVIEW = 5;
@@ -191,9 +192,8 @@ export default function LandmarkDetail() {
   const agg = ratings[landmark.id];
   const canRate = firebaseEnabled && user && claimedMap[landmark.id];
 
-  const onPhotoChange = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
+  const onPhotoChange = async () => {
+    const f = await pickPhoto();
     if (f) {
       setPhotoFiles((prev) => (prev.length < 3 ? [...prev, f] : prev));
       setPhotoPreviews((prev) => (prev.length < 3 ? [...prev, URL.createObjectURL(f)] : prev));
@@ -501,10 +501,9 @@ export default function LandmarkDetail() {
               )}
               {photoFiles.length < 3 && (
                 <div style={{ marginTop: 12 }}>
-                  <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={onPhotoChange}>
                     {'\u{1F4F8}'} Add photo ({photoFiles.length}/3)
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPhotoChange} />
-                  </label>
+                  </button>
                 </div>
               )}
               <button
