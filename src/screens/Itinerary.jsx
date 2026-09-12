@@ -10,6 +10,7 @@ import { useMyPhotos } from '../lib/MyPhotosContext';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 import TripRecapCard from '../components/TripRecapCard';
+import ThemedChallenge from '../components/ThemedChallenge';
 import { getRegion } from '../data/regions';
 import { geocodeLocation } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
@@ -115,7 +116,7 @@ function ItineraryMap({ origin, stops }) {
 const AUTO_ORIGIN_REFRESH_METERS = 150;
 
 export default function Itinerary() {
-  const { trip, toggleLandmark, regionsWithItineraries, updateTrip, setMapFocus } = useTrip();
+  const { trip, toggleLandmark, setRegionSelection, getRegionSelection, regionsWithItineraries, updateTrip, setMapFocus } = useTrip();
   const { coords } = useGeo();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { myPhotos } = useMyPhotos();
@@ -329,6 +330,16 @@ export default function Itinerary() {
           </button>
         )}
       </div>
+
+      <ThemedChallenge
+        regionId={region.id}
+        claimedMap={claimedMap}
+        onAddAll={(landmarks) => {
+          const current = getRegionSelection(region.id);
+          const merged = [...new Set([...current, ...landmarks.map((l) => l.id)])];
+          setRegionSelection(region.id, merged);
+        }}
+      />
 
       {showRecap && (
         <TripRecapCard
