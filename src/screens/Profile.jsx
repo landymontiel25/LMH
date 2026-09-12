@@ -6,6 +6,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useTrip } from '../lib/TripContext';
 import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName, cleanName } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
+import { authErrorMessage } from '../lib/authErrors';
 import { setProfileVisibility, getUserProfile } from '../lib/friends';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
@@ -393,7 +394,7 @@ function PendingLandmarksPanel({ email }) {
 }
 
 export default function Profile() {
-  const { user, firebaseEnabled, signOutUser } = useAuth();
+  const { user, firebaseEnabled, signOutUser, deleteAccount } = useAuth();
   const { myUsername, myProfile, reload: reloadFriends } = useFriends();
   const { claimedMap } = useCheckIn();
   const navigate = useNavigate();
@@ -406,6 +407,10 @@ export default function Profile() {
   const [showCities, setShowCities] = useState(false);
   const [justSignedUp, setJustSignedUp] = useState(false);
   const healedRef = useRef(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const isCheckins = tab === 'checkins';
   const period = isCheckins ? 'weekly' : tab; // the board always tracks a period
@@ -701,7 +706,69 @@ export default function Profile() {
         <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
           Sign Out
         </button>
+        <button
+          className="btn btn-ghost btn-block"
+          style={{ marginTop: 8, color: 'var(--color-error, #b3503f)' }}
+          onClick={() => {
+            setDeleteError('');
+            setDeletePassword('');
+            setShowDeleteAccount(true);
+          }}
+        >
+          Delete Account
+        </button>
       </div>
+
+      {showDeleteAccount && (
+        <div className="modal-backdrop" onClick={() => !deleteBusy && setShowDeleteAccount(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Delete your account?</h3>
+            <p className="screen-subtitle">
+              This permanently removes your sign-in, profile, reviews, and friend connections. Check-ins stay on the
+              leaderboard for scoring integrity but are stripped of your name and photo. This can't be undone.
+            </p>
+            <input
+              type="password"
+              className="friend-email-input"
+              placeholder="Confirm your password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              style={{ width: '100%', marginBottom: 10 }}
+            />
+            {deleteError && (
+              <p className="tag tag-error" style={{ display: 'block', marginBottom: 10 }}>
+                {deleteError}
+              </p>
+            )}
+            <button
+              className="btn btn-block"
+              style={{ background: 'var(--color-error, #b3503f)', color: '#fff' }}
+              disabled={deleteBusy || !deletePassword}
+              onClick={async () => {
+                setDeleteBusy(true);
+                setDeleteError('');
+                try {
+                  await deleteAccount(deletePassword);
+                  navigate('/');
+                } catch (e) {
+                  setDeleteError(authErrorMessage(e));
+                  setDeleteBusy(false);
+                }
+              }}
+            >
+              {deleteBusy ? 'Deleting…' : 'Permanently Delete My Account'}
+            </button>
+            <button
+              className="btn btn-ghost btn-block"
+              style={{ marginTop: 8 }}
+              disabled={deleteBusy}
+              onClick={() => setShowDeleteAccount(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {showCities && (
         <div className="modal-backdrop" onClick={() => setShowCities(false)}>
