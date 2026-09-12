@@ -101,7 +101,6 @@ export default function TripSetup() {
           id="start"
           placeholder="Or type an address, hotel, etc."
           value={trip.startingLocation}
-          regionId={trip.activeRegion}
           onChange={(text) => updateTrip({ startingLocation: text, startingCoords: null })}
           onSelect={(s) => updateTrip({ startingLocation: s.primary, startingCoords: { lat: s.lat, lng: s.lng } })}
         />
