@@ -11,6 +11,7 @@ import { setProfileVisibility, getUserProfile } from '../lib/friends';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
+import { computeStreakDays, computeBadges } from '../lib/streaks';
 import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
@@ -416,6 +417,8 @@ export default function Profile() {
   const [showCities, setShowCities] = useState(false);
   const [justSignedUp, setJustSignedUp] = useState(false);
   const healedRef = useRef(false);
+  const [streakDays, setStreakDays] = useState(0);
+  const [badges, setBadges] = useState([]);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -442,6 +445,33 @@ export default function Profile() {
       cancelled = true;
     };
   }, [firebaseEnabled, user, claimedMap]);
+
+  // Streak + badges (item i1) -- both derived from the same check-in
+  // history, refetched on the same trigger as stats above.
+  useEffect(() => {
+    if (!firebaseEnabled || !user || !stats) {
+      setStreakDays(0);
+      setBadges([]);
+      return;
+    }
+    let cancelled = false;
+    getUserCheckins(user.uid)
+      .then((rows) => {
+        if (cancelled) return;
+        const days = computeStreakDays(rows);
+        setStreakDays(days);
+        setBadges(computeBadges({ checkinsCount: stats.checkins, citiesCount: stats.cities, streakDays: days }));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStreakDays(0);
+          setBadges([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseEnabled, user, claimedMap, stats]);
 
   // Self-heal: if your board row still shows an email/old name, rewrite it.
   useEffect(() => {
@@ -674,7 +704,21 @@ export default function Profile() {
             <span className="profile-stat-num">{stats ? stats.cities : '…'}</span>
             <span className="profile-stat-label">cities{stats?.cityIds?.length ? ' ›' : ''}</span>
           </button>
+          <div className="profile-stat">
+            <span className="profile-stat-num">{streakDays}{streakDays > 0 ? ' \u{1F525}' : ''}</span>
+            <span className="profile-stat-label">day streak</span>
+          </div>
         </div>
+
+        {badges.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+            {badges.map((b) => (
+              <span key={b.id} className="tag" title={b.label}>
+                {b.icon} {b.label}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 4.5 — My Preferences */}
