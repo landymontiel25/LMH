@@ -75,7 +75,7 @@ export default function LandmarkDetail() {
   );
   const { ratings, reload: reloadRatings } = useRatings();
   const { reload: reloadMyPhotos } = useMyPhotos();
-  const { friendUids, myUsername } = useFriends();
+  const { myUsername } = useFriends();
   const [myStars, setMyStars] = useState(0);
   const [myComment, setMyComment] = useState('');
   const [myPhotos, setMyPhotos] = useState([]);
@@ -530,7 +530,6 @@ export default function LandmarkDetail() {
         <div className="section">
           <h3>Visitor Reviews ({visibleReviews.length})</h3>
           {visibleReviews.map((r) => {
-            const canSeePhoto = r.userId === user?.uid || friendUids.has(r.userId);
             const mine = user && r.userId === user.uid;
             return (
               <div key={r.id} className="review-item">
@@ -540,10 +539,12 @@ export default function LandmarkDetail() {
                 </div>
                 {r.comment && <p className="review-comment">{r.comment}</p>}
                 {(() => {
+                  // firestore.rules already filtered this list down to reviews
+                  // this viewer is allowed to see in full (their own, a
+                  // friend's, or a public account's) -- so any photo here is
+                  // safe to show, no separate client-side gate needed.
                   const photos = r.photoURLs?.length ? r.photoURLs : r.photoURL ? [r.photoURL] : [];
                   if (!photos.length) return null;
-                  if (!canSeePhoto)
-                    return <p className="review-photo-locked">{'\u{1F4F7}'} Photos shared with friends only</p>;
                   return (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {photos.map((u, i) => (

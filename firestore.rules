@@ -67,7 +67,21 @@ service cloud.firestore {
     }
 
     match /reviews/{reviewId} {
-      allow read: if true;
+      // A review (comment, stars, photos) is visible to: its own author, a
+      // friend of the author, or anyone at all if the author's account is
+      // public (users/{uid}.public == true, set via the Profile page's
+      // Privacy toggle -- default is private/friends-only). This is
+      // evaluated per-document, so a list query (e.g. a landmark's Visitor
+      // Reviews) silently drops any review this viewer isn't allowed to see
+      // -- the client no longer needs its own separate photo-visibility
+      // check. exists() is checked before get() so a reviewer who somehow
+      // has no users/{uid} doc yet fails safe (denied) instead of erroring.
+      allow read: if
+        (exists(/databases/$(database)/documents/users/$(resource.data.userId))
+          && get(/databases/$(database)/documents/users/$(resource.data.userId)).data.get('public', false) == true)
+        || (request.auth != null
+            && (reviewId.split('_')[0] == request.auth.uid
+                || exists(/databases/$(database)/documents/friend_edges/$(request.auth.uid + '_' + resource.data.userId))));
       allow create, update: if request.auth != null
         && reviewId == request.auth.uid + '_' + request.resource.data.landmarkId
         && exists(/databases/$(database)/documents/checkins/$(reviewId));

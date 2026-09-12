@@ -6,6 +6,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useTrip } from '../lib/TripContext';
 import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
+import { setProfileVisibility } from '../lib/friends';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
@@ -367,9 +368,10 @@ function PendingLandmarksPanel({ email }) {
 
 export default function Profile() {
   const { user, firebaseEnabled, signOutUser } = useAuth();
-  const { myUsername } = useFriends();
+  const { myUsername, myProfile, reload: reloadFriends } = useFriends();
   const { claimedMap } = useCheckIn();
   const navigate = useNavigate();
+  const [visBusy, setVisBusy] = useState(false);
   const [stats, setStats] = useState(null); // { totalPoints, checkins, cities }
   const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly | checkins
   const [entries, setEntries] = useState([]);
@@ -437,6 +439,16 @@ export default function Profile() {
   if (!user) return <SignInForm onSignedUp={() => setJustSignedUp(true)} />;
 
   if (justSignedUp) return <OnboardingPreferences onDone={() => setJustSignedUp(false)} />;
+
+  const toggleVisibility = async () => {
+    setVisBusy(true);
+    try {
+      await setProfileVisibility(user.uid, !myProfile?.public);
+      await reloadFriends();
+    } finally {
+      setVisBusy(false);
+    }
+  };
 
   const myIdx = entries.findIndex((e) => e.userId === user.uid);
   const myPoints = myIdx >= 0 ? entries[myIdx].points : 0;
@@ -596,6 +608,28 @@ export default function Profile() {
 
       {/* 4.5 — My Preferences */}
       <PreferencesPanel />
+
+      {/* 4.6 — Privacy */}
+      <div className="card section">
+        <h3 style={{ marginTop: 0 }}>{myProfile?.public ? '\u{1F30E}' : '\u{1F512}'} Privacy</h3>
+        <p className="screen-subtitle" style={{ marginTop: 0 }}>
+          {myProfile?.public
+            ? 'Your reviews and check-in photos are visible to everyone.'
+            : 'Your reviews and check-in photos are only visible to friends.'}
+        </p>
+        <button
+          type="button"
+          className={`btn btn-block ${myProfile?.public ? 'btn-success' : 'btn-ghost'}`}
+          disabled={visBusy}
+          onClick={toggleVisibility}
+        >
+          {visBusy
+            ? '…'
+            : myProfile?.public
+            ? `${'\u{1F30E}'} Public — tap to make Private`
+            : `${'\u{1F512}'} Private — tap to make Public`}
+        </button>
+      </div>
 
       {/* 5 — Account */}
       <div className="card section">
