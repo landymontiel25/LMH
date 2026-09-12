@@ -92,9 +92,10 @@ export default function AddLandmark() {
     try {
       setStage('verifying');
       const imageDataUrl = await fileToSmallDataUrl(photo);
+      const idToken = await user.getIdToken();
       const verifyRes = await fetch('/api/verify-landmark', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           name: name.trim(),
           categories,

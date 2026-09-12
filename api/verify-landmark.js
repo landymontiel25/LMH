@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { isRateLimited } from './_lib/rateLimit.js';
+import { verifyIdToken } from './_lib/verifyAuth.js';
 
 // Backs "Add Landmark" on the map: before a user-submitted spot gets saved as
 // a real landmark, this asks the AI to sanity-check it's a genuine physical
@@ -39,6 +41,18 @@ export default async function handler(req, res) {
   }
   if (!process.env.ANTHROPIC_API_KEY) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
+    return;
+  }
+  // The client already requires sign-in to submit a landmark; this is the
+  // server-side enforcement of that, since a request straight to this
+  // endpoint could otherwise skip the UI check entirely.
+  const uid = await verifyIdToken(req);
+  if (!uid) {
+    res.status(401).json({ error: 'Sign in first — adding a landmark needs an account.' });
+    return;
+  }
+  if (isRateLimited(req, 'verify-landmark', { limit: 15, windowMs: 10 * 60 * 1000 })) {
+    res.status(429).json({ error: 'Too many submissions in a row — take a short break and try again.' });
     return;
   }
 
