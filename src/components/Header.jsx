@@ -4,6 +4,7 @@ import { useTheme } from '../lib/useTheme';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { subscribeLeaderboard } from '../lib/leaderboard';
+import NotificationBell from './NotificationBell';
 
 // Header identity control. Shows who you're signed in as; hovering (desktop)
 // or tapping (mobile) reveals this week's rank/points plus one explicit
@@ -95,6 +96,7 @@ export default function Header() {
         <span className="brand-text">Landmark Hunters</span>
       </Link>
       <div className="app-header-actions">
+        <NotificationBell />
         <ProfileMenu />
         <button
           type="button"
