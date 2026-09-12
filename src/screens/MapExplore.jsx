@@ -10,6 +10,7 @@ import { SEARCHABLE_PLACES } from '../data/places';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
+import { distanceMeters } from '../lib/geo';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { getLandmarkOverrides } from '../lib/landmarkOverrides';
@@ -262,6 +263,24 @@ export default function MapExplore() {
     setSearchTerm('');
   };
 
+  // A live, distance-sorted view of what's closest right now -- a faster
+  // alternative to panning/zooming the map to see what's nearby. Only
+  // meaningful with a real GPS fix, so it's just not offered without one.
+  const [nearbyOpen, setNearbyOpen] = useState(false);
+  const nearbyList = useMemo(() => {
+    if (!coords) return [];
+    const all = [
+      ...ALL_LANDMARKS.map((l) => ({ id: `landmark-${l.id}`, name: l.name, region: l.regionId, landmarkId: l.id, lat: l.lat, lng: l.lng })),
+      ...customLandmarks.map((l) => ({ id: `custom-${l.docId}`, name: l.name, region: l.region, landmarkId: l.id, lat: l.lat, lng: l.lng })),
+    ];
+    return all
+      .map((l) => ({ ...l, meters: distanceMeters(coords.lat, coords.lng, l.lat, l.lng) }))
+      .sort((a, b) => a.meters - b.meters)
+      .slice(0, 12);
+  }, [coords, customLandmarks]);
+
+  const formatDistance = (meters) => (meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`);
+
   // Build the markers once and reuse the same elements across re-renders. GPS
   // ticks update `coords` several times a minute; if the markers were rebuilt
   // inline each time, the whole cluster layer (and any open popup) would tear
@@ -483,6 +502,39 @@ export default function MapExplore() {
       >
         {'\u{2795}'}
       </button>
+      {coords && (
+        <button
+          type="button"
+          className="map-search-btn"
+          style={{ top: 'calc(var(--header-h) + 128px)' }}
+          title="What's nearby right now"
+          onClick={() => setNearbyOpen((o) => !o)}
+        >
+          {nearbyOpen ? '\u{2715}' : '\u{1F4E1}'}
+        </button>
+      )}
+      {nearbyOpen && (
+        <div className="map-search-panel">
+          <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '0.9rem' }}>{'\u{1F4E1}'} Nearby Now</p>
+          <div className="map-search-results">
+            {nearbyList.length === 0 && <div className="map-search-empty">Nothing nearby yet.</div>}
+            {nearbyList.map((l) => (
+              <button
+                type="button"
+                key={l.id}
+                className="map-search-result"
+                onClick={() => {
+                  setNearbyOpen(false);
+                  navigate(`/landmarks/${l.region}/${l.landmarkId}`);
+                }}
+              >
+                <span className="map-search-result-name">{l.name}</span>
+                <span className="map-search-result-city">{formatDistance(l.meters)} away</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {searchOpen && (
         <div className="map-search-panel">
           <input
