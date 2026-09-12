@@ -78,6 +78,15 @@ export async function upsertUserProfile(user) {
   );
 }
 
+// Public: your reviews (comments, stars, photos) are visible to everyone.
+// Private (default): only friends can see them -- matches the original
+// friends-only photo rule this generalizes, now enforced in firestore.rules
+// rather than just hidden client-side.
+export async function setProfileVisibility(uid, isPublic) {
+  if (!db || !uid) return;
+  await setDoc(doc(db, 'users', uid), { public: !!isPublic, updatedAt: serverTimestamp() }, { merge: true });
+}
+
 export async function findUserByEmail(email) {
   if (!db) return null;
   const e = (email || '').trim().toLowerCase();
