@@ -6,7 +6,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useTrip } from '../lib/TripContext';
 import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
-import { setProfileVisibility, getUserProfile } from '../lib/friends';
+import { setProfileVisibility, getUserProfile, sendFriendRequest } from '../lib/friends';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
@@ -70,6 +70,100 @@ function InviteButton({ myUsername }) {
     <button className="btn btn-primary btn-block" onClick={share}>
       {copied ? '✓ Invite copied!' : '\u{1F465} Invite Friends to Compete'}
     </button>
+  );
+}
+
+// Wraps a leaderboard name so hovering it (desktop) or tapping it (mobile)
+// pops open a small card with that person's @username and a one-tap way to
+// friend them -- fetched on demand since the leaderboard entry itself only
+// carries a display name, not their real username or current friend status.
+function FriendPopoverName({ userId, fallbackName, children }) {
+  const { user } = useAuth();
+  const { friendUids, myUsername } = useFriends();
+  const [open, setOpen] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [status, setStatus] = useState(null); // null | 'sending' | 'sent' | error message
+  const ref = useRef(null);
+  const closeTimer = useRef(null);
+
+  const isMe = user && userId === user.uid;
+  const isFriend = friendUids.has(userId);
+
+  // Same hover-with-grace-period + tap-to-toggle pattern as the header's own
+  // profile popover, so it behaves the same on a Mac trackpad and a phone.
+  const openNow = () => {
+    clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  const closeSoon = () => {
+    closeTimer.current = setTimeout(() => setOpen(false), 250);
+  };
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+
+  useEffect(() => {
+    if (open && !profile && userId) {
+      getUserProfile(userId).then((p) => setProfile(p || {})).catch(() => setProfile({}));
+    }
+  }, [open, userId, profile]);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const addFriend = async () => {
+    if (!user || !profile?.uid) return;
+    setStatus('sending');
+    try {
+      await sendFriendRequest(
+        { uid: user.uid, username: myUsername, displayName: user.displayName, email: user.email },
+        profile
+      );
+      setStatus('sent');
+    } catch (e) {
+      setStatus(e.message || 'Could not send request.');
+    }
+  };
+
+  return (
+    <span className="user-popover" ref={ref} onMouseEnter={openNow} onMouseLeave={closeSoon}>
+      <span
+        className="user-popover-trigger"
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}
+      >
+        {children}
+      </span>
+      {open && (
+        <div className="user-popover-card" onClick={(e) => e.stopPropagation()}>
+          <div className="user-popover-username">@{profile?.username || fallbackName}</div>
+          {!isMe &&
+            (isFriend ? (
+              <span className="user-popover-note">{'\u{2713}'} Friends</span>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary btn-tight"
+                disabled={!profile || status === 'sending' || status === 'sent'}
+                onClick={addFriend}
+              >
+                {status === 'sent' ? `${'\u{2713}'} Sent` : status === 'sending' ? '…' : `${'\u{2795}'} Add Friend`}
+              </button>
+            ))}
+          {status && status !== 'sending' && status !== 'sent' && <p className="user-popover-note">{status}</p>}
+        </div>
+      )}
+    </span>
   );
 }
 
@@ -410,6 +504,7 @@ export default function Profile() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCities, setShowCities] = useState(false);
+  const [showFullBoard, setShowFullBoard] = useState(false);
   const [justSignedUp, setJustSignedUp] = useState(false);
   const healedRef = useRef(false);
 
@@ -566,7 +661,14 @@ export default function Profile() {
         <CheckinsView user={user} claimedMap={claimedMap} navigate={navigate} totalPoints={stats?.totalPoints || 0} />
       ) : (
         <div className="section">
-          <h3>{'\u{1F3C6}'} Leaderboard</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0 }}>{'\u{1F3C6}'} Leaderboard</h3>
+            {!loading && entries.length > 0 && (
+              <button type="button" className="btn btn-ghost btn-tight" onClick={() => setShowFullBoard(true)}>
+                See Full List
+              </button>
+            )}
+          </div>
           {loading && <p className="screen-subtitle">Loading rankings…</p>}
           {!loading && entries.length === 0 && (
             <div className="empty-state">
@@ -585,7 +687,11 @@ export default function Profile() {
                     }`}
                   >
                     <div className="podium-medal">{MEDAL[i === 1 ? 0 : i === 0 ? 1 : 2]}</div>
-                    <div className="podium-name">{displayFor(e)}</div>
+                    <div className="podium-name">
+                      <FriendPopoverName userId={e.userId} fallbackName={displayFor(e)}>
+                        {displayFor(e)}
+                      </FriendPopoverName>
+                    </div>
                     <div className="podium-pts">{e.points.toLocaleString()}</div>
                   </div>
                 ) : (
@@ -598,7 +704,11 @@ export default function Profile() {
           {rest.map((e, idx) => (
             <div key={e.id} className={`leaderboard-row ${e.userId === user.uid ? 'me' : ''}`}>
               <div className="leaderboard-rank">#{idx + 4}</div>
-              <div style={{ flex: 1 }}>{displayFor(e)}</div>
+              <div style={{ flex: 1 }}>
+                <FriendPopoverName userId={e.userId} fallbackName={displayFor(e)}>
+                  {displayFor(e)}
+                </FriendPopoverName>
+              </div>
               <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-brass-bright)', fontWeight: 700 }}>
                 {e.points.toLocaleString()} pts
               </div>
@@ -689,6 +799,32 @@ export default function Profile() {
           Sign Out
         </button>
       </div>
+
+      {showFullBoard && (
+        <div className="modal-backdrop" onClick={() => setShowFullBoard(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>
+              {'\u{1F3C6}'} Full Leaderboard {'\u{2014}'} {PERIOD_LABEL[period]}
+            </h3>
+            {entries.map((e, idx) => (
+              <div key={e.id} className={`leaderboard-row ${e.userId === user.uid ? 'me' : ''}`}>
+                <div className="leaderboard-rank">#{idx + 1}</div>
+                <div style={{ flex: 1 }}>
+                  <FriendPopoverName userId={e.userId} fallbackName={displayFor(e)}>
+                    {displayFor(e)}
+                  </FriendPopoverName>
+                </div>
+                <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-brass-bright)', fontWeight: 700 }}>
+                  {e.points.toLocaleString()} pts
+                </div>
+              </div>
+            ))}
+            <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setShowFullBoard(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {showCities && (
         <div className="modal-backdrop" onClick={() => setShowCities(false)}>
