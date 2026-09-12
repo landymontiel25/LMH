@@ -11,6 +11,7 @@ import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
 import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
 import LandmarkPostcard from '../components/LandmarkPostcard';
+import ReviewReplies from '../components/ReviewReplies';
 import CheckInButton from '../components/CheckInButton';
 import RatingStars from '../components/RatingStars';
 import { mapsDeepLink } from '../lib/routing';
@@ -606,6 +607,7 @@ export default function LandmarkDetail() {
                     )}
                   </div>
                 )}
+                <ReviewReplies reviewId={r.id} currentUser={user} reviewAuthorUid={r.userId} />
               </div>
             );
           })}
