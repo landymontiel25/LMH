@@ -5,12 +5,18 @@ import { paletteFor, iconFor } from '../lib/landmarkVisuals';
 // when the landmark has more than one photo. Non-swipeable contexts (list
 // rows, popups, itinerary stops) just show the first photo as a static
 // thumbnail so swipe gestures there don't fight the surrounding scroll.
-export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', swipeable = false }) {
+//
+// myPhotos: the signed-in viewer's own check-in photo(s) for this landmark,
+// if any -- put first, ahead of the landmark's regular photos, so your own
+// shot becomes the cover picture just for you. onImageClick (if given) opens
+// a photo full-screen instead of just displaying it inline.
+export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', swipeable = false, myPhotos, onImageClick }) {
   const palette = paletteFor(landmark.id);
   const icon = iconFor(landmark.categories);
   const dims =
     size === 'sm' ? { width: 150, height: 105 } : size === 'lg' ? { width: 320, height: 220 } : { width: 220, height: 150 };
-  const images = landmark.images?.length ? landmark.images : null;
+  const allImages = [...(myPhotos || []), ...(landmark.images || [])];
+  const images = allImages.length ? allImages : null;
   const [activeIdx, setActiveIdx] = useState(0);
 
   const handleScroll = (e) => {
@@ -29,8 +35,9 @@ export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', 
               src={src}
               alt={`${landmark.name} photo ${i + 1} of ${images.length}`}
               className="postcard-photo"
-              style={{ width: dims.width, height: dims.height }}
+              style={{ width: dims.width, height: dims.height, cursor: onImageClick ? 'zoom-in' : undefined }}
               loading="lazy"
+              onClick={onImageClick ? () => onImageClick(src) : undefined}
             />
           ))}
         </div>
@@ -47,8 +54,9 @@ export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', 
         src={images[0]}
         alt={landmark.name}
         className="postcard-photo"
-        style={{ width: dims.width, height: dims.height }}
+        style={{ width: dims.width, height: dims.height, cursor: onImageClick ? 'zoom-in' : undefined }}
         loading="lazy"
+        onClick={onImageClick ? () => onImageClick(images[0]) : undefined}
       />
     );
   } else {
