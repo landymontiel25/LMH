@@ -9,6 +9,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
+import TripRecapCard from '../components/TripRecapCard';
 import { getRegion } from '../data/regions';
 import { geocodeLocation } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
@@ -140,6 +141,7 @@ export default function Itinerary() {
   const [geocoding, setGeocoding] = useState(true);
   const [view, setView] = useState('list'); // 'list' | 'map'
   const [pendingRemove, setPendingRemove] = useState(null); // stop awaiting delete confirmation
+  const [showRecap, setShowRecap] = useState(false);
   const autoOriginRef = useRef(null);
 
   const confirmRemove = () => {
@@ -321,7 +323,20 @@ export default function Itinerary() {
         <span className="tag">
           {'\u{2705}'} {visitedCount} of {selectedLandmarks.length} visited
         </span>
+        {visitedCount > 0 && (
+          <button type="button" className="btn btn-ghost btn-tight" onClick={() => setShowRecap(true)}>
+            {'\u{1F3AC}'} Trip Recap
+          </button>
+        )}
       </div>
+
+      {showRecap && (
+        <TripRecapCard
+          regionName={region.name}
+          visitedLandmarks={selectedLandmarks.filter((l) => claimedMap[l.id])}
+          onClose={() => setShowRecap(false)}
+        />
+      )}
 
       <div className="tabs" style={{ maxWidth: 320 }}>
         <button
