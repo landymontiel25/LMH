@@ -6,7 +6,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useTrip } from '../lib/TripContext';
 import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
-import { setProfileVisibility } from '../lib/friends';
+import { setProfileVisibility, getUserProfile } from '../lib/friends';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
@@ -404,6 +404,7 @@ export default function Profile() {
   const { claimedMap } = useCheckIn();
   const navigate = useNavigate();
   const [visBusy, setVisBusy] = useState(false);
+  const [visMsg, setVisMsg] = useState(null);
   const [stats, setStats] = useState(null); // { totalPoints, checkins, cities }
   const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly | checkins
   const [entries, setEntries] = useState([]);
@@ -474,9 +475,20 @@ export default function Profile() {
 
   const toggleVisibility = async () => {
     setVisBusy(true);
+    setVisMsg(null);
+    const next = !myProfile?.public;
     try {
-      await setProfileVisibility(user.uid, !myProfile?.public);
+      await setProfileVisibility(user.uid, next);
+      // Read straight back from the server (not the cache) to confirm the
+      // write actually stuck -- surfaces a rules/permission problem right
+      // away instead of only discovering it on the next reload.
+      const fresh = await getUserProfile(user.uid);
+      if (!fresh || !!fresh.public !== next) {
+        setVisMsg("That didn't save — try again.");
+      }
       await reloadFriends();
+    } catch (e) {
+      setVisMsg(e.message || 'Could not update — try again.');
     } finally {
       setVisBusy(false);
     }
@@ -661,6 +673,11 @@ export default function Profile() {
             ? `${'\u{1F30E}'} Public — tap to make Private`
             : `${'\u{1F512}'} Private — tap to make Public`}
         </button>
+        {visMsg && (
+          <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
+            {visMsg}
+          </p>
+        )}
       </div>
 
       {/* 5 — Account */}
