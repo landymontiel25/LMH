@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -17,7 +17,6 @@ export const firebaseEnabled = Boolean(firebaseConfig.apiKey && firebaseConfig.p
 export const app = firebaseEnabled && getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = firebaseEnabled ? getAuth(app) : null;
 export const db = firebaseEnabled ? getFirestore(app) : null;
-export const googleProvider = firebaseEnabled ? new GoogleAuthProvider() : null;
 
 // Storage may not be provisioned (no bucket configured yet). Never let that
 // crash the app — photo upload just stays disabled until it's set up.

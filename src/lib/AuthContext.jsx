@@ -1,8 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import {
   onAuthStateChanged,
-  signInWithRedirect,
-  getRedirectResult,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -14,8 +12,7 @@ import {
   EmailAuthProvider,
   deleteUser,
 } from 'firebase/auth';
-import { auth, googleProvider, firebaseEnabled } from './firebase';
-import { authErrorMessage } from './authErrors';
+import { auth, firebaseEnabled } from './firebase';
 import { deleteAccountData } from './accountDeletion';
 
 const AuthContext = createContext(null);
@@ -23,25 +20,18 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [redirectError, setRedirectError] = useState('');
 
   useEffect(() => {
     if (!firebaseEnabled) {
       setLoading(false);
       return;
     }
-    // Google sign-in uses a full-page redirect (not a popup) because popups are
-    // unreliable on mobile browsers — often silently blocked on mobile Safari/Chrome.
-    // This catches the result once the browser comes back from Google.
-    getRedirectResult(auth).catch((err) => setRedirectError(authErrorMessage(err)));
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
     });
     return unsub;
   }, []);
-
-  const signInGoogle = () => signInWithRedirect(auth, googleProvider);
 
   const signUpEmail = async (email, password, displayName) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -93,7 +83,6 @@ export function AuthProvider({ children }) {
         user,
         loading,
         firebaseEnabled,
-        signInGoogle,
         signUpEmail,
         signInEmail,
         resetPassword,
@@ -101,7 +90,6 @@ export function AuthProvider({ children }) {
         refreshUser,
         signOutUser,
         deleteAccount,
-        redirectError,
       }}
     >
       {children}
