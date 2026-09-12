@@ -2,6 +2,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Shared by reviews/{reviewId}/replies below -- same visibility a
+    // review itself has (its own read rule, duplicated here since a
+    // subcollection's rules can't reference a sibling match block).
+    function reviewVisible(reviewId) {
+      let review = get(/databases/$(database)/documents/reviews/$(reviewId));
+      return (exists(/databases/$(database)/documents/users/$(review.data.userId))
+          && get(/databases/$(database)/documents/users/$(review.data.userId)).data.get('public', false) == true)
+        || (request.auth != null
+            && (reviewId.split('_')[0] == request.auth.uid
+                || exists(/databases/$(database)/documents/friend_edges/$(request.auth.uid + '_' + review.data.userId))));
+    }
+
     // --- Existing production rules, kept as-is (stricter than the new
     // defaults below): public read, ownership-validated writes, immutable
     // checkins, and leaderboard entries locked to their own owner. ---
@@ -131,6 +143,25 @@ service cloud.firestore {
           )
         );
       allow delete: if request.auth != null && reviewId.split('_')[0] == request.auth.uid;
+    }
+    match /reviews/{reviewId}/replies/{replyId} {
+      // Same visibility as the review itself -- a reply thread on a
+      // friends-only or private review shouldn't be more exposed than the
+      // review it's attached to.
+      allow read: if reviewVisible(reviewId);
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'userName', 'text', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 500;
+      // The reply's own author, the review's author (moderating their own
+      // thread), or an admin can remove a reply. No editing in v1.
+      allow update: if false;
+      allow delete: if request.auth != null
+        && (resource.data.uid == request.auth.uid
+            || reviewId.split('_')[0] == request.auth.uid
+            || request.auth.token.email in ['landymontiel25@gmail.com']);
     }
     match /landmark_ratings/{id} {
       allow read: if true;

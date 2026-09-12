@@ -6,8 +6,11 @@ import {
   collection,
   query,
   where,
+  orderBy,
   limit,
   updateDoc,
+  deleteDoc,
+  addDoc,
   arrayUnion,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -166,4 +169,26 @@ export async function deleteMyReview(userId, landmarkId) {
     tx.set(aggRef, { sum: newSum, count: newCount, avg: newCount ? newSum / newCount : 0, updatedAt: serverTimestamp() }, { merge: true });
     tx.delete(reviewRef);
   });
+}
+
+/** One reply level on a review -- see firestore.rules for who can read/write. */
+export async function getReplies(reviewId) {
+  if (!db) return [];
+  const snap = await getDocs(
+    query(collection(db, 'reviews', reviewId, 'replies'), orderBy('createdAt', 'asc'))
+  );
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function addReply(reviewId, { uid, userName, text }) {
+  await addDoc(collection(db, 'reviews', reviewId, 'replies'), {
+    uid,
+    userName,
+    text: text.slice(0, 500),
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function deleteReply(reviewId, replyId) {
+  await deleteDoc(doc(db, 'reviews', reviewId, 'replies', replyId));
 }
