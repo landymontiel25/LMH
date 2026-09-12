@@ -22,6 +22,10 @@ const DEFAULT_TRIP = {
   // them on every trip. Independent of the live trip.interests below.
   savedInterests: [],
   savedCustomInterests: [],
+  // Custom preference chips you've turned off without deleting -- "Use My
+  // Preferences" skips these, same as an unchecked built-in category, but
+  // the chip stays put so you can turn it back on later.
+  deselectedCustomInterests: [],
   byRegion: {}, // { [regionId]: string[] of landmark ids } — one itinerary per city
 };
 
@@ -124,11 +128,30 @@ export function TripProvider({ children }) {
     setTrip((t) => (t.savedCustomInterests.includes(text) ? t : { ...t, savedCustomInterests: [...t.savedCustomInterests, text] }));
 
   const removeSavedCustomInterest = (text) =>
-    setTrip((t) => ({ ...t, savedCustomInterests: t.savedCustomInterests.filter((x) => x !== text) }));
+    setTrip((t) => ({
+      ...t,
+      savedCustomInterests: t.savedCustomInterests.filter((x) => x !== text),
+      deselectedCustomInterests: t.deselectedCustomInterests.filter((x) => x !== text),
+    }));
 
-  // One tap on Setup: replace the live trip interests with your saved ones.
+  // Turns a saved custom interest chip on/off without deleting it -- mirrors
+  // toggleSavedInterest's on/off for the built-in categories.
+  const toggleSavedCustomInterestSelected = (text) =>
+    setTrip((t) => ({
+      ...t,
+      deselectedCustomInterests: t.deselectedCustomInterests.includes(text)
+        ? t.deselectedCustomInterests.filter((x) => x !== text)
+        : [...t.deselectedCustomInterests, text],
+    }));
+
+  // One tap on Setup: replace the live trip interests with your saved ones
+  // (skipping any custom ones you've turned off).
   const applyPreferences = () =>
-    setTrip((t) => ({ ...t, interests: [...t.savedInterests], customInterests: [...t.savedCustomInterests] }));
+    setTrip((t) => ({
+      ...t,
+      interests: [...t.savedInterests],
+      customInterests: t.savedCustomInterests.filter((x) => !t.deselectedCustomInterests.includes(x)),
+    }));
 
   const getRegionSelection = (regionId) => trip.byRegion[regionId] || [];
 
@@ -155,6 +178,7 @@ export function TripProvider({ children }) {
         toggleSavedInterest,
         addSavedCustomInterest,
         removeSavedCustomInterest,
+        toggleSavedCustomInterestSelected,
         applyPreferences,
         mapFocus,
         setMapFocus,
