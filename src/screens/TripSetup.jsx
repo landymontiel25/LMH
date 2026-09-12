@@ -10,7 +10,8 @@ import RegionSearch from '../components/RegionSearch';
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
 
 export default function TripSetup() {
-  const { trip, updateTrip, setCustomInterestMatches, removeCustomInterest, applyPreferences } = useTrip();
+  const { trip, updateTrip, setCustomInterestMatches, setCustomInterestEmoji, removeCustomInterest, applyPreferences } =
+    useTrip();
   const navigate = useNavigate();
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState(null);
@@ -54,8 +55,9 @@ export default function TripSetup() {
     if (trip.customInterests.includes(text)) return;
     updateTrip({ customInterests: [...trip.customInterests, text] });
     setClassifying((cur) => new Set(cur).add(text));
-    classifyInterest(text).then((ids) => {
-      setCustomInterestMatches(text, ids);
+    classifyInterest(text).then(({ matches, emoji }) => {
+      setCustomInterestMatches(text, matches);
+      setCustomInterestEmoji(text, emoji);
       setClassifying((cur) => {
         const next = new Set(cur);
         next.delete(text);
@@ -156,7 +158,9 @@ export default function TripSetup() {
               onClick={() => removeCustomInterest(text)}
               title={classifying.has(text) ? 'Finding matching landmarks…' : 'Tap to remove'}
             >
-              <span className="chip-icon">{classifying.has(text) ? '\u{23F3}' : '\u{2728}'}</span>
+              <span className="chip-icon">
+                {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
+              </span>
               <span>{text}</span>
             </button>
           ))}

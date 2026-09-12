@@ -198,14 +198,16 @@ function CheckinsView({ user, claimedMap, navigate, totalPoints }) {
 // Preferences" card below and the one-time onboarding step right after
 // signup, so both stay in sync with the same trip.saved* fields.
 function PreferenceChips() {
-  const { trip, toggleSavedInterest, addSavedCustomInterest, removeSavedCustomInterest, setCustomInterestMatches } = useTrip();
+  const { trip, toggleSavedInterest, addSavedCustomInterest, removeSavedCustomInterest, setCustomInterestMatches, setCustomInterestEmoji } =
+    useTrip();
   const [classifying, setClassifying] = useState(() => new Set());
 
   const addCustom = (text) => {
     addSavedCustomInterest(text);
     setClassifying((cur) => new Set(cur).add(text));
-    classifyInterest(text).then((ids) => {
-      setCustomInterestMatches(text, ids);
+    classifyInterest(text).then(({ matches, emoji }) => {
+      setCustomInterestMatches(text, matches);
+      setCustomInterestEmoji(text, emoji);
       setClassifying((cur) => {
         const next = new Set(cur);
         next.delete(text);
@@ -235,7 +237,9 @@ function PreferenceChips() {
           onClick={() => removeSavedCustomInterest(text)}
           title={classifying.has(text) ? 'Finding matching landmarks…' : 'Tap to remove'}
         >
-          <span className="chip-icon">{classifying.has(text) ? '\u{23F3}' : '\u{2728}'}</span>
+          <span className="chip-icon">
+            {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
+          </span>
           <span>{text}</span>
         </button>
       ))}
