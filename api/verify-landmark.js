@@ -45,10 +45,16 @@ export default async function handler(req, res) {
   }
   // The client already requires sign-in to submit a landmark; this is the
   // server-side enforcement of that, since a request straight to this
-  // endpoint could otherwise skip the UI check entirely.
-  const uid = await verifyIdToken(req);
-  if (!uid) {
+  // endpoint could otherwise skip the UI check entirely. Also requires a
+  // verified email (item f7) -- this is exactly the kind of account-backed
+  // write a typo'd/fake email shouldn't be able to make.
+  const account = await verifyIdToken(req);
+  if (!account) {
     res.status(401).json({ error: 'Sign in first — adding a landmark needs an account.' });
+    return;
+  }
+  if (!account.emailVerified) {
+    res.status(403).json({ error: 'Verify your email first — check your inbox for the link, then try again.' });
     return;
   }
   if (isRateLimited(req, 'verify-landmark', { limit: 15, windowMs: 10 * 60 * 1000 })) {
