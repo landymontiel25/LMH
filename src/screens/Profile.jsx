@@ -336,7 +336,8 @@ function PendingLandmarksPanel({ email }) {
   const approve = async (docId) => {
     setBusyId(docId);
     try {
-      await approveCustomLandmark(docId);
+      const landmark = pending.find((l) => l.docId === docId);
+      await approveCustomLandmark(docId, landmark);
       setPending((cur) => cur.filter((l) => l.docId !== docId));
     } catch {
       // leave it in the queue -- the admin can just try again

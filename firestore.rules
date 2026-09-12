@@ -245,5 +245,21 @@ service cloud.firestore {
         );
       allow delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
     }
+
+    // In-app notifications (item i2's non-push slice -- see the lib file for
+    // why this project can't wire up real push yet). Only the owning uid can
+    // ever read them; an admin can also create one for someone else (e.g.
+    // "your submission was approved"), but nothing lets one regular account
+    // write into another's notifications.
+    match /notifications/{id} {
+      allow get, list: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && (request.resource.data.uid == request.auth.uid
+            || request.auth.token.email in ['landymontiel25@gmail.com']);
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
   }
 }

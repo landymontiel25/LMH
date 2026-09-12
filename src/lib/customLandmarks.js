@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
+import { notifyUser } from './notifications';
 
 // User-created landmarks (e.g. a dorm hall not yet in the built-in catalog)
 // live in their own Firestore collection and get merged onto the map
@@ -114,8 +115,16 @@ export async function addCustomLandmark({
 
 // Only an admin account can call these -- the Firestore rules enforce that
 // independently of this client code.
-export async function approveCustomLandmark(docId) {
+export async function approveCustomLandmark(docId, landmark) {
   await updateDoc(doc(db, 'custom_landmarks', docId), { status: 'approved' });
+  // Best-effort -- an approval that succeeds shouldn't fail just because
+  // the notification couldn't be created.
+  if (landmark?.createdBy) {
+    notifyUser(landmark.createdBy, {
+      type: 'submission_approved',
+      message: `\u{1F389} Your landmark "${landmark.name}" was approved and is now live!`,
+    }).catch(() => {});
+  }
 }
 
 export async function deleteCustomLandmark(docId) {
