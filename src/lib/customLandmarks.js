@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
 
@@ -96,4 +96,11 @@ export async function approveCustomLandmark(docId) {
 
 export async function deleteCustomLandmark(docId) {
   await deleteDoc(doc(db, 'custom_landmarks', docId));
+}
+
+// Same reportedBy-array pattern as reviews.js -- firestore.rules hides a
+// submission (photo, name, everything) from everyone but the submitter and
+// admins once enough distinct people have reported it.
+export async function reportCustomLandmark(reporterUid, docId) {
+  await updateDoc(doc(db, 'custom_landmarks', docId), { reportedBy: arrayUnion(reporterUid) });
 }

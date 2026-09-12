@@ -7,7 +7,8 @@ import {
   query,
   where,
   limit,
-  setDoc,
+  updateDoc,
+  arrayUnion,
   serverTimestamp,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -136,27 +137,17 @@ export async function getLandmarkReviews(landmarkId) {
     .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
 }
 
-/** Flag a review. One report per reporter per review. */
+/**
+ * Flag a review. Appends the reporter's uid to the review's own `reportedBy`
+ * array -- firestore.rules independently enforces that each uid can only be
+ * added once and only by someone other than the review's author, so once
+ * REPORT_HIDE_THRESHOLD distinct people have reported it, the read rule
+ * hides it from everyone but the author and admins. No separate "reports"
+ * collection needed; this is the actual enforcement, not just a client-side
+ * filter.
+ */
 export async function reportReview({ reporterUid, review }) {
-  await setDoc(doc(db, 'reports', `${reporterUid}_${review.id}`), {
-    reviewId: review.id,
-    reviewOwnerUid: review.userId,
-    reporterUid,
-    landmarkId: review.landmarkId,
-    createdAt: serverTimestamp(),
-  });
-}
-
-/** Report counts per review for a landmark, as { [reviewId]: count }. */
-export async function getReportsForLandmark(landmarkId) {
-  if (!db) return {};
-  const snap = await getDocs(query(collection(db, 'reports'), where('landmarkId', '==', landmarkId)));
-  const counts = {};
-  snap.docs.forEach((d) => {
-    const r = d.data();
-    counts[r.reviewId] = (counts[r.reviewId] || 0) + 1;
-  });
-  return counts;
+  await updateDoc(doc(db, 'reviews', review.id), { reportedBy: arrayUnion(reporterUid) });
 }
 
 /** Delete your own review and roll its stars back out of the aggregate. */
@@ -176,6 +167,3 @@ export async function deleteMyReview(userId, landmarkId) {
     tx.delete(reviewRef);
   });
 }
-
-// Reviews hidden once they reach this many reports (community auto-moderation).
-export const REPORT_HIDE_THRESHOLD = 2;

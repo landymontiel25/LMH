@@ -1,22 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
-import { getCustomLandmark } from '../lib/customLandmarks';
+import { getCustomLandmark, reportCustomLandmark } from '../lib/customLandmarks';
+import { blockUser } from '../lib/blocks';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useRatings } from '../lib/RatingsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
-import {
-  submitReview,
-  getMyReview,
-  getLandmarkReviews,
-  reportReview,
-  getReportsForLandmark,
-  deleteMyReview,
-  REPORT_HIDE_THRESHOLD,
-} from '../lib/reviews';
+import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
 import LandmarkPostcard from '../components/LandmarkPostcard';
 import CheckInButton from '../components/CheckInButton';
 import RatingStars from '../components/RatingStars';
@@ -85,8 +78,9 @@ export default function LandmarkDetail() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [reportsMap, setReportsMap] = useState({});
   const [reportedNow, setReportedNow] = useState(() => new Set());
+  const [blockedNow, setBlockedNow] = useState(() => new Set());
+  const [landmarkReported, setLandmarkReported] = useState(false);
   const [factsExpanded, setFactsExpanded] = useState(false);
   const [shareMsg, setShareMsg] = useState(null);
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -161,9 +155,11 @@ export default function LandmarkDetail() {
   const loadReviews = useCallback(async () => {
     if (!firebaseEnabled || !landmark) return;
     try {
-      const [rv, rc] = await Promise.all([getLandmarkReviews(landmark.id), getReportsForLandmark(landmark.id)]);
-      setReviews(rv);
-      setReportsMap(rc);
+      // firestore.rules already excludes any review reported past the
+      // hide threshold (unless it's yours or you're an admin), so whatever
+      // comes back here is exactly what's safe to show -- no client-side
+      // report-count filtering needed anymore.
+      setReviews(await getLandmarkReviews(landmark.id));
     } catch {
       /* rules / index not set yet */
     }
@@ -254,6 +250,26 @@ export default function LandmarkDetail() {
     }
   };
 
+  const handleBlock = async (rv) => {
+    setBlockedNow((s) => new Set(s).add(rv.userId));
+    try {
+      await blockUser(user.uid, rv.userId, rv.userName);
+      await loadReviews();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleReportLandmark = async () => {
+    if (!customLandmark || !user) return;
+    setLandmarkReported(true);
+    try {
+      await reportCustomLandmark(user.uid, customLandmark.docId);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const shareVisit = async () => {
     const checkedIn = !!claimedMap[landmark.id];
     const url = `${window.location.origin}/#/landmarks/${regionId}/${landmark.id}`;
@@ -272,10 +288,6 @@ export default function LandmarkDetail() {
       /* user dismissed the share sheet — nothing to do */
     }
   };
-
-  const visibleReviews = reviews.filter(
-    (r) => (reportsMap[r.id] || 0) < REPORT_HIDE_THRESHOLD || r.userId === user?.uid
-  );
 
   return (
     <div>
@@ -303,6 +315,17 @@ export default function LandmarkDetail() {
       {customLandmark?.status === 'pending' && (
         <p className="screen-subtitle" style={{ textAlign: 'center', marginTop: -10 }}>
           Only visible to you right now — a moderator needs to approve it before it shows up for everyone else.
+        </p>
+      )}
+      {customLandmark && user && customLandmark.createdBy !== user.uid && (
+        <p className="center" style={{ marginTop: -10, marginBottom: 18 }}>
+          {landmarkReported ? (
+            <span className="review-reported">Reported ✓</span>
+          ) : (
+            <button className="btn btn-ghost btn-tight" onClick={handleReportLandmark}>
+              Report this landmark
+            </button>
+          )}
         </p>
       )}
 
@@ -525,10 +548,10 @@ export default function LandmarkDetail() {
         </div>
       )}
 
-      {firebaseEnabled && visibleReviews.length > 0 && (
+      {firebaseEnabled && reviews.length > 0 && (
         <div className="section">
-          <h3>Visitor Reviews ({visibleReviews.length})</h3>
-          {visibleReviews.map((r) => {
+          <h3>Visitor Reviews ({reviews.length})</h3>
+          {reviews.map((r) => {
             const mine = user && r.userId === user.uid;
             return (
               <div key={r.id} className="review-item">
@@ -565,12 +588,21 @@ export default function LandmarkDetail() {
                       <button className="btn btn-ghost btn-tight" onClick={handleDeleteMine}>
                         Delete
                       </button>
-                    ) : reportedNow.has(r.id) ? (
-                      <span className="review-reported">Reported ✓</span>
+                    ) : blockedNow.has(r.userId) ? (
+                      <span className="review-reported">Blocked ✓</span>
                     ) : (
-                      <button className="btn btn-ghost btn-tight" onClick={() => handleReport(r)}>
-                        Report
-                      </button>
+                      <>
+                        {reportedNow.has(r.id) || r.reportedBy?.includes(user.uid) ? (
+                          <span className="review-reported">Reported ✓</span>
+                        ) : (
+                          <button className="btn btn-ghost btn-tight" onClick={() => handleReport(r)}>
+                            Report
+                          </button>
+                        )}
+                        <button className="btn btn-ghost btn-tight" onClick={() => handleBlock(r)}>
+                          Block
+                        </button>
+                      </>
                     )}
                   </div>
                 )}

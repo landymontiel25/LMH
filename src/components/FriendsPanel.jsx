@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { findUserByUsername, sendFriendRequest, acceptRequest, declineRequest, listFriends } from '../lib/friends';
+import { listBlockedUsers, unblockUser } from '../lib/blocks';
 import { getUserStats, getUserCheckins } from '../lib/leaderboard';
 import { getRegion } from '../data/regions';
 
@@ -12,6 +13,7 @@ export default function FriendsPanel() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [friends, setFriends] = useState([]);
+  const [blocked, setBlocked] = useState([]);
   const [unameInput, setUnameInput] = useState('');
   const [unameBusy, setUnameBusy] = useState(false);
   const [unameMsg, setUnameMsg] = useState(null);
@@ -35,10 +37,24 @@ export default function FriendsPanel() {
     }
   };
 
+  const loadBlocked = async () => {
+    try {
+      setBlocked(await listBlockedUsers(user.uid));
+    } catch {
+      /* rules not set yet */
+    }
+  };
+
   useEffect(() => {
     loadFriends();
+    loadBlocked();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, requests.length, myUsername]);
+
+  const handleUnblock = async (b) => {
+    await unblockUser(user.uid, b.blockedUid);
+    await loadBlocked();
+  };
 
   // Pre-fill the box with your current username so you can see/edit it.
   useEffect(() => {
@@ -194,6 +210,20 @@ export default function FriendsPanel() {
           ))
         )}
       </div>
+
+      {blocked.length > 0 && (
+        <div style={{ marginTop: 18 }}>
+          <h4 style={{ margin: '0 0 8px' }}>Blocked ({blocked.length})</h4>
+          {blocked.map((b) => (
+            <div key={b.blockedUid} className="friend-row">
+              <span>{b.blockedName || 'A user'}</span>
+              <button className="btn btn-ghost btn-tight" onClick={() => handleUnblock(b)}>
+                Unblock
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {friendStats && (
         <div className="modal-backdrop" onClick={() => setFriendStats(null)}>
