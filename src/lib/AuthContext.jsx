@@ -6,6 +6,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendEmailVerification,
+  reload,
   updateProfile,
   signOut,
   reauthenticateWithCredential,
@@ -47,12 +49,27 @@ export function AuthProvider({ children }) {
       await updateProfile(cred.user, { displayName });
       setUser({ ...cred.user, displayName });
     }
+    // Best-effort -- a signup that succeeds shouldn't fail just because the
+    // verification email didn't send. resendVerification lets them retry.
+    sendEmailVerification(cred.user).catch(() => {});
     return cred.user;
   };
 
   const signInEmail = (email, password) => signInWithEmailAndPassword(auth, email, password);
 
   const resetPassword = (email) => sendPasswordResetEmail(auth, email);
+
+  const resendVerification = () => sendEmailVerification(auth.currentUser);
+
+  // Firebase doesn't push a live update when emailVerified flips server-side
+  // (clicking the link in another tab) -- reload() re-fetches the account
+  // and this re-syncs it into state so the Profile banner can clear itself
+  // without a full sign-out/sign-in.
+  const refreshUser = async () => {
+    if (!auth.currentUser) return;
+    await reload(auth.currentUser);
+    setUser({ ...auth.currentUser });
+  };
 
   const signOutUser = () => signOut(auth);
 
@@ -80,6 +97,8 @@ export function AuthProvider({ children }) {
         signUpEmail,
         signInEmail,
         resetPassword,
+        resendVerification,
+        refreshUser,
         signOutUser,
         deleteAccount,
         redirectError,

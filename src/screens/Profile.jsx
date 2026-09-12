@@ -394,7 +394,16 @@ function PendingLandmarksPanel({ email }) {
 }
 
 export default function Profile() {
-  const { user, firebaseEnabled, signOutUser, deleteAccount } = useAuth();
+  const { user, firebaseEnabled, signOutUser, deleteAccount, resendVerification, refreshUser } = useAuth();
+  const [verifyMsg, setVerifyMsg] = useState(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+
+  // Catches "verified in another tab, then came back to Profile" without
+  // requiring a full sign-out/sign-in.
+  useEffect(() => {
+    if (user && !user.emailVerified) refreshUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { myUsername, myProfile, reload: reloadFriends } = useFriends();
   const { claimedMap } = useCheckIn();
   const navigate = useNavigate();
@@ -703,6 +712,37 @@ export default function Profile() {
         <p className="screen-subtitle" style={{ margin: 0 }}>
           Signed in as {myUsername ? `@${myUsername}` : user.displayName || user.email}
         </p>
+        {!user.emailVerified && (
+          <div style={{ marginTop: 12 }}>
+            <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>
+              Your email isn't verified yet — some actions (like adding a landmark) need it.
+            </p>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ marginTop: 8 }}
+              disabled={verifyBusy}
+              onClick={async () => {
+                setVerifyBusy(true);
+                setVerifyMsg(null);
+                try {
+                  await resendVerification();
+                  setVerifyMsg('Verification email sent — check your inbox (and spam folder).');
+                } catch {
+                  setVerifyMsg('Could not send it right now — try again in a bit.');
+                } finally {
+                  setVerifyBusy(false);
+                }
+              }}
+            >
+              {verifyBusy ? 'Sending…' : 'Resend Verification Email'}
+            </button>
+            {verifyMsg && (
+              <p className="screen-subtitle" style={{ marginTop: 6, marginBottom: 0 }}>
+                {verifyMsg}
+              </p>
+            )}
+          </div>
+        )}
         <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
           Sign Out
         </button>

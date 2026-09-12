@@ -1,9 +1,11 @@
 // Verifies a Firebase ID token server-side without needing the
 // firebase-admin SDK (which would need its own service-account secret this
 // project doesn't have set up). The Identity Toolkit REST API can validate
-// a token and return its uid using the same public Web API key the client
-// already uses -- that key identifies the Firebase project, it isn't a
-// secret, so this needs no new env var.
+// a token and return its account record using the same public Web API key
+// the client already uses -- that key identifies the Firebase project, it
+// isn't a secret, so this needs no new env var.
+//
+// Returns { uid, emailVerified } or null if the token is missing/invalid.
 export async function verifyIdToken(req) {
   const auth = req.headers.authorization || '';
   const idToken = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -18,7 +20,8 @@ export async function verifyIdToken(req) {
     });
     if (!r.ok) return null;
     const data = await r.json();
-    return data.users?.[0]?.localId || null;
+    const account = data.users?.[0];
+    return account ? { uid: account.localId, emailVerified: !!account.emailVerified } : null;
   } catch {
     return null;
   }
