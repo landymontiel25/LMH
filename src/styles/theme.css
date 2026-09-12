@@ -506,6 +506,26 @@ textarea {
   font-weight: 600;
 }
 
+/* A custom interest's own delete control -- pinned to the chip's right edge
+   so removing one is a deliberate tap there, not a side effect of tapping
+   the chip itself. */
+.chip-remove {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: 2px;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.chip-remove:hover {
+  opacity: 1;
+}
+
 /* ---------- Autocomplete ---------- */
 
 .autocomplete {

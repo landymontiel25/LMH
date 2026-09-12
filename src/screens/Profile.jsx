@@ -198,14 +198,16 @@ function CheckinsView({ user, claimedMap, navigate, totalPoints }) {
 // Preferences" card below and the one-time onboarding step right after
 // signup, so both stay in sync with the same trip.saved* fields.
 function PreferenceChips() {
-  const { trip, toggleSavedInterest, addSavedCustomInterest, removeSavedCustomInterest, setCustomInterestMatches } = useTrip();
+  const { trip, toggleSavedInterest, addSavedCustomInterest, removeSavedCustomInterest, setCustomInterestMatches, setCustomInterestEmoji } =
+    useTrip();
   const [classifying, setClassifying] = useState(() => new Set());
 
   const addCustom = (text) => {
     addSavedCustomInterest(text);
     setClassifying((cur) => new Set(cur).add(text));
-    classifyInterest(text).then((ids) => {
-      setCustomInterestMatches(text, ids);
+    classifyInterest(text).then(({ matches, emoji }) => {
+      setCustomInterestMatches(text, matches);
+      setCustomInterestEmoji(text, emoji);
       setClassifying((cur) => {
         const next = new Set(cur);
         next.delete(text);
@@ -228,16 +230,25 @@ function PreferenceChips() {
         </button>
       ))}
       {trip.savedCustomInterests.map((text) => (
-        <button
+        <div
           key={text}
-          type="button"
           className="chip selected"
-          onClick={() => removeSavedCustomInterest(text)}
-          title={classifying.has(text) ? 'Finding matching landmarks…' : 'Tap to remove'}
+          style={{ cursor: 'default' }}
+          title={classifying.has(text) ? 'Finding matching landmarks…' : undefined}
         >
-          <span className="chip-icon">{classifying.has(text) ? '\u{23F3}' : '\u{2728}'}</span>
+          <span className="chip-icon">
+            {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
+          </span>
           <span>{text}</span>
-        </button>
+          <button
+            type="button"
+            className="chip-remove"
+            aria-label={`Remove ${text}`}
+            onClick={() => removeSavedCustomInterest(text)}
+          >
+            {'\u{1F5D1}\u{FE0F}'}
+          </button>
+        </div>
       ))}
       <AddInterestChip existing={trip.savedCustomInterests} onAdd={addCustom} />
     </div>

@@ -10,7 +10,8 @@ import RegionSearch from '../components/RegionSearch';
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
 
 export default function TripSetup() {
-  const { trip, updateTrip, setCustomInterestMatches, removeCustomInterest, applyPreferences } = useTrip();
+  const { trip, updateTrip, setCustomInterestMatches, setCustomInterestEmoji, removeCustomInterest, applyPreferences } =
+    useTrip();
   const navigate = useNavigate();
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState(null);
@@ -54,8 +55,9 @@ export default function TripSetup() {
     if (trip.customInterests.includes(text)) return;
     updateTrip({ customInterests: [...trip.customInterests, text] });
     setClassifying((cur) => new Set(cur).add(text));
-    classifyInterest(text).then((ids) => {
-      setCustomInterestMatches(text, ids);
+    classifyInterest(text).then(({ matches, emoji }) => {
+      setCustomInterestMatches(text, matches);
+      setCustomInterestEmoji(text, emoji);
       setClassifying((cur) => {
         const next = new Set(cur);
         next.delete(text);
@@ -149,16 +151,25 @@ export default function TripSetup() {
             </button>
           ))}
           {trip.customInterests.map((text) => (
-            <button
+            <div
               key={text}
-              type="button"
               className="chip selected"
-              onClick={() => removeCustomInterest(text)}
-              title={classifying.has(text) ? 'Finding matching landmarks…' : 'Tap to remove'}
+              style={{ cursor: 'default' }}
+              title={classifying.has(text) ? 'Finding matching landmarks…' : undefined}
             >
-              <span className="chip-icon">{classifying.has(text) ? '\u{23F3}' : '\u{2728}'}</span>
+              <span className="chip-icon">
+                {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
+              </span>
               <span>{text}</span>
-            </button>
+              <button
+                type="button"
+                className="chip-remove"
+                aria-label={`Remove ${text}`}
+                onClick={() => removeCustomInterest(text)}
+              >
+                {'\u{1F5D1}\u{FE0F}'}
+              </button>
+            </div>
           ))}
           <AddInterestChip existing={trip.customInterests} onAdd={addCustomInterest} />
         </div>

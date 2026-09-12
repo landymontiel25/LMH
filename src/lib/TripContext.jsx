@@ -12,6 +12,11 @@ const DEFAULT_TRIP = {
   // the AI decided fit a free-text interest like "nightlife" or "racing", since
   // those don't map to any of the built-in categories on their own.
   customInterestMatches: {},
+  // { [customInterestText]: emoji } -- one emoji the AI picked to represent
+  // that free-text interest (e.g. "racing" -> a race car), chosen alongside
+  // its landmark matches so the chip shows something more specific than a
+  // generic sparkle.
+  customInterestEmoji: {},
   // "My Preferences" on Profile -- your usual picks, saved once so Setup can
   // fill interests/customInterests in with one tap instead of re-choosing
   // them on every trip. Independent of the live trip.interests below.
@@ -61,14 +66,20 @@ export function TripProvider({ children }) {
   const setCustomInterestMatches = (text, ids) =>
     setTrip((t) => ({ ...t, customInterestMatches: { ...t.customInterestMatches, [text]: ids } }));
 
+  const setCustomInterestEmoji = (text, emoji) =>
+    setTrip((t) => ({ ...t, customInterestEmoji: { ...t.customInterestEmoji, [text]: emoji } }));
+
   const removeCustomInterest = (text) =>
     setTrip((t) => {
       const customInterestMatches = { ...t.customInterestMatches };
       delete customInterestMatches[text];
+      const customInterestEmoji = { ...t.customInterestEmoji };
+      delete customInterestEmoji[text];
       return {
         ...t,
         customInterests: t.customInterests.filter((i) => i !== text),
         customInterestMatches,
+        customInterestEmoji,
       };
     });
 
@@ -139,6 +150,7 @@ export function TripProvider({ children }) {
         regionsWithItineraries,
         resetTrip,
         setCustomInterestMatches,
+        setCustomInterestEmoji,
         removeCustomInterest,
         toggleSavedInterest,
         addSavedCustomInterest,

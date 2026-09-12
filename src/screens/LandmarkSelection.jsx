@@ -95,6 +95,7 @@ export default function LandmarkSelection() {
     updateTrip,
     setMapFocus,
     setCustomInterestMatches,
+    setCustomInterestEmoji,
   } = useTrip();
   const { coords } = useGeo();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
@@ -130,7 +131,10 @@ export default function LandmarkSelection() {
   useEffect(() => {
     trip.customInterests.forEach((text) => {
       if (trip.customInterestMatches[text] !== undefined) return;
-      classifyInterest(text).then((ids) => setCustomInterestMatches(text, ids));
+      classifyInterest(text).then(({ matches, emoji }) => {
+        setCustomInterestMatches(text, matches);
+        setCustomInterestEmoji(text, emoji);
+      });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip.customInterests]);
