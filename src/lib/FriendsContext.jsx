@@ -52,7 +52,12 @@ export function FriendsProvider({ children }) {
       cacheProfile(user.uid, p.value);
     } else {
       // Read failed or empty — fall back to the cached profile so the username
-      // (and hero name) survive a flaky load.
+      // (and hero name) survive a flaky load. Logged (not just swallowed) so a
+      // real read failure -- e.g. a permission error on a cold load -- shows
+      // up somewhere instead of silently serving stale cached data forever.
+      if (p.status === 'rejected') {
+        console.error('[FriendsContext] getUserProfile failed on reload:', p.reason);
+      }
       const cached = loadCachedProfile(user.uid);
       if (cached) setMyProfile(cached);
     }
