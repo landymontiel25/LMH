@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
 import { INTERESTS, getRegion } from '../data/regions';
+import { nearestRegionId } from '../lib/geo';
 import { classifyInterest } from '../lib/interestClassifier';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import AddInterestChip from '../components/AddInterestChip';
@@ -30,9 +31,11 @@ export default function TripSetup() {
     setLocateError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
         updateTrip({
           startingLocation: CURRENT_LOCATION_LABEL,
-          startingCoords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          startingCoords: { lat, lng },
+          activeRegion: nearestRegionId(lat, lng),
         });
         setLocating(false);
       },
@@ -68,7 +71,7 @@ export default function TripSetup() {
 
   const selectRegion = (region) => {
     if (region.id === trip.activeRegion) return;
-    updateTrip({ activeRegion: region.id });
+    updateTrip({ activeRegion: region.id, startingLocation: '', startingCoords: null });
   };
 
   const activeRegion = getRegion(trip.activeRegion) || { name: '' };
@@ -104,7 +107,13 @@ export default function TripSetup() {
           placeholder="Or type an address, hotel, etc."
           value={trip.startingLocation}
           onChange={(text) => updateTrip({ startingLocation: text, startingCoords: null })}
-          onSelect={(s) => updateTrip({ startingLocation: s.primary, startingCoords: { lat: s.lat, lng: s.lng } })}
+          onSelect={(s) =>
+            updateTrip({
+              startingLocation: s.primary,
+              startingCoords: { lat: s.lat, lng: s.lng },
+              activeRegion: nearestRegionId(s.lat, s.lng),
+            })
+          }
         />
         {locateError && (
           <p className="tag tag-error" style={{ marginTop: 6 }}>
