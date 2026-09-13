@@ -20,7 +20,7 @@ import { distanceMeters } from '../lib/geo';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
 import { useBadges } from '../lib/BadgesContext';
-import { closestUnearnedBadge } from '../lib/streaks';
+import { closestUnearnedBadge, ALL_BADGES } from '../lib/streaks';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
 import { completeOnboarding } from '../lib/onboarding';
 import { isAdmin } from '../lib/admins';
@@ -269,6 +269,91 @@ function FirstCheckInStep({ onDone }) {
       <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={onDone}>
         {claimedMap[nearest?.landmark?.id] ? 'Continue' : 'Skip for now'}
       </button>
+    </div>
+  );
+}
+
+// The "closest unearned badge" card at the top of Profile. Progress is
+// recomputed live from badgeCounts every render, but closestUnearnedBadge
+// stops returning a badge the instant it's earned -- so without tracking
+// what was shown a moment ago, completing one would just silently swap to
+// the next with no 100%/green moment at all. This holds onto the
+// just-completed badge for a couple seconds (full green bar + a little
+// "unlocked" pop) before handing off to whatever's next, or to the
+// all-done message once nothing's left to work toward.
+function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding }) {
+  const closestBadge = closestUnearnedBadge({
+    checkinsCount: badgeCounts.checkins,
+    citiesCount: badgeCounts.cities,
+    streakDays: badgeCounts.streak,
+    onboardingCompleted,
+  });
+  const [displayBadge, setDisplayBadge] = useState(closestBadge);
+  const [celebrating, setCelebrating] = useState(false);
+  const prevIdRef = useRef(closestBadge?.id ?? null);
+
+  useEffect(() => {
+    const newId = closestBadge?.id ?? null;
+    if (newId === prevIdRef.current) return;
+    const prevBadge = ALL_BADGES.find((b) => b.id === prevIdRef.current);
+    // Only celebrate if the badge we were showing actually got earned (its
+    // count now meets its threshold) -- guards against a coincidental id
+    // change from something else (e.g. a fresh profile read) that isn't
+    // really a completion.
+    const justCompleted = prevBadge && badgeCounts[prevBadge.kind] >= prevBadge.n;
+    if (justCompleted) {
+      setDisplayBadge(prevBadge);
+      setCelebrating(true);
+      const t = setTimeout(() => {
+        setCelebrating(false);
+        setDisplayBadge(closestBadge);
+        prevIdRef.current = newId;
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+    setDisplayBadge(closestBadge);
+    prevIdRef.current = newId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closestBadge?.id]);
+
+  if (!displayBadge) {
+    return (
+      <div className="card section">
+        <p style={{ margin: 0 }}>{'\u{1F389}'} You've completed all tasks. Check in tomorrow for new tasks!</p>
+      </div>
+    );
+  }
+
+  const current = celebrating ? displayBadge.n : badgeCounts[displayBadge.kind];
+  const pct = celebrating ? 1 : Math.min(1, current / displayBadge.n);
+  const canStartOnboarding = displayBadge.kind === 'milestone' && !celebrating && !onboardingCompleted;
+
+  return (
+    <div className="card section">
+      <p style={{ margin: '0 0 2px' }}>
+        <span className={celebrating ? 'badge-widget-pop' : undefined}>{displayBadge.icon}</span>{' '}
+        {celebrating ? (
+          <strong>{displayBadge.label} unlocked!</strong>
+        ) : (
+          <>
+            {current}/{displayBadge.n} until <strong>{displayBadge.label}</strong>
+          </>
+        )}
+      </p>
+      <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: 'var(--color-parchment-dim)' }}>
+        {celebrating ? 'Nice work!' : displayBadge.description}
+      </p>
+      <div className="level-bar-track">
+        <div
+          className={`level-bar-fill ${celebrating ? 'level-bar-fill-complete' : ''}`}
+          style={{ width: `${pct * 100}%` }}
+        />
+      </div>
+      {canStartOnboarding && (
+        <button type="button" className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 8 }} onClick={onStartOnboarding}>
+          Finish Onboarding {'→'}
+        </button>
+      )}
     </div>
   );
 }
@@ -556,21 +641,14 @@ export default function Profile() {
     : null;
 
   // Closest badge: whichever unearned badge needs the fewest more check-ins/
-  // cities/streak-days/onboarding steps to unlock.
+  // cities/streak-days/onboarding steps to unlock -- see ClosestBadgeCard for
+  // how progress toward it is actually rendered.
   const badgeCounts = {
     checkins: stats?.checkins || 0,
     cities: stats?.cities || 0,
     streak: streakDays,
     milestone: myProfile?.onboardingCompleted ? 1 : 0,
   };
-  const closestBadge = closestUnearnedBadge({
-    checkinsCount: badgeCounts.checkins,
-    citiesCount: badgeCounts.cities,
-    streakDays: badgeCounts.streak,
-    onboardingCompleted: !!myProfile?.onboardingCompleted,
-  });
-  const closestBadgeCurrent = closestBadge ? badgeCounts[closestBadge.kind] : 0;
-  const closestBadgePct = closestBadge ? closestBadgeCurrent / closestBadge.n : 1;
 
   // Streak urgency: you have an active streak from a prior day, but haven't
   // checked in yet today -- it lapses if today passes with no check-in.
@@ -589,27 +667,17 @@ export default function Profile() {
 
       {/* 0.5 — At a glance: closest badge + closest rival, above everything
           else so it's the first thing visible on the Profile screen. */}
-      {(closestRival || closestBadge) && (
+      <ClosestBadgeCard
+        badgeCounts={badgeCounts}
+        onboardingCompleted={!!myProfile?.onboardingCompleted}
+        onStartOnboarding={() => setOnboardingStep('checkin')}
+      />
+      {closestRival && (
         <div className="card section">
-          {closestBadge && (
-            <div style={{ marginBottom: closestRival ? 12 : 0 }}>
-              <p style={{ margin: '0 0 2px' }}>
-                {closestBadge.icon} {closestBadgeCurrent}/{closestBadge.n} until <strong>{closestBadge.label}</strong>
-              </p>
-              <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: 'var(--color-parchment-dim)' }}>
-                {closestBadge.description}
-              </p>
-              <div className="level-bar-track">
-                <div className="level-bar-fill" style={{ width: `${closestBadgePct * 100}%` }} />
-              </div>
-            </div>
-          )}
-          {closestRival && (
-            <p style={{ margin: 0 }}>
-              {'\u{1F3AF}'} Closest rival: <strong>{cleanName(closestRival.userName)}</strong> —{' '}
-              {(closestRival.points - myPoints).toLocaleString()} pts ahead
-            </p>
-          )}
+          <p style={{ margin: 0 }}>
+            {'\u{1F3AF}'} Closest rival: <strong>{cleanName(closestRival.userName)}</strong> —{' '}
+            {(closestRival.points - myPoints).toLocaleString()} pts ahead
+          </p>
         </div>
       )}
 

@@ -544,6 +544,27 @@ textarea {
   transition: width 0.35s ease;
 }
 
+/* ClosestBadgeCard's brief "you just earned this" moment -- the bar goes
+   full and green instead of its usual brass, and the badge's own icon gets
+   a little pop, before the card hands off to the next-closest badge. */
+.level-bar-fill-complete {
+  background: var(--color-green);
+}
+
+.badge-widget-pop {
+  display: inline-block;
+  animation: badge-widget-pop 0.5s ease infinite alternate;
+}
+
+@keyframes badge-widget-pop {
+  from {
+    transform: scale(1) rotate(0deg);
+  }
+  to {
+    transform: scale(1.35) rotate(-8deg);
+  }
+}
+
 /* Badge-earned / level-up celebration -- reuses .modal-backdrop for the
    dimmed background, but deliberately skips .modal-card: the emoji, title,
    and subtitle float directly over the backdrop with no visible box behind
