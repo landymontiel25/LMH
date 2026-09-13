@@ -5,13 +5,21 @@ import { db } from './firebase';
 // visible and editable by every member. Only the owner can change who's a
 // member (see firestore.rules) -- everyone else can only edit the shared
 // landmark list.
-export async function createGroupTrip({ ownerUid, ownerName, name, regionId, landmarkIds = [] }) {
+//
+// initialMembers ({ uid, name }[]) lets the owner invite friends in the same
+// write that creates the trip -- e.g. from Trip Setup's friend picker --
+// instead of creating an owner-only trip and then calling addGroupMember in
+// a loop right after.
+export async function createGroupTrip({ ownerUid, ownerName, name, regionId, landmarkIds = [], initialMembers = [] }) {
   const ref = await addDoc(collection(db, 'group_trips'), {
     ownerUid,
     name,
     regionId,
-    memberUids: [ownerUid],
-    memberNames: { [ownerUid]: ownerName },
+    memberUids: [ownerUid, ...initialMembers.map((m) => m.uid)],
+    memberNames: {
+      [ownerUid]: ownerName,
+      ...Object.fromEntries(initialMembers.map((m) => [m.uid, m.name])),
+    },
     landmarkIds,
     createdAt: serverTimestamp(),
   });
