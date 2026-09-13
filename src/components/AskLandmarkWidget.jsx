@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Global "what's that place called?" helper, available from anywhere in the
-// app (not just a landmark's own detail page). Answers from the AI, but the
-// landmark it links to is always a real entry from our own data -- the
+// Global AI helper, available from anywhere in the app (not just a landmark's
+// own detail page): identifies a place from a vague description, answers
+// travel questions, or answers "how do I..." questions about the app itself.
+// The landmark it links to is always a real entry from our own data -- the
 // server-side lookup is grounded in the actual catalog, never invented.
 export default function AskLandmarkWidget() {
   const navigate = useNavigate();
@@ -61,14 +62,14 @@ export default function AskLandmarkWidget() {
             </button>
           </div>
           <p className="screen-subtitle" style={{ marginTop: 6 }}>
-            Ask me anything about a landmark or city — or describe a place and I'll find it.
+            Ask me anything about a landmark, a city, or how to use the app — or describe a place and I'll find it.
           </p>
           <form onSubmit={ask} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <div style={{ position: 'relative', flex: 1 }}>
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="e.g. what's the james bond house? · best gelato in Milan?"
+                placeholder="e.g. how do I complete onboarding? · best gelato in Milan?"
                 value={question}
                 maxLength={300}
                 onChange={(e) => setQuestion(e.target.value)}
