@@ -752,7 +752,7 @@ export default function Profile() {
                 key={b.id}
                 type="button"
                 className="tag"
-                style={{ cursor: 'pointer', font: 'inherit', appearance: 'none' }}
+                style={{ cursor: 'pointer', fontFamily: 'inherit', appearance: 'none' }}
                 title={b.description}
                 onClick={() => setOpenBadgeId((cur) => (cur === b.id ? null : b.id))}
               >
