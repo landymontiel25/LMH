@@ -14,6 +14,31 @@ import { computeStreakDays, computeBadges, hasCheckedInToday } from './streaks';
 // of this same logic against the same badgeEarnedAt write.
 const BadgesContext = createContext(null);
 
+// Belt-and-suspenders against the "same badge celebrates again" bug, which
+// has come back more than once from timing races upstream (a cache read,
+// a re-fetch, a user-reference change) that looked fixed each time but
+// weren't exhaustively provable. This is a hard, unconditional guarantee
+// instead of one more attempt to get the race exactly right: once a
+// badge has ever been queued for celebration on this device for this
+// account, it is never queued again -- permanently, regardless of what
+// upstream state does. Deliberately per-device (localStorage, not
+// Firestore) since the goal is just "never show this popup twice here."
+const CELEBRATED_PREFIX = 'landmarkhunters.celebrated.';
+function hasCelebrated(uid, badgeId) {
+  try {
+    return localStorage.getItem(`${CELEBRATED_PREFIX}${uid}.${badgeId}`) === '1';
+  } catch {
+    return false;
+  }
+}
+function markCelebrated(uid, badgeId) {
+  try {
+    localStorage.setItem(`${CELEBRATED_PREFIX}${uid}.${badgeId}`, '1');
+  } catch {
+    /* storage full/disabled -- non-fatal, this guard just gets skipped */
+  }
+}
+
 export function BadgesProvider({ children }) {
   const { user, firebaseEnabled } = useAuth();
   const { claimedMap } = useCheckIn();
@@ -81,12 +106,13 @@ export function BadgesProvider({ children }) {
   useEffect(() => {
     if (!user || !profileFresh || badges.length === 0) return;
     const known = myProfile.badgeEarnedAt || {};
-    const fresh = badges.filter((b) => !known[b.id]);
+    const fresh = badges.filter((b) => !known[b.id] && !hasCelebrated(user.uid, b.id));
     if (fresh.length === 0) return;
     const patch = {};
     for (const b of fresh) patch[`badgeEarnedAt.${b.id}`] = serverTimestamp();
     updateDoc(doc(db, 'users', user.uid), patch)
       .then(() => {
+        for (const b of fresh) markCelebrated(user.uid, b.id);
         // Dedupe against whatever's already queued -- guards a fast second
         // check-in whose "fresh" detection runs before myProfile reflects
         // this write, which would otherwise queue the same badge twice.
