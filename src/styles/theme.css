@@ -529,6 +529,21 @@ textarea {
   color: var(--color-parchment-dim);
 }
 
+.level-bar-track {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(var(--color-bg-rgb), 0.5);
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+.level-bar-fill {
+  height: 100%;
+  background: var(--color-brass);
+  border-radius: 5px 0 0 5px;
+  transition: width 0.35s ease;
+}
+
 .chip {
   display: flex;
   align-items: center;

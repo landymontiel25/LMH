@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useBadges } from '../lib/useBadges';
 import { ALL_BADGES, RARITY_ORDER } from '../lib/streaks';
+import { levelProgress } from '../lib/level';
 import CheckinsGallery from '../components/CheckinsGallery';
 
 const SORTS = [
@@ -74,6 +75,7 @@ export default function FullStats() {
 
   const earnedIds = new Set(badges.map((b) => b.id));
   const sorted = sortBadges(badgeEarnedAt, sortBy);
+  const { level, pointsIntoLevel, pointsForNextLevel, pct } = levelProgress(stats?.totalPoints || 0);
 
   return (
     <div ref={gridRef}>
@@ -83,6 +85,18 @@ export default function FullStats() {
       <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 24 }} onClick={() => navigate('/profile')}>
         {'\u{2190}'} Back to Profile
       </button>
+
+      <div className="card section">
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <h3 style={{ margin: 0 }}>{'\u{1F396}\u{FE0F}'} Level {level}</h3>
+          <span className="screen-subtitle" style={{ margin: 0 }}>
+            {pointsIntoLevel.toLocaleString()} / {pointsForNextLevel.toLocaleString()} pts
+          </span>
+        </div>
+        <div className="level-bar-track" style={{ marginTop: 10 }}>
+          <div className="level-bar-fill" style={{ width: `${pct * 100}%` }} />
+        </div>
+      </div>
 
       <div className="card section">
         <h3 style={{ marginTop: 0 }}>{'\u{1F3C5}'} All Badges</h3>
