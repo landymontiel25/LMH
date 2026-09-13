@@ -217,7 +217,7 @@ function FirstCheckInStep({ onDone }) {
     if (!user || myProfile?.onboardingCompleted) return;
     completeOnboarding(user.uid)
       .then(() => reloadFriends())
-      .catch(() => {});
+      .catch((err) => console.error('[Onboarding] completeOnboarding failed:', err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, myProfile?.onboardingCompleted]);
 
