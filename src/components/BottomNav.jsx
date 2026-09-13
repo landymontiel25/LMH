@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { isAdmin } from '../lib/admins';
 import { subscribePendingCount } from '../lib/customLandmarks';
-import { subscribeMyNotifications } from '../lib/notifications';
 
 const items = [
   { to: '/', label: 'Map', icon: '\u{1F310}', end: true },
@@ -18,7 +17,6 @@ export default function BottomNav() {
   const { user, firebaseEnabled } = useAuth();
   const admin = firebaseEnabled && isAdmin(user?.email);
   const [pendingCount, setPendingCount] = useState(0);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   // Live count, not a one-time fetch -- a new submission (or one someone
   // else just approved) updates the badge without needing to open Profile.
@@ -30,30 +28,15 @@ export default function BottomNav() {
     return subscribePendingCount(setPendingCount);
   }, [admin]);
 
-  // Same idea for your own notifications (e.g. a group-trip invite) -- the
-  // header has no room for a standalone bell without crowding the "Landmark
-  // Hunters" wordmark on narrow screens, so this badge is the app-wide
-  // "something's waiting for you" signal instead; the actual bell (with the
-  // list + tap-through) lives on the Profile screen itself.
-  useEffect(() => {
-    if (!firebaseEnabled || !user) {
-      setUnreadCount(0);
-      return;
-    }
-    return subscribeMyNotifications(user.uid, (items) => setUnreadCount(items.filter((n) => !n.read).length));
-  }, [firebaseEnabled, user]);
-
-  const profileBadgeCount = (admin ? pendingCount : 0) + unreadCount;
-
   return (
     <nav className="bottom-nav">
       {items.map((item) => (
         <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'active' : '')}>
           <span className="nav-icon" style={{ position: 'relative' }}>
             {item.icon}
-            {item.to === '/profile' && profileBadgeCount > 0 && (
+            {item.to === '/profile' && admin && pendingCount > 0 && (
               <span
-                aria-label={`${profileBadgeCount} items need your attention`}
+                aria-label={`${pendingCount} pending submissions`}
                 style={{
                   position: 'absolute',
                   top: -4,
@@ -72,7 +55,7 @@ export default function BottomNav() {
                   lineHeight: 1,
                 }}
               >
-                {profileBadgeCount > 9 ? '9+' : profileBadgeCount}
+                {pendingCount > 9 ? '9+' : pendingCount}
               </span>
             )}
           </span>

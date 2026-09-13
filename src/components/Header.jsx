@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { subscribeLeaderboard } from '../lib/leaderboard';
+import { subscribeMyNotifications } from '../lib/notifications';
 
 // Header identity control. Shows who you're signed in as; hovering (desktop)
 // or tapping (mobile) reveals this week's rank/points plus one explicit
@@ -84,6 +85,65 @@ function ProfileMenu() {
   );
 }
 
+// Bell icon -- opens the dedicated /notifications page (grouped into
+// sections there: friend requests, group-trip invites, etc.) rather than a
+// popover, so the list has room to actually be organized instead of a
+// cramped dropdown. Just a badge + a link; no local list state here.
+function NotificationBell() {
+  const { user, firebaseEnabled } = useAuth();
+  const { requests } = useFriends();
+  const navigate = useNavigate();
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (!firebaseEnabled || !user) {
+      setUnread(0);
+      return;
+    }
+    return subscribeMyNotifications(user.uid, (items) => setUnread(items.filter((n) => !n.read).length));
+  }, [firebaseEnabled, user]);
+
+  if (!firebaseEnabled || !user) return null;
+
+  const count = unread + requests.length;
+
+  return (
+    <button
+      type="button"
+      className="btn btn-ghost btn-sm"
+      style={{ position: 'relative' }}
+      onClick={() => navigate('/notifications')}
+      title="Notifications"
+    >
+      {'\u{1F514}'}
+      {count > 0 && (
+        <span
+          aria-label={`${count} notifications`}
+          style={{
+            position: 'absolute',
+            top: -4,
+            right: -4,
+            minWidth: 15,
+            height: 15,
+            borderRadius: 8,
+            background: 'var(--color-error, #b3503f)',
+            color: '#fff',
+            fontSize: '0.6rem',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 3px',
+            lineHeight: 1,
+          }}
+        >
+          {count > 9 ? '9+' : count}
+        </span>
+      )}
+    </button>
+  );
+}
+
 export default function Header() {
   return (
     <header className="app-header">
@@ -92,6 +152,7 @@ export default function Header() {
         <span className="brand-text">Landmark Hunters</span>
       </Link>
       <div className="app-header-actions">
+        <NotificationBell />
         <ProfileMenu />
       </div>
     </header>
