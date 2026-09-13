@@ -78,6 +78,21 @@ export default function TripSetup() {
 
   const canContinue = !!trip.activeRegion;
 
+  const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+  const activeSavedCustomInterests = trip.savedCustomInterests.filter((x) => !trip.deselectedCustomInterests.includes(x));
+  const preferencesSelected =
+    (trip.savedInterests.length > 0 || activeSavedCustomInterests.length > 0) &&
+    sameSet(trip.interests, trip.savedInterests) &&
+    sameSet(trip.customInterests, activeSavedCustomInterests);
+
+  const togglePreferences = () => {
+    if (preferencesSelected) {
+      updateTrip({ interests: [], customInterests: [] });
+    } else {
+      applyPreferences();
+    }
+  };
+
   return (
     <div>
       <h1 className="screen-title">
@@ -141,7 +156,11 @@ export default function TripSetup() {
         )}
         {(trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0) && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-            <button type="button" className="chip chip-action" onClick={applyPreferences}>
+            <button
+              type="button"
+              className={`chip chip-action ${preferencesSelected ? 'selected' : ''}`}
+              onClick={togglePreferences}
+            >
               <span className="chip-icon">{'⭐'}</span>
               <span>Use My Preferences</span>
             </button>
