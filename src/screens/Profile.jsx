@@ -422,9 +422,27 @@ export default function Profile() {
   const healedRef = useRef(false);
   const [streakDays, setStreakDays] = useState(0);
   const [badges, setBadges] = useState([]);
-  // Which badge's description is expanded -- `title` alone covers hover on
-  // desktop, but touch devices need a tap target since there's no hover there.
+  // Which badge's description popover is open -- hover (desktop, with the
+  // same short grace period as the header's profile popover) or tap
+  // (mobile) both toggle it, same pattern as FriendPopoverName.
   const [openBadgeId, setOpenBadgeId] = useState(null);
+  const badgesRef = useRef(null);
+  const closeBadgeTimer = useRef(null);
+  const openBadgeNow = (id) => {
+    clearTimeout(closeBadgeTimer.current);
+    setOpenBadgeId(id);
+  };
+  const closeBadgeSoon = () => {
+    closeBadgeTimer.current = setTimeout(() => setOpenBadgeId(null), 250);
+  };
+  useEffect(() => () => clearTimeout(closeBadgeTimer.current), []);
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (badgesRef.current && !badgesRef.current.contains(e.target)) setOpenBadgeId(null);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const [bonusPoints, setBonusPoints] = useState(0);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -746,19 +764,28 @@ export default function Profile() {
         )}
 
         {badges.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+          <div ref={badgesRef} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
             {badges.map((b) => (
-              <button
+              <span
                 key={b.id}
-                type="button"
-                className="tag"
-                style={{ cursor: 'pointer', fontFamily: 'inherit', appearance: 'none' }}
-                title={b.description}
-                onClick={() => setOpenBadgeId((cur) => (cur === b.id ? null : b.id))}
+                style={{ position: 'relative', display: 'inline-block' }}
+                onMouseEnter={() => openBadgeNow(b.id)}
+                onMouseLeave={closeBadgeSoon}
               >
-                {b.icon} {b.label}
-                {openBadgeId === b.id && <span style={{ opacity: 0.75 }}> — {b.description}</span>}
-              </button>
+                <button
+                  type="button"
+                  className="tag"
+                  style={{ cursor: 'pointer', fontFamily: 'inherit', appearance: 'none' }}
+                  onClick={() => setOpenBadgeId((cur) => (cur === b.id ? null : b.id))}
+                >
+                  {b.icon} {b.label}
+                </button>
+                {openBadgeId === b.id && (
+                  <div className="points-popover" style={{ right: 'auto', left: 0, whiteSpace: 'normal', width: 160, fontWeight: 400 }}>
+                    {b.description}
+                  </div>
+                )}
+              </span>
             ))}
           </div>
         )}
