@@ -368,7 +368,11 @@ export default function MapExplore() {
     () =>
       customLandmarks.map((l) => {
         const region = getRegion(l.region);
-        const syntheticLandmark = { id: l.id, name: l.name, regionId: l.region, lat: l.lat, lng: l.lng };
+        // Needs both regionId (used by claimCheckIn/leaderboard) and region
+        // (used by submitReview's review doc) -- omitting the latter used to
+        // write `region: undefined` into the review, which the Firestore SDK
+        // rejects client-side ("Unsupported field value: undefined").
+        const syntheticLandmark = { id: l.id, name: l.name, regionId: l.region, region: l.region, lat: l.lat, lng: l.lng };
         const isClaimed = !!claimedMap[l.id];
         return (
           <Marker key={l.docId} position={[l.lat, l.lng]} icon={pinIcon(isClaimed, false)}>
