@@ -29,6 +29,7 @@ import SignInForm from '../components/SignInForm';
 import AddInterestChip from '../components/AddInterestChip';
 import LandmarkThumb from '../components/LandmarkThumb';
 import FriendPopoverName from '../components/FriendPopoverName';
+import NotificationBell from '../components/NotificationBell';
 import CheckInButton from '../components/CheckInButton';
 import RegionSearch from '../components/RegionSearch';
 import ConfettiBurst from '../components/ConfettiBurst';
@@ -704,9 +705,12 @@ export default function Profile() {
         </div>
       )}
 
-      <h1 className="screen-title">
-        <span>{'\u{1F3C6}'}</span> Ranks
-      </h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 className="screen-title">
+          <span>{'\u{1F3C6}'}</span> Ranks
+        </h1>
+        <NotificationBell />
+      </div>
 
       <div className="tabs" style={{ justifyContent: 'center', marginBottom: 14 }}>
         <button type="button" className={`tab-btn ${scope === 'friends' ? 'active' : ''}`} onClick={() => setScope('friends')}>

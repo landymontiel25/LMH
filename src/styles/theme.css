@@ -2216,6 +2216,16 @@ textarea {
   box-shadow: var(--shadow-float);
 }
 
+/* "Add a landmark" -- the one map FAB that's an explicit call to action
+   (not a toggle like search/nearby), so it gets the same gold fill as a
+   primary button instead of the plain glass circle. */
+.map-add-btn {
+  background: linear-gradient(180deg, var(--color-brass-bright), var(--color-brass));
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #17130a;
+  box-shadow: 0 6px 18px rgba(201, 161, 90, 0.35);
+}
+
 .map-search-panel {
   position: absolute;
   top: calc(var(--header-h) + 12px);

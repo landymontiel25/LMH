@@ -495,7 +495,7 @@ export default function MapExplore() {
       </button>
       <button
         type="button"
-        className="map-search-btn"
+        className="map-search-btn map-add-btn"
         style={{ top: 'calc(var(--header-h) + 64px)' }}
         title="Add a landmark"
         onClick={() => navigate('/add-landmark')}
