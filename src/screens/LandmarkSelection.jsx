@@ -257,14 +257,6 @@ export default function LandmarkSelection() {
 
       <div className="tabs" style={{ marginBottom: 12 }}>
         <button
-          className={`tab-btn ${visitFilter.includes('visited') ? 'active' : ''}`}
-          onClick={() =>
-            setVisitFilter((cur) => (cur.includes('visited') ? cur.filter((f) => f !== 'visited') : [...cur, 'visited']))
-          }
-        >
-          Visited
-        </button>
-        <button
           className={`tab-btn ${visitFilter.includes('unvisited') ? 'active' : ''}`}
           onClick={() =>
             setVisitFilter((cur) =>
@@ -272,7 +264,15 @@ export default function LandmarkSelection() {
             )
           }
         >
-          Unvisited
+          To Discover
+        </button>
+        <button
+          className={`tab-btn ${visitFilter.includes('visited') ? 'active' : ''}`}
+          onClick={() =>
+            setVisitFilter((cur) => (cur.includes('visited') ? cur.filter((f) => f !== 'visited') : [...cur, 'visited']))
+          }
+        >
+          Visited
         </button>
       </div>
 
