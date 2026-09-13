@@ -6,10 +6,16 @@ import { useTrip } from '../lib/TripContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useGeo } from '../lib/GeoContext';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
-import { subscribeLeaderboard, backfillUserName, cleanName } from '../lib/leaderboard';
+import {
+  subscribeLeaderboard,
+  getFriendsLeaderboard,
+  getRegionalLeaderboard,
+  backfillUserName,
+  cleanName,
+} from '../lib/leaderboard';
 import { authErrorMessage } from '../lib/authErrors';
 import { getUserProfile } from '../lib/friends';
-import { getRegion, INTERESTS, ALL_LANDMARKS } from '../data/regions';
+import { getRegion, REGIONS, INTERESTS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
@@ -25,6 +31,7 @@ import LandmarkThumb from '../components/LandmarkThumb';
 import FriendPopoverName from '../components/FriendPopoverName';
 import NotificationBell from '../components/NotificationBell';
 import CheckInButton from '../components/CheckInButton';
+import RegionSearch from '../components/RegionSearch';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -362,9 +369,13 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const { myUsername, friendUids, myProfile } = useFriends();
+  const { trip } = useTrip();
   const navigate = useNavigate();
   const { stats, streakDays, checkedInToday, badges } = useBadges();
   const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly
+  const [scope, setScope] = useState('friends'); // 'friends' | 'global'
+  const [globalMode, setGlobalMode] = useState('global'); // 'global' | 'regional' (only when scope === 'global')
+  const [regionalRegionId, setRegionalRegionId] = useState(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCities, setShowCities] = useState(false);
@@ -431,18 +442,72 @@ export default function Profile() {
     }
   }, [entries, myUsername, user]);
 
+  // Default the Regional picker to whichever city you're currently
+  // exploring, falling back to your most-recently-visited city, then just
+  // the first curated region -- computed once, the first time Regional is opened.
   useEffect(() => {
-    if (!firebaseEnabled) {
+    if (globalMode === 'regional' && !regionalRegionId) {
+      setRegionalRegionId(trip.activeRegion || stats?.cityIds?.[0] || REGIONS[0]?.id || null);
+    }
+  }, [globalMode, regionalRegionId, trip.activeRegion, stats]);
+
+  useEffect(() => {
+    if (!firebaseEnabled || !user) {
       setLoading(false);
       return;
     }
     setLoading(true);
-    const unsub = subscribeLeaderboard(period, (data) => {
+
+    if (scope === 'friends') {
+      let cancelled = false;
+      getFriendsLeaderboard(period, friendUids, user.uid)
+        .then((data) => {
+          if (!cancelled) {
+            setEntries(data);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setEntries([]);
+            setLoading(false);
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (globalMode === 'regional') {
+      if (!regionalRegionId) {
+        setEntries([]);
+        setLoading(false);
+        return undefined;
+      }
+      let cancelled = false;
+      getRegionalLeaderboard(period, regionalRegionId)
+        .then((data) => {
+          if (!cancelled) {
+            setEntries(data);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setEntries([]);
+            setLoading(false);
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    return subscribeLeaderboard(period, (data) => {
       setEntries(data);
       setLoading(false);
     });
-    return unsub;
-  }, [period, firebaseEnabled]);
+  }, [period, firebaseEnabled, user, scope, globalMode, regionalRegionId, friendUids]);
 
   if (!firebaseEnabled) {
     return (
@@ -511,6 +576,13 @@ export default function Profile() {
   // checked in yet today -- it lapses if today passes with no check-in.
   const streakAtRisk = streakDays > 0 && !checkedInToday;
 
+  const leaderboardLabel =
+    scope === 'friends'
+      ? 'Friends Leaderboard'
+      : globalMode === 'regional'
+      ? `${getRegion(regionalRegionId)?.name || 'Regional'} Leaderboard`
+      : 'Leaderboard';
+
   return (
     <div>
       <PendingLandmarksPanel email={user.email} />
@@ -522,8 +594,43 @@ export default function Profile() {
         <NotificationBell />
       </div>
 
+      <div className="tabs" style={{ justifyContent: 'center', marginBottom: 14 }}>
+        <button type="button" className={`tab-btn ${scope === 'friends' ? 'active' : ''}`} onClick={() => setScope('friends')}>
+          Friends
+        </button>
+        <button type="button" className={`tab-btn ${scope === 'global' ? 'active' : ''}`} onClick={() => setScope('global')}>
+          Global
+        </button>
+      </div>
+
       {/* 1 — Your hero card */}
       <div className="card section rank-hero">
+        {scope === 'global' && (
+          <div className="tabs" style={{ justifyContent: 'center', marginBottom: 12 }}>
+            <button
+              type="button"
+              className={`tab-btn ${globalMode === 'global' ? 'active' : ''}`}
+              onClick={() => setGlobalMode('global')}
+            >
+              Worldwide
+            </button>
+            <button
+              type="button"
+              className={`tab-btn ${globalMode === 'regional' ? 'active' : ''}`}
+              onClick={() => setGlobalMode('regional')}
+            >
+              Regional
+            </button>
+          </div>
+        )}
+        {scope === 'global' && globalMode === 'regional' && (
+          <div style={{ marginBottom: 12 }}>
+            <RegionSearch
+              region={getRegion(regionalRegionId) || { name: 'Choose a region' }}
+              onSelect={(r) => setRegionalRegionId(r.id)}
+            />
+          </div>
+        )}
         <div className="rank-hero-top">
           <div className="rank-hero-rank">{myRank ? `#${myRank}` : '—'}</div>
           <div className="rank-hero-meta">
@@ -568,8 +675,10 @@ export default function Profile() {
       {/* 2 — Leaderboard */}
       <div className="section">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0 }}>{'\u{1F3C6}'} Leaderboard</h3>
-          {!loading && entries.length > 0 && (
+          <h3 style={{ margin: 0 }}>
+            {'\u{1F3C6}'} {leaderboardLabel}
+          </h3>
+          {!loading && entries.length > 0 && scope === 'global' && globalMode === 'global' && (
             <button
               type="button"
               className="btn btn-ghost btn-tight"
