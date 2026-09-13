@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
+import { useGeo } from '../lib/GeoContext';
 import { INTERESTS, getRegion } from '../data/regions';
 import { nearestRegionId } from '../lib/geo';
 import { classifyInterest } from '../lib/interestClassifier';
@@ -13,6 +14,7 @@ const CURRENT_LOCATION_LABEL = 'Your Current Location';
 export default function TripSetup() {
   const { trip, updateTrip, setCustomInterestMatches, setCustomInterestEmoji, removeCustomInterest, applyPreferences } =
     useTrip();
+  const { coords, error: geoError, refreshing: geoRefreshing, refresh: refreshGeo } = useGeo();
   const navigate = useNavigate();
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState(null);
@@ -27,30 +29,43 @@ export default function TripSetup() {
   // after you tweak a chip by hand) without you ever touching this control.
   const [preferencesSelected, setPreferencesSelected] = useState(false);
 
+  // The app already keeps a live, continuously-updating fix in GeoContext
+  // (via Capacitor's watchPosition) for the "nearby now" features -- reusing
+  // it here means an instant apply instead of waiting on a brand-new GPS
+  // request. Only falls back to requesting a fresh fix when nothing's been
+  // read yet this session.
+  const applyCoords = ({ lat, lng }) => {
+    updateTrip({
+      startingLocation: CURRENT_LOCATION_LABEL,
+      startingCoords: { lat, lng },
+      activeRegion: nearestRegionId(lat, lng),
+    });
+  };
+
   const useCurrentLocation = () => {
+    if (coords) {
+      applyCoords(coords);
+      return;
+    }
     if (!('geolocation' in navigator)) {
       setLocateError('Geolocation is not supported on this device.');
       return;
     }
     setLocating(true);
     setLocateError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        updateTrip({
-          startingLocation: CURRENT_LOCATION_LABEL,
-          startingCoords: { lat, lng },
-          activeRegion: nearestRegionId(lat, lng),
-        });
-        setLocating(false);
-      },
-      (err) => {
-        setLocateError(err.message || 'Unable to get your location.');
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
+    refreshGeo();
   };
+
+  // Finishes a fallback fresh-fix request once GeoContext's refresh()
+  // settles (it has no per-call callback of its own -- it just updates the
+  // shared coords/error state).
+  useEffect(() => {
+    if (!locating || geoRefreshing) return;
+    if (coords) applyCoords(coords);
+    else if (geoError) setLocateError(geoError);
+    setLocating(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locating, geoRefreshing]);
 
   const toggleInterest = (id) => {
     const has = trip.interests.includes(id);
