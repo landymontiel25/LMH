@@ -31,29 +31,28 @@ export function computeStreakDays(checkins, now = new Date()) {
   return streak;
 }
 
-const CHECKIN_MILESTONES = [
-  { n: 1, label: 'First Steps', icon: '\u{1F463}', description: 'Your first check-in' },
-  { n: 5, label: 'Explorer', icon: '\u{1F9ED}', description: '5 check-ins' },
-  { n: 10, label: 'Adventurer', icon: '\u{26F0}\u{FE0F}', description: '10 check-ins' },
-  { n: 25, label: 'Legend', icon: '\u{1F3C6}', description: '25 check-ins' },
-];
-const CITY_MILESTONES = [
-  { n: 2, label: 'City Hopper', icon: '\u{1F306}', description: 'Checked in across 2 cities' },
-  { n: 3, label: 'Globetrotter', icon: '\u{1F30D}', description: 'Checked in across 3 cities' },
-];
-const STREAK_MILESTONES = [
-  { n: 3, label: '3-Day Streak', icon: '\u{1F525}', description: 'Checked in 3 days in a row' },
-  { n: 7, label: '7-Day Streak', icon: '\u{1F525}', description: 'Checked in 7 days in a row' },
-  { n: 30, label: '30-Day Streak', icon: '\u{1F525}', description: 'Checked in 30 days in a row' },
+// Rarity is a fixed design-time tier, not something measured across real
+// users -- the app has no population-level stats on who holds which badge.
+// It only exists to give the Full Stats page a "show the impressive ones
+// first" sort; common < uncommon < rare < legendary.
+export const RARITY_ORDER = ['common', 'uncommon', 'rare', 'legendary'];
+
+// The full catalog of every badge that can ever be earned -- Full Stats
+// renders all of these (earned ones in color, the rest grayed out),
+// while computeBadges below just filters it down to what you've earned.
+export const ALL_BADGES = [
+  { id: 'checkins-1', kind: 'checkins', n: 1, label: 'First Steps', icon: '\u{1F463}', description: 'Your first check-in', rarity: 'common' },
+  { id: 'checkins-5', kind: 'checkins', n: 5, label: 'Explorer', icon: '\u{1F9ED}', description: '5 check-ins', rarity: 'common' },
+  { id: 'checkins-10', kind: 'checkins', n: 10, label: 'Adventurer', icon: '\u{26F0}\u{FE0F}', description: '10 check-ins', rarity: 'uncommon' },
+  { id: 'checkins-25', kind: 'checkins', n: 25, label: 'Legend', icon: '\u{1F3C6}', description: '25 check-ins', rarity: 'rare' },
+  { id: 'cities-2', kind: 'cities', n: 2, label: 'City Hopper', icon: '\u{1F306}', description: 'Checked in across 2 cities', rarity: 'common' },
+  { id: 'cities-3', kind: 'cities', n: 3, label: 'Globetrotter', icon: '\u{1F30D}', description: 'Checked in across 3 cities', rarity: 'uncommon' },
+  { id: 'streak-3', kind: 'streak', n: 3, label: '3-Day Streak', icon: '\u{1F525}', description: 'Checked in 3 days in a row', rarity: 'common' },
+  { id: 'streak-7', kind: 'streak', n: 7, label: '7-Day Streak', icon: '\u{1F525}', description: 'Checked in 7 days in a row', rarity: 'uncommon' },
+  { id: 'streak-30', kind: 'streak', n: 30, label: '30-Day Streak', icon: '\u{1F525}', description: 'Checked in 30 days in a row', rarity: 'legendary' },
 ];
 
 export function computeBadges({ checkinsCount, citiesCount, streakDays }) {
-  const badges = [];
-  for (const m of CHECKIN_MILESTONES)
-    if (checkinsCount >= m.n) badges.push({ id: `checkins-${m.n}`, label: m.label, icon: m.icon, description: m.description });
-  for (const m of CITY_MILESTONES)
-    if (citiesCount >= m.n) badges.push({ id: `cities-${m.n}`, label: m.label, icon: m.icon, description: m.description });
-  for (const m of STREAK_MILESTONES)
-    if (streakDays >= m.n) badges.push({ id: `streak-${m.n}`, label: m.label, icon: m.icon, description: m.description });
-  return badges;
+  const counts = { checkins: checkinsCount, cities: citiesCount, streak: streakDays };
+  return ALL_BADGES.filter((b) => counts[b.kind] >= b.n);
 }
