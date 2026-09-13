@@ -57,10 +57,20 @@ export function AuthProvider({ children }) {
   // (clicking the link in another tab) -- reload() re-fetches the account
   // and this re-syncs it into state so the Profile banner can clear itself
   // without a full sign-out/sign-in.
+  //
+  // Only replace `user` with a new object when emailVerified actually
+  // changed. Profile calls this on every mount for an unverified account,
+  // so an unconditional new reference here meant every visit to Profile
+  // looked like a brand-new sign-in to every context keyed off `user` --
+  // FriendsContext re-ran its whole reload (flipping profileFresh false
+  // then true again) and BadgesContext re-fetched stats, on every single
+  // navigation to Profile. That churn was the real source of badges
+  // re-celebrating: enough incidental re-fetching for a client-side
+  // "did this just complete" heuristic to occasionally race itself.
   const refreshUser = async () => {
     if (!auth.currentUser) return;
     await reload(auth.currentUser);
-    setUser({ ...auth.currentUser });
+    setUser((prev) => (prev && prev.emailVerified === auth.currentUser.emailVerified ? prev : { ...auth.currentUser }));
   };
 
   const signOutUser = () => signOut(auth);

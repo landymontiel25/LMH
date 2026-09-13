@@ -53,13 +53,16 @@ export default function CelebrationOverlay() {
   if (badge) {
     return (
       <div className="modal-backdrop" onClick={() => dismissJustEarned(badge.id)}>
-        <div className="celebration-enter">
+        {/* Keying on the badge id forces a fresh mount per badge, so the
+            pop-in and confetti (both one-shot CSS animations) actually
+            replay for every badge shown -- reusing the same DOM nodes
+            across a queue of several would just leave them frozen at their
+            first, already-finished state. */}
+        <div className="celebration-enter" key={badge.id}>
           <div className="celebration-float">
+            <ConfettiBurst />
             <p className="celebration-eyebrow">{'\u{1F3C5}'} Badge Earned</p>
-            <span style={{ position: 'relative', display: 'inline-block' }}>
-              <span className="celebration-icon">{badge.icon}</span>
-              <ConfettiBurst />
-            </span>
+            <span className="celebration-icon">{badge.icon}</span>
             <p className="celebration-title">{badge.label}</p>
             <p className="celebration-subtitle">{badge.description}</p>
           </div>
@@ -71,13 +74,11 @@ export default function CelebrationOverlay() {
   if (levelUp) {
     return (
       <div className="modal-backdrop" onClick={() => setLevelUp(null)}>
-        <div className="celebration-enter">
+        <div className="celebration-enter" key={levelUp}>
           <div className="celebration-float">
+            <ConfettiBurst />
             <p className="celebration-eyebrow">Level Up</p>
-            <span style={{ position: 'relative', display: 'inline-block' }}>
-              <span className="celebration-icon flame">{'\u{1F525}'}</span>
-              <ConfettiBurst />
-            </span>
+            <span className="celebration-icon flame">{'\u{1F525}'}</span>
             <p className="celebration-title">Level {levelUp}</p>
             <p className="celebration-subtitle">Keep exploring to reach the next one.</p>
           </div>
