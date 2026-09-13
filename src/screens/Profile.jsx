@@ -19,6 +19,7 @@ import SignInForm from '../components/SignInForm';
 import AddInterestChip from '../components/AddInterestChip';
 import LandmarkThumb from '../components/LandmarkThumb';
 import FriendPopoverName from '../components/FriendPopoverName';
+import NotificationBell from '../components/NotificationBell';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -582,9 +583,12 @@ export default function Profile() {
     <div>
       <PendingLandmarksPanel email={user.email} />
 
-      <h1 className="screen-title">
-        <span>{'\u{1F3C6}'}</span> Ranks
-      </h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 className="screen-title">
+          <span>{'\u{1F3C6}'}</span> Ranks
+        </h1>
+        <NotificationBell />
+      </div>
 
       {/* 1 — Your hero card */}
       <div className="card section rank-hero">
