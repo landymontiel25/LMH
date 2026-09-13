@@ -264,7 +264,7 @@ export default function LandmarkSelection() {
             )
           }
         >
-          To Discover
+          Unexplored
         </button>
         <button
           className={`tab-btn ${visitFilter.includes('visited') ? 'active' : ''}`}
@@ -272,7 +272,7 @@ export default function LandmarkSelection() {
             setVisitFilter((cur) => (cur.includes('visited') ? cur.filter((f) => f !== 'visited') : [...cur, 'visited']))
           }
         >
-          Visited
+          Explored
         </button>
       </div>
 
