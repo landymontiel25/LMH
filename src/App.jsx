@@ -7,6 +7,7 @@ import { GeoProvider } from './lib/GeoContext';
 import { RatingsProvider } from './lib/RatingsContext';
 import { MyPhotosProvider } from './lib/MyPhotosContext';
 import { FriendsProvider } from './lib/FriendsContext';
+import { UnitsProvider } from './lib/UnitsContext';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -28,6 +29,7 @@ const Profile = lazy(() => import('./screens/Profile'));
 const FullLeaderboard = lazy(() => import('./screens/FullLeaderboard'));
 const Legal = lazy(() => import('./screens/Legal'));
 const GroupTrip = lazy(() => import('./screens/GroupTrip'));
+const Settings = lazy(() => import('./screens/Settings'));
 const Test = lazy(() => import('./screens/Test'));
 
 // Keyed by path so a crash's fallback UI clears itself on the next
@@ -51,6 +53,7 @@ function AppRoutes() {
           <Route path="/account" element={<Profile />} />
           <Route path="/legal" element={<Legal />} />
           <Route path="/group/:tripId" element={<GroupTrip />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/test" element={<Test />} />
         </Routes>
       </Suspense>
@@ -67,6 +70,7 @@ export default function App() {
         <GeoProvider>
           <RatingsProvider>
           <MyPhotosProvider>
+          <UnitsProvider>
           <HashRouter>
           <OfflineBanner />
           <Header />
@@ -77,6 +81,7 @@ export default function App() {
           <CheckInReview />
           <AskLandmarkWidget />
           </HashRouter>
+          </UnitsProvider>
           </MyPhotosProvider>
           </RatingsProvider>
         </GeoProvider>

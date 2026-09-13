@@ -6,6 +6,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useRatings } from '../lib/RatingsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { distanceMeters } from '../lib/geo';
+import { useUnits, formatDistance } from '../lib/UnitsContext';
 import { mapsDeepLink } from '../lib/routing';
 import { classifyInterest } from '../lib/interestClassifier';
 import CheckInButton from '../components/CheckInButton';
@@ -98,6 +99,7 @@ export default function LandmarkSelection() {
     setCustomInterestEmoji,
   } = useTrip();
   const { coords } = useGeo();
+  const { units } = useUnits();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { myPhotos } = useMyPhotos();
   const { ratings } = useRatings();
@@ -346,7 +348,7 @@ export default function LandmarkSelection() {
                     )}
                     {coords && (
                       <span className="tag distance-tag">
-                        {'\u{1F4CD}'} {(distanceMeters(coords.lat, coords.lng, l.lat, l.lng) / 1609.34).toFixed(1)} mi away
+                        {'\u{1F4CD}'} {formatDistance(distanceMeters(coords.lat, coords.lng, l.lat, l.lng), units)} away
                       </span>
                     )}
                   </div>

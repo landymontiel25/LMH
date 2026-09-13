@@ -11,6 +11,7 @@ import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
 import { distanceMeters } from '../lib/geo';
+import { useUnits, formatDistance } from '../lib/UnitsContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { getLandmarkOverrides } from '../lib/landmarkOverrides';
@@ -169,6 +170,7 @@ export default function MapExplore() {
   const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
   const { coords, error: geoError, loading: geoLoading } = useGeo();
+  const { units } = useUnits();
   const mapRef = useRef(null);
   const [satellite] = useState(true);
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
@@ -278,8 +280,6 @@ export default function MapExplore() {
       .sort((a, b) => a.meters - b.meters)
       .slice(0, 12);
   }, [coords, customLandmarks]);
-
-  const formatDistance = (meters) => (meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`);
 
   // Build the markers once and reuse the same elements across re-renders. GPS
   // ticks update `coords` several times a minute; if the markers were rebuilt
@@ -529,7 +529,7 @@ export default function MapExplore() {
                 }}
               >
                 <span className="map-search-result-name">{l.name}</span>
-                <span className="map-search-result-city">{formatDistance(l.meters)} away</span>
+                <span className="map-search-result-city">{formatDistance(l.meters, units)} away</span>
               </button>
             ))}
           </div>

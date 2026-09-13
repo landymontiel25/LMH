@@ -18,8 +18,7 @@ import { getRegion } from '../data/regions';
 import { geocodeLocation } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
 import { buildNearestNeighborRoute, enhanceRouteWithDrivingTimes, mapsDeepLink } from '../lib/routing';
-
-const fmtDist = (m) => (m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1)} km`);
+import { useUnits, formatDistance } from '../lib/UnitsContext';
 
 const ROUTE_BLUE = '#2b7fff';
 
@@ -123,6 +122,7 @@ export default function Itinerary() {
   const { coords } = useGeo();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { myUsername } = useFriends();
+  const { units } = useUnits();
   const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
 
@@ -432,12 +432,12 @@ export default function Itinerary() {
             {idx === 0
               ? stop.distanceFromPrevMeters <= 80000 && (
                   <div className="route-travel">
-                    {'\u{1F4CD}'} {fmtDist(stop.distanceFromPrevMeters)} from you
+                    {'\u{1F4CD}'} {formatDistance(stop.distanceFromPrevMeters, units)} from you
                   </div>
                 )
               : (
                 <div className="route-travel">
-                  {'\u{1F6B6}'} {fmtDist(stop.distanceFromPrevMeters)} to next stop
+                  {'\u{1F6B6}'} {formatDistance(stop.distanceFromPrevMeters, units)} to next stop
                 </div>
               )}
             <div className="route-step">
