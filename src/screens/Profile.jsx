@@ -587,6 +587,32 @@ export default function Profile() {
     <div>
       <PendingLandmarksPanel email={user.email} />
 
+      {/* 0.5 — At a glance: closest badge + closest rival, above everything
+          else so it's the first thing visible on the Profile screen. */}
+      {(closestRival || closestBadge) && (
+        <div className="card section">
+          {closestBadge && (
+            <div style={{ marginBottom: closestRival ? 12 : 0 }}>
+              <p style={{ margin: '0 0 2px' }}>
+                {closestBadge.icon} {closestBadgeCurrent}/{closestBadge.n} until <strong>{closestBadge.label}</strong>
+              </p>
+              <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: 'var(--color-parchment-dim)' }}>
+                {closestBadge.description}
+              </p>
+              <div className="level-bar-track">
+                <div className="level-bar-fill" style={{ width: `${closestBadgePct * 100}%` }} />
+              </div>
+            </div>
+          )}
+          {closestRival && (
+            <p style={{ margin: 0 }}>
+              {'\u{1F3AF}'} Closest rival: <strong>{cleanName(closestRival.userName)}</strong> —{' '}
+              {(closestRival.points - myPoints).toLocaleString()} pts ahead
+            </p>
+          )}
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 className="screen-title">
           <span>{'\u{1F3C6}'}</span> Ranks
@@ -649,28 +675,6 @@ export default function Profile() {
           ))}
         </div>
       </div>
-
-      {/* 1.5 — At a glance: closest rival + closest badge */}
-      {(closestRival || closestBadge) && (
-        <div className="card section">
-          {closestRival && (
-            <p style={{ margin: closestBadge ? '0 0 12px' : 0 }}>
-              {'\u{1F3AF}'} Closest rival: <strong>{cleanName(closestRival.userName)}</strong> —{' '}
-              {(closestRival.points - myPoints).toLocaleString()} pts ahead
-            </p>
-          )}
-          {closestBadge && (
-            <div>
-              <p style={{ margin: '0 0 6px' }}>
-                {closestBadge.icon} {closestBadgeCurrent}/{closestBadge.n} until <strong>{closestBadge.label}</strong>
-              </p>
-              <div className="level-bar-track">
-                <div className="level-bar-fill" style={{ width: `${closestBadgePct * 100}%` }} />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* 2 — Leaderboard */}
       <div className="section">

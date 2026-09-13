@@ -17,7 +17,7 @@ const BadgesContext = createContext(null);
 export function BadgesProvider({ children }) {
   const { user, firebaseEnabled } = useAuth();
   const { claimedMap } = useCheckIn();
-  const { myProfile, reload: reloadFriends } = useFriends();
+  const { myProfile, profileFresh, reload: reloadFriends } = useFriends();
   const [stats, setStats] = useState(null);
   const [streakDays, setStreakDays] = useState(0);
   const [checkedInToday, setCheckedInToday] = useState(false);
@@ -79,7 +79,7 @@ export function BadgesProvider({ children }) {
   // is recorded yet, and every already-earned badge would get re-stamped
   // (and re-celebrated) on every load.
   useEffect(() => {
-    if (!user || !myProfile || badges.length === 0) return;
+    if (!user || !profileFresh || badges.length === 0) return;
     const known = myProfile.badgeEarnedAt || {};
     const fresh = badges.filter((b) => !known[b.id]);
     if (fresh.length === 0) return;

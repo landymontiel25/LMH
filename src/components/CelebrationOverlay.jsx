@@ -52,11 +52,13 @@ export default function CelebrationOverlay() {
   if (badge) {
     return (
       <div className="modal-backdrop" onClick={() => dismissJustEarned(badge.id)}>
-        <div className="modal-card celebration-card">
-          <p className="celebration-eyebrow">{'\u{1F3C5}'} Badge Earned</p>
-          <span className="celebration-icon">{badge.icon}</span>
-          <p className="celebration-title">{badge.label}</p>
-          <p className="celebration-subtitle">{badge.description}</p>
+        <div className="celebration-enter">
+          <div className="celebration-float">
+            <p className="celebration-eyebrow">{'\u{1F3C5}'} Badge Earned</p>
+            <span className="celebration-icon">{badge.icon}</span>
+            <p className="celebration-title">{badge.label}</p>
+            <p className="celebration-subtitle">{badge.description}</p>
+          </div>
         </div>
       </div>
     );
@@ -65,11 +67,13 @@ export default function CelebrationOverlay() {
   if (levelUp) {
     return (
       <div className="modal-backdrop" onClick={() => setLevelUp(null)}>
-        <div className="modal-card celebration-card">
-          <p className="celebration-eyebrow">Level Up</p>
-          <span className="celebration-icon flame">{'\u{1F525}'}</span>
-          <p className="celebration-title">Level {levelUp}</p>
-          <p className="celebration-subtitle">Keep exploring to reach the next one.</p>
+        <div className="celebration-enter">
+          <div className="celebration-float">
+            <p className="celebration-eyebrow">Level Up</p>
+            <span className="celebration-icon flame">{'\u{1F525}'}</span>
+            <p className="celebration-title">Level {levelUp}</p>
+            <p className="celebration-subtitle">Keep exploring to reach the next one.</p>
+          </div>
         </div>
       </div>
     );
