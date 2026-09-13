@@ -8,8 +8,8 @@ import { levelProgress } from '../lib/level';
 import CheckinsGallery from '../components/CheckinsGallery';
 
 const SORTS = [
-  { id: 'recent', label: 'Recent' },
   { id: 'oldest', label: 'Oldest' },
+  { id: 'recent', label: 'Newest' },
   { id: 'rarity', label: 'Rarity' },
 ];
 
@@ -18,8 +18,8 @@ function fmtEarnedDate(seconds) {
   return new Date(seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// Earned badges bubble to the top under Recent/Oldest, most-recently-earned
-// (or oldest-earned) first; badges you haven't gotten yet trail after in
+// Earned badges bubble to the top under Oldest/Newest, oldest-earned (or
+// most-recently-earned) first; badges you haven't gotten yet trail after in
 // catalog order, still grayed out. Rarity ignores earned status entirely --
 // it's a property of the badge itself, not of when (or whether) you got it.
 function sortBadges(badgeEarnedAt, sortBy) {

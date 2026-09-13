@@ -32,6 +32,7 @@ import FriendPopoverName from '../components/FriendPopoverName';
 import NotificationBell from '../components/NotificationBell';
 import CheckInButton from '../components/CheckInButton';
 import RegionSearch from '../components/RegionSearch';
+import ConfettiBurst from '../components/ConfettiBurst';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -281,25 +282,42 @@ function FirstCheckInStep({ onDone }) {
 // just-completed badge for a couple seconds (full green bar + a little
 // "unlocked" pop) before handing off to whatever's next, or to the
 // all-done message once nothing's left to work toward.
-function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding }) {
+//
+// `ready` must stay false until real stats + a real profile read have both
+// landed -- badgeCounts starts at all-zero (stats hasn't loaded yet) and a
+// cached-but-not-yet-confirmed profile, so the very first closestBadge is
+// just a placeholder. Comparing against it once real counts arrive read as
+// "just earned" for whatever that placeholder badge was, which is why
+// badges long since earned were re-celebrating on every load. Nothing here
+// is trusted as a real transition until after the first `ready` render.
+function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding, ready }) {
   const closestBadge = closestUnearnedBadge({
     checkinsCount: badgeCounts.checkins,
     citiesCount: badgeCounts.cities,
     streakDays: badgeCounts.streak,
     onboardingCompleted,
   });
-  const [displayBadge, setDisplayBadge] = useState(closestBadge);
+  const [displayBadge, setDisplayBadge] = useState(null);
   const [celebrating, setCelebrating] = useState(false);
-  const prevIdRef = useRef(closestBadge?.id ?? null);
+  const primedRef = useRef(false);
+  const prevIdRef = useRef(null);
 
   useEffect(() => {
+    if (!ready) return;
     const newId = closestBadge?.id ?? null;
+    if (!primedRef.current) {
+      // First real data this mount -- just show it, no celebration. This is
+      // "already earned before you opened this screen," not "just earned."
+      primedRef.current = true;
+      prevIdRef.current = newId;
+      setDisplayBadge(closestBadge);
+      return;
+    }
     if (newId === prevIdRef.current) return;
     const prevBadge = ALL_BADGES.find((b) => b.id === prevIdRef.current);
     // Only celebrate if the badge we were showing actually got earned (its
     // count now meets its threshold) -- guards against a coincidental id
-    // change from something else (e.g. a fresh profile read) that isn't
-    // really a completion.
+    // change from something else that isn't really a completion.
     const justCompleted = prevBadge && badgeCounts[prevBadge.kind] >= prevBadge.n;
     if (justCompleted) {
       setDisplayBadge(prevBadge);
@@ -314,7 +332,9 @@ function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding 
     setDisplayBadge(closestBadge);
     prevIdRef.current = newId;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closestBadge?.id]);
+  }, [ready, closestBadge?.id]);
+
+  if (!ready) return null;
 
   if (!displayBadge) {
     return (
@@ -331,7 +351,10 @@ function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding 
   return (
     <div className="card section">
       <p style={{ margin: '0 0 2px' }}>
-        <span className={celebrating ? 'badge-widget-pop' : undefined}>{displayBadge.icon}</span>{' '}
+        <span style={{ position: 'relative', display: 'inline-block' }}>
+          <span className={celebrating ? 'badge-widget-pop' : undefined}>{displayBadge.icon}</span>
+          {celebrating && <ConfettiBurst />}
+        </span>{' '}
         {celebrating ? (
           <strong>{displayBadge.label} unlocked!</strong>
         ) : (
@@ -453,7 +476,7 @@ export default function Profile() {
     if (user && !user.emailVerified) refreshUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const { myUsername, friendUids, myProfile } = useFriends();
+  const { myUsername, friendUids, myProfile, profileFresh } = useFriends();
   const { trip } = useTrip();
   const navigate = useNavigate();
   const { stats, streakDays, checkedInToday, badges } = useBadges();
@@ -671,6 +694,7 @@ export default function Profile() {
         badgeCounts={badgeCounts}
         onboardingCompleted={!!myProfile?.onboardingCompleted}
         onStartOnboarding={() => setOnboardingStep('checkin')}
+        ready={!!stats && profileFresh}
       />
       {closestRival && (
         <div className="card section">
