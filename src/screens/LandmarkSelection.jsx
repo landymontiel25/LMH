@@ -121,7 +121,17 @@ export default function LandmarkSelection() {
   const [sortBy, setSortBy] = useState('popularity');
   // Which of Visited/Unvisited are active -- multi-select like the interest
   // tabs above (both on just means "show everything", same as neither).
-  const [visitFilter, setVisitFilter] = useState([]);
+  // Seeded from and written back to trip.visitFilter so it survives
+  // navigating into a landmark's Info page and back (that unmounts this
+  // screen, which would otherwise reset plain local state to []).
+  const [visitFilter, setVisitFilterState] = useState(() => trip.visitFilter ?? []);
+  const setVisitFilter = (updater) => {
+    setVisitFilterState((cur) => {
+      const next = typeof updater === 'function' ? updater(cur) : updater;
+      updateTrip({ visitFilter: next });
+      return next;
+    });
+  };
   // Snapshot of each touched region's selection from right before the last
   // "Suggest For Me" applied, so pressing it again can undo exactly that --
   // no separate trip to Clear. Null means the button isn't in its "applied"
