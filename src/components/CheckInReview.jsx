@@ -60,6 +60,17 @@ export default function CheckInReview() {
     setMsg(null);
     try {
       await commitCheckIn();
+    } catch (e) {
+      // The check-in write itself failed -- no points awarded, nothing to
+      // show as posted.
+      setMsg(e.message || 'Could not check in — try again.');
+      setSaving(false);
+      return;
+    }
+    // Points are awarded the moment commitCheckIn resolves. Everything past
+    // this point (rating, comment, photo) is a bonus save -- a failure here
+    // must never read as "check-in failed" when it actually succeeded.
+    try {
       const res = await submitReview({
         userId: user.uid,
         userName: myUsername || user.displayName || 'Explorer',
@@ -74,12 +85,11 @@ export default function CheckInReview() {
         // Check-in + rating saved; only the photo didn't. Don't trap the user.
         setMsg("Checked in! Your photo couldn't upload — tap Done to close.");
       }
-      setPosted(true);
-    } catch (e) {
-      setMsg(e.message || 'Could not check in — try again.');
-    } finally {
-      setSaving(false);
+    } catch {
+      setMsg("Checked in! Your rating couldn't save — you can try rating it again from the landmark page.");
     }
+    setPosted(true);
+    setSaving(false);
   };
 
   const close = () => clearJustCheckedIn();
