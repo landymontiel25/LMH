@@ -156,11 +156,7 @@ export default function TripSetup() {
         )}
         {(trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0) && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-            <button
-              type="button"
-              className={`chip chip-action ${preferencesSelected ? 'selected' : ''}`}
-              onClick={togglePreferences}
-            >
+            <button type="button" className="chip chip-action" onClick={togglePreferences}>
               <span className="chip-icon">{'⭐'}</span>
               <span>Use My Preferences</span>
             </button>
