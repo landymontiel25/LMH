@@ -119,6 +119,14 @@ export default function LandmarkSelection() {
   ]);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('popularity');
+  // Which of Visited/Unvisited are active -- multi-select like the interest
+  // tabs above (both on just means "show everything", same as neither).
+  const [visitFilter, setVisitFilter] = useState([]);
+  // Snapshot of each touched region's selection from right before the last
+  // "Suggest For Me" applied, so pressing it again can undo exactly that --
+  // no separate trip to Clear. Null means the button isn't in its "applied"
+  // state (nothing to undo).
+  const [suggestedSnapshot, setSuggestedSnapshot] = useState(null);
 
   // Keep the map's focus on the city shown in the list, so tapping Map opens on
   // it — including the default city you land on here.
@@ -158,6 +166,10 @@ export default function LandmarkSelection() {
         const haystack = [l.name, l.summary, ...(l.facts ?? [])].join(' ').toLowerCase();
         if (!haystack.includes(term)) return false;
       }
+      if (visitFilter.length) {
+        const visited = !!claimedMap[l.id];
+        if (!visitFilter.some((f) => (f === 'visited' ? visited : !visited))) return false;
+      }
       return true;
     });
 
@@ -186,13 +198,20 @@ export default function LandmarkSelection() {
       );
     }
     return filtered;
-  }, [cityFilter, activeCategories, landmarkMatchesCategory, search, sortBy, coords, ratings]);
+  }, [cityFilter, activeCategories, landmarkMatchesCategory, search, sortBy, coords, ratings, visitFilter, claimedMap]);
 
   const handleToggle = (landmark) => {
     toggleLandmark(landmark.id, landmark.regionId);
   };
 
+  // Toggle: applying it snapshots each touched city's prior selection so a
+  // second tap can put it back exactly, instead of making you find Clear.
   const suggestForMe = () => {
+    if (suggestedSnapshot) {
+      Object.entries(suggestedSnapshot).forEach(([r, ids]) => setRegionSelection(r, ids));
+      setSuggestedSnapshot(null);
+      return;
+    }
     const keys = [...trip.interests, ...trip.customInterests];
     const interestKeys = keys.length ? keys : INTERESTS.map((i) => i.id);
     const matches = landmarks.filter((l) => interestKeys.some((key) => landmarkMatchesCategory(l, key)));
@@ -203,6 +222,11 @@ export default function LandmarkSelection() {
     picked.forEach((l) => {
       (byR[l.regionId] ||= []).push(l.id);
     });
+    const prior = {};
+    Object.keys(byR).forEach((r) => {
+      prior[r] = getRegionSelection(r);
+    });
+    setSuggestedSnapshot(prior);
     Object.entries(byR).forEach(([r, ids]) => setRegionSelection(r, ids));
   };
 
@@ -220,6 +244,27 @@ export default function LandmarkSelection() {
           ? `${landmarks.length} landmarks matching your interests — pick what you want to see.`
           : `All ${landmarks.length} landmarks — pick everything you want to see.`}
       </p>
+
+      <div className="tabs" style={{ marginBottom: 12 }}>
+        <button
+          className={`tab-btn ${visitFilter.includes('visited') ? 'active' : ''}`}
+          onClick={() =>
+            setVisitFilter((cur) => (cur.includes('visited') ? cur.filter((f) => f !== 'visited') : [...cur, 'visited']))
+          }
+        >
+          Visited
+        </button>
+        <button
+          className={`tab-btn ${visitFilter.includes('unvisited') ? 'active' : ''}`}
+          onClick={() =>
+            setVisitFilter((cur) =>
+              cur.includes('unvisited') ? cur.filter((f) => f !== 'unvisited') : [...cur, 'unvisited']
+            )
+          }
+        >
+          Unvisited
+        </button>
+      </div>
 
       <button
         type="button"
@@ -240,13 +285,17 @@ export default function LandmarkSelection() {
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        <button className="btn btn-primary btn-sm" onClick={suggestForMe}>
-          {'✨'} Suggest For Me
+        <button className={`btn btn-sm ${suggestedSnapshot ? 'btn-primary' : 'btn-ghost'}`} onClick={suggestForMe}>
+          {'✨'} {suggestedSnapshot ? 'Suggested ✓' : 'Suggest For Me'}
         </button>
         {scopeCount > 0 && (
           <button
             className="btn btn-ghost btn-sm"
-            onClick={() => (cityFilter === 'all' ? clearAll() : clearRegion(cityFilter))}
+            onClick={() => {
+              setSuggestedSnapshot(null);
+              if (cityFilter === 'all') clearAll();
+              else clearRegion(cityFilter);
+            }}
           >
             Clear ({scopeCount})
           </button>
