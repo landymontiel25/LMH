@@ -6,6 +6,10 @@ const DEFAULT_TRIP = {
   startingLocation: '',
   startingCoords: null,
   activeRegion: null, // city currently being browsed (Setup / Landmarks context)
+  // Visited/Unvisited tab selection on Choose Landmarks -- persisted so it
+  // survives navigating into a landmark's Info page and back (that screen
+  // unmounts Choose Landmarks, which would otherwise reset local state).
+  visitFilter: [],
   interests: [],
   customInterests: [],
   // { [customInterestText]: string[] of "regionId/landmarkId" } — which landmarks
