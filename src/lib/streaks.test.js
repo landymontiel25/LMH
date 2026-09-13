@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeStreakDays, computeBadges } from './streaks';
+import { computeStreakDays, computeBadges, closestUnearnedBadge, hasCheckedInToday } from './streaks';
 
 const sec = (isoDate) => Math.floor(new Date(isoDate).getTime() / 1000);
 const checkin = (isoDate) => ({ createdAt: { seconds: sec(isoDate) } });
@@ -57,5 +57,36 @@ describe('computeBadges', () => {
     expect(ids).toContain('streak-3');
     expect(ids).toContain('streak-7');
     expect(ids).not.toContain('streak-30');
+  });
+
+  it('only awards the welcome badge once onboarding is marked complete', () => {
+    const without = computeBadges({ checkinsCount: 0, citiesCount: 0, streakDays: 0 });
+    expect(without.map((b) => b.id)).not.toContain('welcome');
+    const withIt = computeBadges({ checkinsCount: 0, citiesCount: 0, streakDays: 0, onboardingCompleted: true });
+    expect(withIt.map((b) => b.id)).toContain('welcome');
+  });
+});
+
+describe('closestUnearnedBadge', () => {
+  it('picks the smallest remaining gap across kinds', () => {
+    // 4 checkins -> 1 away from checkins-5; 0 cities -> 2 away from cities-2.
+    const closest = closestUnearnedBadge({ checkinsCount: 4, citiesCount: 0, streakDays: 0 });
+    expect(closest.id).toBe('checkins-5');
+  });
+
+  it('is null once every badge is earned', () => {
+    expect(closestUnearnedBadge({ checkinsCount: 25, citiesCount: 3, streakDays: 30, onboardingCompleted: true })).toBeNull();
+  });
+});
+
+describe('hasCheckedInToday', () => {
+  it('is true for a check-in earlier the same UTC day', () => {
+    const now = new Date('2026-03-10T20:00:00Z');
+    expect(hasCheckedInToday([checkin('2026-03-10T08:00:00Z')], now)).toBe(true);
+  });
+
+  it('is false with no check-ins today', () => {
+    const now = new Date('2026-03-10T20:00:00Z');
+    expect(hasCheckedInToday([checkin('2026-03-09T08:00:00Z')], now)).toBe(false);
   });
 });

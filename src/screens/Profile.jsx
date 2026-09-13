@@ -3,14 +3,20 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTrip } from '../lib/TripContext';
+import { useCheckIn } from '../lib/useCheckIn';
+import { useGeo } from '../lib/GeoContext';
+import { useUnits, formatDistance } from '../lib/UnitsContext';
 import { subscribeLeaderboard, backfillUserName, cleanName } from '../lib/leaderboard';
 import { authErrorMessage } from '../lib/authErrors';
 import { getUserProfile } from '../lib/friends';
-import { getRegion, INTERESTS } from '../data/regions';
+import { getRegion, INTERESTS, ALL_LANDMARKS } from '../data/regions';
+import { distanceMeters } from '../lib/geo';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
-import { useBadges } from '../lib/useBadges';
+import { useBadges } from '../lib/BadgesContext';
+import { closestUnearnedBadge } from '../lib/streaks';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
+import { completeOnboarding } from '../lib/onboarding';
 import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
@@ -18,6 +24,7 @@ import AddInterestChip from '../components/AddInterestChip';
 import LandmarkThumb from '../components/LandmarkThumb';
 import FriendPopoverName from '../components/FriendPopoverName';
 import NotificationBell from '../components/NotificationBell';
+import CheckInButton from '../components/CheckInButton';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -190,6 +197,75 @@ function OnboardingPreferences({ onDone }) {
   );
 }
 
+// Last onboarding step -- surfaces the nearest landmark to your current GPS
+// fix with a one-tap check-in, so a brand-new account can earn its first
+// point immediately instead of hunting through the map. Reaching this step
+// (whether or not you actually check in) is what completes onboarding.
+function FirstCheckInStep({ onDone }) {
+  const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { myProfile, reload: reloadFriends } = useFriends();
+  const { coords, loading: geoLoading } = useGeo();
+  const { units } = useUnits();
+
+  useEffect(() => {
+    if (!user || myProfile?.onboardingCompleted) return;
+    completeOnboarding(user.uid)
+      .then(() => reloadFriends())
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, myProfile?.onboardingCompleted]);
+
+  const nearest = (() => {
+    if (!coords) return null;
+    let best = null;
+    let bestDist = Infinity;
+    for (const l of ALL_LANDMARKS) {
+      const d = distanceMeters(coords.lat, coords.lng, l.lat, l.lng);
+      if (d < bestDist) {
+        bestDist = d;
+        best = l;
+      }
+    }
+    return best ? { landmark: best, meters: bestDist } : null;
+  })();
+
+  return (
+    <div>
+      <h1 className="screen-title">
+        <span>{'\u{1F4CD}'}</span> Your First Check-In
+      </h1>
+      <p className="screen-subtitle">One tap to earn your first point.</p>
+
+      {!coords && (
+        <p className="screen-subtitle">{geoLoading ? 'Finding your location…' : "Can't find your location right now."}</p>
+      )}
+
+      {nearest && (
+        <div className="card section" style={{ textAlign: 'center' }}>
+          <LandmarkThumb landmark={nearest.landmark} size={96} />
+          <h3 style={{ marginBottom: 4 }}>{nearest.landmark.name}</h3>
+          <p className="screen-subtitle" style={{ marginTop: 0 }}>
+            {formatDistance(nearest.meters, units)} away
+          </p>
+          <CheckInButton
+            landmark={nearest.landmark}
+            user={user}
+            firebaseEnabled={firebaseEnabled}
+            claimedMap={claimedMap}
+            checkingIn={checkingIn}
+            onCheckIn={checkIn}
+            className="btn-block"
+          />
+        </div>
+      )}
+
+      <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={onDone}>
+        {claimedMap[nearest?.landmark?.id] ? 'Continue' : 'Skip for now'}
+      </button>
+    </div>
+  );
+}
+
 // Admin-only review queue for landmarks submitted via "Add Landmark" -- they
 // sit invisible to everyone else until approved or rejected here. Renders
 // nothing at all for a non-admin account, and nothing once the queue is
@@ -285,14 +361,14 @@ export default function Profile() {
     if (user && !user.emailVerified) refreshUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const { myUsername } = useFriends();
+  const { myUsername, friendUids, myProfile } = useFriends();
   const navigate = useNavigate();
-  const { stats, streakDays, badges } = useBadges();
+  const { stats, streakDays, checkedInToday, badges } = useBadges();
   const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCities, setShowCities] = useState(false);
-  const [justSignedUp, setJustSignedUp] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(null); // null | 'preferences' | 'checkin'
   const healedRef = useRef(false);
   // Which badge's description popover is open -- hover (desktop, with the
   // same short grace period as the header's profile popover) or tap
@@ -379,9 +455,10 @@ export default function Profile() {
     );
   }
 
-  if (!user) return <SignInForm onSignedUp={() => setJustSignedUp(true)} />;
+  if (!user) return <SignInForm onSignedUp={() => setOnboardingStep('preferences')} />;
 
-  if (justSignedUp) return <OnboardingPreferences onDone={() => setJustSignedUp(false)} />;
+  if (onboardingStep === 'preferences') return <OnboardingPreferences onDone={() => setOnboardingStep('checkin')} />;
+  if (onboardingStep === 'checkin') return <FirstCheckInStep onDone={() => setOnboardingStep(null)} />;
 
   const myIdx = entries.findIndex((e) => e.userId === user.uid);
   const myPoints = myIdx >= 0 ? entries[myIdx].points : 0;
@@ -404,6 +481,35 @@ export default function Profile() {
   const podiumOrder = [top3[1], top3[0], top3[2]]; // 2nd · 1st · 3rd
   const rest = entries.slice(3);
   const myRowOutside = myIdx >= 3;
+
+  // Closest rival: the friend nearest above you on this period's board --
+  // a friend-scoped nudge, distinct from the motivator above (which compares
+  // against whoever's immediately above you on the board, friend or not).
+  const rivalCandidates = entries.filter((e) => e.userId !== user.uid && friendUids.has(e.userId) && e.points > myPoints);
+  const closestRival = rivalCandidates.length
+    ? rivalCandidates.reduce((closest, e) => (e.points - myPoints < closest.points - myPoints ? e : closest))
+    : null;
+
+  // Closest badge: whichever unearned badge needs the fewest more check-ins/
+  // cities/streak-days/onboarding steps to unlock.
+  const badgeCounts = {
+    checkins: stats?.checkins || 0,
+    cities: stats?.cities || 0,
+    streak: streakDays,
+    milestone: myProfile?.onboardingCompleted ? 1 : 0,
+  };
+  const closestBadge = closestUnearnedBadge({
+    checkinsCount: badgeCounts.checkins,
+    citiesCount: badgeCounts.cities,
+    streakDays: badgeCounts.streak,
+    onboardingCompleted: !!myProfile?.onboardingCompleted,
+  });
+  const closestBadgeCurrent = closestBadge ? badgeCounts[closestBadge.kind] : 0;
+  const closestBadgePct = closestBadge ? closestBadgeCurrent / closestBadge.n : 1;
+
+  // Streak urgency: you have an active streak from a prior day, but haven't
+  // checked in yet today -- it lapses if today passes with no check-in.
+  const streakAtRisk = streakDays > 0 && !checkedInToday;
 
   return (
     <div>
@@ -436,6 +542,28 @@ export default function Profile() {
           ))}
         </div>
       </div>
+
+      {/* 1.5 — At a glance: closest rival + closest badge */}
+      {(closestRival || closestBadge) && (
+        <div className="card section">
+          {closestRival && (
+            <p style={{ margin: closestBadge ? '0 0 12px' : 0 }}>
+              {'\u{1F3AF}'} Closest rival: <strong>{cleanName(closestRival.userName)}</strong> —{' '}
+              {(closestRival.points - myPoints).toLocaleString()} pts ahead
+            </p>
+          )}
+          {closestBadge && (
+            <div>
+              <p style={{ margin: '0 0 6px' }}>
+                {closestBadge.icon} {closestBadgeCurrent}/{closestBadge.n} until <strong>{closestBadge.label}</strong>
+              </p>
+              <div className="level-bar-track">
+                <div className="level-bar-fill" style={{ width: `${closestBadgePct * 100}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 2 — Leaderboard */}
       <div className="section">
@@ -544,6 +672,12 @@ export default function Profile() {
             <span className="profile-stat-label">day streak</span>
           </div>
         </div>
+
+        {streakAtRisk && (
+          <p className="tag tag-error" style={{ display: 'block', marginTop: 14 }}>
+            {'\u{26A0}\u{FE0F}'} Check in today or your {streakDays}-day streak breaks!
+          </p>
+        )}
 
         {bonusPoints > 0 && (
           <p className="tag" style={{ marginTop: 14 }}>

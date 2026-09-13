@@ -8,12 +8,14 @@ import { RatingsProvider } from './lib/RatingsContext';
 import { MyPhotosProvider } from './lib/MyPhotosContext';
 import { FriendsProvider } from './lib/FriendsContext';
 import { UnitsProvider } from './lib/UnitsContext';
+import { BadgesProvider } from './lib/BadgesContext';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
 import CheckInReview from './components/CheckInReview';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
+import CelebrationOverlay from './components/CelebrationOverlay';
 
 // Lazy so each screen (and, critically, Leaflet + its cluster plugin --
 // only pulled in by MapExplore/AddLandmark) ships as its own chunk instead
@@ -68,6 +70,7 @@ export default function App() {
     <AuthProvider>
       <FriendsProvider>
       <CheckInProvider>
+      <BadgesProvider>
       <TripProvider>
         <GeoProvider>
           <RatingsProvider>
@@ -82,12 +85,14 @@ export default function App() {
           <BottomNav />
           <CheckInReview />
           <AskLandmarkWidget />
+          <CelebrationOverlay />
           </HashRouter>
           </UnitsProvider>
           </MyPhotosProvider>
           </RatingsProvider>
         </GeoProvider>
       </TripProvider>
+      </BadgesProvider>
       </CheckInProvider>
       </FriendsProvider>
     </AuthProvider>
