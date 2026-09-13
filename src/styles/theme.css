@@ -998,18 +998,6 @@ textarea {
   white-space: nowrap;
 }
 
-/* The header only has room for the logo mark + a couple of action icons on
-   a narrow phone -- the wordmark's intrinsic width doesn't shrink (it's
-   nowrap, and this app doesn't truncate it), so past a certain viewport it
-   ran straight into whatever sat in .app-header-actions. Drop it here
-   instead of narrowing the actions row, so header content never crowds
-   itself again regardless of how many icons end up over there. */
-@media (max-width: 420px) {
-  .app-header .brand-text {
-    display: none;
-  }
-}
-
 .app-header-actions {
   margin-left: auto;
   display: flex;
