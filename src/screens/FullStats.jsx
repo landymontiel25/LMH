@@ -38,9 +38,21 @@ export default function FullStats() {
   const { claimedMap } = useCheckIn();
   const { stats, badges, badgeEarnedAt } = useBadges();
   const [sortBy, setSortBy] = useState('recent');
+  // Which badge's description popover is open -- hover (desktop, with the
+  // same short grace period as the header's profile popover) or tap
+  // (mobile) both toggle it, same pattern as Profile's badge pills.
   const [openBadgeId, setOpenBadgeId] = useState(null);
   const gridRef = useRef(null);
+  const closeTimer = useRef(null);
+  const openNow = (id) => {
+    clearTimeout(closeTimer.current);
+    setOpenBadgeId(id);
+  };
+  const closeSoon = () => {
+    closeTimer.current = setTimeout(() => setOpenBadgeId(null), 250);
+  };
 
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
   useEffect(() => {
     function handleClickOutside(e) {
       if (gridRef.current && !gridRef.current.contains(e.target)) setOpenBadgeId(null);
@@ -92,17 +104,20 @@ export default function FullStats() {
               <div
                 key={b.id}
                 className={`badge-tile ${earned ? 'earned' : 'locked'}`}
+                onMouseEnter={() => openNow(b.id)}
+                onMouseLeave={closeSoon}
                 onClick={() => setOpenBadgeId((cur) => (cur === b.id ? null : b.id))}
               >
                 <span className="badge-tile-icon">{b.icon}</span>
                 <span className="badge-tile-label">{b.label}</span>
+                {earned && <span className="badge-tile-date">{fmtEarnedDate(badgeEarnedAt[b.id]?.seconds)}</span>}
                 {open && (
                   <div
                     className="points-popover"
                     style={{ top: 'calc(100% + 8px)', left: '50%', right: 'auto', transform: 'translateX(-50%)', whiteSpace: 'normal', width: 160, fontWeight: 400 }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {earned ? `\u{2705} Earned ${fmtEarnedDate(badgeEarnedAt[b.id]?.seconds)}` : b.description}
+                    {b.description}
                   </div>
                 )}
               </div>

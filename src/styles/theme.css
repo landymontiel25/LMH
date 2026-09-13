@@ -524,6 +524,11 @@ textarea {
   color: var(--color-brass-bright);
 }
 
+.badge-tile-date {
+  font-size: 0.62rem;
+  color: var(--color-parchment-dim);
+}
+
 .chip {
   display: flex;
   align-items: center;
