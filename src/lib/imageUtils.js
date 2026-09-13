@@ -4,6 +4,14 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 // once wrapped in Capacitor; the browser's own file picker on the web, via
 // the plugin's web fallback) and returns a single File, or null if the user
 // backed out without choosing one.
+//
+// webUseInput forces the web fallback straight to a plain <input type=file>
+// instead of CameraSource.Prompt's action-sheet path, which depends on a
+// <pwa-action-sheet> custom element from the separate @ionic/pwa-elements
+// package. That package was never installed here, so the element is just an
+// inert, unregistered tag -- Camera.getPhoto() would wait forever for an
+// event it can never fire, and the button looked like it did nothing at all.
+// Native iOS/Android ignore this flag and still show the real action sheet.
 export async function pickPhoto() {
   let photo;
   try {
@@ -11,6 +19,7 @@ export async function pickPhoto() {
       quality: 85,
       resultType: CameraResultType.Uri,
       source: CameraSource.Prompt,
+      webUseInput: true,
     });
   } catch {
     return null;
