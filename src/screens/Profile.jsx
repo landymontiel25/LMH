@@ -22,7 +22,7 @@ import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from
 import { useBadges } from '../lib/BadgesContext';
 import { closestUnearnedBadge } from '../lib/streaks';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
-import { completeOnboarding } from '../lib/onboarding';
+import { completeOnboarding, hasCompletedOnboardingLocally, markOnboardingCompletedLocally } from '../lib/onboarding';
 import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
@@ -212,12 +212,37 @@ function FirstCheckInStep({ onDone }) {
   const { myProfile, reload: reloadFriends } = useFriends();
   const { coords, loading: geoLoading } = useGeo();
   const { units } = useUnits();
+  // Surfaced in the UI (not just the console) since the previous silent
+  // failure mode -- onboardingCompleted not sticking past a reload -- turned
+  // out to need an actual error message from the field to diagnose, and
+  // most people testing this aren't going to open devtools to get one.
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
-    if (!user || myProfile?.onboardingCompleted) return;
+    if (!user || myProfile?.onboardingCompleted || hasCompletedOnboardingLocally(user.uid)) return;
     completeOnboarding(user.uid)
-      .then(() => reloadFriends())
-      .catch((err) => console.error('[Onboarding] completeOnboarding failed:', err));
+      .then(async () => {
+        // Permanent local guard, same idea as BadgesContext's celebration
+        // guard: mark this done on this device the moment the write
+        // succeeds, so "Finish Onboarding" can never reappear here again
+        // regardless of what a later reload's Firestore read comes back
+        // with. The Firestore flag is still the source of truth for other
+        // devices/badges -- this is just insurance against it not sticking.
+        markOnboardingCompletedLocally(user.uid);
+        await reloadFriends();
+        // Read back directly (bypassing FriendsContext's own cache/state)
+        // so a write that silently didn't stick shows up right here instead
+        // of only reappearing as "Finish Onboarding" on the next reload.
+        const fresh = await getUserProfile(user.uid);
+        if (!fresh?.onboardingCompleted) {
+          console.error('[Onboarding] wrote onboardingCompleted but read-back shows it unset:', fresh);
+          setSaveError("Saved, but it didn't stick server-side -- please screenshot this and send it over.");
+        }
+      })
+      .catch((err) => {
+        console.error('[Onboarding] completeOnboarding failed:', err);
+        setSaveError(`Couldn't save: ${err?.message || err}`);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, myProfile?.onboardingCompleted]);
 
@@ -241,6 +266,12 @@ function FirstCheckInStep({ onDone }) {
         <span>{'\u{1F4CD}'}</span> Your First Check-In
       </h1>
       <p className="screen-subtitle">One tap to earn your first point.</p>
+
+      {saveError && (
+        <p className="screen-subtitle" style={{ color: 'var(--color-error, #b3503f)' }}>
+          {'⚠️'} {saveError}
+        </p>
+      )}
 
       {!coords && (
         <p className="screen-subtitle">{geoLoading ? 'Finding your location…' : "Can't find your location right now."}</p>
@@ -610,12 +641,16 @@ export default function Profile() {
 
   // Closest badge: whichever unearned badge needs the fewest more check-ins/
   // cities/streak-days/onboarding steps to unlock -- see ClosestBadgeCard for
-  // how progress toward it is actually rendered.
+  // how progress toward it is actually rendered. onboardingCompleted also
+  // checks the local guard (see FirstCheckInStep) so "Finish Onboarding"
+  // can't reappear on this device even on a load where myProfile hasn't
+  // picked up the Firestore flag.
+  const onboardingDone = !!myProfile?.onboardingCompleted || hasCompletedOnboardingLocally(user.uid);
   const badgeCounts = {
     checkins: stats?.checkins || 0,
     cities: stats?.cities || 0,
     streak: streakDays,
-    milestone: myProfile?.onboardingCompleted ? 1 : 0,
+    milestone: onboardingDone ? 1 : 0,
   };
 
   // Streak urgency: you have an active streak from a prior day, but haven't
@@ -637,7 +672,7 @@ export default function Profile() {
           else so it's the first thing visible on the Profile screen. */}
       <ClosestBadgeCard
         badgeCounts={badgeCounts}
-        onboardingCompleted={!!myProfile?.onboardingCompleted}
+        onboardingCompleted={onboardingDone}
         onStartOnboarding={() => setOnboardingStep('checkin')}
       />
       {closestRival && (
