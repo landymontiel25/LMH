@@ -6,6 +6,7 @@ import { useFriends } from './FriendsContext';
 import { useCheckIn } from './useCheckIn';
 import { getUserStats, getUserCheckins } from './leaderboard';
 import { computeStreakDays, computeBadges, hasCheckedInToday } from './streaks';
+import { hasCompletedOnboardingLocally } from './onboarding';
 
 // Your check-in/city/streak counts and the badges earned from them -- one
 // shared fetch + one shared "what's newly earned" detector, so Profile's
@@ -89,15 +90,21 @@ export function BadgesProvider({ children }) {
   // onboarding (which flips myProfile.onboardingCompleted, not the
   // check-in history) surfaces the Welcome badge immediately, with no
   // extra Firestore reads.
+  // Also true if the local guard says so (see onboarding.js) -- keeps this
+  // in sync with Profile's own onboardingDone check so the Welcome badge
+  // can't show as earned in Profile but unearned in Full Stats, or vice
+  // versa, purely because of whatever's keeping the Firestore flag from
+  // sticking.
+  const onboardingDone = !!myProfile?.onboardingCompleted || (!!user && hasCompletedOnboardingLocally(user.uid));
   const badges = useMemo(() => {
     if (!stats) return [];
     return computeBadges({
       checkinsCount: stats.checkins,
       citiesCount: stats.cities,
       streakDays,
-      onboardingCompleted: !!myProfile?.onboardingCompleted,
+      onboardingCompleted: onboardingDone,
     });
-  }, [stats, streakDays, myProfile?.onboardingCompleted]);
+  }, [stats, streakDays, onboardingDone]);
 
   // Wait for a real profile read (not just `user` existing) before deciding
   // what's "new" -- otherwise a still-loading myProfile looks like nothing

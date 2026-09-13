@@ -27,3 +27,26 @@ export async function completeOnboarding(uid) {
     { merge: true }
   );
 }
+
+// Belt-and-suspenders against onboardingCompleted not sticking past a
+// reload for reasons the Firestore write itself doesn't explain (same
+// unresolved class of bug as the badge-repeat one in BadgesContext) --
+// once this device has ever seen completeOnboarding succeed for this
+// account, "Finish Onboarding" must never show again here, independent of
+// whatever myProfile reads back as. Deliberately per-device (localStorage,
+// not Firestore), same tradeoff as the badge guard.
+const COMPLETED_PREFIX = 'landmarkhunters.onboarded.';
+export function hasCompletedOnboardingLocally(uid) {
+  try {
+    return localStorage.getItem(`${COMPLETED_PREFIX}${uid}`) === '1';
+  } catch {
+    return false;
+  }
+}
+export function markOnboardingCompletedLocally(uid) {
+  try {
+    localStorage.setItem(`${COMPLETED_PREFIX}${uid}`, '1');
+  } catch {
+    /* storage full/disabled -- non-fatal, this guard just gets skipped */
+  }
+}
