@@ -640,6 +640,16 @@ export default function Profile() {
         >
           Delete Account
         </button>
+        {user.metadata?.creationTime && (
+          <p style={{ textAlign: 'center', marginTop: 12, marginBottom: 0, fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
+            Joined{' '}
+            {new Date(user.metadata.creationTime).toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          </p>
+        )}
       </div>
 
       {showDeleteAccount && (
