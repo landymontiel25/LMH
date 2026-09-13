@@ -21,6 +21,11 @@ export default function TripSetup() {
   // matches…" on the chip. Not persisted -- it's re-derived from the trip's own
   // pending state (a custom interest with no matches entry yet).
   const [classifying, setClassifying] = useState(() => new Set());
+  // Whether "Use My Preferences" is toggled on -- an explicit on/off flag
+  // rather than something derived from comparing trip.interests to
+  // savedInterests, since those can coincidentally match (or drift apart
+  // after you tweak a chip by hand) without you ever touching this control.
+  const [preferencesSelected, setPreferencesSelected] = useState(false);
 
   const useCurrentLocation = () => {
     if (!('geolocation' in navigator)) {
@@ -78,19 +83,13 @@ export default function TripSetup() {
 
   const canContinue = !!trip.activeRegion;
 
-  const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
-  const activeSavedCustomInterests = trip.savedCustomInterests.filter((x) => !trip.deselectedCustomInterests.includes(x));
-  const preferencesSelected =
-    (trip.savedInterests.length > 0 || activeSavedCustomInterests.length > 0) &&
-    sameSet(trip.interests, trip.savedInterests) &&
-    sameSet(trip.customInterests, activeSavedCustomInterests);
-
   const togglePreferences = () => {
     if (preferencesSelected) {
       updateTrip({ interests: [], customInterests: [] });
     } else {
       applyPreferences();
     }
+    setPreferencesSelected((s) => !s);
   };
 
   return (
@@ -156,7 +155,11 @@ export default function TripSetup() {
         )}
         {(trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0) && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-            <button type="button" className="chip chip-action" onClick={togglePreferences}>
+            <button
+              type="button"
+              className={`chip chip-action ${preferencesSelected ? 'selected' : ''}`}
+              onClick={togglePreferences}
+            >
               <span className="chip-icon">{'⭐'}</span>
               <span>Use My Preferences</span>
             </button>
