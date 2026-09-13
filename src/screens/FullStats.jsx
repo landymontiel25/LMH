@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useCheckIn } from '../lib/useCheckIn';
-import { useBadges } from '../lib/useBadges';
+import { useBadges } from '../lib/BadgesContext';
 import { ALL_BADGES, RARITY_ORDER } from '../lib/streaks';
 import { levelProgress } from '../lib/level';
 import CheckinsGallery from '../components/CheckinsGallery';

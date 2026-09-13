@@ -4,6 +4,12 @@
 
 const dayKey = (d) => `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
 
+/** Whether any of these check-ins happened today (UTC) -- used to warn when an active streak is about to lapse. */
+export function hasCheckedInToday(checkins, now = new Date()) {
+  const today = dayKey(now);
+  return checkins.some((c) => c.createdAt?.seconds && dayKey(new Date(c.createdAt.seconds * 1000)) === today);
+}
+
 /**
  * Consecutive days (UTC) with at least one check-in, counting back from
  * today. A day with no check-in yet doesn't break the streak until
@@ -50,9 +56,18 @@ export const ALL_BADGES = [
   { id: 'streak-3', kind: 'streak', n: 3, label: '3-Day Streak', icon: '\u{1F525}', description: 'Checked in 3 days in a row', rarity: 'common' },
   { id: 'streak-7', kind: 'streak', n: 7, label: '7-Day Streak', icon: '\u{1F525}', description: 'Checked in 7 days in a row', rarity: 'uncommon' },
   { id: 'streak-30', kind: 'streak', n: 30, label: '30-Day Streak', icon: '\u{1F525}', description: 'Checked in 30 days in a row', rarity: 'legendary' },
+  { id: 'welcome', kind: 'milestone', n: 1, label: 'Welcome', icon: '\u{1F389}', description: 'Completed onboarding', rarity: 'common' },
 ];
 
-export function computeBadges({ checkinsCount, citiesCount, streakDays }) {
-  const counts = { checkins: checkinsCount, cities: citiesCount, streak: streakDays };
+export function computeBadges({ checkinsCount, citiesCount, streakDays, onboardingCompleted = false }) {
+  const counts = { checkins: checkinsCount, cities: citiesCount, streak: streakDays, milestone: onboardingCompleted ? 1 : 0 };
   return ALL_BADGES.filter((b) => counts[b.kind] >= b.n);
+}
+
+/** The unearned badge you're numerically closest to completing (smallest remaining gap), or null once every badge is earned. */
+export function closestUnearnedBadge({ checkinsCount, citiesCount, streakDays, onboardingCompleted = false }) {
+  const counts = { checkins: checkinsCount, cities: citiesCount, streak: streakDays, milestone: onboardingCompleted ? 1 : 0 };
+  const unearned = ALL_BADGES.filter((b) => counts[b.kind] < b.n);
+  if (unearned.length === 0) return null;
+  return unearned.reduce((closest, b) => (b.n - counts[b.kind] < closest.n - counts[closest.kind] ? b : closest));
 }
