@@ -477,6 +477,53 @@ textarea {
   gap: 10px;
 }
 
+/* Full Stats' all-badges grid -- earned badges keep their normal brass
+   color; a badge you haven't earned yet (icon included) renders grayscale
+   and dimmed so the two states read apart at a glance. */
+.badges-full-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.badge-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 14px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: rgba(var(--color-bg-rgb), 0.5);
+  cursor: pointer;
+}
+
+.badge-tile.earned {
+  border-color: var(--color-brass);
+  background: rgba(201, 161, 90, 0.1);
+}
+
+.badge-tile.locked {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.badge-tile-icon {
+  font-size: 1.8rem;
+}
+
+.badge-tile-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-parchment);
+}
+
+.badge-tile.earned .badge-tile-label {
+  color: var(--color-brass-bright);
+}
+
 .chip {
   display: flex;
   align-items: center;

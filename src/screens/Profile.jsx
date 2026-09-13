@@ -2,16 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
-import { useCheckIn } from '../lib/useCheckIn';
 import { useTrip } from '../lib/TripContext';
-import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName, cleanName } from '../lib/leaderboard';
-import { getMyReview } from '../lib/reviews';
+import { subscribeLeaderboard, backfillUserName, cleanName } from '../lib/leaderboard';
 import { authErrorMessage } from '../lib/authErrors';
 import { getUserProfile } from '../lib/friends';
-import { getLandmark, getRegion, INTERESTS } from '../data/regions';
+import { getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
-import { computeStreakDays, computeBadges } from '../lib/streaks';
+import { useBadges } from '../lib/useBadges';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
 import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
@@ -26,7 +24,6 @@ const TABS = [
   { id: 'weekly', label: 'This Week' },
   { id: 'monthly', label: 'This Month' },
   { id: 'yearly', label: 'This Year' },
-  { id: 'checkins', label: '\u{1F4F8} Check-ins' },
 ];
 const MEDAL = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
 
@@ -69,127 +66,6 @@ function InviteButton({ myUsername }) {
     <button className="btn btn-primary btn-block" onClick={share}>
       {copied ? '✓ Invite copied!' : '\u{1F465} Invite Friends to Compete'}
     </button>
-  );
-}
-
-// The user's check-in history, viewable as a list or a 3-across photo grid.
-function CheckinsView({ user, claimedMap, navigate, totalPoints }) {
-  const [checkins, setCheckins] = useState(null);
-  const [layout, setLayout] = useState('list'); // 'list' | 'grid'
-
-  useEffect(() => {
-    let cancelled = false;
-    const build = (c, myPhoto) => {
-      const lm = getLandmark(c.region, c.landmarkId);
-      // Prefer the photo saved AT check-in, then a rating photo, then the
-      // landmark's stock image.
-      const mine = c.photoURL || myPhoto || null;
-      return {
-        id: c.id,
-        landmarkId: c.landmarkId,
-        regionId: c.region,
-        name: c.landmarkName || lm?.name || c.landmarkId,
-        photo: mine || lm?.images?.[0] || null,
-        isMine: !!mine,
-        city: getRegion(c.region)?.name || c.region,
-        points: c.points || 0,
-        date: fmtDateTime(c.createdAt?.seconds),
-      };
-    };
-
-    (async () => {
-      let rows = [];
-      try {
-        rows = await getUserCheckins(user.uid);
-      } catch {
-        rows = [];
-      }
-      if (cancelled) return;
-      // Show right away using landmark photos, so the gallery is never blank…
-      setCheckins(rows.map((c) => build(c, null)));
-      // …then upgrade each tile to YOUR own photo via direct doc reads (the
-      // reviews/{uid}_{landmarkId} doc), which the security rules allow.
-      const myPhotos = await Promise.all(
-        rows.map((c) =>
-          getMyReview(user.uid, c.landmarkId)
-            .then((r) => (r?.photoURLs?.length ? r.photoURLs[0] : r?.photoURL || null))
-            .catch(() => null)
-        )
-      );
-      if (cancelled) return;
-      if (myPhotos.some(Boolean)) setCheckins(rows.map((c, i) => build(c, myPhotos[i])));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, claimedMap]);
-
-  const go = (it) => navigate(`/landmarks/${it.regionId}/${it.landmarkId}`);
-
-  return (
-    <div className="section">
-      <div className="card" style={{ textAlign: 'center', marginBottom: 14 }}>
-        <div className="rank-hero-pts" style={{ fontSize: '1.8rem' }}>
-          {totalPoints.toLocaleString()} <span>total points</span>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ margin: 0 }}>{'\u{1F4F8}'} My Check-ins {checkins ? `(${checkins.length})` : ''}</h3>
-        <div className="tabs" style={{ margin: 0 }}>
-          <button className={`tab-btn ${layout === 'list' ? 'active' : ''}`} onClick={() => setLayout('list')}>
-            {'\u{1F4C4}'} List
-          </button>
-          <button className={`tab-btn ${layout === 'grid' ? 'active' : ''}`} onClick={() => setLayout('grid')}>
-            {'\u{1F5BC}\u{FE0F}'} Grid
-          </button>
-        </div>
-      </div>
-
-      {checkins === null && <p className="screen-subtitle">Loading your check-ins…</p>}
-      {checkins !== null && checkins.length === 0 && (
-        <div className="empty-state">
-          <p>No check-ins yet — find a landmark and check in with a photo! 📸</p>
-        </div>
-      )}
-
-      {checkins && checkins.length > 0 && layout === 'list' && (
-        <div style={{ marginTop: 12 }}>
-          {checkins.map((it) => (
-            <div key={it.id} className="checkin-row" onClick={() => go(it)}>
-              {it.photo ? (
-                <img className="checkin-list-thumb" src={it.photo} alt={it.name} loading="lazy" />
-              ) : (
-                <div className="checkin-thumb-blank" />
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="checkin-name">{it.name}</div>
-                <div className="checkin-sub">
-                  {it.city}
-                  {it.date ? ` · ${it.date}` : ''}
-                </div>
-              </div>
-              <div className="checkin-pts">+{it.points}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {checkins && checkins.length > 0 && layout === 'grid' && (
-        <div className="checkin-grid">
-          {checkins.map((it) => (
-            <button type="button" key={it.id} className="checkin-tile" onClick={() => go(it)}>
-              {it.photo ? (
-                <img src={it.photo} alt={it.name} loading="lazy" />
-              ) : (
-                <div className="checkin-thumb-blank" style={{ width: '100%', height: '100%' }} />
-              )}
-              <span className="checkin-tile-name">{it.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -410,17 +286,14 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const { myUsername } = useFriends();
-  const { claimedMap } = useCheckIn();
   const navigate = useNavigate();
-  const [stats, setStats] = useState(null); // { totalPoints, checkins, cities }
-  const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly | checkins
+  const { stats, streakDays, badges } = useBadges();
+  const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCities, setShowCities] = useState(false);
   const [justSignedUp, setJustSignedUp] = useState(false);
   const healedRef = useRef(false);
-  const [streakDays, setStreakDays] = useState(0);
-  const [badges, setBadges] = useState([]);
   // Which badge's description popover is open -- hover (desktop, with the
   // same short grace period as the header's profile popover) or tap
   // (mobile) both toggle it, same pattern as FriendPopoverName.
@@ -448,54 +321,7 @@ export default function Profile() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
-  const isCheckins = tab === 'checkins';
-  const period = isCheckins ? 'weekly' : tab; // the board always tracks a period
-
-  // Refetch stats on mount AND whenever a check-in lands (claimedMap changes).
-  useEffect(() => {
-    if (!firebaseEnabled || !user) {
-      setStats(null);
-      return;
-    }
-    let cancelled = false;
-    getUserStats(user.uid)
-      .then((s) => {
-        if (!cancelled) setStats(s);
-      })
-      .catch(() => {
-        if (!cancelled) setStats({ totalPoints: 0, checkins: 0, cities: 0 });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [firebaseEnabled, user, claimedMap]);
-
-  // Streak + badges (item i1) -- both derived from the same check-in
-  // history, refetched on the same trigger as stats above.
-  useEffect(() => {
-    if (!firebaseEnabled || !user || !stats) {
-      setStreakDays(0);
-      setBadges([]);
-      return;
-    }
-    let cancelled = false;
-    getUserCheckins(user.uid)
-      .then((rows) => {
-        if (cancelled) return;
-        const days = computeStreakDays(rows);
-        setStreakDays(days);
-        setBadges(computeBadges({ checkinsCount: stats.checkins, citiesCount: stats.cities, streakDays: days }));
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setStreakDays(0);
-          setBadges([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [firebaseEnabled, user, claimedMap, stats]);
+  const period = tab; // the board always tracks a period
 
   // Referral bonuses (item i8) -- claims anything owed (as the referred
   // user, and/or as a referrer whose link brought in a new signup) once
@@ -592,32 +418,16 @@ export default function Profile() {
 
       {/* 1 — Your hero card */}
       <div className="card section rank-hero">
-        {isCheckins ? (
-          <div className="rank-hero-top">
-            <div className="rank-hero-rank" style={{ fontSize: '2rem' }}>
-              {'\u{1F4F8}'}
-            </div>
-            <div className="rank-hero-meta">
-              <div className="rank-hero-name">{myUsername ? `@${myUsername}` : user.displayName || 'Explorer'}</div>
-              <div className="rank-hero-pts">
-                {stats ? stats.checkins.toLocaleString() : '…'} <span>check-ins · {stats ? stats.cities : '…'} cities</span>
-              </div>
+        <div className="rank-hero-top">
+          <div className="rank-hero-rank">{myRank ? `#${myRank}` : '—'}</div>
+          <div className="rank-hero-meta">
+            <div className="rank-hero-name">{myUsername ? `@${myUsername}` : user.displayName || 'Explorer'}</div>
+            <div className="rank-hero-pts">
+              {myPoints.toLocaleString()} <span>pts {PERIOD_LABEL[period].toLowerCase()}</span>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="rank-hero-top">
-              <div className="rank-hero-rank">{myRank ? `#${myRank}` : '—'}</div>
-              <div className="rank-hero-meta">
-                <div className="rank-hero-name">{myUsername ? `@${myUsername}` : user.displayName || 'Explorer'}</div>
-                <div className="rank-hero-pts">
-                  {myPoints.toLocaleString()} <span>pts {PERIOD_LABEL[period].toLowerCase()}</span>
-                </div>
-              </div>
-            </div>
-            <div className="rank-hero-motivator">{motivator}</div>
-          </>
-        )}
+        </div>
+        <div className="rank-hero-motivator">{motivator}</div>
         <div className="tabs" style={{ marginTop: 12, flexWrap: 'wrap' }}>
           {TABS.map((t) => (
             <button key={t.id} className={`tab-btn ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
@@ -627,80 +437,76 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* 2 — Leaderboard OR check-ins gallery */}
-      {isCheckins ? (
-        <CheckinsView user={user} claimedMap={claimedMap} navigate={navigate} totalPoints={stats?.totalPoints || 0} />
-      ) : (
-        <div className="section">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0 }}>{'\u{1F3C6}'} Leaderboard</h3>
-            {!loading && entries.length > 0 && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-tight"
-                onClick={() => navigate(`/leaderboard/full?period=${period}`)}
-              >
-                See Full List
-              </button>
-            )}
-          </div>
-          {loading && <p className="screen-subtitle">Loading rankings…</p>}
-          {!loading && entries.length === 0 && (
-            <div className="empty-state">
-              <p>No points yet {PERIOD_LABEL[period].toLowerCase()} — check in to be first!</p>
-            </div>
-          )}
-
-          {!loading && top3.length > 0 && (
-            <div className="podium">
-              {podiumOrder.map((e, i) =>
-                e ? (
-                  <div
-                    key={e.id}
-                    className={`podium-slot podium-${i === 1 ? 'first' : i === 0 ? 'second' : 'third'} ${
-                      e.userId === user.uid ? 'me' : ''
-                    }`}
-                  >
-                    <div className="podium-medal">{MEDAL[i === 1 ? 0 : i === 0 ? 1 : 2]}</div>
-                    <div className="podium-name">
-                      <FriendPopoverName userId={e.userId} fallbackName={displayFor(e)}>
-                        {displayFor(e)}
-                      </FriendPopoverName>
-                    </div>
-                    <div className="podium-pts">{e.points.toLocaleString()}</div>
-                  </div>
-                ) : (
-                  <div key={`empty-${i}`} className="podium-slot podium-empty" />
-                )
-              )}
-            </div>
-          )}
-
-          {rest.map((e, idx) => (
-            <div key={e.id} className={`leaderboard-row ${e.userId === user.uid ? 'me' : ''}`}>
-              <div className="leaderboard-rank">#{idx + 4}</div>
-              <div style={{ flex: 1 }}>
-                <FriendPopoverName userId={e.userId} fallbackName={displayFor(e)}>
-                  {displayFor(e)}
-                </FriendPopoverName>
-              </div>
-              <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-brass-bright)', fontWeight: 700 }}>
-                {e.points.toLocaleString()} pts
-              </div>
-            </div>
-          ))}
-
-          {myRowOutside && (
-            <div className="leaderboard-row me" style={{ marginTop: 8 }}>
-              <div className="leaderboard-rank">#{myRank}</div>
-              <div style={{ flex: 1 }}>{myUsername ? `@${myUsername}` : 'You'}</div>
-              <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-brass-bright)', fontWeight: 700 }}>
-                {myPoints.toLocaleString()} pts
-              </div>
-            </div>
+      {/* 2 — Leaderboard */}
+      <div className="section">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ margin: 0 }}>{'\u{1F3C6}'} Leaderboard</h3>
+          {!loading && entries.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-tight"
+              onClick={() => navigate(`/leaderboard/full?period=${period}`)}
+            >
+              See Full List
+            </button>
           )}
         </div>
-      )}
+        {loading && <p className="screen-subtitle">Loading rankings…</p>}
+        {!loading && entries.length === 0 && (
+          <div className="empty-state">
+            <p>No points yet {PERIOD_LABEL[period].toLowerCase()} — check in to be first!</p>
+          </div>
+        )}
+
+        {!loading && top3.length > 0 && (
+          <div className="podium">
+            {podiumOrder.map((e, i) =>
+              e ? (
+                <div
+                  key={e.id}
+                  className={`podium-slot podium-${i === 1 ? 'first' : i === 0 ? 'second' : 'third'} ${
+                    e.userId === user.uid ? 'me' : ''
+                  }`}
+                >
+                  <div className="podium-medal">{MEDAL[i === 1 ? 0 : i === 0 ? 1 : 2]}</div>
+                  <div className="podium-name">
+                    <FriendPopoverName userId={e.userId} fallbackName={displayFor(e)}>
+                      {displayFor(e)}
+                    </FriendPopoverName>
+                  </div>
+                  <div className="podium-pts">{e.points.toLocaleString()}</div>
+                </div>
+              ) : (
+                <div key={`empty-${i}`} className="podium-slot podium-empty" />
+              )
+            )}
+          </div>
+        )}
+
+        {rest.map((e, idx) => (
+          <div key={e.id} className={`leaderboard-row ${e.userId === user.uid ? 'me' : ''}`}>
+            <div className="leaderboard-rank">#{idx + 4}</div>
+            <div style={{ flex: 1 }}>
+              <FriendPopoverName userId={e.userId} fallbackName={displayFor(e)}>
+                {displayFor(e)}
+              </FriendPopoverName>
+            </div>
+            <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-brass-bright)', fontWeight: 700 }}>
+              {e.points.toLocaleString()} pts
+            </div>
+          </div>
+        ))}
+
+        {myRowOutside && (
+          <div className="leaderboard-row me" style={{ marginTop: 8 }}>
+            <div className="leaderboard-rank">#{myRank}</div>
+            <div style={{ flex: 1 }}>{myUsername ? `@${myUsername}` : 'You'}</div>
+            <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-brass-bright)', fontWeight: 700 }}>
+              {myPoints.toLocaleString()} pts
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* 3 — Friends & invite */}
       <div className="section">
@@ -710,16 +516,17 @@ export default function Profile() {
 
       {/* 4 — Your stats */}
       <div className="card section">
-        <h3 style={{ marginTop: 0 }}>{'\u{1F4CA}'} Your Stats</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ margin: 0 }}>{'\u{1F4CA}'} Your Stats</h3>
+          <button type="button" className="btn btn-ghost btn-tight" onClick={() => navigate('/stats')}>
+            See Full Stats ›
+          </button>
+        </div>
         <div className="profile-stats">
           <button
             type="button"
             className="profile-stat profile-stat-btn"
-            onClick={() => {
-              if (!stats?.checkins) return;
-              setTab('checkins');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+            onClick={() => stats?.checkins && navigate('/stats')}
           >
             <span className="profile-stat-num">{stats ? stats.checkins.toLocaleString() : '…'}</span>
             <span className="profile-stat-label">check-ins{stats?.checkins ? ' ›' : ''}</span>

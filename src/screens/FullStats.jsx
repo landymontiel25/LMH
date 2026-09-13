@@ -1,0 +1,117 @@
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/AuthContext';
+import { useCheckIn } from '../lib/useCheckIn';
+import { useBadges } from '../lib/useBadges';
+import { ALL_BADGES, RARITY_ORDER } from '../lib/streaks';
+import CheckinsGallery from '../components/CheckinsGallery';
+
+const SORTS = [
+  { id: 'recent', label: 'Recent' },
+  { id: 'oldest', label: 'Oldest' },
+  { id: 'rarity', label: 'Rarity' },
+];
+
+function fmtEarnedDate(seconds) {
+  if (!seconds) return '';
+  return new Date(seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Earned badges bubble to the top under Recent/Oldest, most-recently-earned
+// (or oldest-earned) first; badges you haven't gotten yet trail after in
+// catalog order, still grayed out. Rarity ignores earned status entirely --
+// it's a property of the badge itself, not of when (or whether) you got it.
+function sortBadges(badgeEarnedAt, sortBy) {
+  if (sortBy === 'rarity') {
+    return [...ALL_BADGES].sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity));
+  }
+  const earned = ALL_BADGES.filter((b) => badgeEarnedAt[b.id]);
+  const unearned = ALL_BADGES.filter((b) => !badgeEarnedAt[b.id]);
+  const seconds = (b) => badgeEarnedAt[b.id]?.seconds || 0;
+  earned.sort((a, b) => (sortBy === 'oldest' ? seconds(a) - seconds(b) : seconds(b) - seconds(a)));
+  return [...earned, ...unearned];
+}
+
+export default function FullStats() {
+  const navigate = useNavigate();
+  const { user, firebaseEnabled } = useAuth();
+  const { claimedMap } = useCheckIn();
+  const { stats, badges, badgeEarnedAt } = useBadges();
+  const [sortBy, setSortBy] = useState('recent');
+  const [openBadgeId, setOpenBadgeId] = useState(null);
+  const gridRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (gridRef.current && !gridRef.current.contains(e.target)) setOpenBadgeId(null);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  if (!firebaseEnabled || !user) {
+    return (
+      <div>
+        <p className="screen-subtitle">Sign in on Profile to see your stats.</p>
+        <button type="button" className="btn btn-ghost btn-block" onClick={() => navigate('/profile')}>
+          {'\u{2190}'} Back to Profile
+        </button>
+      </div>
+    );
+  }
+
+  const earnedIds = new Set(badges.map((b) => b.id));
+  const sorted = sortBadges(badgeEarnedAt, sortBy);
+
+  return (
+    <div ref={gridRef}>
+      <h1 className="screen-title">
+        <span>{'\u{2B50}'}</span> Full Stats
+      </h1>
+      <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 24 }} onClick={() => navigate('/profile')}>
+        {'\u{2190}'} Back to Profile
+      </button>
+
+      <div className="card section">
+        <h3 style={{ marginTop: 0 }}>{'\u{1F3C5}'} All Badges</h3>
+        <p className="screen-subtitle" style={{ marginTop: 0 }}>
+          {badges.length} of {ALL_BADGES.length} earned
+        </p>
+        <div className="tabs" style={{ marginBottom: 14 }}>
+          {SORTS.map((s) => (
+            <button key={s.id} className={`tab-btn ${sortBy === s.id ? 'active' : ''}`} onClick={() => setSortBy(s.id)}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="badges-full-grid">
+          {sorted.map((b) => {
+            const earned = earnedIds.has(b.id);
+            const open = openBadgeId === b.id;
+            return (
+              <div
+                key={b.id}
+                className={`badge-tile ${earned ? 'earned' : 'locked'}`}
+                onClick={() => setOpenBadgeId((cur) => (cur === b.id ? null : b.id))}
+              >
+                <span className="badge-tile-icon">{b.icon}</span>
+                <span className="badge-tile-label">{b.label}</span>
+                {open && (
+                  <div
+                    className="points-popover"
+                    style={{ top: 'calc(100% + 8px)', left: '50%', right: 'auto', transform: 'translateX(-50%)', whiteSpace: 'normal', width: 160, fontWeight: 400 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {earned ? `\u{2705} Earned ${fmtEarnedDate(badgeEarnedAt[b.id]?.seconds)}` : b.description}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <CheckinsGallery user={user} claimedMap={claimedMap} navigate={navigate} totalPoints={stats?.totalPoints || 0} />
+    </div>
+  );
+}
