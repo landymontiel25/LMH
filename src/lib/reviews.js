@@ -65,37 +65,56 @@ export async function submitReview({ userId, userName, landmark, stars, comment 
   const reviewRef = doc(db, 'reviews', `${userId}_${landmarkId}`);
   const aggRef = doc(db, 'landmark_ratings', landmarkId);
 
-  await runTransaction(db, async (tx) => {
-    const prev = await tx.get(reviewRef);
-    const agg = await tx.get(aggRef);
-    const prevStars = prev.exists() ? prev.data().stars || 0 : 0;
-    const hadReview = prev.exists();
-    const curSum = agg.exists() ? agg.data().sum || 0 : 0;
-    const curCount = agg.exists() ? agg.data().count || 0 : 0;
-    const newSum = curSum - prevStars + stars;
-    const newCount = curCount + (hadReview ? 0 : 1);
+  const writeReview = () =>
+    runTransaction(db, async (tx) => {
+      const prev = await tx.get(reviewRef);
+      const agg = await tx.get(aggRef);
+      const prevStars = prev.exists() ? prev.data().stars || 0 : 0;
+      const hadReview = prev.exists();
+      const curSum = agg.exists() ? agg.data().sum || 0 : 0;
+      const curCount = agg.exists() ? agg.data().count || 0 : 0;
+      const newSum = curSum - prevStars + stars;
+      const newCount = curCount + (hadReview ? 0 : 1);
 
-    tx.set(
-      aggRef,
-      { landmarkId, sum: newSum, count: newCount, avg: newCount ? newSum / newCount : 0, updatedAt: serverTimestamp() },
-      { merge: true }
-    );
-    tx.set(
-      reviewRef,
-      {
-        userId,
-        userName,
-        landmarkId,
-        landmarkName: landmark.name,
-        region: landmark.region,
-        stars,
-        comment: (comment || '').slice(0, 500),
-        ...(photoURLs.length ? { photoURLs } : {}),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  });
+      tx.set(
+        aggRef,
+        { landmarkId, sum: newSum, count: newCount, avg: newCount ? newSum / newCount : 0, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      tx.set(
+        reviewRef,
+        {
+          userId,
+          userName,
+          landmarkId,
+          landmarkName: landmark.name,
+          region: landmark.region,
+          stars,
+          comment: (comment || '').slice(0, 500),
+          ...(photoURLs.length ? { photoURLs } : {}),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+
+  // The review's create rule checks `exists(checkins/...)` for the check-in
+  // we just wrote a moment ago. Firestore explicitly does NOT guarantee
+  // strong consistency for a security rule's own get()/exists() calls
+  // against other documents (unlike direct reads/writes to the target doc
+  // itself), so that check can occasionally see stale data and wrongly deny
+  // this write right after a fresh check-in. Retry through that brief
+  // window instead of surfacing a permission error for something that
+  // legitimately just happened.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await writeReview();
+      break;
+    } catch (e) {
+      if (e.code !== 'permission-denied' || attempt >= 3) throw e;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+    }
+  }
 
   return { photoURLs, photoFailed };
 }
