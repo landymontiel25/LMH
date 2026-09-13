@@ -99,7 +99,7 @@ export function BadgesProvider({ children }) {
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, badges, myProfile]);
+  }, [user, profileFresh, badges, myProfile]);
 
   const dismissJustEarned = (id) => setJustEarned((cur) => cur.filter((b) => b.id !== id));
 

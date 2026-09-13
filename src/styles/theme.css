@@ -544,33 +544,14 @@ textarea {
   transition: width 0.35s ease;
 }
 
-/* ClosestBadgeCard's brief "you just earned this" moment -- the bar goes
-   full and green instead of its usual brass, and the badge's own icon gets
-   a little pop, before the card hands off to the next-closest badge. */
-.level-bar-fill-complete {
-  background: var(--color-green);
-}
-
-.badge-widget-pop {
-  display: inline-block;
-  animation: badge-widget-pop 0.5s ease infinite alternate;
-}
-
-@keyframes badge-widget-pop {
-  from {
-    transform: scale(1) rotate(0deg);
-  }
-  to {
-    transform: scale(1.35) rotate(-8deg);
-  }
-}
-
 /* Confetti burst -- a handful of pieces flying outward and fading, used
-   around a badge/level icon at the moment it's earned. Its parent must be
-   `position: relative` (or similar) since this is absolutely positioned to
-   fill and burst outward from that parent's center. Each piece's
-   direction/color/delay is fixed per nth-child below rather than computed
-   in JS, so the effect stays pure CSS with no per-instance randomness. */
+   around a whole badge/level celebration bubble at the moment it's earned.
+   Its parent must be `position: relative` since this is absolutely
+   positioned to fill and burst outward from that parent's center, sized
+   to spread across the full ~300px-wide bubble (icon + title + subtitle),
+   not just around the icon. Each piece's direction/color/delay is fixed
+   per nth-child below rather than computed in JS, so the effect stays
+   pure CSS with no per-instance randomness. */
 .confetti-burst {
   position: absolute;
   inset: 0;
@@ -581,12 +562,12 @@ textarea {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 6px;
-  height: 10px;
-  margin: -5px 0 0 -3px;
-  border-radius: 1px;
+  width: 10px;
+  height: 16px;
+  margin: -8px 0 0 -5px;
+  border-radius: 2px;
   opacity: 0;
-  animation: confetti-burst 0.9s ease-out forwards;
+  animation: confetti-burst 1.1s ease-out forwards;
 }
 
 @keyframes confetti-burst {
@@ -601,85 +582,85 @@ textarea {
 }
 
 .confetti-piece-1 {
-  --cx: 46px;
-  --cy: -18px;
+  --cx: 105px;
+  --cy: -42px;
   --cr: 220deg;
   background: var(--color-brass-bright);
   animation-delay: 0s;
 }
 .confetti-piece-2 {
-  --cx: -50px;
-  --cy: -10px;
+  --cx: -112px;
+  --cy: -24px;
   --cr: -180deg;
   background: var(--color-green);
   animation-delay: 0.04s;
 }
 .confetti-piece-3 {
-  --cx: 30px;
-  --cy: -45px;
+  --cx: 68px;
+  --cy: -102px;
   --cr: 160deg;
   background: var(--color-rust);
   animation-delay: 0.08s;
 }
 .confetti-piece-4 {
-  --cx: -32px;
-  --cy: -42px;
+  --cx: -74px;
+  --cy: -96px;
   --cr: -140deg;
   background: var(--color-parchment);
   animation-delay: 0.02s;
 }
 .confetti-piece-5 {
-  --cx: 55px;
-  --cy: 6px;
+  --cx: 124px;
+  --cy: 14px;
   --cr: 260deg;
   background: var(--color-brass);
   animation-delay: 0.1s;
 }
 .confetti-piece-6 {
-  --cx: -55px;
-  --cy: 8px;
+  --cx: -124px;
+  --cy: 18px;
   --cr: -220deg;
   background: var(--color-brass-bright);
   animation-delay: 0.06s;
 }
 .confetti-piece-7 {
-  --cx: 18px;
-  --cy: 50px;
+  --cx: 40px;
+  --cy: 112px;
   --cr: 120deg;
   background: var(--color-green);
   animation-delay: 0.12s;
 }
 .confetti-piece-8 {
-  --cx: -20px;
-  --cy: 50px;
+  --cx: -45px;
+  --cy: 112px;
   --cr: -100deg;
   background: var(--color-rust);
   animation-delay: 0.03s;
 }
 .confetti-piece-9 {
-  --cx: 40px;
-  --cy: 30px;
+  --cx: 90px;
+  --cy: 68px;
   --cr: 300deg;
   background: var(--color-parchment);
   animation-delay: 0.09s;
 }
 .confetti-piece-10 {
-  --cx: -42px;
-  --cy: 28px;
+  --cx: -95px;
+  --cy: 62px;
   --cr: -260deg;
   background: var(--color-brass);
   animation-delay: 0.07s;
 }
 .confetti-piece-11 {
-  --cx: 8px;
-  --cy: -55px;
+  --cx: 18px;
+  --cy: -122px;
   --cr: 180deg;
   background: var(--color-brass-bright);
   animation-delay: 0.05s;
 }
 .confetti-piece-12 {
-  --cx: -8px;
-  --cy: -55px;
+  --cx: -18px;
+  --cy: -122px;
   --cr: -180deg;
   background: var(--color-green);
   animation-delay: 0.11s;
@@ -711,6 +692,7 @@ textarea {
 }
 
 .celebration-float {
+  position: relative;
   animation: celebration-levitate 2.4s ease-in-out infinite;
   filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.35));
 }

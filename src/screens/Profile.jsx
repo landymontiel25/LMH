@@ -20,7 +20,7 @@ import { distanceMeters } from '../lib/geo';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
 import { useBadges } from '../lib/BadgesContext';
-import { closestUnearnedBadge, ALL_BADGES } from '../lib/streaks';
+import { closestUnearnedBadge } from '../lib/streaks';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
 import { completeOnboarding } from '../lib/onboarding';
 import { isAdmin } from '../lib/admins';
@@ -32,7 +32,6 @@ import FriendPopoverName from '../components/FriendPopoverName';
 import NotificationBell from '../components/NotificationBell';
 import CheckInButton from '../components/CheckInButton';
 import RegionSearch from '../components/RegionSearch';
-import ConfettiBurst from '../components/ConfettiBurst';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -274,69 +273,29 @@ function FirstCheckInStep({ onDone }) {
   );
 }
 
-// The "closest unearned badge" card at the top of Profile. Progress is
-// recomputed live from badgeCounts every render, but closestUnearnedBadge
-// stops returning a badge the instant it's earned -- so without tracking
-// what was shown a moment ago, completing one would just silently swap to
-// the next with no 100%/green moment at all. This holds onto the
-// just-completed badge for a couple seconds (full green bar + a little
-// "unlocked" pop) before handing off to whatever's next, or to the
-// all-done message once nothing's left to work toward.
-//
-// `ready` must stay false until real stats + a real profile read have both
-// landed -- badgeCounts starts at all-zero (stats hasn't loaded yet) and a
-// cached-but-not-yet-confirmed profile, so the very first closestBadge is
-// just a placeholder. Comparing against it once real counts arrive read as
-// "just earned" for whatever that placeholder badge was, which is why
-// badges long since earned were re-celebrating on every load. Nothing here
-// is trusted as a real transition until after the first `ready` render.
-function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding, ready }) {
+// The "closest unearned badge" card at the top of Profile. Deliberately
+// stateless: it always renders whatever closestUnearnedBadge computes from
+// the LIVE badgeCounts, with no local "did this just complete" tracking of
+// its own. An earlier version tried to detect a completion locally (to
+// show a green/100% moment before handing off to the next badge) by
+// diffing the closest badge's id across renders -- but that heuristic
+// depended on render order and re-fetch timing it couldn't control (e.g.
+// refreshUser() creating a new `user` reference on every Profile visit,
+// which cascaded into unrelated re-fetches elsewhere), and it kept
+// mistaking "counts re-arrived from a refetch" for "just earned," making
+// already-earned badges re-celebrate. The actual "you just earned this"
+// moment is CelebrationOverlay's job, driven by BadgesContext's
+// server-anchored badgeEarnedAt comparison (the one authoritative source
+// for that) -- this card just always shows current progress.
+function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding }) {
   const closestBadge = closestUnearnedBadge({
     checkinsCount: badgeCounts.checkins,
     citiesCount: badgeCounts.cities,
     streakDays: badgeCounts.streak,
     onboardingCompleted,
   });
-  const [displayBadge, setDisplayBadge] = useState(null);
-  const [celebrating, setCelebrating] = useState(false);
-  const primedRef = useRef(false);
-  const prevIdRef = useRef(null);
 
-  useEffect(() => {
-    if (!ready) return;
-    const newId = closestBadge?.id ?? null;
-    if (!primedRef.current) {
-      // First real data this mount -- just show it, no celebration. This is
-      // "already earned before you opened this screen," not "just earned."
-      primedRef.current = true;
-      prevIdRef.current = newId;
-      setDisplayBadge(closestBadge);
-      return;
-    }
-    if (newId === prevIdRef.current) return;
-    const prevBadge = ALL_BADGES.find((b) => b.id === prevIdRef.current);
-    // Only celebrate if the badge we were showing actually got earned (its
-    // count now meets its threshold) -- guards against a coincidental id
-    // change from something else that isn't really a completion.
-    const justCompleted = prevBadge && badgeCounts[prevBadge.kind] >= prevBadge.n;
-    if (justCompleted) {
-      setDisplayBadge(prevBadge);
-      setCelebrating(true);
-      const t = setTimeout(() => {
-        setCelebrating(false);
-        setDisplayBadge(closestBadge);
-        prevIdRef.current = newId;
-      }, 2000);
-      return () => clearTimeout(t);
-    }
-    setDisplayBadge(closestBadge);
-    prevIdRef.current = newId;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, closestBadge?.id]);
-
-  if (!ready) return null;
-
-  if (!displayBadge) {
+  if (!closestBadge) {
     return (
       <div className="card section">
         <p style={{ margin: 0 }}>{'\u{1F389}'} You've completed all tasks. Check in tomorrow for new tasks!</p>
@@ -344,33 +303,20 @@ function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding,
     );
   }
 
-  const current = celebrating ? displayBadge.n : badgeCounts[displayBadge.kind];
-  const pct = celebrating ? 1 : Math.min(1, current / displayBadge.n);
-  const canStartOnboarding = displayBadge.kind === 'milestone' && !celebrating && !onboardingCompleted;
+  const current = badgeCounts[closestBadge.kind];
+  const pct = Math.min(1, current / closestBadge.n);
+  const canStartOnboarding = closestBadge.kind === 'milestone' && !onboardingCompleted;
 
   return (
     <div className="card section">
       <p style={{ margin: '0 0 2px' }}>
-        <span style={{ position: 'relative', display: 'inline-block' }}>
-          <span className={celebrating ? 'badge-widget-pop' : undefined}>{displayBadge.icon}</span>
-          {celebrating && <ConfettiBurst />}
-        </span>{' '}
-        {celebrating ? (
-          <strong>{displayBadge.label} unlocked!</strong>
-        ) : (
-          <>
-            {current}/{displayBadge.n} until <strong>{displayBadge.label}</strong>
-          </>
-        )}
+        {closestBadge.icon} {current}/{closestBadge.n} until <strong>{closestBadge.label}</strong>
       </p>
       <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: 'var(--color-parchment-dim)' }}>
-        {celebrating ? 'Nice work!' : displayBadge.description}
+        {closestBadge.description}
       </p>
       <div className="level-bar-track">
-        <div
-          className={`level-bar-fill ${celebrating ? 'level-bar-fill-complete' : ''}`}
-          style={{ width: `${pct * 100}%` }}
-        />
+        <div className="level-bar-fill" style={{ width: `${pct * 100}%` }} />
       </div>
       {canStartOnboarding && (
         <button type="button" className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 8 }} onClick={onStartOnboarding}>
@@ -476,7 +422,7 @@ export default function Profile() {
     if (user && !user.emailVerified) refreshUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const { myUsername, friendUids, myProfile, profileFresh } = useFriends();
+  const { myUsername, friendUids, myProfile } = useFriends();
   const { trip } = useTrip();
   const navigate = useNavigate();
   const { stats, streakDays, checkedInToday, badges } = useBadges();
@@ -694,7 +640,6 @@ export default function Profile() {
         badgeCounts={badgeCounts}
         onboardingCompleted={!!myProfile?.onboardingCompleted}
         onStartOnboarding={() => setOnboardingStep('checkin')}
-        ready={!!stats && profileFresh}
       />
       {closestRival && (
         <div className="card section">
