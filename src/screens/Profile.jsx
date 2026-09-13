@@ -7,7 +7,7 @@ import { useTrip } from '../lib/TripContext';
 import { getUserStats, getUserCheckins, subscribeLeaderboard, backfillUserName, cleanName } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
 import { authErrorMessage } from '../lib/authErrors';
-import { setProfileVisibility, getUserProfile } from '../lib/friends';
+import { getUserProfile } from '../lib/friends';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
@@ -408,11 +408,9 @@ export default function Profile() {
     if (user && !user.emailVerified) refreshUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const { myUsername, myProfile, reload: reloadFriends } = useFriends();
+  const { myUsername } = useFriends();
   const { claimedMap } = useCheckIn();
   const navigate = useNavigate();
-  const [visBusy, setVisBusy] = useState(false);
-  const [visMsg, setVisMsg] = useState(null);
   const [stats, setStats] = useState(null); // { totalPoints, checkins, cities }
   const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly | checkins
   const [entries, setEntries] = useState([]);
@@ -557,27 +555,6 @@ export default function Profile() {
   if (!user) return <SignInForm onSignedUp={() => setJustSignedUp(true)} />;
 
   if (justSignedUp) return <OnboardingPreferences onDone={() => setJustSignedUp(false)} />;
-
-  const toggleVisibility = async () => {
-    setVisBusy(true);
-    setVisMsg(null);
-    const next = !myProfile?.public;
-    try {
-      await setProfileVisibility(user.uid, next);
-      // Read straight back from the server (not the cache) to confirm the
-      // write actually stuck -- surfaces a rules/permission problem right
-      // away instead of only discovering it on the next reload.
-      const fresh = await getUserProfile(user.uid);
-      if (!fresh || !!fresh.public !== next) {
-        setVisMsg("That didn't save — try again.");
-      }
-      await reloadFriends();
-    } catch (e) {
-      setVisMsg(e.message || 'Could not update — try again.');
-    } finally {
-      setVisBusy(false);
-    }
-  };
 
   const myIdx = entries.findIndex((e) => e.userId === user.uid);
   const myPoints = myIdx >= 0 ? entries[myIdx].points : 0;
@@ -794,38 +771,14 @@ export default function Profile() {
       {/* 4.5 — My Preferences */}
       <PreferencesPanel />
 
-      {/* 4.6 — Privacy */}
-      <div className="card section">
-        <h3 style={{ marginTop: 0 }}>{myProfile?.public ? '\u{1F30E}' : '\u{1F512}'} Privacy</h3>
-        <p className="screen-subtitle" style={{ marginTop: 0 }}>
-          {myProfile?.public
-            ? 'Your reviews and check-in photos are visible to everyone.'
-            : 'Your reviews and check-in photos are only visible to friends.'}
-        </p>
-        <button
-          type="button"
-          className={`btn btn-block ${myProfile?.public ? 'btn-success' : 'btn-ghost'}`}
-          disabled={visBusy}
-          onClick={toggleVisibility}
-        >
-          {visBusy
-            ? '…'
-            : myProfile?.public
-            ? `${'\u{1F30E}'} Public — tap to make Private`
-            : `${'\u{1F512}'} Private — tap to make Public`}
-        </button>
-        {visMsg && (
-          <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
-            {visMsg}
-          </p>
-        )}
-      </div>
-
       {/* 5 — Account */}
       <div className="card section">
         <p className="screen-subtitle" style={{ margin: 0 }}>
           Signed in as {myUsername ? `@${myUsername}` : user.displayName || user.email}
         </p>
+        <Link to="/settings" className="btn btn-ghost btn-block" style={{ marginTop: 12 }}>
+          {'\u{2699}\u{FE0F}'} Settings
+        </Link>
         {!user.emailVerified && (
           <div style={{ marginTop: 12 }}>
             <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>

@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
-import { useTheme } from '../lib/useTheme';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { subscribeLeaderboard } from '../lib/leaderboard';
@@ -87,8 +86,6 @@ function ProfileMenu() {
 }
 
 export default function Header() {
-  const { theme, toggleTheme } = useTheme();
-
   return (
     <header className="app-header">
       <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flex: 1, minWidth: 0 }}>
@@ -98,14 +95,6 @@ export default function Header() {
       <div className="app-header-actions">
         <NotificationBell />
         <ProfileMenu />
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
       </div>
     </header>
   );
