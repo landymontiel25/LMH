@@ -422,6 +422,9 @@ export default function Profile() {
   const healedRef = useRef(false);
   const [streakDays, setStreakDays] = useState(0);
   const [badges, setBadges] = useState([]);
+  // Which badge's description is expanded -- `title` alone covers hover on
+  // desktop, but touch devices need a tap target since there's no hover there.
+  const [openBadgeId, setOpenBadgeId] = useState(null);
   const [bonusPoints, setBonusPoints] = useState(0);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -745,9 +748,17 @@ export default function Profile() {
         {badges.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
             {badges.map((b) => (
-              <span key={b.id} className="tag" title={b.label}>
+              <button
+                key={b.id}
+                type="button"
+                className="tag"
+                style={{ cursor: 'pointer', font: 'inherit', appearance: 'none' }}
+                title={b.description}
+                onClick={() => setOpenBadgeId((cur) => (cur === b.id ? null : b.id))}
+              >
                 {b.icon} {b.label}
-              </span>
+                {openBadgeId === b.id && <span style={{ opacity: 0.75 }}> — {b.description}</span>}
+              </button>
             ))}
           </div>
         )}
