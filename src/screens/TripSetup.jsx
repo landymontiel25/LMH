@@ -157,7 +157,7 @@ export default function TripSetup() {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
             <button
               type="button"
-              className={`chip chip-action ${preferencesSelected ? 'selected' : ''}`}
+              className={`chip ${preferencesSelected ? 'selected' : ''}`}
               onClick={togglePreferences}
             >
               <span className="chip-icon">{'⭐'}</span>

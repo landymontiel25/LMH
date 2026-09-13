@@ -513,15 +513,6 @@ textarea {
   text-align: center;
 }
 
-/* "Use My Preferences" -- an action, not a toggle, so it gets a standing
-   gold accent instead of the on/off "selected" look the other chips use. */
-.chip-action {
-  border-color: var(--color-brass);
-  background: rgba(201, 161, 90, 0.1);
-  color: var(--color-brass-bright);
-  font-weight: 600;
-}
-
 /* A custom interest's own delete control -- pinned to the chip's right edge
    so removing one is a deliberate tap there, not a side effect of tapping
    the chip itself. */
