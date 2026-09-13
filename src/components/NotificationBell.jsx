@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { subscribeMyNotifications, markNotificationRead } from '../lib/notifications';
+import { ALL_LANDMARKS } from '../data/regions';
 
 // In-app notifications (item i2's non-push slice) -- see lib/notifications.js
 // for why real push isn't wired up yet.
 export default function NotificationBell() {
   const { user, firebaseEnabled } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -30,8 +33,20 @@ export default function NotificationBell() {
 
   const unread = items.filter((n) => !n.read).length;
 
+  // Tapping a notification marks it read and, when it's about something
+  // with an obvious destination, takes you straight there -- a group
+  // invite opens that trip, an approved submission opens the landmark.
   const openItem = (n) => {
     if (!n.read) markNotificationRead(n.id).catch(() => {});
+    setOpen(false);
+    if (n.groupTripId) {
+      navigate(`/group/${n.groupTripId}`);
+      return;
+    }
+    if (n.landmarkId) {
+      const landmark = ALL_LANDMARKS.find((l) => l.id === n.landmarkId);
+      if (landmark) navigate(`/landmarks/${landmark.regionId}/${landmark.id}`);
+    }
   };
 
   return (

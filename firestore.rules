@@ -249,13 +249,24 @@ service cloud.firestore {
     // In-app notifications (item i2's non-push slice -- see the lib file for
     // why this project can't wire up real push yet). Only the owning uid can
     // ever read them; an admin can also create one for someone else (e.g.
-    // "your submission was approved"), but nothing lets one regular account
-    // write into another's notifications.
+    // "your submission was approved"). A regular account can additionally
+    // notify a fellow member of a real group_trips doc (e.g. "you were
+    // added to a group trip") -- both the writer and the notified uid must
+    // already be members of that same trip, which by write order (member
+    // added first, notification second) is only ever true right after a
+    // real invite. Nothing lets one regular account write into another's
+    // notifications outside that one case.
     match /notifications/{id} {
       allow get, list: if request.auth != null && resource.data.uid == request.auth.uid;
       allow create: if request.auth != null
         && (request.resource.data.uid == request.auth.uid
-            || request.auth.token.email in ['landymontiel25@gmail.com']);
+            || request.auth.token.email in ['landymontiel25@gmail.com']
+            || (request.resource.data.type == 'group_invite'
+                && exists(/databases/$(database)/documents/group_trips/$(request.resource.data.groupTripId))
+                && request.auth.uid in
+                   get(/databases/$(database)/documents/group_trips/$(request.resource.data.groupTripId)).data.memberUids
+                && request.resource.data.uid in
+                   get(/databases/$(database)/documents/group_trips/$(request.resource.data.groupTripId)).data.memberUids));
       allow update: if request.auth != null
         && resource.data.uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);

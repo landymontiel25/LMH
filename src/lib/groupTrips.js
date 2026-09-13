@@ -1,5 +1,6 @@
 import { doc, addDoc, updateDoc, deleteDoc, onSnapshot, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
+import { notifyUser } from './notifications';
 
 // A trip a few friends build together (item i6): one shared landmark list,
 // visible and editable by every member. Only the owner can change who's a
@@ -23,6 +24,17 @@ export async function createGroupTrip({ ownerUid, ownerName, name, regionId, lan
     landmarkIds,
     createdAt: serverTimestamp(),
   });
+  // Let each invited friend know right away -- best-effort, since a
+  // notification failing to write should never undo a successful invite.
+  await Promise.all(
+    initialMembers.map((m) =>
+      notifyUser(m.uid, {
+        type: 'group_invite',
+        message: `\u{1F465} ${ownerName || 'A friend'} added you to a group trip: ${name}`,
+        groupTripId: ref.id,
+      }).catch(() => {})
+    )
+  );
   return ref.id;
 }
 
@@ -50,6 +62,11 @@ export async function addGroupMember(trip, memberUid, memberName) {
     memberNames: { ...trip.memberNames, [memberUid]: memberName },
     name: trip.name,
   });
+  notifyUser(memberUid, {
+    type: 'group_invite',
+    message: `\u{1F465} You were added to a group trip: ${trip.name}`,
+    groupTripId: trip.id,
+  }).catch(() => {});
 }
 
 export async function removeGroupMember(trip, memberUid) {
