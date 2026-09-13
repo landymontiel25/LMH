@@ -132,8 +132,17 @@ service cloud.firestore {
       // Hidden once REPORT_HIDE_THRESHOLD (2) distinct people have reported
       // it -- unless you're the author or an admin -- and hidden from
       // either side of a block, on top of the existing visibility check.
+      //
+      // resource == null first: submitReview's transaction always reads this
+      // doc before writing it (to know whether it's a new rating or an edit),
+      // and for a landmark's first-ever rating the doc doesn't exist yet --
+      // resource is null then, so resource.data.userId below would otherwise
+      // throw inside the rule itself. Firestore treats a thrown rule as a
+      // hard deny, not the clean "not found" a missing doc should be, which
+      // made every first-time rating fail with permission-denied.
       allow read: if
-        (
+        resource == null
+        || (
           (exists(/databases/$(database)/documents/users/$(resource.data.userId))
             && get(/databases/$(database)/documents/users/$(resource.data.userId)).data.get('public', false) == true)
           || (request.auth != null
