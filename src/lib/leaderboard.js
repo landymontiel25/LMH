@@ -182,6 +182,68 @@ export function cleanName(name) {
   return /@.+\./.test(name) ? name.split('@')[0] : name;
 }
 
+/**
+ * Friends-scoped leaderboard: you plus everyone you follow, ranked by this
+ * period's points. Unlike subscribeLeaderboard (top 50 worldwide, real-time),
+ * this is a one-shot fetch by uid -- a friend outside the global top 50
+ * would never show up there, so this queries leaderboard_entries directly
+ * by userId instead of filtering the global top 50 client-side.
+ */
+export async function getFriendsLeaderboard(period, friendUids, myUid) {
+  if (!db) return [];
+  const keys = periodKeys();
+  const ids = [...new Set([myUid, ...friendUids])].filter(Boolean);
+  if (ids.length === 0) return [];
+  // Firestore's `in` operator caps at 30 values -- chunk for anyone with an
+  // unusually large friends list.
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      getDocs(
+        query(
+          collection(db, 'leaderboard_entries'),
+          where('period', '==', period),
+          where('periodKey', '==', keys[period]),
+          where('userId', 'in', chunk)
+        )
+      )
+    )
+  );
+  return results
+    .flatMap((snap) => snap.docs.map((d) => d.data()))
+    .sort((a, b) => b.points - a.points);
+}
+
+/**
+ * Regional leaderboard: ranked by points earned checking in within one
+ * curated region (Miami, Milan, etc.) during the current period. There's no
+ * per-region leaderboard_entries doc, so this aggregates directly from
+ * checkins -- a single-field query (region ==) filtered to this period's
+ * check-ins client-side, then summed per user. Fine at this app's current
+ * scale; would need a denormalized per-region entry (written alongside the
+ * existing per-period ones in claimCheckIn) if a region's check-in volume
+ * ever gets large enough to make this slow.
+ */
+export async function getRegionalLeaderboard(period, regionId, topN = 100) {
+  if (!db || !regionId) return [];
+  const keys = periodKeys();
+  const key = keys[period];
+  const snap = await getDocs(query(collection(db, 'checkins'), where('region', '==', regionId)));
+  const totals = new Map(); // userId -> { userId, userName, points }
+  for (const d of snap.docs) {
+    const x = d.data();
+    const sec = x.createdAt?.seconds;
+    if (!sec) continue;
+    if (periodKeys(new Date(sec * 1000))[period] !== key) continue;
+    const cur = totals.get(x.userId) || { userId: x.userId, userName: x.userName, points: 0 };
+    cur.points += x.points || 0;
+    cur.userName = x.userName || cur.userName;
+    totals.set(x.userId, cur);
+  }
+  return [...totals.values()].sort((a, b) => b.points - a.points).slice(0, topN);
+}
+
 export function subscribeLeaderboard(period, onData, topN = 50) {
   const keys = periodKeys();
   const q = query(
