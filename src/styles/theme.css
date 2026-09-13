@@ -565,6 +565,126 @@ textarea {
   }
 }
 
+/* Confetti burst -- a handful of pieces flying outward and fading, used
+   around a badge/level icon at the moment it's earned. Its parent must be
+   `position: relative` (or similar) since this is absolutely positioned to
+   fill and burst outward from that parent's center. Each piece's
+   direction/color/delay is fixed per nth-child below rather than computed
+   in JS, so the effect stays pure CSS with no per-instance randomness. */
+.confetti-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 10px;
+  margin: -5px 0 0 -3px;
+  border-radius: 1px;
+  opacity: 0;
+  animation: confetti-burst 0.9s ease-out forwards;
+}
+
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--cx), var(--cy)) rotate(var(--cr));
+    opacity: 0;
+  }
+}
+
+.confetti-piece-1 {
+  --cx: 46px;
+  --cy: -18px;
+  --cr: 220deg;
+  background: var(--color-brass-bright);
+  animation-delay: 0s;
+}
+.confetti-piece-2 {
+  --cx: -50px;
+  --cy: -10px;
+  --cr: -180deg;
+  background: var(--color-green);
+  animation-delay: 0.04s;
+}
+.confetti-piece-3 {
+  --cx: 30px;
+  --cy: -45px;
+  --cr: 160deg;
+  background: var(--color-rust);
+  animation-delay: 0.08s;
+}
+.confetti-piece-4 {
+  --cx: -32px;
+  --cy: -42px;
+  --cr: -140deg;
+  background: var(--color-parchment);
+  animation-delay: 0.02s;
+}
+.confetti-piece-5 {
+  --cx: 55px;
+  --cy: 6px;
+  --cr: 260deg;
+  background: var(--color-brass);
+  animation-delay: 0.1s;
+}
+.confetti-piece-6 {
+  --cx: -55px;
+  --cy: 8px;
+  --cr: -220deg;
+  background: var(--color-brass-bright);
+  animation-delay: 0.06s;
+}
+.confetti-piece-7 {
+  --cx: 18px;
+  --cy: 50px;
+  --cr: 120deg;
+  background: var(--color-green);
+  animation-delay: 0.12s;
+}
+.confetti-piece-8 {
+  --cx: -20px;
+  --cy: 50px;
+  --cr: -100deg;
+  background: var(--color-rust);
+  animation-delay: 0.03s;
+}
+.confetti-piece-9 {
+  --cx: 40px;
+  --cy: 30px;
+  --cr: 300deg;
+  background: var(--color-parchment);
+  animation-delay: 0.09s;
+}
+.confetti-piece-10 {
+  --cx: -42px;
+  --cy: 28px;
+  --cr: -260deg;
+  background: var(--color-brass);
+  animation-delay: 0.07s;
+}
+.confetti-piece-11 {
+  --cx: 8px;
+  --cy: -55px;
+  --cr: 180deg;
+  background: var(--color-brass-bright);
+  animation-delay: 0.05s;
+}
+.confetti-piece-12 {
+  --cx: -8px;
+  --cy: -55px;
+  --cr: -180deg;
+  background: var(--color-green);
+  animation-delay: 0.11s;
+}
+
 /* Badge-earned / level-up celebration -- reuses .modal-backdrop for the
    dimmed background, but deliberately skips .modal-card: the emoji, title,
    and subtitle float directly over the backdrop with no visible box behind

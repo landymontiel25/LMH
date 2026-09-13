@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useBadges } from '../lib/BadgesContext';
 import { levelProgress } from '../lib/level';
+import ConfettiBurst from './ConfettiBurst';
 
 const LEVEL_KEY_PREFIX = 'lh-last-level-';
 const AUTO_DISMISS_MS = 3200;
@@ -55,7 +56,10 @@ export default function CelebrationOverlay() {
         <div className="celebration-enter">
           <div className="celebration-float">
             <p className="celebration-eyebrow">{'\u{1F3C5}'} Badge Earned</p>
-            <span className="celebration-icon">{badge.icon}</span>
+            <span style={{ position: 'relative', display: 'inline-block' }}>
+              <span className="celebration-icon">{badge.icon}</span>
+              <ConfettiBurst />
+            </span>
             <p className="celebration-title">{badge.label}</p>
             <p className="celebration-subtitle">{badge.description}</p>
           </div>
@@ -70,7 +74,10 @@ export default function CelebrationOverlay() {
         <div className="celebration-enter">
           <div className="celebration-float">
             <p className="celebration-eyebrow">Level Up</p>
-            <span className="celebration-icon flame">{'\u{1F525}'}</span>
+            <span style={{ position: 'relative', display: 'inline-block' }}>
+              <span className="celebration-icon flame">{'\u{1F525}'}</span>
+              <ConfettiBurst />
+            </span>
             <p className="celebration-title">Level {levelUp}</p>
             <p className="celebration-subtitle">Keep exploring to reach the next one.</p>
           </div>
