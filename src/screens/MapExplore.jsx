@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -147,6 +147,18 @@ function InitialView({ loading, coords, bounds, regionBounds, focusPoint, radius
   return null;
 }
 
+// Long-press on touch (and right-click on desktop) fires Leaflet's
+// 'contextmenu' event -- no separate gesture library needed to let someone
+// pin an exact spot that isn't one of the built-in landmarks.
+function PinDropHandler({ onDrop }) {
+  useMapEvents({
+    contextmenu(e) {
+      onDrop({ lat: e.latlng.lat, lng: e.latlng.lng });
+    },
+  });
+  return null;
+}
+
 function LocateControl({ coords, radiusMiles }) {
   const map = useMap();
   return (
@@ -176,6 +188,12 @@ export default function MapExplore() {
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // A pin dropped by long-pressing an exact spot on the map -- lets you
+  // pinpoint somewhere that isn't one of the built-in landmarks (e.g. a
+  // specific building on a campus) and carry that exact location straight
+  // into Add Landmark instead of having to re-find it there.
+  const [pinDrop, setPinDrop] = useState(null);
 
   // Pin corrections saved by the old drag-to-fix mode (now removed) still
   // apply for everyone -- this just keeps displaying them at their
@@ -447,6 +465,7 @@ export default function MapExplore() {
             radiusMiles={radiusMiles}
           />
           <LocateControl coords={coords} radiusMiles={radiusMiles} />
+          <PinDropHandler onDrop={setPinDrop} />
           <TileLayer
             key={satellite ? 'satellite' : 'street'}
             attribution={TILE_LAYERS[satellite ? 'satellite' : 'street'].attribution}
@@ -483,6 +502,35 @@ export default function MapExplore() {
               </Tooltip>
             </Marker>
           )}
+          {pinDrop && (
+            <Marker
+              position={[pinDrop.lat, pinDrop.lng]}
+              icon={focusIcon}
+              zIndexOffset={1000}
+              eventHandlers={{
+                add: (e) => e.target.openPopup(),
+                popupclose: () => setPinDrop(null),
+              }}
+            >
+              <Popup>
+                <div className="map-popup">
+                  <h4 style={{ marginTop: 0 }}>Add a landmark here?</h4>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => navigate('/add-landmark', { state: pinDrop })}
+                    >
+                      {'\u{2795}'} Add Landmark
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPinDrop(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          )}
           <MarkerClusterGroup
             chunkedLoading
             maxClusterRadius={55}
@@ -501,8 +549,16 @@ export default function MapExplore() {
         type="button"
         className="map-search-btn map-add-btn"
         style={{ top: 'calc(var(--header-h) + 64px)' }}
-        title="Add a landmark"
-        onClick={() => navigate('/add-landmark')}
+        title="Add a landmark — long-press the map to pin an exact spot"
+        onClick={() => {
+          // Wherever you're currently looking at -- the dropped pin if you
+          // placed one, otherwise the map's current center -- never your
+          // GPS location, which would yank you away from what you were
+          // just looking at.
+          const center = mapRef.current?.getCenter();
+          const at = pinDrop || (center ? { lat: center.lat, lng: center.lng } : null);
+          navigate('/add-landmark', at ? { state: at } : undefined);
+        }}
       >
         {'\u{2795}'}
       </button>

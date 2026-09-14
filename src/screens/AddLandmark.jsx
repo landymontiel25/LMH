@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -44,11 +44,18 @@ function RecenterOnPosition({ position }) {
 // panel on the map used to do.
 export default function AddLandmark() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { coords } = useGeo();
   const { user, firebaseEnabled } = useCheckIn();
   const { trip } = useTrip();
 
+  // The map screen's "+" button passes along the exact spot you were
+  // looking at (a dropped pin, or just the map's current center) so this
+  // starts there instead of jumping to your GPS location.
   const startingCenter = () => {
+    if (location.state?.lat != null && location.state?.lng != null) {
+      return { lat: location.state.lat, lng: location.state.lng };
+    }
     if (coords) return { lat: coords.lat, lng: coords.lng };
     const region = trip.activeRegion && getRegion(trip.activeRegion);
     return region?.center || REGIONS[0].center;
