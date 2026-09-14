@@ -17,20 +17,21 @@ import { verifyIdToken } from './_lib/verifyAuth.js';
 // value and just screened for appropriateness rather than fact-checked.
 const INSTRUCTIONS =
   `You help moderate submissions to "Landmark Hunters", an app where people add real places for others to visit and check in at. ` +
-  `A traveler submitted a name, one or more categories, an approximate location, a photo, and optionally a few facts they say are ` +
-  `true about the place. Decide if this looks like a genuine, specific physical place worth adding -- reject joke/test/gibberish ` +
-  `names, offensive content, spam, or a photo that isn't of a real place (a screenshot, a meme, a document, a random object with no ` +
-  `place context, a selfie with no visible location, etc).\n\n` +
+  `A traveler submitted a name, one or more categories, an approximate location, and optionally a photo and/or a few facts they say ` +
+  `are true about the place. Decide if this looks like a genuine, specific physical place worth adding -- reject joke/test/gibberish ` +
+  `names, offensive content, or spam. If a photo was included, also reject one that isn't of a real place (a screenshot, a meme, a ` +
+  `document, a random object with no place context, a selfie with no visible location, etc). Without a photo, judge on the name, ` +
+  `categories, and location alone -- don't reject just for lacking one.\n\n` +
   `If it passes, write a SHORT, HONEST description. You do not actually know this specific place, so NEVER invent specific facts ` +
-  `(no made-up history, dates, architects, or events) -- describe only what's generically true of its category and what you can see ` +
-  `in the photo, and be upfront that it's a community-submitted spot.\n\n` +
+  `(no made-up history, dates, architects, or events) -- describe only what's generically true of its category (and what you can ` +
+  `see in the photo, if one was included), and be upfront that it's a community-submitted spot.\n\n` +
   `For the final "facts" list: if the submitter gave their own facts, trust them (they know the place, you don't) -- include the ` +
   `ones that are plausible and appropriate, lightly cleaned up for grammar/length, and drop any that are spam, offensive, or clearly ` +
   `unrelated to the place. Do not fact-check specifics you can't verify; only drop a submitted fact for being inappropriate, not for ` +
   `being unverifiable. If the submitter gave none, you may add up to 2 safely generic facts of your own (e.g. "A popular spot for ` +
   `[category] near [area]") -- never your own fabricated specifics. Keep the submitter's own facts even if that's more than 2-3 -- ` +
   `an empty list is fine too if none of it holds up. Guess whether it's normally free to visit (default to true unless the ` +
-  `category or photo strongly implies a paid attraction).\n\n` +
+  `category or photo, if included, strongly implies a paid attraction).\n\n` +
   `Reply with ONLY a JSON object, no other text:\n` +
   `{"ok": true|false, "reason": "<if ok is false, one short sentence why>", "summary": "<1-2 sentence honest description>", "facts": ["<fact>", ...], "free": true|false}`;
 
@@ -68,17 +69,19 @@ export default async function handler(req, res) {
     const categories = Array.isArray(body.categories) ? body.categories.map((c) => String(c).slice(0, 40)).slice(0, 6) : [];
     const lat = Number(body.lat);
     const lng = Number(body.lng);
+    // Photo is optional -- only validate its shape when one was actually sent.
     const imageDataUrl = String(body.imageDataUrl || '');
-    const match = imageDataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+    const match = imageDataUrl ? imageDataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/) : null;
+    const hasPhoto = !!match;
     const userFacts = Array.isArray(body.userFacts)
       ? body.userFacts.map((f) => String(f).trim().slice(0, 160)).filter(Boolean).slice(0, 5)
       : [];
 
-    if (!name || categories.length === 0 || !match || !Number.isFinite(lat) || !Number.isFinite(lng)) {
-      res.status(400).json({ error: 'Missing name, category, location, or photo.' });
+    if (!name || categories.length === 0 || !Number.isFinite(lat) || !Number.isFinite(lng) || (imageDataUrl && !match)) {
+      res.status(400).json({ error: 'Missing name, category, or location.' });
       return;
     }
-    const [, mediaType, imageB64] = match;
+    const [, mediaType, imageB64] = hasPhoto ? match : [];
 
     // Best-effort reverse geocode for real-world grounding -- never blocks
     // the request if it fails or is slow.
@@ -117,9 +120,9 @@ export default async function handler(req, res) {
                 (userFacts.length
                   ? `Facts the submitter says are true about this place:\n${userFacts.map((f) => `- ${f}`).join('\n')}\n`
                   : '') +
-                `Here's the submitted photo:`,
+                (hasPhoto ? `Here's the submitted photo:` : `No photo was submitted.`),
             },
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageB64 } },
+            ...(hasPhoto ? [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageB64 } }] : []),
           ],
         },
       ],
