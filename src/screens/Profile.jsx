@@ -209,7 +209,7 @@ function OnboardingPreferences({ onDone }) {
 // (whether or not you actually check in) is what completes onboarding.
 function FirstCheckInStep({ onDone }) {
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
-  const { myProfile, reload: reloadFriends } = useFriends();
+  const { myProfile, myUsername, reload: reloadFriends } = useFriends();
   const { coords, loading: geoLoading } = useGeo();
   const { units } = useUnits();
   // Surfaced in the UI (not just the console) since the previous silent
@@ -220,7 +220,7 @@ function FirstCheckInStep({ onDone }) {
 
   useEffect(() => {
     if (!user || myProfile?.onboardingCompleted || hasCompletedOnboardingLocally(user.uid)) return;
-    completeOnboarding(user.uid)
+    completeOnboarding(user.uid, myUsername || user.displayName || 'Explorer')
       .then(async () => {
         // Permanent local guard, same idea as BadgesContext's celebration
         // guard: mark this done on this device the moment the write
@@ -503,7 +503,7 @@ export default function Profile() {
       return;
     }
     let cancelled = false;
-    claimMyReferralBonuses(user.uid)
+    claimMyReferralBonuses(user.uid, myUsername || user.displayName || 'Explorer')
       .then(() => getUserProfile(user.uid))
       .then((profile) => {
         if (!cancelled) setBonusPoints(profile?.bonusPoints || 0);
@@ -514,6 +514,9 @@ export default function Profile() {
     return () => {
       cancelled = true;
     };
+    // myUsername only labels the leaderboard-entry write below, not
+    // something that should re-run the whole claim flow when it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseEnabled, user]);
 
   // Self-heal: if your board row still shows an email/old name, rewrite it.

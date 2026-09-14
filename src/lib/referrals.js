@@ -1,11 +1,16 @@
 import { doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, getDocs, collection, query, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { findUserByUsername } from './friends';
+// Dynamic, not static: this file is reachable from AuthContext (eager,
+// app-wide) via recordReferralIfPending, while awardLeaderboardPoints is
+// only ever needed by claimMyReferralBonuses (called from Profile, already
+// lazy). A static import here would drag leaderboard.js -- and, through it,
+// geo.js's REGIONS catalog -- into the eager bundle for every page load.
 
-// A flat bonus for both sides once a referred friend signs up -- kept
-// entirely separate from the competitive leaderboard (a `bonusPoints`
-// field on the user's own profile doc, not a checkins/leaderboard_entries
-// write) so referrals can't be used to game actual rank.
+// A flat bonus for both sides once a referred friend signs up. Stored on
+// the user's own bonusPoints field (folded into their all-time total by
+// getUserStats) and also added to the current week/month/year leaderboard
+// entries, so it counts toward rank the same way check-in points do.
 export const REFERRAL_BONUS_POINTS = 50;
 
 const STORAGE_KEY = 'landmarkhunters.pendingReferral';
@@ -70,13 +75,15 @@ export async function recordReferralIfPending(newUser) {
  * call site). Each side can only ever write its own uid's fields, per
  * firestore.rules, so this never touches another account's points.
  */
-export async function claimMyReferralBonuses(uid) {
+export async function claimMyReferralBonuses(uid, userName) {
   if (!db || !uid) return;
+  const { awardLeaderboardPoints } = await import('./leaderboard');
 
   try {
     const mine = await getDoc(doc(db, 'referrals', uid));
     if (mine.exists() && !mine.data().referredClaimed) {
       await updateDoc(doc(db, 'users', uid), { bonusPoints: increment(REFERRAL_BONUS_POINTS) });
+      await awardLeaderboardPoints(uid, userName, REFERRAL_BONUS_POINTS);
       await updateDoc(mine.ref, { referredClaimed: true });
     }
   } catch {
@@ -90,6 +97,7 @@ export async function claimMyReferralBonuses(uid) {
     for (const d of snap.docs) {
       if (d.data().referrerClaimed) continue;
       await updateDoc(doc(db, 'users', uid), { bonusPoints: increment(REFERRAL_BONUS_POINTS) });
+      await awardLeaderboardPoints(uid, userName, REFERRAL_BONUS_POINTS);
       await updateDoc(d.ref, { referrerClaimed: true });
     }
   } catch {
