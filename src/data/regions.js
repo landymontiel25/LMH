@@ -7,6 +7,7 @@ import { LAKE_COMO_LANDMARKS } from './landmarks.lakecomo.js';
 import { PHILLY_LANDMARKS } from './landmarks.philly.js';
 import { VILLANOVA_LANDMARKS } from './landmarks.villanova.js';
 import { FRANKFURT_LANDMARKS } from './landmarks.frankfurt.js';
+import { NYC_LANDMARKS } from './landmarks.nyc.js';
 
 export const REGIONS = [
   {
@@ -19,6 +20,17 @@ export const REGIONS = [
     center: { lat: 25.7743, lng: -80.1937 },
     viewbox: { minLat: 25.3, minLng: -80.6, maxLat: 25.95, maxLng: -80.05 },
     landmarks: MIAMI_LANDMARKS,
+  },
+  {
+    id: 'nyc',
+    name: 'New York City',
+    tagline: 'Icons, skyscrapers, museums & legendary eats',
+    city: 'New York',
+    state: 'New York',
+    country: 'USA',
+    center: { lat: 40.7549, lng: -73.984 },
+    viewbox: { minLat: 40.49, minLng: -74.1, maxLat: 40.92, maxLng: -73.7 },
+    landmarks: NYC_LANDMARKS,
   },
   {
     id: 'madrid',
