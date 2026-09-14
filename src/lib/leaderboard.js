@@ -162,6 +162,7 @@ export async function getUserStats(userId) {
   let totalPoints = profile?.bonusPoints || 0;
   const regions = new Set();
   const cityLastVisit = {}; // regionId -> most recent check-in, in epoch seconds
+  const cityPoints = {}; // regionId -> points earned there
   snap.docs.forEach((d) => {
     const x = d.data();
     totalPoints += x.points || 0;
@@ -169,11 +170,12 @@ export async function getUserStats(userId) {
       regions.add(x.region);
       const sec = x.createdAt?.seconds || 0;
       if (sec > (cityLastVisit[x.region] || 0)) cityLastVisit[x.region] = sec;
+      cityPoints[x.region] = (cityPoints[x.region] || 0) + (x.points || 0);
     }
   });
   // Most-recently-visited city first, same ordering as the check-ins list.
   const cityIds = [...regions].sort((a, b) => (cityLastVisit[b] || 0) - (cityLastVisit[a] || 0));
-  return { totalPoints, checkins: snap.size, cities: regions.size, cityIds, cityLastVisit };
+  return { totalPoints, checkins: snap.size, cities: regions.size, cityIds, cityLastVisit, cityPoints };
 }
 
 /**

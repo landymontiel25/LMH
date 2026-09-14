@@ -7,6 +7,7 @@ import { listBlockedUsers, unblockUser } from '../lib/blocks';
 import { getUserStats, getUserCheckins } from '../lib/leaderboard';
 import { getRegion } from '../data/regions';
 import CheckinsGallery from './CheckinsGallery';
+import CityList from './CityList';
 
 export default function FriendsPanel() {
   const { user } = useAuth();
@@ -20,7 +21,7 @@ export default function FriendsPanel() {
   const [unameInput, setUnameInput] = useState('');
   const [unameBusy, setUnameBusy] = useState(false);
   const [unameMsg, setUnameMsg] = useState(null);
-  // { uid, name, stats, recent, checkins, error, view: 'summary' | 'gallery' | 'cities' } | null
+  // { uid, name, stats, recent, error, view: 'summary' | 'gallery' | 'cities' } | null
   const [friendStats, setFriendStats] = useState(null);
 
   const openFriendStats = async (f) => {
@@ -33,25 +34,11 @@ export default function FriendsPanel() {
         loading: false,
         stats,
         recent: checkins[0] || null,
-        checkins,
         view: 'summary',
       });
     } catch {
       setFriendStats({ uid: f.friend, name: f.friendName, loading: false, error: true, view: 'summary' });
     }
-  };
-
-  // Points earned per city, highest first -- built from the same check-ins
-  // already fetched for the stats popover, no extra reads.
-  const cityBreakdown = (checkins) => {
-    const byRegion = {};
-    for (const c of checkins || []) {
-      if (!c.region) continue;
-      byRegion[c.region] ??= { region: c.region, points: 0, count: 0 };
-      byRegion[c.region].points += c.points || 0;
-      byRegion[c.region].count += 1;
-    }
-    return Object.values(byRegion).sort((a, b) => b.points - a.points);
   };
 
   const loadFriends = async () => {
@@ -289,12 +276,11 @@ export default function FriendsPanel() {
             <h3 style={{ marginTop: 0 }}>
               {'\u{1F3D9}\u{FE0F}'} @{friendStats.name}'s Cities
             </h3>
-            {cityBreakdown(friendStats.checkins).map((c) => (
-              <div key={c.region} className="friend-row">
-                <span>{getRegion(c.region)?.name || c.region}</span>
-                <span style={{ color: 'var(--color-parchment-dim)' }}>{c.points.toLocaleString()} pts</span>
-              </div>
-            ))}
+            <CityList
+              cityIds={friendStats.stats?.cityIds}
+              cityPoints={friendStats.stats?.cityPoints}
+              cityLastVisit={friendStats.stats?.cityLastVisit}
+            />
             <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setFriendStats(null)}>
               Close
             </button>

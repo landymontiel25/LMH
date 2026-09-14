@@ -25,6 +25,7 @@ import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals'
 import { completeOnboarding, hasCompletedOnboardingLocally, markOnboardingCompletedLocally } from '../lib/onboarding';
 import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
+import CityList from '../components/CityList';
 import SignInForm from '../components/SignInForm';
 import AddInterestChip from '../components/AddInterestChip';
 import LandmarkThumb from '../components/LandmarkThumb';
@@ -39,18 +40,6 @@ const TABS = [
   { id: 'yearly', label: 'This Year' },
 ];
 const MEDAL = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
-
-// Shared "Sep 7, 2026, 10:04 AM" formatting for check-in / city-visit timestamps.
-function fmtDateTime(seconds) {
-  if (!seconds) return '';
-  return new Date(seconds * 1000).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
 
 function InviteButton({ myUsername }) {
   const [copied, setCopied] = useState(false);
@@ -1025,29 +1014,15 @@ export default function Profile() {
         <div className="modal-backdrop" onClick={() => setShowCities(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>{'\u{1F3D9}\u{FE0F}'} Cities you've visited</h3>
-            {(stats?.cityIds || []).map((id) => {
-              const r = getRegion(id);
-              return (
-                <div
-                  key={id}
-                  className="checkin-row"
-                  onClick={() => {
-                    setShowCities(false);
-                    navigate('/landmarks');
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div className="checkin-name">{r?.name || id}</div>
-                    <div className="checkin-sub">
-                      {r?.country}
-                      {r?.country && stats?.cityLastVisit?.[id] ? ' · ' : ''}
-                      {fmtDateTime(stats?.cityLastVisit?.[id])}
-                    </div>
-                  </div>
-                  <div className="checkin-pts">{'\u{2192}'}</div>
-                </div>
-              );
-            })}
+            <CityList
+              cityIds={stats?.cityIds}
+              cityPoints={stats?.cityPoints}
+              cityLastVisit={stats?.cityLastVisit}
+              onSelect={() => {
+                setShowCities(false);
+                navigate('/landmarks');
+              }}
+            />
             <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={() => setShowCities(false)}>
               Close
             </button>
