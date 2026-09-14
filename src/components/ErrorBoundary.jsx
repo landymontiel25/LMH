@@ -28,7 +28,14 @@ export default class ErrorBoundary extends Component {
         <p className="screen-subtitle">
           This screen hit an unexpected error. Try again, or head back to the map.
         </p>
-        <button className="btn btn-primary btn-block" onClick={() => this.setState({ error: null })}>
+        {/* A full reload, not just clearing local state: the most common
+            real cause here is a stale JS chunk reference from before the
+            latest deploy (this project ships often), and re-rendering the
+            same crashed subtree just re-fetches that same now-missing file
+            and fails again identically. Reloading fetches the current
+            index.html with correct chunk references, which actually fixes
+            it -- clearing state can't. */}
+        <button className="btn btn-primary btn-block" onClick={() => window.location.reload()}>
           Try Again
         </button>
         <a href="#/" className="btn btn-ghost btn-block" style={{ marginTop: 10, display: 'block', textAlign: 'center' }}>

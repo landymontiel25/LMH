@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { distanceMeters } from './geo';
+import { getUserProfile } from './friends';
 
 export { distanceMeters };
 
@@ -97,6 +98,28 @@ export async function claimCheckIn({ userId, userName, landmarkId, landmarkName,
 }
 
 /**
+ * Adds points to a user's CURRENT weekly/monthly/yearly leaderboard entries
+ * only -- for anything that awards points outside a check-in (referral and
+ * onboarding bonuses), so they count toward rank the same way check-in
+ * points do, without retroactively touching periods that had already closed
+ * by the time the bonus was earned.
+ */
+export async function awardLeaderboardPoints(userId, userName, points) {
+  if (!db || !userId || !points) return;
+  const keys = periodKeys();
+  const batch = writeBatch(db);
+  for (const period of PERIODS) {
+    const entryRef = doc(db, 'leaderboard_entries', `${period}_${keys[period]}_${userId}`);
+    batch.set(
+      entryRef,
+      { userId, userName, period, periodKey: keys[period], points: increment(points), updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  }
+  await batch.commit();
+}
+
+/**
  * Rewrites the display name on every existing check-in and leaderboard entry for
  * a user — used when they set/change their username so past scores stop showing
  * an email (or an old handle) on the public board.
@@ -132,8 +155,11 @@ export async function getUserTotalPoints(userId) {
  * check-ins, and how many distinct cities/regions they've visited.
  */
 export async function getUserStats(userId) {
-  const snap = await getDocs(query(collection(db, 'checkins'), where('userId', '==', userId)));
-  let totalPoints = 0;
+  const [snap, profile] = await Promise.all([
+    getDocs(query(collection(db, 'checkins'), where('userId', '==', userId))),
+    getUserProfile(userId).catch(() => null),
+  ]);
+  let totalPoints = profile?.bonusPoints || 0;
   const regions = new Set();
   const cityLastVisit = {}; // regionId -> most recent check-in, in epoch seconds
   snap.docs.forEach((d) => {
