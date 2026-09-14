@@ -33,6 +33,7 @@ const Legal = lazy(() => import('./screens/Legal'));
 const GroupTrip = lazy(() => import('./screens/GroupTrip'));
 const Settings = lazy(() => import('./screens/Settings'));
 const FullStats = lazy(() => import('./screens/FullStats'));
+const FriendStats = lazy(() => import('./screens/FriendStats'));
 const Notifications = lazy(() => import('./screens/Notifications'));
 const Test = lazy(() => import('./screens/Test'));
 
@@ -59,6 +60,7 @@ function AppRoutes() {
           <Route path="/group/:tripId" element={<GroupTrip />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/stats" element={<FullStats />} />
+          <Route path="/friend/:uid" element={<FriendStats />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/test" element={<Test />} />
         </Routes>

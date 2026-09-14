@@ -4,10 +4,6 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { findUserByUsername, sendFriendRequest, acceptRequest, declineRequest, listFriends } from '../lib/friends';
 import { listBlockedUsers, unblockUser } from '../lib/blocks';
-import { getUserStats, getUserCheckins } from '../lib/leaderboard';
-import { getRegion } from '../data/regions';
-import CheckinsGallery from './CheckinsGallery';
-import CityList from './CityList';
 
 export default function FriendsPanel() {
   const { user } = useAuth();
@@ -21,25 +17,6 @@ export default function FriendsPanel() {
   const [unameInput, setUnameInput] = useState('');
   const [unameBusy, setUnameBusy] = useState(false);
   const [unameMsg, setUnameMsg] = useState(null);
-  // { uid, name, stats, recent, error, view: 'summary' | 'gallery' | 'cities' } | null
-  const [friendStats, setFriendStats] = useState(null);
-
-  const openFriendStats = async (f) => {
-    setFriendStats({ uid: f.friend, name: f.friendName, loading: true, view: 'summary' });
-    try {
-      const [stats, checkins] = await Promise.all([getUserStats(f.friend), getUserCheckins(f.friend)]);
-      setFriendStats({
-        uid: f.friend,
-        name: f.friendName,
-        loading: false,
-        stats,
-        recent: checkins[0] || null,
-        view: 'summary',
-      });
-    } catch {
-      setFriendStats({ uid: f.friend, name: f.friendName, loading: false, error: true, view: 'summary' });
-    }
-  };
 
   const loadFriends = async () => {
     try {
@@ -215,7 +192,12 @@ export default function FriendsPanel() {
           <p className="screen-subtitle" style={{ margin: 0 }}>No friends yet.</p>
         ) : (
           friends.map((f) => (
-            <div key={f.friend} className="friend-row" style={{ cursor: 'pointer' }} onClick={() => openFriendStats(f)}>
+            <div
+              key={f.friend}
+              className="friend-row"
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate(`/friend/${f.friend}`)}
+            >
               <span style={{ fontWeight: 700 }}>@{f.friendName}</span>
               <span style={{ color: 'var(--color-parchment-dim)' }}>{'›'}</span>
             </div>
@@ -237,107 +219,6 @@ export default function FriendsPanel() {
         </div>
       )}
 
-      {friendStats && friendStats.view === 'gallery' && (
-        <div className="modal-backdrop" onClick={() => setFriendStats(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              style={{ marginBottom: 12 }}
-              onClick={() => setFriendStats((cur) => ({ ...cur, view: 'summary' }))}
-            >
-              {'←'} Back
-            </button>
-            <CheckinsGallery
-              user={{ uid: friendStats.uid }}
-              claimedMap={{}}
-              navigate={navigate}
-              totalPoints={friendStats.stats?.totalPoints || 0}
-              title={`@${friendStats.name}'s Check-ins`}
-            />
-            <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setFriendStats(null)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {friendStats && friendStats.view === 'cities' && (
-        <div className="modal-backdrop" onClick={() => setFriendStats(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              style={{ marginBottom: 12 }}
-              onClick={() => setFriendStats((cur) => ({ ...cur, view: 'summary' }))}
-            >
-              {'←'} Back
-            </button>
-            <h3 style={{ marginTop: 0 }}>
-              {'\u{1F3D9}\u{FE0F}'} @{friendStats.name}'s Cities
-            </h3>
-            <CityList
-              cityIds={friendStats.stats?.cityIds}
-              cityPoints={friendStats.stats?.cityPoints}
-              cityLastVisit={friendStats.stats?.cityLastVisit}
-            />
-            <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setFriendStats(null)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {friendStats && friendStats.view === 'summary' && (
-        <div className="modal-backdrop" onClick={() => setFriendStats(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>
-              {'\u{1F464}'} @{friendStats.name}
-            </h3>
-            {friendStats.loading && <p className="screen-subtitle">Loading…</p>}
-            {friendStats.error && <p className="screen-subtitle">Could not load their stats — try again.</p>}
-            {friendStats.stats && (
-              <>
-                <div className="profile-stats">
-                  <div className="profile-stat">
-                    <span className="profile-stat-num">{friendStats.stats.totalPoints.toLocaleString()}</span>
-                    <span className="profile-stat-label">total pts</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="profile-stat profile-stat-btn"
-                    onClick={() => friendStats.stats.checkins && setFriendStats((cur) => ({ ...cur, view: 'gallery' }))}
-                  >
-                    <span className="profile-stat-num">{friendStats.stats.checkins.toLocaleString()}</span>
-                    <span className="profile-stat-label">check-ins{friendStats.stats.checkins ? ' ›' : ''}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="profile-stat profile-stat-btn"
-                    onClick={() => friendStats.stats.cities && setFriendStats((cur) => ({ ...cur, view: 'cities' }))}
-                  >
-                    <span className="profile-stat-num">{friendStats.stats.cities}</span>
-                    <span className="profile-stat-label">cities{friendStats.stats.cities ? ' ›' : ''}</span>
-                  </button>
-                </div>
-                {friendStats.recent ? (
-                  <p className="screen-subtitle" style={{ marginTop: 14, marginBottom: 0 }}>
-                    Last check-in: <strong>{friendStats.recent.landmarkName || 'a landmark'}</strong>
-                    {friendStats.recent.region ? ` — ${getRegion(friendStats.recent.region)?.name || ''}` : ''}
-                  </p>
-                ) : (
-                  <p className="screen-subtitle" style={{ marginTop: 14, marginBottom: 0 }}>
-                    No check-ins yet.
-                  </p>
-                )}
-              </>
-            )}
-            <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setFriendStats(null)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
