@@ -24,6 +24,17 @@ const DRAG_PIN_ICON = L.divIcon({
   iconAnchor: [13, 28],
 });
 
+// Every field's label states up front whether it's required to submit --
+// Location, Name, Topic, and Photo are; Facts is the only optional one.
+function FieldLabel({ children, required }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+      <span>{children}</span>
+      <span className={`tag ${required ? '' : 'tag-optional'}`}>{required ? 'Required' : 'Optional'}</span>
+    </label>
+  );
+}
+
 // Keeps the mini-map centered on wherever the pin currently is -- otherwise
 // tapping "Use My Exact Location" would move the pin but leave the map
 // looking at the old spot.
@@ -153,7 +164,7 @@ export default function AddLandmark() {
       </p>
 
       <div className="field">
-        <label>Location</label>
+        <FieldLabel required>Location</FieldLabel>
         <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
           Drag the pin to the exact spot, use your current location, or search an address.
         </p>
@@ -201,12 +212,12 @@ export default function AddLandmark() {
       </div>
 
       <div className="field">
-        <label>Name</label>
+        <FieldLabel required>Name</FieldLabel>
         <input type="text" placeholder="e.g. Farley Hall" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
       </div>
 
       <div className="field">
-        <label>Topic — pick at least one</label>
+        <FieldLabel required>Topic — pick at least one</FieldLabel>
         <div className="chip-grid">
           {INTERESTS.map((i) => (
             <button
@@ -223,7 +234,7 @@ export default function AddLandmark() {
       </div>
 
       <div className="field">
-        <label>Facts (optional)</label>
+        <FieldLabel>Facts</FieldLabel>
         <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
           Know something true about it? Add a few — we won't make anything up ourselves.
         </p>
@@ -263,7 +274,7 @@ export default function AddLandmark() {
       </div>
 
       <div className="field">
-        <label>Photo</label>
+        <FieldLabel required>Photo</FieldLabel>
         {photoPreview ? (
           <div style={{ position: 'relative', width: 120 }}>
             <img

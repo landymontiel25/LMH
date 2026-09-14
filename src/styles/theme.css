@@ -421,6 +421,12 @@ textarea {
   background: rgba(179, 80, 63, 0.15);
 }
 
+.tag-optional {
+  border-color: var(--color-border-soft);
+  color: var(--color-parchment-dim);
+  background: transparent;
+}
+
 .popularity-tag {
   font-weight: 700;
   border-color: var(--color-rust);
