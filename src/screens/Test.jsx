@@ -6,7 +6,7 @@ import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
 import { mapsDeepLink } from '../lib/routing';
 
 const GREETING =
-  "Hey — I'm the Landmark AI. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
+  "Hey — I'm Mapr. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
 
 // Prototype: a live chat instead of a form. You type what you want in your
 // own words, the AI replies conversationally, and it drops in real catalog
@@ -79,7 +79,7 @@ export default function Test() {
       <div className="chatlab-header">
         <div className="chatlab-orb" />
         <div className="chatlab-header-text">
-          <h1 className="chatlab-title">Landmark AI</h1>
+          <h1 className="chatlab-title">Mapr</h1>
           <p className="chatlab-tagline">Live trip planning</p>
         </div>
         <div className="chatlab-header-right">
