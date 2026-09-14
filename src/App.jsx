@@ -33,7 +33,8 @@ const Legal = lazy(() => import('./screens/Legal'));
 const GroupTrip = lazy(() => import('./screens/GroupTrip'));
 const Settings = lazy(() => import('./screens/Settings'));
 const FullStats = lazy(() => import('./screens/FullStats'));
-const FriendStats = lazy(() => import('./screens/FriendStats'));
+const MyCheckins = lazy(() => import('./screens/MyCheckins'));
+const MyCities = lazy(() => import('./screens/MyCities'));
 const FriendCheckins = lazy(() => import('./screens/FriendCheckins'));
 const FriendCities = lazy(() => import('./screens/FriendCities'));
 const Notifications = lazy(() => import('./screens/Notifications'));
@@ -62,7 +63,8 @@ function AppRoutes() {
           <Route path="/group/:tripId" element={<GroupTrip />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/stats" element={<FullStats />} />
-          <Route path="/friend/:uid" element={<FriendStats />} />
+          <Route path="/checkins" element={<MyCheckins />} />
+          <Route path="/cities" element={<MyCities />} />
           <Route path="/friend/:uid/checkins" element={<FriendCheckins />} />
           <Route path="/friend/:uid/cities" element={<FriendCities />} />
           <Route path="/notifications" element={<Notifications />} />
