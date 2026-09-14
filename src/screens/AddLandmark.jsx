@@ -25,10 +25,10 @@ const DRAG_PIN_ICON = L.divIcon({
 });
 
 // Every field's label states up front whether it's required to submit --
-// Location, Name, Topic, and Photo are; Facts is the only optional one.
+// Location, Name, and Topic are; Facts and Photo are optional.
 function FieldLabel({ children, required }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span>{children}</span>
       <span className={`tag ${required ? '' : 'tag-optional'}`}>{required ? 'Required' : 'Optional'}</span>
     </label>
@@ -47,12 +47,12 @@ function RecenterOnPosition({ position }) {
   return null;
 }
 
-// A brand-new landmark, start to finish: name, at least one topic, a photo,
-// and its exact spot -- either your current GPS location or an actual pin
-// you drag into place on a small map (much more obvious than tapping
-// somewhere on the full explore map used to be). The AI verification +
-// Firestore/Storage save is identical to what the old inline "Add Pin"
-// panel on the map used to do.
+// A brand-new landmark, start to finish: name, at least one topic, and its
+// exact spot -- either your current GPS location or an actual pin you drag
+// into place on a small map (much more obvious than tapping somewhere on
+// the full explore map used to be). A photo is optional but speeds up the
+// AI moderation check. The AI verification + Firestore/Storage save is
+// identical to what the old inline "Add Pin" panel on the map used to do.
 export default function AddLandmark() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -102,14 +102,14 @@ export default function AddLandmark() {
     setPhotoPreview(URL.createObjectURL(f));
   };
 
-  const canSubmit = name.trim() && categories.length > 0 && photo && position && user;
+  const canSubmit = name.trim() && categories.length > 0 && position && user;
 
   const submit = async () => {
     if (!canSubmit || busy) return;
     setError('');
     try {
       setStage('verifying');
-      const imageDataUrl = await fileToSmallDataUrl(photo);
+      const imageDataUrl = photo ? await fileToSmallDataUrl(photo) : '';
       const idToken = await user.getIdToken();
       const verifyRes = await fetch('/api/verify-landmark', {
         method: 'POST',
@@ -125,12 +125,12 @@ export default function AddLandmark() {
       });
       const verified = await verifyRes.json().catch(() => null);
       if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this submission — try again.');
-      if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different photo or name.");
+      if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different name or add a photo.");
 
       setStage('saving');
       const region = nearestRegionId(position.lat, position.lng);
       const tempId = `pending-${Date.now()}`;
-      const imageUrl = await uploadLandmarkPhoto(tempId, user.uid, photo);
+      const imageUrl = photo ? await uploadLandmarkPhoto(tempId, user.uid, photo) : null;
       const created = await addCustomLandmark({
         region,
         name: name.trim(),
@@ -138,7 +138,7 @@ export default function AddLandmark() {
         lng: position.lng,
         userId: user.uid,
         categories,
-        images: [imageUrl],
+        images: imageUrl ? [imageUrl] : [],
         summary: verified.summary,
         facts: verified.facts,
         free: verified.free,
@@ -274,7 +274,10 @@ export default function AddLandmark() {
       </div>
 
       <div className="field">
-        <FieldLabel required>Photo</FieldLabel>
+        <FieldLabel>Photo</FieldLabel>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
+          Helps others recognize it and speeds up moderation, but isn't required.
+        </p>
         {photoPreview ? (
           <div style={{ position: 'relative', width: 120 }}>
             <img
