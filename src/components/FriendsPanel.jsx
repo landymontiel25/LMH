@@ -208,7 +208,7 @@ export default function FriendsPanel() {
         ) : (
           friends.map((f) => (
             <div key={f.friend} className="friend-row" style={{ cursor: 'pointer' }} onClick={() => openFriendStats(f)}>
-              <span>@{f.friendName}</span>
+              <span style={{ fontWeight: 700 }}>@{f.friendName}</span>
               <span style={{ color: 'var(--color-parchment-dim)' }}>{'›'}</span>
             </div>
           ))
