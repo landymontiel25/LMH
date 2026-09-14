@@ -3,14 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getUserStats, getUserCheckins } from '../lib/leaderboard';
 import { getUserProfile } from '../lib/friends';
 import { getRegion } from '../data/regions';
-import CityList from '../components/CityList';
-import CheckinsGallery from '../components/CheckinsGallery';
 
-// A friend's stats as a real page, not a modal -- a modal-backdrop/modal-card
-// stacked over the Profile screen rendered oddly on iOS Safari, and tapping
-// into their check-ins used to mean drilling into ANOTHER modal on top of
-// that one. This mirrors FullStats (your own equivalent page): one scrollable
-// screen, no overlays, reached via /friend/:uid from a tap on the Friends list.
+// A friend's stats summary as a real page, not a modal -- a modal-backdrop/
+// modal-card stacked over the Profile screen rendered oddly on iOS Safari.
+// Just the top-level numbers here (points/check-ins/cities + last check-in);
+// tapping Check-ins or Cities goes to its own separate page in turn
+// (/friend/:uid/checkins, /friend/:uid/cities) rather than another overlay.
 export default function FriendStats() {
   const { uid } = useParams();
   const navigate = useNavigate();
@@ -54,31 +52,40 @@ export default function FriendStats() {
       {!error && !stats && <p className="screen-subtitle">Loading…</p>}
 
       {stats && (
-        <>
+        <div className="card section">
+          <div className="profile-stats">
+            <div className="profile-stat">
+              <span className="profile-stat-num">{stats.totalPoints.toLocaleString()}</span>
+              <span className="profile-stat-label">total pts</span>
+            </div>
+            <button
+              type="button"
+              className="profile-stat profile-stat-btn"
+              onClick={() => stats.checkins && navigate(`/friend/${uid}/checkins`)}
+            >
+              <span className="profile-stat-num">{stats.checkins.toLocaleString()}</span>
+              <span className="profile-stat-label">check-ins{stats.checkins ? ' ›' : ''}</span>
+            </button>
+            <button
+              type="button"
+              className="profile-stat profile-stat-btn"
+              onClick={() => stats.cities && navigate(`/friend/${uid}/cities`)}
+            >
+              <span className="profile-stat-num">{stats.cities}</span>
+              <span className="profile-stat-label">cities{stats.cities ? ' ›' : ''}</span>
+            </button>
+          </div>
           {recent ? (
-            <p className="screen-subtitle" style={{ marginTop: -8 }}>
+            <p className="screen-subtitle" style={{ marginTop: 14, marginBottom: 0 }}>
               Last check-in: <strong>{recent.landmarkName || 'a landmark'}</strong>
               {recent.region ? ` — ${getRegion(recent.region)?.name || ''}` : ''}
             </p>
           ) : (
-            <p className="screen-subtitle" style={{ marginTop: -8 }}>No check-ins yet.</p>
+            <p className="screen-subtitle" style={{ marginTop: 14, marginBottom: 0 }}>
+              No check-ins yet.
+            </p>
           )}
-
-          <div className="card section">
-            <h3 style={{ marginTop: 0 }}>
-              {'\u{1F3D9}\u{FE0F}'} Cities ({stats.cities})
-            </h3>
-            <CityList cityIds={stats.cityIds} cityPoints={stats.cityPoints} cityLastVisit={stats.cityLastVisit} />
-          </div>
-
-          <CheckinsGallery
-            user={{ uid }}
-            claimedMap={{}}
-            navigate={navigate}
-            totalPoints={stats.totalPoints}
-            title={`@${name}'s Check-ins`}
-          />
-        </>
+        </div>
       )}
     </div>
   );

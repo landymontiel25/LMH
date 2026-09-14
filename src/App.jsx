@@ -34,6 +34,8 @@ const GroupTrip = lazy(() => import('./screens/GroupTrip'));
 const Settings = lazy(() => import('./screens/Settings'));
 const FullStats = lazy(() => import('./screens/FullStats'));
 const FriendStats = lazy(() => import('./screens/FriendStats'));
+const FriendCheckins = lazy(() => import('./screens/FriendCheckins'));
+const FriendCities = lazy(() => import('./screens/FriendCities'));
 const Notifications = lazy(() => import('./screens/Notifications'));
 const Test = lazy(() => import('./screens/Test'));
 
@@ -61,6 +63,8 @@ function AppRoutes() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/stats" element={<FullStats />} />
           <Route path="/friend/:uid" element={<FriendStats />} />
+          <Route path="/friend/:uid/checkins" element={<FriendCheckins />} />
+          <Route path="/friend/:uid/cities" element={<FriendCities />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/test" element={<Test />} />
         </Routes>
