@@ -18,7 +18,7 @@ function fmtDateTime(seconds) {
 // The full photo gallery of everywhere you've checked in -- lives on the
 // Full Stats page (moved out of the Ranks tab strip, which is now just
 // This Week / This Month / This Year).
-export default function CheckinsGallery({ user, claimedMap, navigate, totalPoints }) {
+export default function CheckinsGallery({ user, claimedMap, navigate, totalPoints, title = 'My Check-ins' }) {
   const [checkins, setCheckins] = useState(null);
   const [layout, setLayout] = useState('list'); // 'list' | 'grid'
 
@@ -80,7 +80,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ margin: 0 }}>{'\u{1F4F8}'} My Check-ins {checkins ? `(${checkins.length})` : ''}</h3>
+        <h3 style={{ margin: 0 }}>{'\u{1F4F8}'} {title} {checkins ? `(${checkins.length})` : ''}</h3>
         <div className="tabs" style={{ margin: 0 }}>
           <button className={`tab-btn ${layout === 'list' ? 'active' : ''}`} onClick={() => setLayout('list')}>
             {'\u{1F4C4}'} List
