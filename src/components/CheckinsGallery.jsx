@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getLandmark, getRegion } from '../data/regions';
 import { getUserCheckins } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
@@ -21,6 +22,16 @@ function fmtDateTime(seconds) {
 export default function CheckinsGallery({ user, claimedMap, navigate, totalPoints, title = 'My Check-ins' }) {
   const [checkins, setCheckins] = useState(null);
   const [layout, setLayout] = useState('list'); // 'list' | 'grid'
+  // Tapping a check-in navigates to its landmark page; the ErrorBoundary
+  // above every route is keyed by pathname, so coming back here via the
+  // Back button fully remounts this gallery instead of leaving it in
+  // place -- without this, that remount always starts scrolled to the
+  // top, no matter how far down the list you'd scrolled to tap something.
+  // sessionStorage (not React state) is what survives that remount; the
+  // path itself is the key so a friend's gallery and your own don't clash.
+  const location = useLocation();
+  const scrollKey = `checkins-scroll:${location.pathname}`;
+  const restoredRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +80,22 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
     };
   }, [user, claimedMap]);
 
-  const go = (it) => navigate(`/landmarks/${it.regionId}/${it.landmarkId}`);
+  // Restore once, right after the list has real content to scroll through --
+  // and only once, so a later fresh visit to this same page doesn't jump to
+  // some stale leftover position.
+  useEffect(() => {
+    if (!checkins || restoredRef.current) return;
+    restoredRef.current = true;
+    const saved = sessionStorage.getItem(scrollKey);
+    if (saved == null) return;
+    sessionStorage.removeItem(scrollKey);
+    requestAnimationFrame(() => window.scrollTo(0, Number(saved)));
+  }, [checkins, scrollKey]);
+
+  const go = (it) => {
+    sessionStorage.setItem(scrollKey, String(window.scrollY));
+    navigate(`/landmarks/${it.regionId}/${it.landmarkId}`);
+  };
 
   return (
     <div className="section">
