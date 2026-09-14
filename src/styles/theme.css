@@ -2292,6 +2292,58 @@ textarea {
   color: var(--color-parchment-dim);
 }
 
+/* ---------- Pin-placement mode (map "+" button) ---------- */
+
+/* Hides all normal chrome while picking an exact spot for a new landmark --
+   only the crosshair reticle and Cancel/Done controls stay on screen. */
+body.pin-placing .app-header,
+body.pin-placing .bottom-nav,
+body.pin-placing .ask-landmark-fab,
+body.pin-placing .ask-landmark-panel {
+  display: none;
+}
+
+.map-pin-target {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  color: var(--color-brass-bright);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+  pointer-events: none;
+}
+
+.map-pin-target-hint {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  margin: 0;
+  max-width: min(280px, calc(100% - 140px));
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: rgb(var(--color-bg-rgb));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-float);
+  font-size: 0.76rem;
+  text-align: center;
+  color: var(--color-parchment-dim);
+}
+
+.map-pin-cancel-btn {
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+}
+
+.map-pin-done-btn {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  right: 16px;
+  z-index: 1000;
+  box-shadow: var(--shadow-float);
+}
+
 .map-popup {
   min-width: 180px;
   font-family: var(--font-body);
