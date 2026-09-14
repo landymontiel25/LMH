@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LandmarkThumb from '../components/LandmarkThumb';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
 import { mapsDeepLink } from '../lib/routing';
 
@@ -13,6 +14,7 @@ const GREETING =
 // that one") refine the same thread instead of starting over.
 export default function Test() {
   const navigate = useNavigate();
+  const { myPhotos } = useMyPhotos();
   const [region, setRegion] = useState(ANY_REGION);
   const [regionOpen, setRegionOpen] = useState(false);
   const [messages, setMessages] = useState([{ role: 'assistant', text: GREETING, stops: [] }]);
@@ -138,7 +140,7 @@ export default function Test() {
                         className="chatlab-stop"
                         onClick={() => navigate(`/landmarks/${stop.region}/${stop.id}`)}
                       >
-                        <LandmarkThumb landmark={stop} size={44} />
+                        <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
                         <div className="chatlab-stop-text">
                           <strong>{stop.name}</strong>
                           <span>{stop.reason}</span>

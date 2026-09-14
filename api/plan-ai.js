@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS, getRegion } from '../src/data/regions.js';
+import { isRateLimited } from './_lib/rateLimit.js';
 
 // Backs the "Test" tab's chat interface -- a real back-and-forth instead of a
 // one-shot form. The client sends the whole conversation so far (its own
@@ -59,6 +60,12 @@ export default async function handler(req, res) {
   }
   if (!process.env.ANTHROPIC_API_KEY) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
+    return;
+  }
+  // Tighter than ask-ai's limit -- this endpoint's uncapped web_search tool
+  // makes each call more expensive.
+  if (isRateLimited(req, 'plan-ai', { limit: 10, windowMs: 10 * 60 * 1000 })) {
+    res.status(429).json({ error: 'Too many planning requests in a row — take a short break and try again.' });
     return;
   }
 

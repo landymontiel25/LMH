@@ -2,8 +2,11 @@ import { paletteFor, iconFor } from '../lib/landmarkVisuals';
 
 // Compact, non-swipeable thumbnail for dense contexts (list rows, itinerary
 // stops, map popups) where the decorative postcard frame doesn't fit.
-export default function LandmarkThumb({ landmark, size = 52, width, height }) {
-  const image = landmark.images?.[0];
+//
+// myPhoto: the signed-in viewer's own check-in photo for this landmark, if
+// any -- shown instead of the landmark's default photo, just for them.
+export default function LandmarkThumb({ landmark, size = 52, width, height, myPhoto }) {
+  const image = myPhoto || landmark.images?.[0];
   const w = width ?? size;
   const h = height ?? size;
   const style = { width: w, height: h };

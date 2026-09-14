@@ -6,8 +6,12 @@ import {
   collection,
   query,
   where,
+  orderBy,
   limit,
-  setDoc,
+  updateDoc,
+  deleteDoc,
+  addDoc,
+  arrayUnion,
   serverTimestamp,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -61,37 +65,56 @@ export async function submitReview({ userId, userName, landmark, stars, comment 
   const reviewRef = doc(db, 'reviews', `${userId}_${landmarkId}`);
   const aggRef = doc(db, 'landmark_ratings', landmarkId);
 
-  await runTransaction(db, async (tx) => {
-    const prev = await tx.get(reviewRef);
-    const agg = await tx.get(aggRef);
-    const prevStars = prev.exists() ? prev.data().stars || 0 : 0;
-    const hadReview = prev.exists();
-    const curSum = agg.exists() ? agg.data().sum || 0 : 0;
-    const curCount = agg.exists() ? agg.data().count || 0 : 0;
-    const newSum = curSum - prevStars + stars;
-    const newCount = curCount + (hadReview ? 0 : 1);
+  const writeReview = () =>
+    runTransaction(db, async (tx) => {
+      const prev = await tx.get(reviewRef);
+      const agg = await tx.get(aggRef);
+      const prevStars = prev.exists() ? prev.data().stars || 0 : 0;
+      const hadReview = prev.exists();
+      const curSum = agg.exists() ? agg.data().sum || 0 : 0;
+      const curCount = agg.exists() ? agg.data().count || 0 : 0;
+      const newSum = curSum - prevStars + stars;
+      const newCount = curCount + (hadReview ? 0 : 1);
 
-    tx.set(
-      aggRef,
-      { landmarkId, sum: newSum, count: newCount, avg: newCount ? newSum / newCount : 0, updatedAt: serverTimestamp() },
-      { merge: true }
-    );
-    tx.set(
-      reviewRef,
-      {
-        userId,
-        userName,
-        landmarkId,
-        landmarkName: landmark.name,
-        region: landmark.region,
-        stars,
-        comment: (comment || '').slice(0, 500),
-        ...(photoURLs.length ? { photoURLs } : {}),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  });
+      tx.set(
+        aggRef,
+        { landmarkId, sum: newSum, count: newCount, avg: newCount ? newSum / newCount : 0, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      tx.set(
+        reviewRef,
+        {
+          userId,
+          userName,
+          landmarkId,
+          landmarkName: landmark.name,
+          region: landmark.region,
+          stars,
+          comment: (comment || '').slice(0, 500),
+          ...(photoURLs.length ? { photoURLs } : {}),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+
+  // The review's create rule checks `exists(checkins/...)` for the check-in
+  // we just wrote a moment ago. Firestore explicitly does NOT guarantee
+  // strong consistency for a security rule's own get()/exists() calls
+  // against other documents (unlike direct reads/writes to the target doc
+  // itself), so that check can occasionally see stale data and wrongly deny
+  // this write right after a fresh check-in. Retry through that brief
+  // window instead of surfacing a permission error for something that
+  // legitimately just happened.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await writeReview();
+      break;
+    } catch (e) {
+      if (e.code !== 'permission-denied' || attempt >= 3) throw e;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+    }
+  }
 
   return { photoURLs, photoFailed };
 }
@@ -136,27 +159,17 @@ export async function getLandmarkReviews(landmarkId) {
     .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
 }
 
-/** Flag a review. One report per reporter per review. */
+/**
+ * Flag a review. Appends the reporter's uid to the review's own `reportedBy`
+ * array -- firestore.rules independently enforces that each uid can only be
+ * added once and only by someone other than the review's author, so once
+ * REPORT_HIDE_THRESHOLD distinct people have reported it, the read rule
+ * hides it from everyone but the author and admins. No separate "reports"
+ * collection needed; this is the actual enforcement, not just a client-side
+ * filter.
+ */
 export async function reportReview({ reporterUid, review }) {
-  await setDoc(doc(db, 'reports', `${reporterUid}_${review.id}`), {
-    reviewId: review.id,
-    reviewOwnerUid: review.userId,
-    reporterUid,
-    landmarkId: review.landmarkId,
-    createdAt: serverTimestamp(),
-  });
-}
-
-/** Report counts per review for a landmark, as { [reviewId]: count }. */
-export async function getReportsForLandmark(landmarkId) {
-  if (!db) return {};
-  const snap = await getDocs(query(collection(db, 'reports'), where('landmarkId', '==', landmarkId)));
-  const counts = {};
-  snap.docs.forEach((d) => {
-    const r = d.data();
-    counts[r.reviewId] = (counts[r.reviewId] || 0) + 1;
-  });
-  return counts;
+  await updateDoc(doc(db, 'reviews', review.id), { reportedBy: arrayUnion(reporterUid) });
 }
 
 /** Delete your own review and roll its stars back out of the aggregate. */
@@ -177,5 +190,24 @@ export async function deleteMyReview(userId, landmarkId) {
   });
 }
 
-// Reviews hidden once they reach this many reports (community auto-moderation).
-export const REPORT_HIDE_THRESHOLD = 2;
+/** One reply level on a review -- see firestore.rules for who can read/write. */
+export async function getReplies(reviewId) {
+  if (!db) return [];
+  const snap = await getDocs(
+    query(collection(db, 'reviews', reviewId, 'replies'), orderBy('createdAt', 'asc'))
+  );
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function addReply(reviewId, { uid, userName, text }) {
+  await addDoc(collection(db, 'reviews', reviewId, 'replies'), {
+    uid,
+    userName,
+    text: text.slice(0, 500),
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function deleteReply(reviewId, replyId) {
+  await deleteDoc(doc(db, 'reviews', reviewId, 'replies', replyId));
+}

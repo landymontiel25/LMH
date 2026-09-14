@@ -78,12 +78,32 @@ export async function upsertUserProfile(user) {
   );
 }
 
+// Public: your reviews (comments, stars, photos) are visible to everyone.
+// Private (default): only friends can see them -- matches the original
+// friends-only photo rule this generalizes, now enforced in firestore.rules
+// rather than just hidden client-side.
+export async function setProfileVisibility(uid, isPublic) {
+  if (!db || !uid) return;
+  await setDoc(doc(db, 'users', uid), { public: !!isPublic, updatedAt: serverTimestamp() }, { merge: true });
+}
+
 export async function findUserByEmail(email) {
   if (!db) return null;
   const e = (email || '').trim().toLowerCase();
   if (!e) return null;
   const snap = await getDocs(query(collection(db, 'users'), where('email', '==', e)));
   return snap.docs[0]?.data() || null;
+}
+
+// Have I already sent toUid a request? A direct getDoc on the deterministic
+// friend_requests/{fromUid}_{toUid} id would throw permission-denied when the
+// doc doesn't exist yet (rules can't tell "not found" from "not yours" on a
+// null resource), so this queries by "from" instead -- list rules evaluate
+// per returned (i.e. existing) document, sidestepping that.
+export async function hasPendingRequestTo(fromUid, toUid) {
+  if (!db || !fromUid || !toUid) return false;
+  const snap = await getDocs(query(collection(db, 'friend_requests'), where('from', '==', fromUid)));
+  return snap.docs.some((d) => d.data().to === toUid);
 }
 
 export async function sendFriendRequest(fromUser, toUser) {

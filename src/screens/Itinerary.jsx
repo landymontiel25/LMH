@@ -6,14 +6,19 @@ import 'leaflet/dist/leaflet.css';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
+import { useFriends } from '../lib/FriendsContext';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
+import TripRecapCard from '../components/TripRecapCard';
+import ThemedChallenge from '../components/ThemedChallenge';
+import OfflineDownloadButton from '../components/OfflineDownloadButton';
+import { createGroupTrip, listMyGroupTrips } from '../lib/groupTrips';
 import { getRegion } from '../data/regions';
 import { geocodeLocation } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
 import { buildNearestNeighborRoute, enhanceRouteWithDrivingTimes, mapsDeepLink } from '../lib/routing';
-
-const fmtDist = (m) => (m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1)} km`);
+import { useUnits, formatDistance } from '../lib/UnitsContext';
 
 const ROUTE_BLUE = '#2b7fff';
 
@@ -113,9 +118,12 @@ function ItineraryMap({ origin, stops }) {
 const AUTO_ORIGIN_REFRESH_METERS = 150;
 
 export default function Itinerary() {
-  const { trip, toggleLandmark, regionsWithItineraries, updateTrip, setMapFocus } = useTrip();
+  const { trip, toggleLandmark, setRegionSelection, getRegionSelection, regionsWithItineraries, updateTrip, setMapFocus } = useTrip();
   const { coords } = useGeo();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { myUsername } = useFriends();
+  const { units } = useUnits();
+  const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
 
   // One itinerary per city. Overview lists them; opening one shows its route.
@@ -138,6 +146,13 @@ export default function Itinerary() {
   const [geocoding, setGeocoding] = useState(true);
   const [view, setView] = useState('list'); // 'list' | 'map'
   const [pendingRemove, setPendingRemove] = useState(null); // stop awaiting delete confirmation
+  const [showRecap, setShowRecap] = useState(false);
+  const [groupTrips, setGroupTrips] = useState([]);
+  const [groupBusy, setGroupBusy] = useState(false);
+
+  useEffect(() => {
+    if (user) listMyGroupTrips(user.uid).then(setGroupTrips).catch(() => setGroupTrips([]));
+  }, [user]);
   const autoOriginRef = useRef(null);
 
   const confirmRemove = () => {
@@ -247,8 +262,8 @@ export default function Itinerary() {
   // How many of this city's planned landmarks you've already checked in at.
   const visitedCount = selectedLandmarks.filter((l) => claimedMap[l.id]).length;
 
-  // No cities planned yet.
-  if (myRegions.length === 0) {
+  // No personal itineraries AND no group trips -- true dead end.
+  if (myRegions.length === 0 && groupTrips.length === 0) {
     return (
       <div className="empty-state">
         <p>No itineraries yet. Add landmarks in any city to start one.</p>
@@ -266,6 +281,27 @@ export default function Itinerary() {
         <h1 className="screen-title">
           <span>{'\u{1F5FA}\u{FE0F}'}</span> Your Itineraries
         </h1>
+        {groupTrips.length > 0 && (
+          <div style={{ marginBottom: 18 }}>
+            <h3 style={{ margin: '0 0 8px' }}>{'\u{1F465}'} Group Trips</h3>
+            {groupTrips.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className="card itin-city-card"
+                onClick={() => navigate(`/group/${t.id}`)}
+              >
+                <div style={{ textAlign: 'left' }}>
+                  <h3 style={{ margin: 0 }}>{t.name}</h3>
+                  <p style={{ margin: '4px 0 0', color: 'var(--color-parchment-dim)', fontSize: '0.85rem' }}>
+                    {getRegion(t.regionId)?.name} · {t.memberUids.length} member{t.memberUids.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <span className="itin-city-arrow">{'→'}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <p className="screen-subtitle">
           {myRegions.length} {myRegions.length === 1 ? 'city' : 'cities'} planned — tap one to see its route.
         </p>
@@ -319,7 +355,57 @@ export default function Itinerary() {
         <span className="tag">
           {'\u{2705}'} {visitedCount} of {selectedLandmarks.length} visited
         </span>
+        {visitedCount > 0 && (
+          <button type="button" className="btn btn-ghost btn-tight" onClick={() => setShowRecap(true)}>
+            {'\u{1F3AC}'} Trip Recap
+          </button>
+        )}
       </div>
+
+      <ThemedChallenge
+        regionId={region.id}
+        claimedMap={claimedMap}
+        onAddAll={(landmarks) => {
+          const current = getRegionSelection(region.id);
+          const merged = [...new Set([...current, ...landmarks.map((l) => l.id)])];
+          setRegionSelection(region.id, merged);
+        }}
+      />
+      <OfflineDownloadButton region={region} />
+
+      {user && (
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          style={{ marginBottom: 16 }}
+          disabled={groupBusy}
+          onClick={async () => {
+            setGroupBusy(true);
+            try {
+              const id = await createGroupTrip({
+                ownerUid: user.uid,
+                ownerName: myUsername || user.displayName || user.email,
+                name: `${region.name} Trip`,
+                regionId: region.id,
+                landmarkIds: selectedLandmarks.map((l) => l.id),
+              });
+              navigate(`/group/${id}`);
+            } finally {
+              setGroupBusy(false);
+            }
+          }}
+        >
+          {'\u{1F465}'} {groupBusy ? 'Starting…' : 'Start a Group Trip With Friends'}
+        </button>
+      )}
+
+      {showRecap && (
+        <TripRecapCard
+          regionName={region.name}
+          visitedLandmarks={selectedLandmarks.filter((l) => claimedMap[l.id])}
+          onClose={() => setShowRecap(false)}
+        />
+      )}
 
       <div className="tabs" style={{ maxWidth: 320 }}>
         <button
@@ -346,12 +432,12 @@ export default function Itinerary() {
             {idx === 0
               ? stop.distanceFromPrevMeters <= 80000 && (
                   <div className="route-travel">
-                    {'\u{1F4CD}'} {fmtDist(stop.distanceFromPrevMeters)} from you
+                    {'\u{1F4CD}'} {formatDistance(stop.distanceFromPrevMeters, units)} from you
                   </div>
                 )
               : (
                 <div className="route-travel">
-                  {'\u{1F6B6}'} {fmtDist(stop.distanceFromPrevMeters)} to next stop
+                  {'\u{1F6B6}'} {formatDistance(stop.distanceFromPrevMeters, units)} to next stop
                 </div>
               )}
             <div className="route-step">
@@ -359,7 +445,7 @@ export default function Itinerary() {
               <div className="card" style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <LandmarkThumb landmark={stop} size={44} />
+                    <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
                     <h4 style={{ margin: 0, color: 'var(--color-parchment)' }}>{stop.name}</h4>
                   </div>
                   <button

@@ -13,6 +13,13 @@ export const OTHER_INTERESTS = [
   'Family-Friendly',
 ];
 
+// Capitalizes the first letter of each word (leaves the rest of each word
+// untouched, so e.g. "NBA" or "eSports" survives intact) -- a lowercase
+// submission like "racing" is stored as "Racing".
+function capitalizeWords(value) {
+  return value.replace(/\S+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1));
+}
+
 // Adds as many custom interests as you type -- each commit (Enter, Tab,
 // picking a suggestion, or clicking away) saves it immediately as its own
 // entry and reopens the input for the next one, instead of holding one
@@ -25,7 +32,7 @@ export default function AddInterestChip({ existing, onAdd }) {
   const ref = useRef(null);
 
   const commit = () => {
-    const value = text.trim();
+    const value = capitalizeWords(text.trim());
     if (value && !existing.includes(value)) onAdd(value);
     setText('');
   };

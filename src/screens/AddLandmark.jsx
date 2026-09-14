@@ -9,7 +9,7 @@ import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useTrip } from '../lib/TripContext';
 import { addCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
-import { fileToSmallDataUrl } from '../lib/imageUtils';
+import { fileToSmallDataUrl, pickPhoto } from '../lib/imageUtils';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
 const SAT_TILE = {
@@ -77,9 +77,8 @@ export default function AddLandmark() {
   };
   const removeFact = (i) => setFacts((cur) => cur.filter((_, idx) => idx !== i));
 
-  const onPhotoChange = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
+  const onPhotoChange = async () => {
+    const f = await pickPhoto();
     if (!f) return;
     setPhoto(f);
     setPhotoPreview(URL.createObjectURL(f));
@@ -93,9 +92,10 @@ export default function AddLandmark() {
     try {
       setStage('verifying');
       const imageDataUrl = await fileToSmallDataUrl(photo);
+      const idToken = await user.getIdToken();
       const verifyRes = await fetch('/api/verify-landmark', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           name: name.trim(),
           categories,
@@ -280,10 +280,9 @@ export default function AddLandmark() {
             </button>
           </div>
         ) : (
-          <label className="btn btn-ghost btn-block" style={{ cursor: 'pointer' }}>
+          <button type="button" className="btn btn-ghost btn-block" onClick={onPhotoChange}>
             {'\u{1F4F8}'} Add a photo
-            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPhotoChange} />
-          </label>
+          </button>
         )}
       </div>
 

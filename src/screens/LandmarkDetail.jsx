@@ -1,25 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
-import { getCustomLandmark } from '../lib/customLandmarks';
+import { getCustomLandmark, reportCustomLandmark } from '../lib/customLandmarks';
+import { blockUser } from '../lib/blocks';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useRatings } from '../lib/RatingsContext';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
-import {
-  submitReview,
-  getMyReview,
-  getLandmarkReviews,
-  reportReview,
-  getReportsForLandmark,
-  deleteMyReview,
-  REPORT_HIDE_THRESHOLD,
-} from '../lib/reviews';
+import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
 import LandmarkPostcard from '../components/LandmarkPostcard';
+import ReviewReplies from '../components/ReviewReplies';
 import CheckInButton from '../components/CheckInButton';
 import RatingStars from '../components/RatingStars';
 import { mapsDeepLink } from '../lib/routing';
+import { pickPhoto } from '../lib/imageUtils';
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
 const FACTS_PREVIEW = 5;
@@ -73,7 +69,8 @@ export default function LandmarkDetail() {
     [staticLandmark, customLandmark]
   );
   const { ratings, reload: reloadRatings } = useRatings();
-  const { friendUids, myUsername } = useFriends();
+  const { reload: reloadMyPhotos } = useMyPhotos();
+  const { myUsername } = useFriends();
   const [myStars, setMyStars] = useState(0);
   const [myComment, setMyComment] = useState('');
   const [myPhotos, setMyPhotos] = useState([]);
@@ -82,8 +79,9 @@ export default function LandmarkDetail() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [reportsMap, setReportsMap] = useState({});
   const [reportedNow, setReportedNow] = useState(() => new Set());
+  const [blockedNow, setBlockedNow] = useState(() => new Set());
+  const [landmarkReported, setLandmarkReported] = useState(false);
   const [factsExpanded, setFactsExpanded] = useState(false);
   const [shareMsg, setShareMsg] = useState(null);
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -158,9 +156,11 @@ export default function LandmarkDetail() {
   const loadReviews = useCallback(async () => {
     if (!firebaseEnabled || !landmark) return;
     try {
-      const [rv, rc] = await Promise.all([getLandmarkReviews(landmark.id), getReportsForLandmark(landmark.id)]);
-      setReviews(rv);
-      setReportsMap(rc);
+      // firestore.rules already excludes any review reported past the
+      // hide threshold (unless it's yours or you're an admin), so whatever
+      // comes back here is exactly what's safe to show -- no client-side
+      // report-count filtering needed anymore.
+      setReviews(await getLandmarkReviews(landmark.id));
     } catch {
       /* rules / index not set yet */
     }
@@ -189,9 +189,8 @@ export default function LandmarkDetail() {
   const agg = ratings[landmark.id];
   const canRate = firebaseEnabled && user && claimedMap[landmark.id];
 
-  const onPhotoChange = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
+  const onPhotoChange = async () => {
+    const f = await pickPhoto();
     if (f) {
       setPhotoFiles((prev) => (prev.length < 3 ? [...prev, f] : prev));
       setPhotoPreviews((prev) => (prev.length < 3 ? [...prev, URL.createObjectURL(f)] : prev));
@@ -221,6 +220,7 @@ export default function LandmarkDetail() {
       await reloadRatings();
       await loadReviews();
       await loadMyReview();
+      await reloadMyPhotos();
       setPhotoFiles([]);
       setPhotoPreviews([]);
       setSaveMsg(res?.photoFailed ? "Rating saved — but your photo couldn't upload." : 'Thanks — your rating is in! ⭐');
@@ -238,6 +238,7 @@ export default function LandmarkDetail() {
     setMyPhotos([]);
     await reloadRatings();
     await loadReviews();
+    await reloadMyPhotos();
   };
 
   const handleReport = async (rv) => {
@@ -245,6 +246,26 @@ export default function LandmarkDetail() {
     try {
       await reportReview({ reporterUid: user.uid, review: rv });
       await loadReviews();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleBlock = async (rv) => {
+    setBlockedNow((s) => new Set(s).add(rv.userId));
+    try {
+      await blockUser(user.uid, rv.userId, rv.userName);
+      await loadReviews();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleReportLandmark = async () => {
+    if (!customLandmark || !user) return;
+    setLandmarkReported(true);
+    try {
+      await reportCustomLandmark(user.uid, customLandmark.docId);
     } catch {
       /* ignore */
     }
@@ -268,10 +289,6 @@ export default function LandmarkDetail() {
       /* user dismissed the share sheet — nothing to do */
     }
   };
-
-  const visibleReviews = reviews.filter(
-    (r) => (reportsMap[r.id] || 0) < REPORT_HIDE_THRESHOLD || r.userId === user?.uid
-  );
 
   return (
     <div>
@@ -299,6 +316,17 @@ export default function LandmarkDetail() {
       {customLandmark?.status === 'pending' && (
         <p className="screen-subtitle" style={{ textAlign: 'center', marginTop: -10 }}>
           Only visible to you right now — a moderator needs to approve it before it shows up for everyone else.
+        </p>
+      )}
+      {customLandmark && user && customLandmark.createdBy !== user.uid && (
+        <p className="center" style={{ marginTop: -10, marginBottom: 18 }}>
+          {landmarkReported ? (
+            <span className="review-reported">Reported ✓</span>
+          ) : (
+            <button className="btn btn-ghost btn-tight" onClick={handleReportLandmark}>
+              Report this landmark
+            </button>
+          )}
         </p>
       )}
 
@@ -497,10 +525,9 @@ export default function LandmarkDetail() {
               )}
               {photoFiles.length < 3 && (
                 <div style={{ marginTop: 12 }}>
-                  <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={onPhotoChange}>
                     {'\u{1F4F8}'} Add photo ({photoFiles.length}/3)
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPhotoChange} />
-                  </label>
+                  </button>
                 </div>
               )}
               <button
@@ -522,11 +549,10 @@ export default function LandmarkDetail() {
         </div>
       )}
 
-      {firebaseEnabled && visibleReviews.length > 0 && (
+      {firebaseEnabled && reviews.length > 0 && (
         <div className="section">
-          <h3>Visitor Reviews ({visibleReviews.length})</h3>
-          {visibleReviews.map((r) => {
-            const canSeePhoto = r.userId === user?.uid || friendUids.has(r.userId);
+          <h3>Visitor Reviews ({reviews.length})</h3>
+          {reviews.map((r) => {
             const mine = user && r.userId === user.uid;
             return (
               <div key={r.id} className="review-item">
@@ -536,10 +562,12 @@ export default function LandmarkDetail() {
                 </div>
                 {r.comment && <p className="review-comment">{r.comment}</p>}
                 {(() => {
+                  // firestore.rules already filtered this list down to reviews
+                  // this viewer is allowed to see in full (their own, a
+                  // friend's, or a public account's) -- so any photo here is
+                  // safe to show, no separate client-side gate needed.
                   const photos = r.photoURLs?.length ? r.photoURLs : r.photoURL ? [r.photoURL] : [];
                   if (!photos.length) return null;
-                  if (!canSeePhoto)
-                    return <p className="review-photo-locked">{'\u{1F4F7}'} Photos shared with friends only</p>;
                   return (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {photos.map((u, i) => (
@@ -561,15 +589,25 @@ export default function LandmarkDetail() {
                       <button className="btn btn-ghost btn-tight" onClick={handleDeleteMine}>
                         Delete
                       </button>
-                    ) : reportedNow.has(r.id) ? (
-                      <span className="review-reported">Reported ✓</span>
+                    ) : blockedNow.has(r.userId) ? (
+                      <span className="review-reported">Blocked ✓</span>
                     ) : (
-                      <button className="btn btn-ghost btn-tight" onClick={() => handleReport(r)}>
-                        Report
-                      </button>
+                      <>
+                        {reportedNow.has(r.id) || r.reportedBy?.includes(user.uid) ? (
+                          <span className="review-reported">Reported ✓</span>
+                        ) : (
+                          <button className="btn btn-ghost btn-tight" onClick={() => handleReport(r)}>
+                            Report
+                          </button>
+                        )}
+                        <button className="btn btn-ghost btn-tight" onClick={() => handleBlock(r)}>
+                          Block
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
+                <ReviewReplies reviewId={r.id} currentUser={user} reviewAuthorUid={r.userId} />
               </div>
             );
           })}

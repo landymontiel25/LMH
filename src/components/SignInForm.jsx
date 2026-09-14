@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
 
 export default function SignInForm({ onSignedUp }) {
-  const { signInGoogle, signUpEmail, signInEmail, resetPassword, redirectError } = useAuth();
+  const { signUpEmail, signInEmail, resetPassword } = useAuth();
   const [mode, setMode] = useState('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -57,30 +58,12 @@ export default function SignInForm({ onSignedUp }) {
     }
   };
 
-  const handleGoogle = async () => {
-    setError('');
-    setErrorCode('');
-    try {
-      await signInGoogle();
-    } catch (err) {
-      setError(authErrorMessage(err));
-      setErrorCode(err?.code || '');
-    }
-  };
-
   return (
     <div>
       <h1 className="screen-title">
         <span>{'\u{1F6C2}'}</span> Sign In
       </h1>
       <p className="screen-subtitle">Sign in to check in, rate places, add friends, and hit the leaderboard.</p>
-
-      {/* Google sign-in temporarily hidden — email-only for now. To re-enable,
-          restore the button below (handler `handleGoogle` is still wired up):
-          <button className="btn btn-primary btn-block" onClick={handleGoogle} disabled={busy} style={{ marginBottom: 18 }}>
-            Continue with Google
-          </button>
-          <div className="compass-divider">or use email</div> */}
 
       <form onSubmit={handleEmailSubmit}>
         {mode === 'signup' && (
@@ -147,9 +130,9 @@ export default function SignInForm({ onSignedUp }) {
             (and spam folder).
           </p>
         )}
-        {(error || redirectError) && (
+        {error && (
           <p className="tag tag-error" style={{ display: 'block', marginBottom: 14 }}>
-            {error || redirectError}
+            {error}
             {errorCode && <span style={{ opacity: 0.7 }}> ({errorCode})</span>}
           </p>
         )}
@@ -177,6 +160,12 @@ export default function SignInForm({ onSignedUp }) {
       >
         {mode === 'signup' ? 'Already have an account? Sign In' : 'New here? Create an Account'}
       </button>
+
+      <p style={{ textAlign: 'center', marginTop: 18, fontSize: '0.78rem' }}>
+        <Link to="/legal" style={{ color: 'var(--color-parchment-dim)' }}>
+          Privacy Policy & Terms of Service
+        </Link>
+      </p>
     </div>
   );
 }

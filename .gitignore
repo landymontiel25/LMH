@@ -16,3 +16,7 @@ dist
 .DS_Store
 *.log
 npm-debug.log*
+
+# Local Claude Code permission allowlist -- personal to each machine/session,
+# not project config that should be shared.
+.claude/settings.local.json

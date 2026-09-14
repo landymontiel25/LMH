@@ -1,19 +1,22 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
-import { useTheme } from '../lib/useTheme';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { subscribeLeaderboard } from '../lib/leaderboard';
+import { subscribeMyNotifications } from '../lib/notifications';
 
 // Header identity control. Shows who you're signed in as; hovering (desktop)
-// or tapping (mobile) reveals this week's rank/points plus one explicit
-// "View Profile" link. The bottom nav's Profile tab already goes to the same
-// place in an obvious, labeled way -- so this doesn't need to double as a
-// second hidden nav button, just a glanceable stat with one clear way out.
+// or tapping (mobile) reveals this week's rank/points, a "Notifications"
+// link (badged with the unread count), and "View Profile". Notifications
+// live inside this dropdown rather than as their own header icon -- a
+// second always-visible icon here has no room next to the wordmark on a
+// narrow phone.
 function ProfileMenu() {
   const { user, firebaseEnabled } = useAuth();
-  const { myUsername } = useFriends();
+  const { myUsername, requests } = useFriends();
+  const navigate = useNavigate();
   const [me, setMe] = useState(null); // { points, rank } for the current week
+  const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const closeTimer = useRef(null);
@@ -44,6 +47,14 @@ function ProfileMenu() {
   }, [firebaseEnabled, user]);
 
   useEffect(() => {
+    if (!firebaseEnabled || !user) {
+      setUnread(0);
+      return;
+    }
+    return subscribeMyNotifications(user.uid, (items) => setUnread(items.filter((n) => !n.read).length));
+  }, [firebaseEnabled, user]);
+
+  useEffect(() => {
     function handleClickOutside(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
@@ -63,6 +74,7 @@ function ProfileMenu() {
   }
 
   const name = myUsername ? `@${myUsername}` : user.displayName || 'Explorer';
+  const notificationCount = unread + requests.length;
 
   return (
     <div className="profile-menu" ref={ref} onMouseEnter={openNow} onMouseLeave={closeSoon}>
@@ -76,9 +88,46 @@ function ProfileMenu() {
           <div>
             {'\u{1F3C6}'} {me?.rank ? `#${me.rank}` : '—'} {'·'} {me ? me.points.toLocaleString() : 0} pts
           </div>
-          <Link to="/profile" className="btn btn-primary btn-sm btn-block" style={{ marginTop: 8 }} onClick={() => setOpen(false)}>
-            View Profile
-          </Link>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ position: 'relative', flex: 1 }}
+              onClick={() => {
+                setOpen(false);
+                navigate('/notifications');
+              }}
+            >
+              {'\u{1F514}'} Notifications
+              {notificationCount > 0 && (
+                <span
+                  aria-label={`${notificationCount} notifications`}
+                  style={{
+                    position: 'absolute',
+                    top: -6,
+                    right: -6,
+                    minWidth: 15,
+                    height: 15,
+                    borderRadius: 8,
+                    background: 'var(--color-error, #b3503f)',
+                    color: '#fff',
+                    fontSize: '0.6rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 3px',
+                    lineHeight: 1,
+                  }}
+                >
+                  {notificationCount > 9 ? '9+' : notificationCount}
+                </span>
+              )}
+            </button>
+            <Link to="/profile" className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setOpen(false)}>
+              View Profile
+            </Link>
+          </div>
         </div>
       )}
     </div>
@@ -86,8 +135,6 @@ function ProfileMenu() {
 }
 
 export default function Header() {
-  const { theme, toggleTheme } = useTheme();
-
   return (
     <header className="app-header">
       <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flex: 1, minWidth: 0 }}>
@@ -96,14 +143,6 @@ export default function Header() {
       </Link>
       <div className="app-header-actions">
         <ProfileMenu />
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
       </div>
     </header>
   );

@@ -6,17 +6,30 @@ const DEFAULT_TRIP = {
   startingLocation: '',
   startingCoords: null,
   activeRegion: null, // city currently being browsed (Setup / Landmarks context)
+  // Visited/Unvisited tab selection on Choose Landmarks -- persisted so it
+  // survives navigating into a landmark's Info page and back (that screen
+  // unmounts Choose Landmarks, which would otherwise reset local state).
+  visitFilter: [],
   interests: [],
   customInterests: [],
   // { [customInterestText]: string[] of "regionId/landmarkId" } — which landmarks
   // the AI decided fit a free-text interest like "nightlife" or "racing", since
   // those don't map to any of the built-in categories on their own.
   customInterestMatches: {},
+  // { [customInterestText]: emoji } -- one emoji the AI picked to represent
+  // that free-text interest (e.g. "racing" -> a race car), chosen alongside
+  // its landmark matches so the chip shows something more specific than a
+  // generic sparkle.
+  customInterestEmoji: {},
   // "My Preferences" on Profile -- your usual picks, saved once so Setup can
   // fill interests/customInterests in with one tap instead of re-choosing
   // them on every trip. Independent of the live trip.interests below.
   savedInterests: [],
   savedCustomInterests: [],
+  // Custom preference chips you've turned off without deleting -- "Use My
+  // Preferences" skips these, same as an unchecked built-in category, but
+  // the chip stays put so you can turn it back on later.
+  deselectedCustomInterests: [],
   byRegion: {}, // { [regionId]: string[] of landmark ids } — one itinerary per city
 };
 
@@ -61,14 +74,20 @@ export function TripProvider({ children }) {
   const setCustomInterestMatches = (text, ids) =>
     setTrip((t) => ({ ...t, customInterestMatches: { ...t.customInterestMatches, [text]: ids } }));
 
+  const setCustomInterestEmoji = (text, emoji) =>
+    setTrip((t) => ({ ...t, customInterestEmoji: { ...t.customInterestEmoji, [text]: emoji } }));
+
   const removeCustomInterest = (text) =>
     setTrip((t) => {
       const customInterestMatches = { ...t.customInterestMatches };
       delete customInterestMatches[text];
+      const customInterestEmoji = { ...t.customInterestEmoji };
+      delete customInterestEmoji[text];
       return {
         ...t,
         customInterests: t.customInterests.filter((i) => i !== text),
         customInterestMatches,
+        customInterestEmoji,
       };
     });
 
@@ -113,11 +132,30 @@ export function TripProvider({ children }) {
     setTrip((t) => (t.savedCustomInterests.includes(text) ? t : { ...t, savedCustomInterests: [...t.savedCustomInterests, text] }));
 
   const removeSavedCustomInterest = (text) =>
-    setTrip((t) => ({ ...t, savedCustomInterests: t.savedCustomInterests.filter((x) => x !== text) }));
+    setTrip((t) => ({
+      ...t,
+      savedCustomInterests: t.savedCustomInterests.filter((x) => x !== text),
+      deselectedCustomInterests: t.deselectedCustomInterests.filter((x) => x !== text),
+    }));
 
-  // One tap on Setup: replace the live trip interests with your saved ones.
+  // Turns a saved custom interest chip on/off without deleting it -- mirrors
+  // toggleSavedInterest's on/off for the built-in categories.
+  const toggleSavedCustomInterestSelected = (text) =>
+    setTrip((t) => ({
+      ...t,
+      deselectedCustomInterests: t.deselectedCustomInterests.includes(text)
+        ? t.deselectedCustomInterests.filter((x) => x !== text)
+        : [...t.deselectedCustomInterests, text],
+    }));
+
+  // One tap on Setup: replace the live trip interests with your saved ones
+  // (skipping any custom ones you've turned off).
   const applyPreferences = () =>
-    setTrip((t) => ({ ...t, interests: [...t.savedInterests], customInterests: [...t.savedCustomInterests] }));
+    setTrip((t) => ({
+      ...t,
+      interests: [...t.savedInterests],
+      customInterests: t.savedCustomInterests.filter((x) => !t.deselectedCustomInterests.includes(x)),
+    }));
 
   const getRegionSelection = (regionId) => trip.byRegion[regionId] || [];
 
@@ -139,10 +177,12 @@ export function TripProvider({ children }) {
         regionsWithItineraries,
         resetTrip,
         setCustomInterestMatches,
+        setCustomInterestEmoji,
         removeCustomInterest,
         toggleSavedInterest,
         addSavedCustomInterest,
         removeSavedCustomInterest,
+        toggleSavedCustomInterestSelected,
         applyPreferences,
         mapFocus,
         setMapFocus,

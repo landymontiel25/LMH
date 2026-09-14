@@ -10,9 +10,13 @@ import { SEARCHABLE_PLACES } from '../data/places';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
+import { distanceMeters } from '../lib/geo';
+import { useUnits, formatDistance } from '../lib/UnitsContext';
 import { useCheckIn } from '../lib/useCheckIn';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import { getLandmarkOverrides } from '../lib/landmarkOverrides';
 import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks';
+import { isAdmin } from '../lib/admins';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 
@@ -163,8 +167,10 @@ function LocateControl({ coords, radiusMiles }) {
 export default function MapExplore() {
   const { toggleLandmark, getRegionSelection, trip, mapFocus, mapFocusPoint, setMapFocusPoint } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
   const { coords, error: geoError, loading: geoLoading } = useGeo();
+  const { units } = useUnits();
   const mapRef = useRef(null);
   const [satellite] = useState(true);
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
@@ -259,6 +265,22 @@ export default function MapExplore() {
     setSearchTerm('');
   };
 
+  // A live, distance-sorted view of what's closest right now -- a faster
+  // alternative to panning/zooming the map to see what's nearby. Only
+  // meaningful with a real GPS fix, so it's just not offered without one.
+  const [nearbyOpen, setNearbyOpen] = useState(false);
+  const nearbyList = useMemo(() => {
+    if (!coords) return [];
+    const all = [
+      ...ALL_LANDMARKS.map((l) => ({ id: `landmark-${l.id}`, name: l.name, region: l.regionId, landmarkId: l.id, lat: l.lat, lng: l.lng })),
+      ...customLandmarks.map((l) => ({ id: `custom-${l.docId}`, name: l.name, region: l.region, landmarkId: l.id, lat: l.lat, lng: l.lng })),
+    ];
+    return all
+      .map((l) => ({ ...l, meters: distanceMeters(coords.lat, coords.lng, l.lat, l.lng) }))
+      .sort((a, b) => a.meters - b.meters)
+      .slice(0, 12);
+  }, [coords, customLandmarks]);
+
   // Build the markers once and reuse the same elements across re-renders. GPS
   // ticks update `coords` several times a minute; if the markers were rebuilt
   // inline each time, the whole cluster layer (and any open popup) would tear
@@ -296,7 +318,7 @@ export default function MapExplore() {
                   style={{ cursor: 'pointer' }}
                   title="Tap for details"
                 >
-                  <LandmarkThumb landmark={l} width={228} height={110} />
+                  <LandmarkThumb landmark={l} width={228} height={110} myPhoto={myPhotos[l.id]?.[0]} />
                 </div>
                 <h4 style={{ marginTop: 8 }}>{l.name}</h4>
                 <p style={{ margin: '2px 0 8px', fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
@@ -346,7 +368,11 @@ export default function MapExplore() {
     () =>
       customLandmarks.map((l) => {
         const region = getRegion(l.region);
-        const syntheticLandmark = { id: l.id, name: l.name, regionId: l.region, lat: l.lat, lng: l.lng };
+        // Needs both regionId (used by claimCheckIn/leaderboard) and region
+        // (used by submitReview's review doc) -- omitting the latter used to
+        // write `region: undefined` into the review, which the Firestore SDK
+        // rejects client-side ("Unsupported field value: undefined").
+        const syntheticLandmark = { id: l.id, name: l.name, regionId: l.region, region: l.region, lat: l.lat, lng: l.lng };
         const isClaimed = !!claimedMap[l.id];
         return (
           <Marker key={l.docId} position={[l.lat, l.lng]} icon={pinIcon(isClaimed, false)}>
@@ -375,14 +401,16 @@ export default function MapExplore() {
                     {'ℹ️'} Info
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm btn-block"
-                  style={{ marginTop: 8 }}
-                  onClick={() => removeCustomLandmark(l.docId)}
-                >
-                  {'\u{1F5D1}'} Remove Pin
-                </button>
+                {user && (l.createdBy === user.uid || isAdmin(user.email)) && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm btn-block"
+                    style={{ marginTop: 8 }}
+                    onClick={() => removeCustomLandmark(l.docId)}
+                  >
+                    {'\u{1F5D1}'} Remove Pin
+                  </button>
+                )}
               </div>
             </Popup>
           </Marker>
@@ -471,13 +499,46 @@ export default function MapExplore() {
       </button>
       <button
         type="button"
-        className="map-search-btn"
+        className="map-search-btn map-add-btn"
         style={{ top: 'calc(var(--header-h) + 64px)' }}
         title="Add a landmark"
         onClick={() => navigate('/add-landmark')}
       >
         {'\u{2795}'}
       </button>
+      {coords && (
+        <button
+          type="button"
+          className="map-search-btn"
+          style={{ top: 'calc(var(--header-h) + 128px)' }}
+          title="What's nearby right now"
+          onClick={() => setNearbyOpen((o) => !o)}
+        >
+          {nearbyOpen ? '\u{2715}' : '\u{1F4E1}'}
+        </button>
+      )}
+      {nearbyOpen && (
+        <div className="map-search-panel">
+          <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '0.9rem' }}>{'\u{1F4E1}'} Nearby Now</p>
+          <div className="map-search-results">
+            {nearbyList.length === 0 && <div className="map-search-empty">Nothing nearby yet.</div>}
+            {nearbyList.map((l) => (
+              <button
+                type="button"
+                key={l.id}
+                className="map-search-result"
+                onClick={() => {
+                  setNearbyOpen(false);
+                  navigate(`/landmarks/${l.region}/${l.landmarkId}`);
+                }}
+              >
+                <span className="map-search-result-name">{l.name}</span>
+                <span className="map-search-result-city">{formatDistance(l.meters, units)} away</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {searchOpen && (
         <div className="map-search-panel">
           <input

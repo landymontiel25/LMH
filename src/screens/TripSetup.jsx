@@ -1,16 +1,69 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
+import { useGeo } from '../lib/GeoContext';
+import { useAuth } from '../lib/AuthContext';
+import { useFriends } from '../lib/FriendsContext';
 import { INTERESTS, getRegion } from '../data/regions';
+import { nearestRegionId } from '../lib/geo';
 import { classifyInterest } from '../lib/interestClassifier';
+import { listFriends } from '../lib/friends';
+import { createGroupTrip } from '../lib/groupTrips';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import AddInterestChip from '../components/AddInterestChip';
 import RegionSearch from '../components/RegionSearch';
 
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
 
+// Friend multi-select shown once "Group" is picked as the trip type -- lets
+// you invite friends to the group trip right at creation instead of adding
+// them one at a time after, from GroupTrip's own member list.
+function GroupFriendPicker({ friends, query, onQueryChange, selected, onToggle }) {
+  const q = query.trim().toLowerCase();
+  const filtered = q ? friends.filter((f) => (f.friendName || '').toLowerCase().includes(q)) : friends;
+
+  return (
+    <div className="card section" style={{ marginTop: 10 }}>
+      <p className="screen-subtitle" style={{ marginTop: 0 }}>
+        Add friends to build this trip together — everyone added can see and edit the shared landmark list.
+      </p>
+      {friends.length === 0 ? (
+        <p className="screen-subtitle" style={{ marginBottom: 0 }}>
+          No friends yet — add some from your <Link to="/profile">Profile</Link> first.
+        </p>
+      ) : (
+        <>
+          <input
+            type="text"
+            placeholder="Search friends…"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            style={{ marginBottom: 10 }}
+          />
+          {filtered.length === 0 && <p className="screen-subtitle">No friends match "{query}".</p>}
+          {filtered.map((f) => (
+            <label key={f.friend} className="friend-row" style={{ cursor: 'pointer' }}>
+              <span>{f.friendName || 'A traveler'}</span>
+              <input
+                type="checkbox"
+                checked={selected.has(f.friend)}
+                onChange={() => onToggle(f.friend)}
+                style={{ width: 20, height: 20 }}
+              />
+            </label>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function TripSetup() {
-  const { trip, updateTrip, setCustomInterestMatches, removeCustomInterest, applyPreferences } = useTrip();
+  const { trip, updateTrip, setCustomInterestMatches, setCustomInterestEmoji, removeCustomInterest, applyPreferences } =
+    useTrip();
+  const { coords, error: geoError, refreshing: geoRefreshing, refresh: refreshGeo } = useGeo();
+  const { user } = useAuth();
+  const { myUsername } = useFriends();
   const navigate = useNavigate();
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState(null);
@@ -19,29 +72,74 @@ export default function TripSetup() {
   // matches…" on the chip. Not persisted -- it's re-derived from the trip's own
   // pending state (a custom interest with no matches entry yet).
   const [classifying, setClassifying] = useState(() => new Set());
+  // Whether "Use My Preferences" is toggled on -- an explicit on/off flag
+  // rather than something derived from comparing trip.interests to
+  // savedInterests, since those can coincidentally match (or drift apart
+  // after you tweak a chip by hand) without you ever touching this control.
+  const [preferencesSelected, setPreferencesSelected] = useState(false);
+  // Trip type is a required, explicit choice -- starts at null (neither
+  // picked) rather than defaulting to 'solo', so Setup can't be continued
+  // without deciding. Previously the only way into a group trip was way at
+  // the end of the solo flow (Itinerary's "Start a Group Trip" button,
+  // after building your own landmark list); this makes it a choice up
+  // front instead.
+  const [tripMode, setTripMode] = useState(null); // null | 'solo' | 'group'
+  const [friends, setFriends] = useState([]);
+  const [friendQuery, setFriendQuery] = useState('');
+  const [selectedFriendUids, setSelectedFriendUids] = useState(() => new Set());
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupError, setGroupError] = useState(null);
+
+  useEffect(() => {
+    if (user) listFriends(user.uid).then(setFriends).catch(() => setFriends([]));
+  }, [user]);
+
+  const toggleFriendSelected = (uid) => {
+    setSelectedFriendUids((cur) => {
+      const next = new Set(cur);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  };
+
+  // The app already keeps a live, continuously-updating fix in GeoContext
+  // (via Capacitor's watchPosition) for the "nearby now" features -- reusing
+  // it here means an instant apply instead of waiting on a brand-new GPS
+  // request. Only falls back to requesting a fresh fix when nothing's been
+  // read yet this session.
+  const applyCoords = ({ lat, lng }) => {
+    updateTrip({
+      startingLocation: CURRENT_LOCATION_LABEL,
+      startingCoords: { lat, lng },
+      activeRegion: nearestRegionId(lat, lng),
+    });
+  };
 
   const useCurrentLocation = () => {
+    if (coords) {
+      applyCoords(coords);
+      return;
+    }
     if (!('geolocation' in navigator)) {
       setLocateError('Geolocation is not supported on this device.');
       return;
     }
     setLocating(true);
     setLocateError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        updateTrip({
-          startingLocation: CURRENT_LOCATION_LABEL,
-          startingCoords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-        });
-        setLocating(false);
-      },
-      (err) => {
-        setLocateError(err.message || 'Unable to get your location.');
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
+    refreshGeo();
   };
+
+  // Finishes a fallback fresh-fix request once GeoContext's refresh()
+  // settles (it has no per-call callback of its own -- it just updates the
+  // shared coords/error state).
+  useEffect(() => {
+    if (!locating || geoRefreshing) return;
+    if (coords) applyCoords(coords);
+    else if (geoError) setLocateError(geoError);
+    setLocating(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locating, geoRefreshing]);
 
   const toggleInterest = (id) => {
     const has = trip.interests.includes(id);
@@ -54,8 +152,9 @@ export default function TripSetup() {
     if (trip.customInterests.includes(text)) return;
     updateTrip({ customInterests: [...trip.customInterests, text] });
     setClassifying((cur) => new Set(cur).add(text));
-    classifyInterest(text).then((ids) => {
-      setCustomInterestMatches(text, ids);
+    classifyInterest(text).then(({ matches, emoji }) => {
+      setCustomInterestMatches(text, matches);
+      setCustomInterestEmoji(text, emoji);
       setClassifying((cur) => {
         const next = new Set(cur);
         next.delete(text);
@@ -66,12 +165,45 @@ export default function TripSetup() {
 
   const selectRegion = (region) => {
     if (region.id === trip.activeRegion) return;
-    updateTrip({ activeRegion: region.id });
+    updateTrip({ activeRegion: region.id, startingLocation: '', startingCoords: null });
   };
 
   const activeRegion = getRegion(trip.activeRegion) || { name: '' };
 
-  const canContinue = !!trip.activeRegion;
+  // A region and an explicit Solo/Group choice are both required; Group
+  // additionally requires being signed in, since the trip needs an owner.
+  const canContinue = !!trip.activeRegion && !!tripMode && (tripMode === 'solo' || !!user);
+
+  const startGroupTrip = async () => {
+    if (!user || !trip.activeRegion) return;
+    setCreatingGroup(true);
+    setGroupError(null);
+    try {
+      const id = await createGroupTrip({
+        ownerUid: user.uid,
+        ownerName: myUsername || user.displayName || user.email,
+        name: `${activeRegion.name} Trip`,
+        regionId: trip.activeRegion,
+        initialMembers: friends
+          .filter((f) => selectedFriendUids.has(f.friend))
+          .map((f) => ({ uid: f.friend, name: f.friendName })),
+      });
+      navigate(`/group/${id}`);
+    } catch (e) {
+      setGroupError(e.message || 'Could not start the group trip — try again.');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  const togglePreferences = () => {
+    if (preferencesSelected) {
+      updateTrip({ interests: [], customInterests: [] });
+    } else {
+      applyPreferences();
+    }
+    setPreferencesSelected((s) => !s);
+  };
 
   return (
     <div>
@@ -102,7 +234,13 @@ export default function TripSetup() {
           placeholder="Or type an address, hotel, etc."
           value={trip.startingLocation}
           onChange={(text) => updateTrip({ startingLocation: text, startingCoords: null })}
-          onSelect={(s) => updateTrip({ startingLocation: s.primary, startingCoords: { lat: s.lat, lng: s.lng } })}
+          onSelect={(s) =>
+            updateTrip({
+              startingLocation: s.primary,
+              startingCoords: { lat: s.lat, lng: s.lng },
+              activeRegion: nearestRegionId(s.lat, s.lng),
+            })
+          }
         />
         {locateError && (
           <p className="tag tag-error" style={{ marginTop: 6 }}>
@@ -130,7 +268,11 @@ export default function TripSetup() {
         )}
         {(trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0) && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-            <button type="button" className="chip chip-action" onClick={applyPreferences}>
+            <button
+              type="button"
+              className={`chip ${preferencesSelected ? 'selected' : ''}`}
+              onClick={togglePreferences}
+            >
               <span className="chip-icon">{'⭐'}</span>
               <span>Use My Preferences</span>
             </button>
@@ -149,28 +291,77 @@ export default function TripSetup() {
             </button>
           ))}
           {trip.customInterests.map((text) => (
-            <button
+            <div
               key={text}
-              type="button"
               className="chip selected"
-              onClick={() => removeCustomInterest(text)}
-              title={classifying.has(text) ? 'Finding matching landmarks…' : 'Tap to remove'}
+              style={{ cursor: 'default' }}
+              title={classifying.has(text) ? 'Finding matching landmarks…' : undefined}
             >
-              <span className="chip-icon">{classifying.has(text) ? '\u{23F3}' : '\u{2728}'}</span>
+              <span className="chip-icon">
+                {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
+              </span>
               <span>{text}</span>
-            </button>
+              <button
+                type="button"
+                className="chip-remove"
+                aria-label={`Remove ${text}`}
+                onClick={() => removeCustomInterest(text)}
+              >
+                {'\u{1F5D1}\u{FE0F}'}
+              </button>
+            </div>
           ))}
           <AddInterestChip existing={trip.customInterests} onAdd={addCustomInterest} />
         </div>
       </div>
 
+      <div className="field">
+        <label>Trip Type</label>
+        <div className="tabs" style={{ justifyContent: 'center' }}>
+          <button type="button" className={`tab-btn ${tripMode === 'solo' ? 'active' : ''}`} onClick={() => setTripMode('solo')}>
+            {'\u{1F464}'} Solo
+          </button>
+          <button type="button" className={`tab-btn ${tripMode === 'group' ? 'active' : ''}`} onClick={() => setTripMode('group')}>
+            {'\u{1F465}'} Group
+          </button>
+        </div>
+        {tripMode === null && (
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: 6 }}>
+            Choose one to continue.
+          </p>
+        )}
+        {tripMode === 'group' && !user && (
+          <p className="screen-subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
+            <Link to="/profile">Sign in</Link> to start a group trip.
+          </p>
+        )}
+        {tripMode === 'group' && user && (
+          <GroupFriendPicker
+            friends={friends}
+            query={friendQuery}
+            onQueryChange={setFriendQuery}
+            selected={selectedFriendUids}
+            onToggle={toggleFriendSelected}
+          />
+        )}
+      </div>
+
+      {groupError && (
+        <p className="tag tag-error" style={{ display: 'block', marginBottom: 10 }}>
+          {groupError}
+        </p>
+      )}
       <button
         type="button"
         className="btn btn-primary btn-block"
-        disabled={!canContinue}
-        onClick={() => navigate('/landmarks')}
+        disabled={!canContinue || creatingGroup}
+        onClick={tripMode === 'group' ? startGroupTrip : () => navigate('/landmarks')}
       >
-        Choose Landmarks {'\u{2192}'}
+        {tripMode === 'group'
+          ? creatingGroup
+            ? 'Starting…'
+            : `${'\u{1F465}'} Start Group Trip ${'\u{2192}'}`
+          : `Choose Landmarks ${'\u{2192}'}`}
       </button>
     </div>
   );

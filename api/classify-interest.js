@@ -1,18 +1,22 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS } from '../src/data/regions.js';
+import { isRateLimited } from './_lib/rateLimit.js';
 
 // Custom interests (typed in on Setup, e.g. "nightlife", "racing") don't map to
 // any of the app's four built-in categories, so they can't filter Choose
 // Landmarks by tag matching alone. This asks the AI which real landmarks in the
 // full catalog actually fit that topic, so a custom interest narrows the list
 // the same way a built-in category does.
+const DEFAULT_EMOJI = '\u{2728}'; // sparkle -- used whenever the AI's pick is missing or unusable
+
 const INSTRUCTIONS =
   `You help the app "Landmark Hunters" match a traveler's custom interest to real landmarks. ` +
   `You have the full catalog below, one per line as "region/id | name | short description". ` +
   `Given one interest/topic, return every landmark from the catalog that a reasonable traveler would visit for that interest -- ` +
-  `be inclusive of anything genuinely related, but don't force a match that isn't a real fit. An empty list is a valid answer if nothing in the catalog fits.\n\n` +
+  `be inclusive of anything genuinely related, but don't force a match that isn't a real fit. An empty list is a valid answer if nothing in the catalog fits. ` +
+  `Also pick exactly one emoji that best represents the interest itself (e.g. "racing" -> a race car, "baseball" -> a baseball) -- pick the single most specific, recognizable emoji for that word, not a generic one.\n\n` +
   `Reply with ONLY a JSON object, no other text:\n` +
-  `{"matches": ["<region/id>", ...]}\n` +
+  `{"matches": ["<region/id>", ...], "emoji": "<one emoji>"}\n` +
   `- Only use region/id values that appear in the catalog. NEVER invent one.`;
 
 export default async function handler(req, res) {
@@ -22,6 +26,10 @@ export default async function handler(req, res) {
   }
   if (!process.env.ANTHROPIC_API_KEY) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
+    return;
+  }
+  if (isRateLimited(req, 'classify-interest', { limit: 30, windowMs: 10 * 60 * 1000 })) {
+    res.status(429).json({ error: 'Too many requests in a row — take a short break and try again.' });
     return;
   }
 
@@ -61,12 +69,15 @@ export default async function handler(req, res) {
     try {
       parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
     } catch {
-      res.status(200).json({ matches: [] });
+      res.status(200).json({ matches: [], emoji: DEFAULT_EMOJI });
       return;
     }
 
     const matches = (Array.isArray(parsed.matches) ? parsed.matches : []).filter((m) => validIds.has(m));
-    res.status(200).json({ matches });
+    const emoji = typeof parsed.emoji === 'string' && parsed.emoji.trim().length > 0 && parsed.emoji.length <= 8
+      ? parsed.emoji.trim()
+      : DEFAULT_EMOJI;
+    res.status(200).json({ matches, emoji });
   } catch (err) {
     const status = err?.status === 429 ? 429 : 500;
     res.status(status).json({

@@ -3,7 +3,9 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useRatings } from '../lib/RatingsContext';
+import { useMyPhotos } from '../lib/MyPhotosContext';
 import { submitReview } from '../lib/reviews';
+import { pickPhoto } from '../lib/imageUtils';
 import RatingStars from './RatingStars';
 
 // Pops up the moment "Check In" is tapped, to rate + optionally add photos —
@@ -15,6 +17,7 @@ export default function CheckInReview() {
   const { user } = useAuth();
   const { myUsername } = useFriends();
   const { reload: reloadRatings } = useRatings();
+  const { reload: reloadMyPhotos } = useMyPhotos();
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState('');
   const [photoFiles, setPhotoFiles] = useState([]);
@@ -36,9 +39,8 @@ export default function CheckInReview() {
 
   if (!justCheckedIn) return null;
 
-  const onPhoto = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
+  const onPhoto = async () => {
+    const f = await pickPhoto();
     if (f) {
       setPhotoFiles((prev) => (prev.length < 3 ? [...prev, f] : prev));
       setPhotoPreviews((prev) => (prev.length < 3 ? [...prev, URL.createObjectURL(f)] : prev));
@@ -58,6 +60,17 @@ export default function CheckInReview() {
     setMsg(null);
     try {
       await commitCheckIn();
+    } catch (e) {
+      // The check-in write itself failed -- no points awarded, nothing to
+      // show as posted.
+      setMsg(e.message || 'Could not check in — try again.');
+      setSaving(false);
+      return;
+    }
+    // Points are awarded the moment commitCheckIn resolves. Everything past
+    // this point (rating, comment, photo) is a bonus save -- a failure here
+    // must never read as "check-in failed" when it actually succeeded.
+    try {
       const res = await submitReview({
         userId: user.uid,
         userName: myUsername || user.displayName || 'Explorer',
@@ -67,16 +80,16 @@ export default function CheckInReview() {
         photoFiles,
       });
       await reloadRatings();
+      await reloadMyPhotos();
       if (res?.photoFailed) {
         // Check-in + rating saved; only the photo didn't. Don't trap the user.
         setMsg("Checked in! Your photo couldn't upload — tap Done to close.");
       }
-      setPosted(true);
-    } catch (e) {
-      setMsg(e.message || 'Could not check in — try again.');
-    } finally {
-      setSaving(false);
+    } catch {
+      setMsg("Checked in! Your rating couldn't save — you can try rating it again from the landmark page.");
     }
+    setPosted(true);
+    setSaving(false);
   };
 
   const close = () => clearJustCheckedIn();
@@ -146,10 +159,9 @@ export default function CheckInReview() {
             )}
             {photoFiles.length < 3 && (
               <div style={{ marginTop: 10 }}>
-                <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={onPhoto}>
                   {'\u{1F4F8}'} Add photo ({photoFiles.length}/3)
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPhoto} />
-                </label>
+                </button>
               </div>
             )}
 

@@ -1,6 +1,20 @@
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  serverTimestamp,
+  arrayUnion,
+} from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
+import { notifyUser } from './notifications';
 
 // User-created landmarks (e.g. a dorm hall not yet in the built-in catalog)
 // live in their own Firestore collection and get merged onto the map
@@ -22,6 +36,17 @@ export async function getPendingLandmarks() {
   if (!db) return [];
   const snap = await getDocs(collection(db, 'custom_landmarks'));
   return snap.docs.map((d) => ({ docId: d.id, ...d.data() })).filter((l) => l.status === 'pending');
+}
+
+// Live pending count for the admin nav badge (item f4) -- no email/push
+// setup needed, so nothing new to configure. Returns an unsubscribe fn.
+export function subscribePendingCount(callback) {
+  if (!db) return () => {};
+  return onSnapshot(
+    query(collection(db, 'custom_landmarks'), where('status', '==', 'pending')),
+    (snap) => callback(snap.size),
+    () => callback(0)
+  );
 }
 
 // Direct lookup by id -- the doc id and the `id` field are always the same
@@ -90,10 +115,25 @@ export async function addCustomLandmark({
 
 // Only an admin account can call these -- the Firestore rules enforce that
 // independently of this client code.
-export async function approveCustomLandmark(docId) {
+export async function approveCustomLandmark(docId, landmark) {
   await updateDoc(doc(db, 'custom_landmarks', docId), { status: 'approved' });
+  // Best-effort -- an approval that succeeds shouldn't fail just because
+  // the notification couldn't be created.
+  if (landmark?.createdBy) {
+    notifyUser(landmark.createdBy, {
+      type: 'submission_approved',
+      message: `\u{1F389} Your landmark "${landmark.name}" was approved and is now live!`,
+    }).catch(() => {});
+  }
 }
 
 export async function deleteCustomLandmark(docId) {
   await deleteDoc(doc(db, 'custom_landmarks', docId));
+}
+
+// Same reportedBy-array pattern as reviews.js -- firestore.rules hides a
+// submission (photo, name, everything) from everyone but the submitter and
+// admins once enough distinct people have reported it.
+export async function reportCustomLandmark(reporterUid, docId) {
+  await updateDoc(doc(db, 'custom_landmarks', docId), { reportedBy: arrayUnion(reporterUid) });
 }
