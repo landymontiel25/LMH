@@ -20,17 +20,38 @@ export default function FriendsPanel() {
   const [unameInput, setUnameInput] = useState('');
   const [unameBusy, setUnameBusy] = useState(false);
   const [unameMsg, setUnameMsg] = useState(null);
-  // { uid, name, stats, recent, error, view: 'summary' | 'gallery' } | null
+  // { uid, name, stats, recent, checkins, error, view: 'summary' | 'gallery' | 'cities' } | null
   const [friendStats, setFriendStats] = useState(null);
 
   const openFriendStats = async (f) => {
     setFriendStats({ uid: f.friend, name: f.friendName, loading: true, view: 'summary' });
     try {
       const [stats, checkins] = await Promise.all([getUserStats(f.friend), getUserCheckins(f.friend)]);
-      setFriendStats({ uid: f.friend, name: f.friendName, loading: false, stats, recent: checkins[0] || null, view: 'summary' });
+      setFriendStats({
+        uid: f.friend,
+        name: f.friendName,
+        loading: false,
+        stats,
+        recent: checkins[0] || null,
+        checkins,
+        view: 'summary',
+      });
     } catch {
       setFriendStats({ uid: f.friend, name: f.friendName, loading: false, error: true, view: 'summary' });
     }
+  };
+
+  // Points earned per city, highest first -- built from the same check-ins
+  // already fetched for the stats popover, no extra reads.
+  const cityBreakdown = (checkins) => {
+    const byRegion = {};
+    for (const c of checkins || []) {
+      if (!c.region) continue;
+      byRegion[c.region] ??= { region: c.region, points: 0, count: 0 };
+      byRegion[c.region].points += c.points || 0;
+      byRegion[c.region].count += 1;
+    }
+    return Object.values(byRegion).sort((a, b) => b.points - a.points);
   };
 
   const loadFriends = async () => {
@@ -254,6 +275,33 @@ export default function FriendsPanel() {
         </div>
       )}
 
+      {friendStats && friendStats.view === 'cities' && (
+        <div className="modal-backdrop" onClick={() => setFriendStats(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ marginBottom: 12 }}
+              onClick={() => setFriendStats((cur) => ({ ...cur, view: 'summary' }))}
+            >
+              {'←'} Back
+            </button>
+            <h3 style={{ marginTop: 0 }}>
+              {'\u{1F3D9}\u{FE0F}'} @{friendStats.name}'s Cities
+            </h3>
+            {cityBreakdown(friendStats.checkins).map((c) => (
+              <div key={c.region} className="friend-row">
+                <span>{getRegion(c.region)?.name || c.region}</span>
+                <span style={{ color: 'var(--color-parchment-dim)' }}>{c.points.toLocaleString()} pts</span>
+              </div>
+            ))}
+            <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setFriendStats(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {friendStats && friendStats.view === 'summary' && (
         <div className="modal-backdrop" onClick={() => setFriendStats(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -280,10 +328,10 @@ export default function FriendsPanel() {
                   <button
                     type="button"
                     className="profile-stat profile-stat-btn"
-                    onClick={() => friendStats.stats.checkins && setFriendStats((cur) => ({ ...cur, view: 'gallery' }))}
+                    onClick={() => friendStats.stats.cities && setFriendStats((cur) => ({ ...cur, view: 'cities' }))}
                   >
                     <span className="profile-stat-num">{friendStats.stats.cities}</span>
-                    <span className="profile-stat-label">cities{friendStats.stats.checkins ? ' ›' : ''}</span>
+                    <span className="profile-stat-label">cities{friendStats.stats.cities ? ' ›' : ''}</span>
                   </button>
                 </div>
                 {friendStats.recent ? (
