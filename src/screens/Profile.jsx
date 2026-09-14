@@ -25,7 +25,6 @@ import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals'
 import { completeOnboarding, hasCompletedOnboardingLocally, markOnboardingCompletedLocally } from '../lib/onboarding';
 import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
-import CityList from '../components/CityList';
 import SignInForm from '../components/SignInForm';
 import AddInterestChip from '../components/AddInterestChip';
 import LandmarkThumb from '../components/LandmarkThumb';
@@ -451,7 +450,6 @@ export default function Profile() {
   const [regionalRegionId, setRegionalRegionId] = useState(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCities, setShowCities] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(null); // null | 'preferences' | 'checkin'
   const healedRef = useRef(false);
   // Which badge's description popover is open -- hover (desktop, with the
@@ -827,7 +825,7 @@ export default function Profile() {
           <button
             type="button"
             className="profile-stat profile-stat-btn"
-            onClick={() => stats?.checkins && navigate('/stats')}
+            onClick={() => stats?.checkins && navigate('/checkins')}
           >
             <span className="profile-stat-num">{stats ? stats.checkins.toLocaleString() : '…'}</span>
             <span className="profile-stat-label">check-ins{stats?.checkins ? ' ›' : ''}</span>
@@ -835,7 +833,7 @@ export default function Profile() {
           <button
             type="button"
             className="profile-stat profile-stat-btn"
-            onClick={() => stats?.cityIds?.length && setShowCities(true)}
+            onClick={() => stats?.cityIds?.length && navigate('/cities')}
           >
             <span className="profile-stat-num">{stats ? stats.cities : '…'}</span>
             <span className="profile-stat-label">cities{stats?.cityIds?.length ? ' ›' : ''}</span>
@@ -1010,25 +1008,6 @@ export default function Profile() {
         </div>
       )}
 
-      {showCities && (
-        <div className="modal-backdrop" onClick={() => setShowCities(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>{'\u{1F3D9}\u{FE0F}'} Cities you've visited</h3>
-            <CityList
-              cityIds={stats?.cityIds}
-              cityPoints={stats?.cityPoints}
-              cityLastVisit={stats?.cityLastVisit}
-              onSelect={() => {
-                setShowCities(false);
-                navigate('/landmarks');
-              }}
-            />
-            <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={() => setShowCities(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

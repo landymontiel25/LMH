@@ -4,6 +4,8 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { findUserByUsername, sendFriendRequest, acceptRequest, declineRequest, listFriends } from '../lib/friends';
 import { listBlockedUsers, unblockUser } from '../lib/blocks';
+import { getUserStats, getUserCheckins } from '../lib/leaderboard';
+import { getRegion } from '../data/regions';
 
 export default function FriendsPanel() {
   const { user } = useAuth();
@@ -17,6 +19,21 @@ export default function FriendsPanel() {
   const [unameInput, setUnameInput] = useState('');
   const [unameBusy, setUnameBusy] = useState(false);
   const [unameMsg, setUnameMsg] = useState(null);
+  // { uid, name, stats, recent, error } | null -- a quick summary popup;
+  // Check-ins/Cities from here go to their own real pages (see App.jsx's
+  // /friend/:uid/checkins and /friend/:uid/cities) rather than a second
+  // overlay stacked on this one, which rendered oddly on iOS Safari.
+  const [friendStats, setFriendStats] = useState(null);
+
+  const openFriendStats = async (f) => {
+    setFriendStats({ uid: f.friend, name: f.friendName, loading: true });
+    try {
+      const [stats, checkins] = await Promise.all([getUserStats(f.friend), getUserCheckins(f.friend)]);
+      setFriendStats({ uid: f.friend, name: f.friendName, loading: false, stats, recent: checkins[0] || null });
+    } catch {
+      setFriendStats({ uid: f.friend, name: f.friendName, loading: false, error: true });
+    }
+  };
 
   const loadFriends = async () => {
     try {
@@ -192,12 +209,7 @@ export default function FriendsPanel() {
           <p className="screen-subtitle" style={{ margin: 0 }}>No friends yet.</p>
         ) : (
           friends.map((f) => (
-            <div
-              key={f.friend}
-              className="friend-row"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate(`/friend/${f.friend}`)}
-            >
+            <div key={f.friend} className="friend-row" style={{ cursor: 'pointer' }} onClick={() => openFriendStats(f)}>
               <span style={{ fontWeight: 700 }}>@{f.friendName}</span>
               <span style={{ color: 'var(--color-parchment-dim)' }}>{'›'}</span>
             </div>
@@ -216,6 +228,57 @@ export default function FriendsPanel() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {friendStats && (
+        <div className="modal-backdrop" onClick={() => setFriendStats(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>
+              {'\u{1F464}'} @{friendStats.name}
+            </h3>
+            {friendStats.loading && <p className="screen-subtitle">Loading…</p>}
+            {friendStats.error && <p className="screen-subtitle">Could not load their stats — try again.</p>}
+            {friendStats.stats && (
+              <>
+                <div className="profile-stats">
+                  <div className="profile-stat">
+                    <span className="profile-stat-num">{friendStats.stats.totalPoints.toLocaleString()}</span>
+                    <span className="profile-stat-label">total pts</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="profile-stat profile-stat-btn"
+                    onClick={() => friendStats.stats.checkins && navigate(`/friend/${friendStats.uid}/checkins`)}
+                  >
+                    <span className="profile-stat-num">{friendStats.stats.checkins.toLocaleString()}</span>
+                    <span className="profile-stat-label">check-ins{friendStats.stats.checkins ? ' ›' : ''}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="profile-stat profile-stat-btn"
+                    onClick={() => friendStats.stats.cities && navigate(`/friend/${friendStats.uid}/cities`)}
+                  >
+                    <span className="profile-stat-num">{friendStats.stats.cities}</span>
+                    <span className="profile-stat-label">cities{friendStats.stats.cities ? ' ›' : ''}</span>
+                  </button>
+                </div>
+                {friendStats.recent ? (
+                  <p className="screen-subtitle" style={{ marginTop: 14, marginBottom: 0 }}>
+                    Last check-in: <strong>{friendStats.recent.landmarkName || 'a landmark'}</strong>
+                    {friendStats.recent.region ? ` — ${getRegion(friendStats.recent.region)?.name || ''}` : ''}
+                  </p>
+                ) : (
+                  <p className="screen-subtitle" style={{ marginTop: 14, marginBottom: 0 }}>
+                    No check-ins yet.
+                  </p>
+                )}
+              </>
+            )}
+            <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setFriendStats(null)}>
+              Close
+            </button>
+          </div>
         </div>
       )}
 
