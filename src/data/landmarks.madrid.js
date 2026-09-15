@@ -1231,7 +1231,7 @@ export const MADRID_LANDMARKS = [
     lat: 40.465,
     lng: -3.617,
     checkInRadiusMeters: 2000,
-    categories: ["stadiums"],
+    categories: ["formula-1"],
     summary: "Madrid's new Formula 1 street circuit around the IFEMA exhibition centre, home of the Spanish Grand Prix from 2026.",
     facts: ["Hosts the Spanish Grand Prix from 2026 under a deal running to 2035","A 5.47 km hybrid circuit with 22 turns, part street, part purpose-built","Loops around the IFEMA Madrid exhibition centre and into Valdebebas, near the Bernabéu training ground","Features a banked corner known as La Monumental","Reached by metro (Feria de Madrid station) and close to Barajas airport","Brings Formula 1 back to Madrid for the first time since the Jarama era ended in 1981"],
     free: false,

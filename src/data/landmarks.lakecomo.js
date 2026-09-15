@@ -814,7 +814,7 @@ export const LAKE_COMO_LANDMARKS = [
     lat: 45.9956945,
     lng: 9.2389122,
     checkInRadiusMeters: 50,
-    categories: ['parks-nature'],
+    categories: ['benches'],
     summary: 'A personal favorite spot on the Griante shoreline, facing the lake and the mountains across the water — a perfect 10/10 view, no plaque required.',
     facts: ["A personal pick, not an official tourist site — just a great spot to sit and take in the lake","Sits on the Griante shoreline, right by the Alberghetto La Marianna guesthouse","Faces west across Lake Como toward the mountains on the far shore","Marked by exact GPS coordinates rather than a street address","Added to the map because the view earned it"],
     free: true,

@@ -100,6 +100,9 @@ export default function LandmarkDetail() {
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
+  // True right after a successful save: the button itself reads "Rating
+  // submitted!" until the user changes something in the flow again.
+  const [submitted, setSubmitted] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reportedNow, setReportedNow] = useState(() => new Set());
   const [blockedNow, setBlockedNow] = useState(() => new Set());
@@ -254,7 +257,8 @@ export default function LandmarkDetail() {
       await reloadMyPhotos();
       setPhotoFiles([]);
       setPhotoPreviews([]);
-      setSaveMsg(res?.photoFailed ? "Rating saved — but your photo couldn't upload." : 'Thanks — your rating is in! ⭐');
+      setSubmitted(true);
+      setSaveMsg(res?.photoFailed ? "Rating saved — but your photo couldn't upload." : null);
     } catch (e) {
       setSaveMsg(e.message || 'Could not save your rating.');
     } finally {
@@ -554,7 +558,15 @@ export default function LandmarkDetail() {
                   {'\u{2713}'} Already rated — change anything below and submit again.
                 </p>
               )}
-              <RatingFlow key={landmark.id} landmark={landmark} initial={savedRating} onChange={setMyRating} />
+              <RatingFlow
+                key={landmark.id}
+                landmark={landmark}
+                initial={savedRating}
+                onChange={(r) => {
+                  setMyRating(r);
+                  setSubmitted(false);
+                }}
+              />
               {photoPreviews.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   {photoPreviews.map((src, i) => (
@@ -590,10 +602,10 @@ export default function LandmarkDetail() {
                 type="button"
                 className="btn btn-primary btn-block"
                 style={{ marginTop: 12 }}
-                disabled={saving || !myRating}
+                disabled={saving || submitted || !myRating}
                 onClick={handleSubmitReview}
               >
-                {saving ? 'Saving…' : 'Submit Rating'}
+                {saving ? 'Saving…' : submitted ? '\u{2713} Rating submitted!' : 'Submit Rating'}
               </button>
               {saveMsg && (
                 <p className="screen-subtitle" style={{ marginTop: 8, marginBottom: 0 }}>

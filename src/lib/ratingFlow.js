@@ -10,8 +10,10 @@ import { INTERESTS } from '../data/regions';
 // ahead of history so a "historic beach park" rates as a park.
 export const RATEABLE_CATEGORIES = [
   'airports',
+  'formula-1',
   'sports',
   'stadiums',
+  'benches',
   'parks-nature',
   'entertainment',
   'history-culture',
@@ -189,6 +191,40 @@ export const CHIPS = {
       { id: 'overpriced', label: 'Overpriced' },
     ],
   },
+  'formula-1': {
+    'highly-recommend': [
+      { id: 'iconic-track', label: 'Iconic track' },
+      { id: 'electric-atmosphere', label: 'Electric atmosphere' },
+      { id: 'great-viewing-spots', label: 'Great viewing spots' },
+    ],
+    'worth-trying': [
+      { id: 'decent-views', label: 'Decent views' },
+      { id: 'long-walks', label: 'Long walks' },
+      { id: 'pricey-tickets', label: 'Pricey tickets' },
+    ],
+    'probably-skip': [
+      { id: 'bad-views', label: 'Bad views' },
+      { id: 'chaotic-access', label: 'Chaotic to get in and out' },
+      { id: 'overpriced', label: 'Overpriced' },
+    ],
+  },
+  benches: {
+    'highly-recommend': [
+      { id: 'perfect-view', label: 'Perfect view' },
+      { id: 'peaceful', label: 'Peaceful' },
+      { id: 'worth-the-walk', label: 'Worth the walk' },
+    ],
+    'worth-trying': [
+      { id: 'nice-view', label: 'Nice view' },
+      { id: 'a-bit-busy', label: 'A bit busy' },
+      { id: 'hard-to-find', label: 'Hard to find' },
+    ],
+    'probably-skip': [
+      { id: 'view-blocked', label: 'View blocked' },
+      { id: 'uncomfortable', label: 'Uncomfortable' },
+      { id: 'not-worth-it', label: 'Not worth it' },
+    ],
+  },
   airports: {
     'highly-recommend': [
       { id: 'smooth-experience', label: 'Smooth experience' },
@@ -276,6 +312,18 @@ export const ASPECT_SETS = {
     { id: 'location', label: 'Location' },
     { id: 'atmosphere', label: 'Atmosphere' },
     { id: 'seating', label: 'Seating & views' },
+  ],
+  'formula-1': [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'atmosphere', label: 'Atmosphere' },
+    { id: 'track-views', label: 'Track views' },
+  ],
+  benches: [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'view', label: 'View' },
+    { id: 'comfort', label: 'Comfort' },
   ],
   airports: [
     { id: 'price', label: 'Price' },
