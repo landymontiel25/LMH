@@ -28,7 +28,15 @@ describe('nearestRegionId', () => {
     // the "which city is this near" logic used when filing a new landmark
     // submission is broken for the most obvious case there is.
     for (const region of REGIONS) {
+      if (region.worldwide) continue;
       expect(nearestRegionId(region.center.lat, region.center.lng)).toBe(region.id);
     }
+  });
+
+  it('never files a point under a worldwide catalog region', () => {
+    const catalog = REGIONS.find((r) => r.worldwide);
+    expect(catalog).toBeTruthy();
+    // Silverstone is the catalog's own center; a real city must still win.
+    expect(nearestRegionId(catalog.center.lat, catalog.center.lng)).not.toBe(catalog.id);
   });
 });

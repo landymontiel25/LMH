@@ -10,6 +10,7 @@ import { FRANKFURT_LANDMARKS } from './landmarks.frankfurt.js';
 import { NYC_LANDMARKS } from './landmarks.nyc.js';
 import { CAPETOWN_LANDMARKS } from './landmarks.capetown.js';
 import { KEYBISCAYNE_LANDMARKS } from './landmarks.keybiscayne.js';
+import { F1_LANDMARKS } from './landmarks.f1.js';
 
 export const REGIONS = [
   {
@@ -143,6 +144,21 @@ export const REGIONS = [
     center: { lat: 50.0379, lng: 8.5622 },
     viewbox: { minLat: 49.95, minLng: 8.45, maxLat: 50.12, maxLng: 8.72 },
     landmarks: FRANKFURT_LANDMARKS,
+  },
+  {
+    // Not a city: every Formula 1 circuit outside the cities above, spread
+    // across the world. `worldwide` keeps it out of "which city is nearest"
+    // (GPS auto-pick, filing a new landmark) so it never swallows a real city.
+    id: 'f1-circuits',
+    name: 'Formula 1 Circuits',
+    tagline: 'Every Grand Prix track on the calendar, worldwide',
+    city: 'Worldwide',
+    state: '',
+    country: '',
+    worldwide: true,
+    center: { lat: 52.0786, lng: -1.0169 }, // Silverstone, where it all started
+    viewbox: { minLat: -60, minLng: -180, maxLat: 75, maxLng: 180 },
+    landmarks: F1_LANDMARKS,
   },
 ];
 
