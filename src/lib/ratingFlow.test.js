@@ -30,7 +30,13 @@ describe('rateability gate', () => {
     expect(ids).toContain('parks-nature');
     expect(ids).toContain('entertainment');
     expect(ids).toContain('dorms');
-    expect(ids).toHaveLength(7);
+    expect(ids).toContain('airports');
+    expect(ids).toHaveLength(8);
+  });
+
+  it('rates airports as airports, whatever else they are tagged', () => {
+    expect(isRateable({ categories: ['airports'] })).toBe(true);
+    expect(ratingCategory({ categories: ['food-local-life', 'airports'] })).toBe('airports');
   });
 
   it('never rates a dorm', () => {

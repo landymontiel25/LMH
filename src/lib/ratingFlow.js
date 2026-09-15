@@ -5,9 +5,17 @@ import { INTERESTS } from '../data/regions';
 // straight to "checked in" -- rating a dorm on Price/Atmosphere tells
 // Mapr nothing.
 // Order matters: a landmark tagged with several of these takes its chip
-// and aspect sets from the first match here. Parks and entertainment sit
+// and aspect sets from the first match here. Airports go first (an airport
+// is an airport whatever else it's tagged); parks and entertainment sit
 // ahead of history so a "historic beach park" rates as a park.
-export const RATEABLE_CATEGORIES = ['parks-nature', 'entertainment', 'history-culture', 'art-museums', 'food-local-life'];
+export const RATEABLE_CATEGORIES = [
+  'airports',
+  'parks-nature',
+  'entertainment',
+  'history-culture',
+  'art-museums',
+  'food-local-life',
+];
 
 export function isRateable(landmark) {
   return (landmark?.categories || []).some((c) => RATEABLE_CATEGORIES.includes(c));
@@ -127,6 +135,23 @@ export const CHIPS = {
       { id: 'underwhelming', label: 'Underwhelming' },
     ],
   },
+  airports: {
+    'highly-recommend': [
+      { id: 'smooth-experience', label: 'Smooth experience' },
+      { id: 'easy-to-navigate', label: 'Easy to navigate' },
+      { id: 'good-food-shops', label: 'Good food & shops' },
+    ],
+    'worth-trying': [
+      { id: 'gets-the-job-done', label: 'Gets the job done' },
+      { id: 'long-walks', label: 'Long walks between gates' },
+      { id: 'slow-security', label: 'Slow security' },
+    ],
+    'probably-skip': [
+      { id: 'chaotic', label: 'Chaotic' },
+      { id: 'endless-lines', label: 'Endless lines' },
+      { id: 'overpriced', label: 'Overpriced' },
+    ],
+  },
 };
 
 export function chipsFor(landmark, tierId) {
@@ -179,6 +204,12 @@ export const ASPECT_SETS = {
     { id: 'location', label: 'Location' },
     { id: 'fun-factor', label: 'Fun factor' },
     { id: 'crowd-level', label: 'Crowd level' },
+  ],
+  airports: [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'security-wait', label: 'Security wait' },
+    { id: 'amenities', label: 'Food & shops' },
   ],
 };
 

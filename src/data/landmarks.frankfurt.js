@@ -12,7 +12,7 @@ export const FRANKFURT_LANDMARKS = [
     lat: 50.0379,
     lng: 8.5622,
     checkInRadiusMeters: 1800,
-    categories: ["food-local-life"],
+    categories: ["airports"],
     summary: "One of the busiest airports in Europe and the world.",
     facts: ["One of the busiest airports in Europe and the world","Germany's largest airport and a major global hub","The main hub of Lufthansa","Connects to over 300 destinations worldwide","Has its own long-distance and regional railway stations","A key gateway between Europe, the Americas, Asia and beyond","Located about 12 km southwest of central Frankfurt","Coded FRA; a major connecting point for onward flights"],
     free: true,
