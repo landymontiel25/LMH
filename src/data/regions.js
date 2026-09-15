@@ -8,6 +8,7 @@ import { PHILLY_LANDMARKS } from './landmarks.philly.js';
 import { VILLANOVA_LANDMARKS } from './landmarks.villanova.js';
 import { FRANKFURT_LANDMARKS } from './landmarks.frankfurt.js';
 import { NYC_LANDMARKS } from './landmarks.nyc.js';
+import { CAPETOWN_LANDMARKS } from './landmarks.capetown.js';
 
 export const REGIONS = [
   {
@@ -31,6 +32,17 @@ export const REGIONS = [
     center: { lat: 40.7549, lng: -73.984 },
     viewbox: { minLat: 40.49, minLng: -74.1, maxLat: 40.92, maxLng: -73.7 },
     landmarks: NYC_LANDMARKS,
+  },
+  {
+    id: 'cape-town',
+    name: 'Cape Town',
+    tagline: 'Table Mountain, beaches, wine & Cape heritage',
+    city: 'Cape Town',
+    state: 'Western Cape',
+    country: 'South Africa',
+    center: { lat: -33.925, lng: 18.424 },
+    viewbox: { minLat: -34.36, minLng: 18.3, maxLat: -33.8, maxLng: 18.58 },
+    landmarks: CAPETOWN_LANDMARKS,
   },
   {
     id: 'madrid',
