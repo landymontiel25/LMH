@@ -9,7 +9,9 @@ import {
   chipLabel,
   MAX_CHIPS,
   MAX_ASPECTS,
-  ASPECTS,
+  ASPECT_SETS,
+  aspectsFor,
+  aspectLabel,
   RATING_GOAL,
 } from './ratingFlow';
 
@@ -96,8 +98,41 @@ describe('limits and aspects', () => {
     expect(MAX_ASPECTS).toBe(3);
   });
 
-  it('offers the four universal aspects', () => {
-    expect(ASPECTS.map((a) => a.id)).toEqual(['food', 'atmosphere', 'service', 'location']);
+  it('offers four aspects per rateable category, with Price and Location shared', () => {
+    for (const c of RATEABLE_CATEGORIES) {
+      const ids = ASPECT_SETS[c].map((a) => a.id);
+      expect(ids, c).toHaveLength(4);
+      expect(ids, c).toContain('price');
+      expect(ids, c).toContain('location');
+      expect(new Set(ids).size, c).toBe(4);
+    }
+    expect(aspectsFor({ categories: ['food-local-life'] }).map((a) => a.id)).toEqual([
+      'price',
+      'location',
+      'atmosphere',
+      'food',
+    ]);
+    expect(aspectsFor({ categories: ['art-museums'] }).map((a) => a.id)).toEqual([
+      'price',
+      'location',
+      'exhibits',
+      'crowd-level',
+    ]);
+    expect(aspectsFor({ categories: ['history-culture'] }).map((a) => a.id)).toEqual([
+      'price',
+      'location',
+      'storytelling',
+      'architecture',
+    ]);
+  });
+
+  it('offers no aspects for a non-rateable landmark', () => {
+    expect(aspectsFor({ categories: ['campus-life'] })).toEqual([]);
+  });
+
+  it('resolves a saved aspect id back to its label', () => {
+    expect(aspectLabel('crowd-level')).toBe('Crowd level');
+    expect(aspectLabel('not-an-aspect')).toBe('not-an-aspect');
   });
 
   it('sets the marketing goal at 10 ratings', () => {

@@ -2,9 +2,9 @@ import { INTERESTS } from '../data/regions';
 
 // Only these categories get the rating flow. A landmark that's ONLY
 // campus-life (a dorm, a dining hall) skips straight to "checked in" --
-// rating a residence hall on Food/Atmosphere/Service tells Mapr nothing.
+// rating a residence hall on Price/Atmosphere tells Mapr nothing.
 // Order matters: a landmark tagged with several of these takes its chip
-// set from the first match here.
+// and aspect sets from the first match here.
 export const RATEABLE_CATEGORIES = ['history-culture', 'art-museums', 'food-local-life'];
 
 export function isRateable(landmark) {
@@ -36,85 +36,59 @@ export function tierStars(id) {
 export const MAX_CHIPS = 3;
 export const MAX_ASPECTS = 3;
 
-// Universal for now (same four for every rateable category) -- the spec
-// flagged "confirm if universal or category-specific" as still open.
-export const ASPECTS = [
-  { id: 'food', label: 'Food' },
-  { id: 'atmosphere', label: 'Atmosphere' },
-  { id: 'service', label: 'Service' },
-  { id: 'location', label: 'Location' },
-];
-
-export function aspectLabel(id) {
-  return ASPECTS.find((a) => a.id === id)?.label || id;
-}
-
-// PLACEHOLDER COPY -- the real chip wording (3 categories x 3 tiers) is
-// still to come and drops in here, nowhere else. Each chip's `id` is what
-// gets saved in the review's `highlights`; keep ids stable when the labels
-// change so old reviews keep meaning the same thing.
+// Chip copy per category x tier. Each chip's `id` is what gets saved in a
+// review's `highlights` -- keep ids stable if the labels are ever reworded
+// so old reviews keep meaning the same thing.
 export const CHIPS = {
-  'history-culture': {
+  'food-local-life': {
     'highly-recommend': [
-      { id: 'rich-history', label: 'Rich history' },
-      { id: 'stunning-architecture', label: 'Stunning architecture' },
-      { id: 'worth-the-hype', label: 'Worth the hype' },
-      { id: 'great-for-photos', label: 'Great for photos' },
-      { id: 'moving', label: 'Moving' },
+      { id: 'great-food', label: 'Great food' },
+      { id: 'love-vibe', label: 'Love the vibe' },
+      { id: 'worth-price', label: 'Worth the price' },
     ],
     'worth-trying': [
-      { id: 'quick-stop', label: 'Quick stop' },
-      { id: 'nice-not-essential', label: 'Nice, not essential' },
-      { id: 'better-with-a-guide', label: 'Better with a guide' },
-      { id: 'crowded', label: 'Crowded' },
+      { id: 'food-okay', label: 'Food was okay' },
+      { id: 'nice-spot', label: 'Nice spot' },
+      { id: 'decent-price', label: 'Decent price' },
     ],
     'probably-skip': [
-      { id: 'overcrowded', label: 'Overcrowded' },
-      { id: 'overpriced', label: 'Overpriced' },
-      { id: 'not-much-to-see', label: 'Not much to see' },
-      { id: 'tourist-trap', label: 'Tourist trap' },
+      { id: 'bad-food', label: 'Bad food' },
+      { id: 'mediocre-vibe', label: 'Mediocre vibe' },
+      { id: 'too-expensive', label: 'Too expensive' },
     ],
   },
   'art-museums': {
     'highly-recommend': [
-      { id: 'loved-the-art', label: 'Loved the art' },
-      { id: 'worth-the-hype', label: 'Worth the hype' },
-      { id: 'great-for-photos', label: 'Great for photos' },
-      { id: 'well-curated', label: 'Well curated' },
-      { id: 'could-stay-all-day', label: 'Could stay all day' },
+      { id: 'stunning-collection', label: 'Stunning collection' },
+      { id: 'great-curation', label: 'Great curation' },
+      { id: 'worth-visiting', label: 'Worth visiting' },
     ],
     'worth-trying': [
-      { id: 'quick-stop', label: 'Quick stop' },
-      { id: 'hit-or-miss', label: 'Hit or miss' },
-      { id: 'one-great-room', label: 'One great room' },
-      { id: 'crowded', label: 'Crowded' },
+      { id: 'decent-exhibits', label: 'Decent exhibits' },
+      { id: 'decent-curation', label: 'Decent curation' },
+      { id: 'average-experience', label: 'Average experience' },
     ],
     'probably-skip': [
-      { id: 'overcrowded', label: 'Overcrowded' },
-      { id: 'overpriced', label: 'Overpriced' },
-      { id: 'not-much-to-see', label: 'Not much to see' },
-      { id: 'underwhelming', label: 'Underwhelming' },
+      { id: 'underwhelming-exhibits', label: 'Underwhelming exhibits' },
+      { id: 'crowded', label: 'Crowded' },
+      { id: 'not-worth-it', label: 'Not worth it' },
     ],
   },
-  'food-local-life': {
+  'history-culture': {
     'highly-recommend': [
-      { id: 'delicious', label: 'Delicious' },
-      { id: 'great-vibe', label: 'Great vibe' },
-      { id: 'local-favorite', label: 'Local favorite' },
-      { id: 'good-value', label: 'Good value' },
-      { id: 'would-come-back', label: 'Would come back' },
+      { id: 'amazing-history', label: 'Amazing history' },
+      { id: 'great-storytelling', label: 'Great storytelling' },
+      { id: 'beautiful-building', label: 'Beautiful building' },
     ],
     'worth-trying': [
-      { id: 'decent', label: 'Decent' },
-      { id: 'pricey-for-what-it-is', label: 'Pricey for what it is' },
-      { id: 'long-wait', label: 'Long wait' },
-      { id: 'hit-or-miss', label: 'Hit or miss' },
+      { id: 'okay-exhibits', label: 'Okay exhibits' },
+      { id: 'decent-tour', label: 'Decent tour' },
+      { id: 'fine-spot', label: 'Fine spot' },
     ],
     'probably-skip': [
+      { id: 'boring', label: 'Boring' },
+      { id: 'not-maintained', label: 'Not maintained' },
       { id: 'overpriced', label: 'Overpriced' },
-      { id: 'bland', label: 'Bland' },
-      { id: 'tourist-trap', label: 'Tourist trap' },
-      { id: 'slow-service', label: 'Slow service' },
     ],
   },
 };
@@ -132,6 +106,43 @@ export function chipLabel(id) {
       const hit = list.find((c) => c.id === id);
       if (hit) return hit.label;
     }
+  }
+  return id;
+}
+
+// Ranked-aspect options per category. Price and Location are shared; the
+// other two are what actually varies between a restaurant, a museum, and a
+// historic site. Saved by id in lovedOrder / dislikedOrder.
+export const ASPECT_SETS = {
+  'food-local-life': [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'atmosphere', label: 'Atmosphere' },
+    { id: 'food', label: 'Food' },
+  ],
+  'art-museums': [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'exhibits', label: 'Exhibits' },
+    { id: 'crowd-level', label: 'Crowd level' },
+  ],
+  'history-culture': [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'storytelling', label: 'Storytelling' },
+    { id: 'architecture', label: 'Architecture' },
+  ],
+};
+
+export function aspectsFor(landmark) {
+  const cat = ratingCategory(landmark);
+  return (cat && ASPECT_SETS[cat]) || [];
+}
+
+export function aspectLabel(id) {
+  for (const list of Object.values(ASPECT_SETS)) {
+    const hit = list.find((a) => a.id === id);
+    if (hit) return hit.label;
   }
   return id;
 }
