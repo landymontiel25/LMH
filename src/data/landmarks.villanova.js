@@ -136,7 +136,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.037,
     lng: -75.3405,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: 'A traditional freshman residence hall near the heart of Villanova\'s campus.',
     facts: [
       "One of Villanova's traditional residence halls",
@@ -154,7 +154,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0368,
     lng: -75.3395,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: 'A traditional residence hall on Villanova\'s main campus.',
     facts: [
       "One of Villanova's traditional residence halls",
@@ -172,7 +172,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0365,
     lng: -75.339,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: 'A traditional residence hall on Villanova\'s main campus.',
     facts: [
       "One of Villanova's traditional residence halls",
@@ -190,7 +190,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0325,
     lng: -75.3445,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A residence hall on Villanova's South Campus, near the baseball field.",
     facts: [
       "One of Villanova's residence halls",
@@ -208,7 +208,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0369,
     lng: -75.343,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, near the academic core, close to Mendel Hall. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -226,7 +226,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.032,
     lng: -75.3448,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, on Villanova's South Campus, near the stadium. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -244,7 +244,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0328,
     lng: -75.344,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, on Villanova's South Campus, near the stadium. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -262,7 +262,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0322,
     lng: -75.3442,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, on Villanova's South Campus, near the stadium. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -280,7 +280,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.033,
     lng: -75.3448,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, on Villanova's South Campus, near the stadium. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -298,7 +298,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0326,
     lng: -75.3436,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, on Villanova's South Campus, near the stadium. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -316,7 +316,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0403,
     lng: -75.3478,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, in Villanova's West Campus apartment cluster. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -334,7 +334,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0407,
     lng: -75.3472,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, in Villanova's West Campus apartment cluster. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -352,7 +352,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0401,
     lng: -75.347,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, in Villanova's West Campus apartment cluster. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -370,7 +370,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0409,
     lng: -75.3478,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, in Villanova's West Campus apartment cluster. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -388,7 +388,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0405,
     lng: -75.3468,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, in Villanova's West Campus apartment cluster. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -406,7 +406,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0399,
     lng: -75.3475,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, in Villanova's West Campus apartment cluster. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -424,7 +424,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0411,
     lng: -75.3472,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, in Villanova's West Campus apartment cluster. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -460,7 +460,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0395,
     lng: -75.3465,
-    categories: ['campus-life'],
+    categories: ['dorms'],
     summary: "A Villanova University residence hall, in Villanova's West Campus apartment cluster. Position is a rough placeholder -- drag the pin on the Map to its exact spot.",
     facts: [
       "One of Villanova's residence halls",
@@ -516,7 +516,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0362,
     lng: -75.343,
-    categories: ["history-culture"],
+    categories: ["campus-life"],
     summary: "An academic building near Villanova's church, home to the Office of the President and Office of the Provost.",
     facts: [
       "Position read from satellite imagery and the official campus map",
@@ -534,7 +534,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0378,
     lng: -75.3428,
-    categories: ["history-culture"],
+    categories: ["campus-life"],
     summary: "Villanova's science building for the College of Liberal Arts and Sciences.",
     facts: [
       "Position read from satellite imagery and the official campus map",
@@ -552,7 +552,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0372,
     lng: -75.3415,
-    categories: ["history-culture"],
+    categories: ["campus-life"],
     summary: "Houses Villanova's Office of Financial Assistance, University Shop, and Bursar's Office.",
     facts: [
       "Position read from satellite imagery and the official campus map",
@@ -588,7 +588,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0368,
     lng: -75.34,
-    categories: ["history-culture"],
+    categories: ["campus-life"],
     summary: "A student services building on Villanova's main campus.",
     facts: [
       "Position read from satellite imagery and the official campus map",
@@ -606,7 +606,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.037,
     lng: -75.3398,
-    categories: ["history-culture"],
+    categories: ["campus-life"],
     summary: "Home to Villanova's College of Professional Studies.",
     facts: [
       "Position read from satellite imagery and the official campus map",
@@ -642,7 +642,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0366,
     lng: -75.3393,
-    categories: ["history-culture"],
+    categories: ["campus-life"],
     summary: "Home to Villanova's M. Louise Fitzpatrick College of Nursing.",
     facts: [
       "Position read from satellite imagery and the official campus map",
@@ -660,7 +660,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0362,
     lng: -75.3385,
-    categories: ["history-culture"],
+    categories: ["campus-life"],
     summary: "Home to the Villanova School of Business.",
     facts: [
       "Position read from satellite imagery and the official campus map",
@@ -678,7 +678,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0324,
     lng: -75.3446,
-    categories: ["history-culture"],
+    categories: ["campus-life"],
     summary: "A campus building on Villanova's South Campus.",
     facts: [
       "Position read from satellite imagery and the official campus map",
@@ -696,7 +696,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0393,
     lng: -75.3468,
-    categories: ["history-culture"],
+    categories: ["campus-life"],
     summary: "A building in Villanova's West Campus area, near St. Mary's Hall.",
     facts: [
       "Position read from the official campus map",
