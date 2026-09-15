@@ -64,7 +64,7 @@ function FitRoute({ points }) {
   return null;
 }
 
-function ItineraryMap({ origin, stops }) {
+function ItineraryMap({ origin, stops, onDetails }) {
   // Only put the START point on the map when it's actually near the city you're
   // viewing (same metro). If you're 1,000 miles away, including it would draw a
   // long line across states and zoom the map out to the whole coast — so we drop
@@ -103,9 +103,26 @@ function ItineraryMap({ origin, stops }) {
         {stops.map((s, idx) => (
           <Marker key={s.id} position={[s.lat, s.lng]} icon={numberedIcon(idx + 1)}>
             <Popup>
-              <strong>
-                {idx + 1}. {s.name}
-              </strong>
+              <div className="map-popup">
+                <h4>
+                  {idx + 1}. {s.name}
+                </h4>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                  <a
+                    className="btn btn-primary btn-sm"
+                    href={mapsDeepLink(s.name, s.lat, s.lng)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {'\u{1F9ED}'} Get Directions
+                  </a>
+                  {onDetails && (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDetails(s)}>
+                      Details
+                    </button>
+                  )}
+                </div>
+              </div>
             </Popup>
           </Marker>
         ))}
@@ -453,7 +470,13 @@ export default function Itinerary() {
         </label>
       </div>
 
-      {view === 'map' && <ItineraryMap origin={routeOrigin} stops={displayRoute} />}
+      {view === 'map' && (
+        <ItineraryMap
+          origin={routeOrigin}
+          stops={displayRoute}
+          onDetails={(s) => navigate(`/landmarks/${region.id}/${s.id}`)}
+        />
+      )}
 
       <div style={{ display: view === 'list' ? 'block' : 'none' }}>
         {displayRoute.map((stop, idx) => (
