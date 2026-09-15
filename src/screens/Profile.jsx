@@ -15,6 +15,8 @@ import {
 } from '../lib/leaderboard';
 import { authErrorMessage } from '../lib/authErrors';
 import { getUserProfile } from '../lib/friends';
+import { getUserReviews } from '../lib/reviews';
+import { RATING_GOAL } from '../lib/ratingFlow';
 import { getRegion, REGIONS, INTERESTS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
 import { classifyInterest } from '../lib/interestClassifier';
@@ -31,6 +33,7 @@ import LandmarkThumb from '../components/LandmarkThumb';
 import FriendPopoverName from '../components/FriendPopoverName';
 import CheckInButton from '../components/CheckInButton';
 import RegionSearch from '../components/RegionSearch';
+import ProfileTasteCard from '../components/ProfileTasteCard';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -444,6 +447,27 @@ export default function Profile() {
   const { trip } = useTrip();
   const navigate = useNavigate();
   const { stats, streakDays, checkedInToday, badges } = useBadges();
+
+  // Every rating you've given -- drives the "X/10 rated" progress line and
+  // the taste card. Re-fetched when your check-in count changes, since a
+  // fresh check-in is the only path that creates a new rating.
+  const [myReviews, setMyReviews] = useState([]);
+  useEffect(() => {
+    if (!firebaseEnabled || !user) {
+      setMyReviews([]);
+      return;
+    }
+    let cancelled = false;
+    getUserReviews(user.uid)
+      .then((r) => {
+        if (!cancelled) setMyReviews(r);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseEnabled, user, stats?.checkins]);
+  const ratingsCount = myReviews.length;
   const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly
   const [scope, setScope] = useState('friends'); // 'friends' | 'global'
   const [globalMode, setGlobalMode] = useState('global'); // 'global' | 'regional' (only when scope === 'global')
@@ -843,6 +867,28 @@ export default function Profile() {
             <span className="profile-stat-label">day streak</span>
           </div>
         </div>
+
+        <div className="rating-progress">
+          {ratingsCount >= RATING_GOAL ? (
+            <>
+              <strong>{ratingsCount} rated</strong> — Mapr knows your taste.
+            </>
+          ) : (
+            <>
+              <strong>
+                {ratingsCount}/{RATING_GOAL} rated
+              </strong>{' '}
+              — your picks get sharper from here.
+            </>
+          )}
+          <div className="rating-progress-track">
+            <div
+              className="rating-progress-fill"
+              style={{ width: `${Math.min(100, (ratingsCount / RATING_GOAL) * 100)}%` }}
+            />
+          </div>
+        </div>
+        <ProfileTasteCard reviews={myReviews} />
 
         {streakAtRisk && (
           <p className="tag tag-error" style={{ display: 'block', marginTop: 14 }}>

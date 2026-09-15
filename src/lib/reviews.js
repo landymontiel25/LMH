@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
+import { tierStars } from './ratingFlow';
 
 // Reject after `ms` so a stalled Storage upload (bucket not enabled, blocked by
 // rules, CORS, or just slow) can never hang the whole save forever.
@@ -27,14 +28,19 @@ function withTimeout(promise, ms) {
 }
 
 /**
- * Submit (or update) a user's star rating for a landmark. Gated on having a
- * check-in for that landmark. Keeps a running aggregate in `landmark_ratings`
- * so average + count are cheap to read. Editing your rating adjusts the sum by
- * the delta rather than double-counting. An optional selfie/photo is uploaded
- * to Storage and its URL saved on the review.
+ * Submit (or update) a user's rating for a landmark. `rating` is the
+ * RatingFlow payload: { tier, highlights, lovedOrder, dislikedOrder }. Gated
+ * on having a check-in for that landmark. Keeps a running aggregate in
+ * `landmark_ratings` so average + count are cheap to read -- `stars` is
+ * derived from the tier (5/3/1) purely to feed that aggregate, which every
+ * card's star display and the Top Rated sort are built on. Editing your
+ * rating adjusts the sum by the delta rather than double-counting. Optional
+ * photos are uploaded to Storage and their URLs saved on the review.
  */
-export async function submitReview({ userId, userName, landmark, stars, comment = '', photoFiles, photoFile }) {
+export async function submitReview({ userId, userName, landmark, rating, photoFiles, photoFile }) {
   const landmarkId = landmark.id;
+  const stars = tierStars(rating?.tier);
+  if (!stars) throw new Error('Pick a rating first.');
 
   // Must have checked in here first.
   const checkin = await getDoc(doc(db, 'checkins', `${userId}_${landmarkId}`));
@@ -90,7 +96,13 @@ export async function submitReview({ userId, userName, landmark, stars, comment 
           landmarkName: landmark.name,
           region: landmark.region,
           stars,
-          comment: (comment || '').slice(0, 500),
+          ratingTier: rating.tier,
+          highlights: rating.highlights || [],
+          lovedOrder: rating.lovedOrder || [],
+          dislikedOrder: rating.dislikedOrder || [],
+          // Denormalized (like landmarkName/region above) so the taste card
+          // can tally categories without a read per review.
+          categories: landmark.categories || [],
           ...(photoURLs.length ? { photoURLs } : {}),
           updatedAt: serverTimestamp(),
         },
@@ -130,6 +142,13 @@ export async function getUserReviewPhotos(userId) {
     if (photos.length) map[x.landmarkId] = photos;
   });
   return map;
+}
+
+/** Every review a user has written, raw. Feeds ratingsCount and the taste card. */
+export async function getUserReviews(userId) {
+  if (!db || !userId) return [];
+  const snap = await getDocs(query(collection(db, 'reviews'), where('userId', '==', userId)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function getMyReview(userId, landmarkId) {

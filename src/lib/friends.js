@@ -87,6 +87,14 @@ export async function setProfileVisibility(uid, isPublic) {
   await setDoc(doc(db, 'users', uid), { public: !!isPublic, updatedAt: serverTimestamp() }, { merge: true });
 }
 
+// Stamps when this account was last seen. Written once per session (on
+// auth), not per action -- enough to answer "did they come back within 30
+// days?" for the retention-by-ratings-count analysis without write spam.
+export async function touchLastActive(uid) {
+  if (!db || !uid) return;
+  await setDoc(doc(db, 'users', uid), { lastActiveAt: serverTimestamp() }, { merge: true });
+}
+
 export async function findUserByEmail(email) {
   if (!db) return null;
   const e = (email || '').trim().toLowerCase();
