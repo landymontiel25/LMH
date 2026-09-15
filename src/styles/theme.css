@@ -945,6 +945,11 @@ textarea {
   padding: 4px 9px;
 }
 
+.quick-rate-btn.rated {
+  border-color: var(--color-green);
+  color: #bfe0c8;
+}
+
 /* Progress toward the "rate 10 places" payoff, under Your Stats */
 .rating-progress {
   margin: 14px 0 0;
