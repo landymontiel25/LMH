@@ -21,7 +21,11 @@
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.4);
   --shadow-float: 0 8px 26px rgba(0, 0, 0, 0.35);
   --glass-border: rgba(255, 255, 255, 0.14);
-  --glass-blur: blur(22px) saturate(180%);
+  /* No blur -- panels are fully opaque now, so backdrop-filter has nothing
+     to blur and iOS Safari (esp. under Low Power Mode) was skipping it
+     while still applying the old semi-transparent background, leaving
+     cards/modals see-through. */
+  --glass-blur: none;
   --header-h: 76px;
   --nav-h: 78px;
 }
@@ -162,7 +166,7 @@ textarea {
   padding: 13px 22px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.5);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   color: var(--color-brass-bright);
@@ -229,7 +233,7 @@ textarea {
 /* ---------- Cards ---------- */
 
 .card {
-  background: rgba(var(--color-bg-rgb), 0.55);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
@@ -417,6 +421,12 @@ textarea {
   background: rgba(179, 80, 63, 0.15);
 }
 
+.tag-optional {
+  border-color: var(--color-border-soft);
+  color: var(--color-parchment-dim);
+  background: transparent;
+}
+
 .popularity-tag {
   font-weight: 700;
   border-color: var(--color-rust);
@@ -451,7 +461,7 @@ textarea {
 .field select,
 .field textarea {
   width: 100%;
-  background: rgba(var(--color-bg-rgb), 0.55);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
@@ -496,7 +506,7 @@ textarea {
   padding: 14px 8px;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.5);
+  background: rgb(var(--color-bg-rgb));
   cursor: pointer;
 }
 
@@ -532,7 +542,7 @@ textarea {
 .level-bar-track {
   height: 10px;
   border-radius: 5px;
-  background: rgba(var(--color-bg-rgb), 0.5);
+  background: rgb(var(--color-bg-rgb));
   border: 1px solid var(--glass-border);
   overflow: hidden;
 }
@@ -755,7 +765,7 @@ textarea {
   padding: 14px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.5);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   color: var(--color-parchment);
@@ -815,7 +825,7 @@ textarea {
   width: 100%;
   height: 100%;
   min-height: 52px;
-  background: rgba(var(--color-bg-rgb), 0.55);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--color-brass);
@@ -832,7 +842,7 @@ textarea {
   left: 0;
   right: 0;
   z-index: 30;
-  background: rgba(var(--color-bg-rgb), 0.75);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
@@ -891,7 +901,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   min-height: 52px;
-  background: rgba(var(--color-bg-rgb), 0.55);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--color-brass);
@@ -913,7 +923,7 @@ textarea {
   left: 0;
   right: 0;
   z-index: 30;
-  background: rgba(var(--color-bg-rgb), 0.9);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
@@ -975,7 +985,7 @@ textarea {
   margin: 12px 14px 8px;
   /* Solid (not backdrop-blur) so this fixed/sticky bar doesn't jitter or jump
      to a stale position during momentum scroll on iOS Safari. */
-  background: rgba(var(--color-bg-rgb), 0.94);
+  background: rgb(var(--color-bg-rgb));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-float);
@@ -1063,7 +1073,7 @@ textarea {
   right: 0;
   z-index: 30;
   white-space: nowrap;
-  background: rgba(var(--color-bg-rgb), 0.75);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--color-brass);
@@ -1114,7 +1124,7 @@ textarea {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  background: rgba(var(--color-bg-rgb), 0.9);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--color-brass);
@@ -1141,7 +1151,7 @@ textarea {
   right: 14px;
   bottom: calc(var(--nav-h) + 10px);
   z-index: 19;
-  background: rgba(var(--color-bg-rgb), 0.94);
+  background: rgb(var(--color-bg-rgb));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-float);
@@ -1166,7 +1176,7 @@ textarea {
   display: flex;
   /* Solid background (no backdrop blur) keeps this fixed bar from drifting mid-
      screen during scroll on iOS Safari. */
-  background: rgba(var(--color-bg-rgb), 0.94);
+  background: rgb(var(--color-bg-rgb));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-float);
@@ -1206,7 +1216,7 @@ textarea {
   padding: 14px;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.5);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   margin-bottom: 10px;
@@ -1359,7 +1369,7 @@ textarea {
   gap: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-md);
-  background: rgba(var(--color-bg-rgb), 0.5);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
@@ -1381,7 +1391,7 @@ textarea {
 
 /* --- Ranks hero card --- */
 .rank-hero {
-  background: linear-gradient(160deg, rgba(201, 161, 90, 0.18), rgba(var(--color-bg-rgb), 0.55));
+  background: linear-gradient(160deg, rgba(201, 161, 90, 0.18), rgb(var(--color-bg-rgb)));
   border-color: var(--color-brass);
 }
 
@@ -1425,7 +1435,7 @@ textarea {
   margin-top: 12px;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(var(--color-bg-rgb), 0.45);
+  background: rgb(var(--color-bg-rgb));
   border: 1px solid var(--glass-border);
   font-size: 0.85rem;
   color: var(--color-parchment);
@@ -1451,7 +1461,7 @@ textarea {
   padding: 12px 6px;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.5);
+  background: rgb(var(--color-bg-rgb));
   text-align: center;
 }
 
@@ -1459,7 +1469,7 @@ textarea {
   padding-top: 22px;
   padding-bottom: 22px;
   border-color: var(--color-brass);
-  background: linear-gradient(180deg, rgba(201, 161, 90, 0.22), rgba(var(--color-bg-rgb), 0.5));
+  background: linear-gradient(180deg, rgba(201, 161, 90, 0.22), rgb(var(--color-bg-rgb)));
 }
 
 .podium-empty {
@@ -1502,7 +1512,7 @@ textarea {
   padding: 10px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.5);
+  background: rgb(var(--color-bg-rgb));
   margin-bottom: 8px;
   cursor: pointer;
 }
@@ -1534,7 +1544,7 @@ textarea {
   width: 48px;
   height: 48px;
   border-radius: var(--radius-md);
-  background: rgba(var(--color-bg-rgb), 0.6);
+  background: rgb(var(--color-bg-rgb));
   border: 1px solid var(--glass-border);
   flex-shrink: 0;
 }
@@ -1570,7 +1580,7 @@ textarea {
   overflow: hidden;
   padding: 0;
   cursor: pointer;
-  background: rgba(var(--color-bg-rgb), 0.6);
+  background: rgb(var(--color-bg-rgb));
 }
 
 .checkin-tile img {
@@ -1657,7 +1667,7 @@ textarea {
   text-align: center;
   border-radius: var(--radius-pill);
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.45);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   color: var(--color-parchment-dim);
@@ -1949,7 +1959,7 @@ textarea {
   height: 52px;
   border-radius: 50%;
   border: 1px solid var(--color-brass);
-  background: rgba(var(--color-bg-rgb), 0.94);
+  background: rgb(var(--color-bg-rgb));
   box-shadow: var(--shadow-float);
   font-size: 1.3rem;
   display: flex;
@@ -2141,7 +2151,7 @@ textarea {
   height: 44px;
   border-radius: 50%;
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.55);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   color: var(--color-brass-bright);
@@ -2162,7 +2172,7 @@ textarea {
   flex-shrink: 0;
   width: 88px;
   height: 44px;
-  background: rgba(var(--color-bg-rgb), 0.55);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
@@ -2186,7 +2196,7 @@ textarea {
   height: 44px;
   border-radius: 50%;
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.55);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   color: var(--color-brass-bright);
@@ -2222,7 +2232,7 @@ textarea {
   height: 44px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.85);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   color: var(--color-parchment);
@@ -2238,7 +2248,7 @@ textarea {
   overflow-y: auto;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
-  background: rgba(var(--color-bg-rgb), 0.92);
+  background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-float);
@@ -2266,7 +2276,7 @@ textarea {
 
 .map-search-result:hover,
 .map-search-result:focus-visible {
-  background: rgba(var(--color-bg-rgb), 0.6);
+  background: rgb(var(--color-bg-rgb));
 }
 
 .map-search-result-name {
@@ -2288,6 +2298,58 @@ textarea {
   color: var(--color-parchment-dim);
 }
 
+/* ---------- Pin-placement mode (map "+" button) ---------- */
+
+/* Hides all normal chrome while picking an exact spot for a new landmark --
+   only the crosshair reticle and Cancel/Done controls stay on screen. */
+body.pin-placing .app-header,
+body.pin-placing .bottom-nav,
+body.pin-placing .ask-landmark-fab,
+body.pin-placing .ask-landmark-panel {
+  display: none;
+}
+
+.map-pin-target {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  color: var(--color-brass-bright);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+  pointer-events: none;
+}
+
+.map-pin-target-hint {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  margin: 0;
+  max-width: min(280px, calc(100% - 140px));
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: rgb(var(--color-bg-rgb));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-float);
+  font-size: 0.76rem;
+  text-align: center;
+  color: var(--color-parchment-dim);
+}
+
+.map-pin-cancel-btn {
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+}
+
+.map-pin-done-btn {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  right: 16px;
+  z-index: 1000;
+  box-shadow: var(--shadow-float);
+}
+
 .map-popup {
   min-width: 180px;
   font-family: var(--font-body);
@@ -2301,7 +2363,7 @@ textarea {
 }
 
 .leaflet-popup-content-wrapper {
-  background: rgba(var(--color-bg-rgb), 0.85) !important;
+  background: rgb(var(--color-bg-rgb)) !important;
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   color: var(--color-parchment) !important;
@@ -2311,7 +2373,7 @@ textarea {
 }
 
 .leaflet-popup-tip {
-  background: rgba(var(--color-bg-rgb), 0.85) !important;
+  background: rgb(var(--color-bg-rgb)) !important;
 }
 
 .leaflet-container a.leaflet-popup-close-button {

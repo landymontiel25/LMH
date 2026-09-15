@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -147,6 +147,19 @@ function InitialView({ loading, coords, bounds, regionBounds, focusPoint, radius
   return null;
 }
 
+// Long-press on touch (and right-click on desktop) fires Leaflet's
+// 'contextmenu' event -- no separate gesture library needed to let someone
+// pin an exact spot that isn't one of the built-in landmarks.
+function PinDropHandler({ onDrop, disabled }) {
+  useMapEvents({
+    contextmenu(e) {
+      if (disabled) return;
+      onDrop({ lat: e.latlng.lat, lng: e.latlng.lng });
+    },
+  });
+  return null;
+}
+
 function LocateControl({ coords, radiusMiles }) {
   const map = useMap();
   return (
@@ -176,6 +189,37 @@ export default function MapExplore() {
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // A pin dropped by long-pressing an exact spot on the map -- lets you
+  // pinpoint somewhere that isn't one of the built-in landmarks (e.g. a
+  // specific building on a campus) and carry that exact location straight
+  // into Add Landmark instead of having to re-find it there.
+  const [pinDrop, setPinDrop] = useState(null);
+
+  // "+" no longer jumps straight into Add Landmark -- it drops into this
+  // mode instead: a crosshair stays fixed at the screen's center while you
+  // pan the map underneath it, and every other control hides so the map
+  // is the only thing on screen until you confirm with Done (or back out
+  // with Cancel).
+  const [placingPin, setPlacingPin] = useState(false);
+  useEffect(() => {
+    document.body.classList.toggle('pin-placing', placingPin);
+    return () => document.body.classList.remove('pin-placing');
+  }, [placingPin]);
+
+  const startPlacingPin = () => {
+    setPinDrop(null);
+    setSearchOpen(false);
+    setNearbyOpen(false);
+    setPlacingPin(true);
+  };
+
+  const confirmPinPlacement = () => {
+    const center = mapRef.current?.getCenter();
+    if (!center) return;
+    setPlacingPin(false);
+    navigate('/add-landmark', { state: { lat: center.lat, lng: center.lng } });
+  };
 
   // Pin corrections saved by the old drag-to-fix mode (now removed) still
   // apply for everyone -- this just keeps displaying them at their
@@ -446,7 +490,8 @@ export default function MapExplore() {
             focusPoint={focusLandmark}
             radiusMiles={radiusMiles}
           />
-          <LocateControl coords={coords} radiusMiles={radiusMiles} />
+          {!placingPin && <LocateControl coords={coords} radiusMiles={radiusMiles} />}
+          <PinDropHandler onDrop={setPinDrop} disabled={placingPin} />
           <TileLayer
             key={satellite ? 'satellite' : 'street'}
             attribution={TILE_LAYERS[satellite ? 'satellite' : 'street'].attribution}
@@ -483,6 +528,35 @@ export default function MapExplore() {
               </Tooltip>
             </Marker>
           )}
+          {pinDrop && (
+            <Marker
+              position={[pinDrop.lat, pinDrop.lng]}
+              icon={focusIcon}
+              zIndexOffset={1000}
+              eventHandlers={{
+                add: (e) => e.target.openPopup(),
+                popupclose: () => setPinDrop(null),
+              }}
+            >
+              <Popup>
+                <div className="map-popup">
+                  <h4 style={{ marginTop: 0 }}>Add a landmark here?</h4>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => navigate('/add-landmark', { state: pinDrop })}
+                    >
+                      {'\u{2795}'} Add Landmark
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPinDrop(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          )}
           <MarkerClusterGroup
             chunkedLoading
             maxClusterRadius={55}
@@ -494,91 +568,117 @@ export default function MapExplore() {
           </MarkerClusterGroup>
         </MapContainer>
 
-      <button type="button" className="map-search-btn" title="Search landmarks" onClick={toggleSearch}>
-        {searchOpen ? '\u{2715}' : '\u{1F50D}'}
-      </button>
-      <button
-        type="button"
-        className="map-search-btn map-add-btn"
-        style={{ top: 'calc(var(--header-h) + 64px)' }}
-        title="Add a landmark"
-        onClick={() => navigate('/add-landmark')}
-      >
-        {'\u{2795}'}
-      </button>
-      {coords && (
-        <button
-          type="button"
-          className="map-search-btn"
-          style={{ top: 'calc(var(--header-h) + 128px)' }}
-          title="What's nearby right now"
-          onClick={() => setNearbyOpen((o) => !o)}
-        >
-          {nearbyOpen ? '\u{2715}' : '\u{1F4E1}'}
-        </button>
-      )}
-      {nearbyOpen && (
-        <div className="map-search-panel">
-          <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '0.9rem' }}>{'\u{1F4E1}'} Nearby Now</p>
-          <div className="map-search-results">
-            {nearbyList.length === 0 && <div className="map-search-empty">Nothing nearby yet.</div>}
-            {nearbyList.map((l) => (
-              <button
-                type="button"
-                key={l.id}
-                className="map-search-result"
-                onClick={() => {
-                  setNearbyOpen(false);
-                  navigate(`/landmarks/${l.region}/${l.landmarkId}`);
-                }}
-              >
-                <span className="map-search-result-name">{l.name}</span>
-                <span className="map-search-result-city">{formatDistance(l.meters, units)} away</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      {searchOpen && (
-        <div className="map-search-panel">
-          <input
-            type="text"
-            autoFocus
-            className="map-search-input"
-            placeholder={'\u{1F50D} Search landmarks, states, countries…'}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          {searchTerm.trim() && (
-            <div className="map-search-results">
-              {searchResults.length === 0 && (
-                <div className="map-search-empty">Nothing matches "{searchTerm}".</div>
-              )}
-              {searchResults.map((r) => (
-                <button
-                  type="button"
-                  key={r.id}
-                  className="map-search-result"
-                  onClick={() => selectSearchResult(r)}
-                >
-                  <span className="map-search-result-name">{r.name}</span>
-                  <span className="map-search-result-city">{r.sub}</span>
-                </button>
-              ))}
+      {!placingPin && (
+        <>
+          <button type="button" className="map-search-btn" title="Search landmarks" onClick={toggleSearch}>
+            {searchOpen ? '\u{2715}' : '\u{1F50D}'}
+          </button>
+          <button
+            type="button"
+            className="map-search-btn map-add-btn"
+            style={{ top: 'calc(var(--header-h) + 64px)' }}
+            title="Add a landmark — long-press the map to pin an exact spot"
+            onClick={startPlacingPin}
+          >
+            {'\u{2795}'}
+          </button>
+          {coords && (
+            <button
+              type="button"
+              className="map-search-btn"
+              style={{ top: 'calc(var(--header-h) + 128px)' }}
+              title="What's nearby right now"
+              onClick={() => setNearbyOpen((o) => !o)}
+            >
+              {nearbyOpen ? '\u{2715}' : '\u{1F4E1}'}
+            </button>
+          )}
+          {nearbyOpen && (
+            <div className="map-search-panel">
+              <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '0.9rem' }}>{'\u{1F4E1}'} Nearby Now</p>
+              <div className="map-search-results">
+                {nearbyList.length === 0 && <div className="map-search-empty">Nothing nearby yet.</div>}
+                {nearbyList.map((l) => (
+                  <button
+                    type="button"
+                    key={l.id}
+                    className="map-search-result"
+                    onClick={() => {
+                      setNearbyOpen(false);
+                      navigate(`/landmarks/${l.region}/${l.landmarkId}`);
+                    }}
+                  >
+                    <span className="map-search-result-name">{l.name}</span>
+                    <span className="map-search-result-city">{formatDistance(l.meters, units)} away</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
-        </div>
+          {searchOpen && (
+            <div className="map-search-panel">
+              <input
+                type="text"
+                autoFocus
+                className="map-search-input"
+                placeholder={'\u{1F50D} Search landmarks, states, countries…'}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm.trim() && (
+                <div className="map-search-results">
+                  {searchResults.length === 0 && (
+                    <div className="map-search-empty">Nothing matches "{searchTerm}".</div>
+                  )}
+                  {searchResults.map((r) => (
+                    <button
+                      type="button"
+                      key={r.id}
+                      className="map-search-result"
+                      onClick={() => selectSearchResult(r)}
+                    >
+                      <span className="map-search-result-name">{r.name}</span>
+                      <span className="map-search-result-city">{r.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="map-fab-bar">
+            <select className="radius-select" value={radiusMiles} onChange={handleRadiusChange} title="Zoom radius">
+              {ZOOM_RADIUS_OPTIONS.map((miles) => (
+                <option key={miles} value={miles}>
+                  {miles} mi
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
       )}
 
-      <div className="map-fab-bar">
-        <select className="radius-select" value={radiusMiles} onChange={handleRadiusChange} title="Zoom radius">
-          {ZOOM_RADIUS_OPTIONS.map((miles) => (
-            <option key={miles} value={miles}>
-              {miles} mi
-            </option>
-          ))}
-        </select>
-      </div>
+      {placingPin && (
+        <>
+          <div className="map-pin-target" aria-hidden="true">
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <line x1="18" y1="1" x2="18" y2="9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="18" y1="27" x2="18" y2="35" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="1" y1="18" x2="9" y2="18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="27" y1="18" x2="35" y2="18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="18" cy="18" r="7" stroke="currentColor" strokeWidth="2.5" />
+              <circle cx="18" cy="18" r="2" fill="currentColor" />
+            </svg>
+          </div>
+          <p className="map-pin-target-hint">Pan the map to line up your spot</p>
+          <button type="button" className="map-search-btn map-pin-cancel-btn" title="Cancel" onClick={() => setPlacingPin(false)}>
+            {'\u{2715}'}
+          </button>
+          <button type="button" className="btn btn-primary map-pin-done-btn" onClick={confirmPinPlacement}>
+            Done
+          </button>
+        </>
+      )}
 
       {geoError && <p className="tag tag-error map-error-toast">Location unavailable — {geoError}</p>}
     </div>

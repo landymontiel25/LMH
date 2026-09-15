@@ -40,18 +40,6 @@ const TABS = [
 ];
 const MEDAL = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
 
-// Shared "Sep 7, 2026, 10:04 AM" formatting for check-in / city-visit timestamps.
-function fmtDateTime(seconds) {
-  if (!seconds) return '';
-  return new Date(seconds * 1000).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
 function InviteButton({ myUsername }) {
   const [copied, setCopied] = useState(false);
   const share = async () => {
@@ -209,7 +197,7 @@ function OnboardingPreferences({ onDone }) {
 // (whether or not you actually check in) is what completes onboarding.
 function FirstCheckInStep({ onDone }) {
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
-  const { myProfile, reload: reloadFriends } = useFriends();
+  const { myProfile, myUsername, reload: reloadFriends } = useFriends();
   const { coords, loading: geoLoading } = useGeo();
   const { units } = useUnits();
   // Surfaced in the UI (not just the console) since the previous silent
@@ -220,7 +208,7 @@ function FirstCheckInStep({ onDone }) {
 
   useEffect(() => {
     if (!user || myProfile?.onboardingCompleted || hasCompletedOnboardingLocally(user.uid)) return;
-    completeOnboarding(user.uid)
+    completeOnboarding(user.uid, myUsername || user.displayName || 'Explorer')
       .then(async () => {
         // Permanent local guard, same idea as BadgesContext's celebration
         // guard: mark this done on this device the moment the write
@@ -462,7 +450,6 @@ export default function Profile() {
   const [regionalRegionId, setRegionalRegionId] = useState(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCities, setShowCities] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(null); // null | 'preferences' | 'checkin'
   const healedRef = useRef(false);
   // Which badge's description popover is open -- hover (desktop, with the
@@ -503,7 +490,7 @@ export default function Profile() {
       return;
     }
     let cancelled = false;
-    claimMyReferralBonuses(user.uid)
+    claimMyReferralBonuses(user.uid, myUsername || user.displayName || 'Explorer')
       .then(() => getUserProfile(user.uid))
       .then((profile) => {
         if (!cancelled) setBonusPoints(profile?.bonusPoints || 0);
@@ -514,6 +501,9 @@ export default function Profile() {
     return () => {
       cancelled = true;
     };
+    // myUsername only labels the leaderboard-entry write below, not
+    // something that should re-run the whole claim flow when it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseEnabled, user]);
 
   // Self-heal: if your board row still shows an email/old name, rewrite it.
@@ -835,7 +825,7 @@ export default function Profile() {
           <button
             type="button"
             className="profile-stat profile-stat-btn"
-            onClick={() => stats?.checkins && navigate('/stats')}
+            onClick={() => stats?.checkins && navigate('/checkins')}
           >
             <span className="profile-stat-num">{stats ? stats.checkins.toLocaleString() : '…'}</span>
             <span className="profile-stat-label">check-ins{stats?.checkins ? ' ›' : ''}</span>
@@ -843,7 +833,7 @@ export default function Profile() {
           <button
             type="button"
             className="profile-stat profile-stat-btn"
-            onClick={() => stats?.cityIds?.length && setShowCities(true)}
+            onClick={() => stats?.cityIds?.length && navigate('/cities')}
           >
             <span className="profile-stat-num">{stats ? stats.cities : '…'}</span>
             <span className="profile-stat-label">cities{stats?.cityIds?.length ? ' ›' : ''}</span>
@@ -1018,39 +1008,6 @@ export default function Profile() {
         </div>
       )}
 
-      {showCities && (
-        <div className="modal-backdrop" onClick={() => setShowCities(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>{'\u{1F3D9}\u{FE0F}'} Cities you've visited</h3>
-            {(stats?.cityIds || []).map((id) => {
-              const r = getRegion(id);
-              return (
-                <div
-                  key={id}
-                  className="checkin-row"
-                  onClick={() => {
-                    setShowCities(false);
-                    navigate('/landmarks');
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div className="checkin-name">{r?.name || id}</div>
-                    <div className="checkin-sub">
-                      {r?.country}
-                      {r?.country && stats?.cityLastVisit?.[id] ? ' · ' : ''}
-                      {fmtDateTime(stats?.cityLastVisit?.[id])}
-                    </div>
-                  </div>
-                  <div className="checkin-pts">{'\u{2192}'}</div>
-                </div>
-              );
-            })}
-            <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={() => setShowCities(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

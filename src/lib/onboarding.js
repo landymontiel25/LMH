@@ -1,10 +1,12 @@
 import { doc, setDoc, increment } from 'firebase/firestore';
 import { db } from './firebase';
+import { awardLeaderboardPoints } from './leaderboard';
 
 // A one-time reward for finishing the post-signup onboarding flow
-// (preferences + the first-check-in prompt) -- kept separate from the
-// competitive leaderboard, same as referral bonuses, via the same
-// bonusPoints field on the user's own profile doc.
+// (preferences + the first-check-in prompt). Stored on the user's own
+// bonusPoints field (folded into their all-time total by getUserStats) and
+// also added to the current week/month/year leaderboard entries, same as
+// referral bonuses, so it counts toward rank the same way check-in points do.
 export const ONBOARDING_BONUS_POINTS = 10;
 
 // Guarded by the caller checking myProfile.onboardingCompleted first (see
@@ -16,7 +18,7 @@ export const ONBOARDING_BONUS_POINTS = 10;
 // forget doc creation on the same page load -- the flag then read back as
 // unset on the next load, resetting Profile to "Finish Onboarding" even
 // though the in-session UI had already moved past it.
-export async function completeOnboarding(uid) {
+export async function completeOnboarding(uid, userName) {
   if (!db || !uid) return;
   await setDoc(
     doc(db, 'users', uid),
@@ -26,6 +28,7 @@ export async function completeOnboarding(uid) {
     },
     { merge: true }
   );
+  await awardLeaderboardPoints(uid, userName, ONBOARDING_BONUS_POINTS);
 }
 
 // Belt-and-suspenders against onboardingCompleted not sticking past a

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -24,6 +24,17 @@ const DRAG_PIN_ICON = L.divIcon({
   iconAnchor: [13, 28],
 });
 
+// Every field's label states up front whether it's required to submit --
+// Location, Name, and Topic are; Facts and Photo are optional.
+function FieldLabel({ children, required }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span>{children}</span>
+      <span className={`tag ${required ? '' : 'tag-optional'}`}>{required ? 'Required' : 'Optional'}</span>
+    </label>
+  );
+}
+
 // Keeps the mini-map centered on wherever the pin currently is -- otherwise
 // tapping "Use My Exact Location" would move the pin but leave the map
 // looking at the old spot.
@@ -36,19 +47,26 @@ function RecenterOnPosition({ position }) {
   return null;
 }
 
-// A brand-new landmark, start to finish: name, at least one topic, a photo,
-// and its exact spot -- either your current GPS location or an actual pin
-// you drag into place on a small map (much more obvious than tapping
-// somewhere on the full explore map used to be). The AI verification +
-// Firestore/Storage save is identical to what the old inline "Add Pin"
-// panel on the map used to do.
+// A brand-new landmark, start to finish: name, at least one topic, and its
+// exact spot -- either your current GPS location or an actual pin you drag
+// into place on a small map (much more obvious than tapping somewhere on
+// the full explore map used to be). A photo is optional but speeds up the
+// AI moderation check. The AI verification + Firestore/Storage save is
+// identical to what the old inline "Add Pin" panel on the map used to do.
 export default function AddLandmark() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { coords } = useGeo();
   const { user, firebaseEnabled } = useCheckIn();
   const { trip } = useTrip();
 
+  // The map screen's "+" button passes along the exact spot you were
+  // looking at (a dropped pin, or just the map's current center) so this
+  // starts there instead of jumping to your GPS location.
   const startingCenter = () => {
+    if (location.state?.lat != null && location.state?.lng != null) {
+      return { lat: location.state.lat, lng: location.state.lng };
+    }
     if (coords) return { lat: coords.lat, lng: coords.lng };
     const region = trip.activeRegion && getRegion(trip.activeRegion);
     return region?.center || REGIONS[0].center;
@@ -84,14 +102,14 @@ export default function AddLandmark() {
     setPhotoPreview(URL.createObjectURL(f));
   };
 
-  const canSubmit = name.trim() && categories.length > 0 && photo && position && user;
+  const canSubmit = name.trim() && categories.length > 0 && position && user;
 
   const submit = async () => {
     if (!canSubmit || busy) return;
     setError('');
     try {
       setStage('verifying');
-      const imageDataUrl = await fileToSmallDataUrl(photo);
+      const imageDataUrl = photo ? await fileToSmallDataUrl(photo) : '';
       const idToken = await user.getIdToken();
       const verifyRes = await fetch('/api/verify-landmark', {
         method: 'POST',
@@ -107,12 +125,12 @@ export default function AddLandmark() {
       });
       const verified = await verifyRes.json().catch(() => null);
       if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this submission — try again.');
-      if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different photo or name.");
+      if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different name or add a photo.");
 
       setStage('saving');
       const region = nearestRegionId(position.lat, position.lng);
       const tempId = `pending-${Date.now()}`;
-      const imageUrl = await uploadLandmarkPhoto(tempId, user.uid, photo);
+      const imageUrl = photo ? await uploadLandmarkPhoto(tempId, user.uid, photo) : null;
       const created = await addCustomLandmark({
         region,
         name: name.trim(),
@@ -120,7 +138,7 @@ export default function AddLandmark() {
         lng: position.lng,
         userId: user.uid,
         categories,
-        images: [imageUrl],
+        images: imageUrl ? [imageUrl] : [],
         summary: verified.summary,
         facts: verified.facts,
         free: verified.free,
@@ -146,7 +164,7 @@ export default function AddLandmark() {
       </p>
 
       <div className="field">
-        <label>Location</label>
+        <FieldLabel required>Location</FieldLabel>
         <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
           Drag the pin to the exact spot, use your current location, or search an address.
         </p>
@@ -194,12 +212,12 @@ export default function AddLandmark() {
       </div>
 
       <div className="field">
-        <label>Name</label>
+        <FieldLabel required>Name</FieldLabel>
         <input type="text" placeholder="e.g. Farley Hall" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
       </div>
 
       <div className="field">
-        <label>Topic — pick at least one</label>
+        <FieldLabel required>Topic — pick at least one</FieldLabel>
         <div className="chip-grid">
           {INTERESTS.map((i) => (
             <button
@@ -216,7 +234,7 @@ export default function AddLandmark() {
       </div>
 
       <div className="field">
-        <label>Facts (optional)</label>
+        <FieldLabel>Facts</FieldLabel>
         <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
           Know something true about it? Add a few — we won't make anything up ourselves.
         </p>
@@ -256,7 +274,10 @@ export default function AddLandmark() {
       </div>
 
       <div className="field">
-        <label>Photo</label>
+        <FieldLabel>Photo</FieldLabel>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
+          Helps others recognize it and speeds up moderation, but isn't required.
+        </p>
         {photoPreview ? (
           <div style={{ position: 'relative', width: 120 }}>
             <img
