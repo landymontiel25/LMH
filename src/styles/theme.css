@@ -929,6 +929,22 @@ textarea {
   box-shadow: none;
 }
 
+/* TEMPORARY "Rate" pill next to a landmark's name (QuickRateButton) */
+.quick-rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.quick-rate-btn {
+  flex-shrink: 0;
+  margin-left: 8px;
+  vertical-align: middle;
+  font-size: 0.6rem;
+  padding: 4px 9px;
+}
+
 /* Progress toward the "rate 10 places" payoff, under Your Stats */
 .rating-progress {
   margin: 14px 0 0;

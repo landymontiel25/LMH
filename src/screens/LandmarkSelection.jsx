@@ -11,6 +11,7 @@ import { mapsDeepLink } from '../lib/routing';
 import { classifyInterest } from '../lib/interestClassifier';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
+import QuickRateButton from '../components/QuickRateButton';
 import { ALL_LANDMARKS, REGIONS, INTERESTS, getRegion } from '../data/regions';
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
@@ -398,6 +399,7 @@ export default function LandmarkSelection() {
                   <h4>
                     <span className="lr-category-icons">{l.categories.map((c) => CATEGORY_ICON[c]).join('')}</span>
                     {l.name}
+                    <QuickRateButton landmark={l} />
                   </h4>
                   <div className="lr-meta">
                     <span className={`tag ${l.free ? 'tag-free' : ''}`}>{l.free ? 'Free' : 'Ticketed'}</span>

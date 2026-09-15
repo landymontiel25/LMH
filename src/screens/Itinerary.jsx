@@ -10,6 +10,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
+import QuickRateButton from '../components/QuickRateButton';
 import TripRecapCard from '../components/TripRecapCard';
 import ThemedChallenge from '../components/ThemedChallenge';
 import OfflineDownloadButton from '../components/OfflineDownloadButton';
@@ -475,6 +476,7 @@ export default function Itinerary() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                     <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
                     <h4 style={{ margin: 0, color: 'var(--color-parchment)' }}>{stop.name}</h4>
+                    <QuickRateButton landmark={stop} />
                   </div>
                   <button
                     type="button"
