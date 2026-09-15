@@ -17,7 +17,8 @@ import { createGroupTrip, listMyGroupTrips } from '../lib/groupTrips';
 import { getRegion } from '../data/regions';
 import { geocodeLocation } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
-import { buildNearestNeighborRoute, enhanceRouteWithDrivingTimes, mapsDeepLink } from '../lib/routing';
+import { SORT_OPTIONS, orderStops, annotateRoute, enhanceRouteWithDrivingTimes, mapsDeepLink } from '../lib/routing';
+import { useRatings } from '../lib/RatingsContext';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
 
 const ROUTE_BLUE = '#2b7fff';
@@ -145,6 +146,16 @@ export default function Itinerary() {
   const [origin, setOrigin] = useState(null);
   const [geocoding, setGeocoding] = useState(true);
   const [view, setView] = useState('list'); // 'list' | 'map'
+  const { ratings } = useRatings();
+  // Remembered across itineraries and sessions -- someone who always wants
+  // "Highest rated" shouldn't have to re-pick it in every city.
+  const [sort, setSort] = useState(() => {
+    const saved = localStorage.getItem('lh-itin-sort');
+    return SORT_OPTIONS.some((o) => o.id === saved) ? saved : 'nearest';
+  });
+  useEffect(() => {
+    localStorage.setItem('lh-itin-sort', sort);
+  }, [sort]);
   const [pendingRemove, setPendingRemove] = useState(null); // stop awaiting delete confirmation
   const [showRecap, setShowRecap] = useState(false);
   const [groupTrips, setGroupTrips] = useState([]);
@@ -208,10 +219,12 @@ export default function Itinerary() {
     setGeocoding(false);
   }, [region, trip.startingLocation, trip.startingCoords, coords]);
 
-  // Single ordering: a nearest-neighbor route starting from your LIVE location
-  // (falling back to the saved start point). Stop #1 is the closest landmark to
-  // you, and each next stop is the closest to the previous — so it's "nearest
-  // to me first" AND an efficient route with no backtracking, in one.
+  // The visit order comes from the "Sort by" pick, measured from your LIVE
+  // location (falling back to the saved start point). Default is nearest to
+  // you first, so the list -- and the map route, which follows the same
+  // order -- runs closest to farthest. Every stop then gets its leg from the
+  // stop before it, so "X to next stop", the totals, and the drawn route
+  // hold for whichever sort is picked.
   // Quantize to ~100m so the order/route only recomputes when you actually move,
   // not on every GPS jitter (which made the screen flicker and re-sort).
   const liveOrigin = coords || origin;
@@ -221,8 +234,8 @@ export default function Itinerary() {
 
   const route = useMemo(() => {
     if (!routeOrigin || !selectedLandmarks.length) return [];
-    return buildNearestNeighborRoute(routeOrigin, selectedLandmarks);
-  }, [routeOrigin, selectedLandmarks]);
+    return annotateRoute(routeOrigin, orderStops(sort, routeOrigin, selectedLandmarks, ratings));
+  }, [routeOrigin, selectedLandmarks, sort, ratings]);
 
   const [drivingRoute, setDrivingRoute] = useState([]);
   const [refiningTimes, setRefiningTimes] = useState(false);
@@ -344,8 +357,11 @@ export default function Itinerary() {
         <span>{'\u{1F5FA}\u{FE0F}'}</span> {region.name}
       </h1>
       <p className="screen-subtitle">
-        Nearest first from {coords ? 'your current location' : trip.startingLocation || 'your starting point'} ·{' '}
-        {displayRoute.length} stops
+        {SORT_OPTIONS.find((o) => o.id === sort)?.label}
+        {sort === 'nearest' || sort === 'route'
+          ? ` from ${coords ? 'your current location' : trip.startingLocation || 'your starting point'}`
+          : ''}{' '}
+        · {displayRoute.length} stops
       </p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -407,21 +423,33 @@ export default function Itinerary() {
         />
       )}
 
-      <div className="tabs" style={{ maxWidth: 320 }}>
-        <button
-          type="button"
-          className={`tab-btn ${view === 'list' ? 'active' : ''}`}
-          onClick={() => setView('list')}
-        >
-          {'\u{1F5D2}\u{FE0F}'} List
-        </button>
-        <button
-          type="button"
-          className={`tab-btn ${view === 'map' ? 'active' : ''}`}
-          onClick={() => setView('map')}
-        >
-          {'\u{1F5FA}\u{FE0F}'} Map
-        </button>
+      <div className="itin-toolbar">
+        <div className="tabs" style={{ margin: 0, flex: 1, maxWidth: 240 }}>
+          <button
+            type="button"
+            className={`tab-btn ${view === 'list' ? 'active' : ''}`}
+            onClick={() => setView('list')}
+          >
+            {'\u{1F5D2}\u{FE0F}'} List
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${view === 'map' ? 'active' : ''}`}
+            onClick={() => setView('map')}
+          >
+            {'\u{1F5FA}\u{FE0F}'} Map
+          </button>
+        </div>
+        <label className="itin-sort">
+          <span>Sort by</span>
+          <select className="radius-select" value={sort} onChange={(e) => setSort(e.target.value)}>
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {view === 'map' && <ItineraryMap origin={routeOrigin} stops={displayRoute} />}

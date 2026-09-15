@@ -56,6 +56,58 @@ export function buildNearestFirstList(origin, landmarks) {
     .sort((a, b) => a.distanceFromMeMeters - b.distanceFromMeMeters);
 }
 
+// The "Sort by" choices on an itinerary. Every one produces a visit order;
+// annotateRoute then fills in the leg between each stop and the one before
+// it, so the list, the totals, and the map route all follow whichever sort
+// is picked -- the map's numbered pins always match the cards.
+export const SORT_OPTIONS = [
+  { id: 'nearest', label: 'Nearest to me' },
+  { id: 'route', label: 'Best walking order' },
+  { id: 'rated', label: 'Highest rated' },
+  { id: 'quick', label: 'Quickest visits' },
+  { id: 'free', label: 'Free first' },
+];
+
+export function orderStops(sortId, origin, landmarks, ratings = {}) {
+  const dist = (l) => distanceMeters(origin.lat, origin.lng, l.lat, l.lng);
+  const nearest = (a, b) => dist(a) - dist(b);
+  const list = [...landmarks];
+  switch (sortId) {
+    case 'route':
+      return buildNearestNeighborRoute(origin, landmarks);
+    case 'rated': {
+      const r = (l) => ratings[l.id] || { avg: 0, count: 0 };
+      // Rated places first (by average, then by how many rated it); the
+      // unrated ones keep nearest-first among themselves at the end.
+      return list.sort((a, b) => {
+        const ra = r(a);
+        const rb = r(b);
+        if (!!ra.count !== !!rb.count) return ra.count ? -1 : 1;
+        if (rb.avg !== ra.avg) return rb.avg - ra.avg;
+        if (rb.count !== ra.count) return rb.count - ra.count;
+        return nearest(a, b);
+      });
+    }
+    case 'quick':
+      return list.sort((a, b) => (a.typicalMinutes || 0) - (b.typicalMinutes || 0) || nearest(a, b));
+    case 'free':
+      return list.sort((a, b) => (a.free === b.free ? nearest(a, b) : a.free ? -1 : 1));
+    default:
+      return list.sort(nearest);
+  }
+}
+
+// Leg distance/time from the previous stop (or from `origin` for the first),
+// for stops in a given visit order.
+export function annotateRoute(origin, ordered) {
+  let prev = origin;
+  return ordered.map((l) => {
+    const d = Math.round(distanceMeters(prev.lat, prev.lng, l.lat, l.lng));
+    prev = l;
+    return { ...l, distanceFromPrevMeters: d, travelMinutesFromPrev: estimateTravelMinutes(d) };
+  });
+}
+
 const OSRM_DRIVING_BASE = 'https://router.project-osrm.org/route/v1/driving';
 
 /**
