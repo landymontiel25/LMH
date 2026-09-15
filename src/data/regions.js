@@ -9,6 +9,7 @@ import { VILLANOVA_LANDMARKS } from './landmarks.villanova.js';
 import { FRANKFURT_LANDMARKS } from './landmarks.frankfurt.js';
 import { NYC_LANDMARKS } from './landmarks.nyc.js';
 import { CAPETOWN_LANDMARKS } from './landmarks.capetown.js';
+import { KEYBISCAYNE_LANDMARKS } from './landmarks.keybiscayne.js';
 
 export const REGIONS = [
   {
@@ -21,6 +22,17 @@ export const REGIONS = [
     center: { lat: 25.7743, lng: -80.1937 },
     viewbox: { minLat: 25.3, minLng: -80.6, maxLat: 25.95, maxLng: -80.05 },
     landmarks: MIAMI_LANDMARKS,
+  },
+  {
+    id: 'key-biscayne',
+    name: 'Key Biscayne',
+    tagline: 'Island beaches, a historic lighthouse & bay views',
+    city: 'Key Biscayne',
+    state: 'Florida',
+    country: 'USA',
+    center: { lat: 25.6908, lng: -80.1625 },
+    viewbox: { minLat: 25.63, minLng: -80.21, maxLat: 25.8, maxLng: -80.12 },
+    landmarks: KEYBISCAYNE_LANDMARKS,
   },
   {
     id: 'nyc',
