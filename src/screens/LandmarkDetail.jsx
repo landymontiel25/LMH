@@ -502,6 +502,11 @@ export default function LandmarkDetail() {
             </p>
           ) : (
             <>
+              {savedRating && (
+                <p className="screen-subtitle" style={{ marginTop: 0 }}>
+                  {'\u{2713}'} Already rated — change anything below and submit again.
+                </p>
+              )}
               <RatingFlow key={landmark.id} landmark={landmark} initial={savedRating} onChange={setMyRating} />
               {photoPreviews.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>

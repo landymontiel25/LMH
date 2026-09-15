@@ -15,7 +15,7 @@ import {
 } from '../lib/leaderboard';
 import { authErrorMessage } from '../lib/authErrors';
 import { getUserProfile } from '../lib/friends';
-import { getUserReviews } from '../lib/reviews';
+import { useRatings } from '../lib/RatingsContext';
 import { RATING_GOAL } from '../lib/ratingFlow';
 import { getRegion, REGIONS, INTERESTS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
@@ -448,25 +448,10 @@ export default function Profile() {
   const navigate = useNavigate();
   const { stats, streakDays, checkedInToday, badges } = useBadges();
 
-  // Every rating you've given -- drives the "X/10 rated" progress line and
-  // the taste card. Re-fetched when your check-in count changes, since a
-  // fresh check-in is the only path that creates a new rating.
-  const [myReviews, setMyReviews] = useState([]);
-  useEffect(() => {
-    if (!firebaseEnabled || !user) {
-      setMyReviews([]);
-      return;
-    }
-    let cancelled = false;
-    getUserReviews(user.uid)
-      .then((r) => {
-        if (!cancelled) setMyReviews(r);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [firebaseEnabled, user, stats?.checkins]);
+  // Your own reviews come from RatingsContext (refreshed after every save),
+  // for the "X/10 rated" progress line and the taste card.
+  const { myReviews: myReviewsById } = useRatings();
+  const myReviews = Object.values(myReviewsById);
   const ratingsCount = myReviews.length;
   const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly
   const [scope, setScope] = useState('friends'); // 'friends' | 'global'
