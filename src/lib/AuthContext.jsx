@@ -15,6 +15,7 @@ import {
 import { auth, firebaseEnabled } from './firebase';
 import { deleteAccountData } from './accountDeletion';
 import { recordReferralIfPending } from './referrals';
+import { touchLastActive } from './friends';
 
 const AuthContext = createContext(null);
 
@@ -30,6 +31,10 @@ export function AuthProvider({ children }) {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
+      // Best-effort "seen today" stamp -- this is what makes the
+      // retention-by-ratings-count analysis possible later (who came back
+      // within 30 days). Never blocks or fails sign-in.
+      if (u) touchLastActive(u.uid).catch(() => {});
     });
     return unsub;
   }, []);

@@ -10,6 +10,8 @@ import { useRatings } from '../lib/RatingsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
 import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
+import { isRateable } from '../lib/ratingFlow';
+import RatingFlow from '../components/RatingFlow';
 import LandmarkPostcard from '../components/LandmarkPostcard';
 import ReviewReplies from '../components/ReviewReplies';
 import CheckInButton from '../components/CheckInButton';
@@ -71,8 +73,10 @@ export default function LandmarkDetail() {
   const { ratings, reload: reloadRatings } = useRatings();
   const { reload: reloadMyPhotos } = useMyPhotos();
   const { myUsername } = useFriends();
-  const [myStars, setMyStars] = useState(0);
-  const [myComment, setMyComment] = useState('');
+  // myRating: live RatingFlow payload (null until a tier is picked).
+  // savedRating: what's already on file, to pre-fill the flow on an edit.
+  const [myRating, setMyRating] = useState(null);
+  const [savedRating, setSavedRating] = useState(null);
   const [myPhotos, setMyPhotos] = useState([]);
   const [photoFiles, setPhotoFiles] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
@@ -144,8 +148,18 @@ export default function LandmarkDetail() {
     if (!firebaseEnabled || !user || !landmark) return;
     const r = await getMyReview(user.uid, landmark.id);
     if (!r) return;
-    setMyStars(r.stars || 0);
-    setMyComment(r.comment || '');
+    // A pre-tier review (plain stars, no ratingTier) doesn't pre-fill the
+    // new flow -- the user just rates fresh, which overwrites it.
+    setSavedRating(
+      r.ratingTier
+        ? {
+            tier: r.ratingTier,
+            highlights: r.highlights || [],
+            lovedOrder: r.lovedOrder || [],
+            dislikedOrder: r.dislikedOrder || [],
+          }
+        : null
+    );
     setMyPhotos(r.photoURLs?.length ? r.photoURLs : r.photoURL ? [r.photoURL] : []);
   }, [firebaseEnabled, user, landmark]);
 
@@ -202,8 +216,8 @@ export default function LandmarkDetail() {
   };
 
   const handleSubmitReview = async () => {
-    if (!myStars) {
-      setSaveMsg('Pick a star rating first.');
+    if (!myRating) {
+      setSaveMsg('Pick one of the three first.');
       return;
     }
     setSaving(true);
@@ -213,8 +227,7 @@ export default function LandmarkDetail() {
         userId: user.uid,
         userName: myUsername || user.displayName || 'Explorer',
         landmark,
-        stars: myStars,
-        comment: myComment,
+        rating: myRating,
         photoFiles,
       });
       await reloadRatings();
@@ -233,8 +246,8 @@ export default function LandmarkDetail() {
 
   const handleDeleteMine = async () => {
     await deleteMyReview(user.uid, landmark.id);
-    setMyStars(0);
-    setMyComment('');
+    setSavedRating(null);
+    setMyRating(null);
     setMyPhotos([]);
     await reloadRatings();
     await loadReviews();
@@ -478,7 +491,7 @@ export default function LandmarkDetail() {
         </p>
       )}
 
-      {firebaseEnabled && (
+      {firebaseEnabled && isRateable(landmark) && (
         <div className="card section" style={{ marginTop: 16 }}>
           <h3 style={{ marginTop: 0 }}>Rate your visit</h3>
           {!user ? (
@@ -489,16 +502,7 @@ export default function LandmarkDetail() {
             </p>
           ) : (
             <>
-              <RatingStars value={myStars} interactive onChange={setMyStars} size="1.9rem" />
-              <textarea
-                className="review-comment-input"
-                placeholder="Add a note about your visit (optional)"
-                value={myComment}
-                maxLength={500}
-                rows={3}
-                onChange={(e) => setMyComment(e.target.value)}
-                style={{ width: '100%', marginTop: 12 }}
-              />
+              <RatingFlow key={landmark.id} landmark={landmark} initial={savedRating} onChange={setMyRating} />
               {photoPreviews.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   {photoPreviews.map((src, i) => (
@@ -534,7 +538,7 @@ export default function LandmarkDetail() {
                 type="button"
                 className="btn btn-primary btn-block"
                 style={{ marginTop: 12 }}
-                disabled={saving || !myStars}
+                disabled={saving || !myRating}
                 onClick={handleSubmitReview}
               >
                 {saving ? 'Saving…' : 'Submit Rating'}
