@@ -29,10 +29,11 @@ export default function QuickRateButton({ landmark }) {
 
   if (!firebaseEnabled || !user || !claimedMap[landmark.id] || !isRateable(landmark)) return null;
 
-  const mine = myReviews[landmark.id];
-  // A pre-tier review (plain stars, no ratingTier) still counts as "rated"
-  // but can't pre-fill the new flow -- it just opens fresh.
-  const initial = mine?.ratingTier
+  // Only a review made through the tier + chips flow counts as "rated". A
+  // pre-tier review (plain stars, no ratingTier) still shows "Rate" and
+  // opens fresh; saving overwrites it.
+  const mine = myReviews[landmark.id]?.ratingTier ? myReviews[landmark.id] : null;
+  const initial = mine
     ? {
         tier: mine.ratingTier,
         highlights: mine.highlights || [],

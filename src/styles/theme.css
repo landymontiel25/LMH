@@ -945,6 +945,37 @@ textarea {
   padding: 4px 9px;
 }
 
+/* Landmark page header: Back on the left, and when you came from a
+   check-ins gallery, ‹ 3 / 12 › on the right to step through them. */
+.detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.checkin-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.checkin-stepper-btn {
+  min-width: 40px;
+  font-size: 1.35rem;
+  line-height: 1;
+  padding-top: 2px;
+  padding-bottom: 6px;
+}
+.checkin-stepper-btn:disabled {
+  opacity: 0.3;
+}
+.checkin-stepper-count {
+  font-size: 0.8rem;
+  color: var(--color-parchment-dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .quick-rate-btn.rated {
   border-color: var(--color-green);
   color: #bfe0c8;

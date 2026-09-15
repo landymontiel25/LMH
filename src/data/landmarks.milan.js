@@ -1573,7 +1573,7 @@ export const MILAN_LANDMARKS = [
     lat: 45.6301,
     lng: 8.7255,
     checkInRadiusMeters: 1500,
-    categories: ["food-local-life"],
+    categories: ["airports"],
     summary: "Milan's largest and main international airport.",
     facts: ["Milan's largest and main international airport","Located about 50 km northwest of central Milan","The main gateway for intercontinental flights to Milan","Has two terminals — Terminal 1 and Terminal 2","Connected to the city by the Malpensa Express train","A hub serving northern Italy and the Lombardy region","One of the busiest airports in Italy","Coded MXP; a key stop for travelers to Milan and the lakes"],
     free: true,

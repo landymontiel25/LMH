@@ -92,9 +92,16 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
     requestAnimationFrame(() => window.scrollTo(0, Number(saved)));
   }, [checkins, scrollKey]);
 
+  // The landmark page gets the whole gallery order in navigation state so
+  // its ‹ › arrows can step to the previous / next check-in without coming
+  // back here. Each step replaces the history entry, so Back still returns
+  // to this list (at the saved scroll position) no matter how far you paged.
   const go = (it) => {
     sessionStorage.setItem(scrollKey, String(window.scrollY));
-    navigate(`/landmarks/${it.regionId}/${it.landmarkId}`);
+    const sequence = checkins.map((c) => ({ regionId: c.regionId, landmarkId: c.landmarkId, name: c.name }));
+    navigate(`/landmarks/${it.regionId}/${it.landmarkId}`, {
+      state: { checkinNav: { sequence, index: checkins.indexOf(it) } },
+    });
   };
 
   return (

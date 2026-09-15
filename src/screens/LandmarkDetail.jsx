@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { getCustomLandmark, reportCustomLandmark } from '../lib/customLandmarks';
 import { blockUser } from '../lib/blocks';
@@ -25,6 +25,24 @@ const FACTS_PREVIEW = 5;
 export default function LandmarkDetail() {
   const { region: regionId, id } = useParams();
   const navigate = useNavigate();
+  // Set when you arrived from a check-ins gallery: the gallery's full order
+  // plus this landmark's position in it, so the header can offer ‹ › to
+  // step through your check-ins one by one.
+  const location = useLocation();
+  const checkinNav = location.state?.checkinNav || null;
+  const navPrev = checkinNav && checkinNav.index > 0 ? checkinNav.sequence[checkinNav.index - 1] : null;
+  const navNext =
+    checkinNav && checkinNav.index < checkinNav.sequence.length - 1 ? checkinNav.sequence[checkinNav.index + 1] : null;
+  const stepCheckin = (delta) => {
+    const index = checkinNav.index + delta;
+    const target = checkinNav.sequence[index];
+    if (!target) return;
+    window.scrollTo(0, 0);
+    navigate(`/landmarks/${target.regionId}/${target.landmarkId}`, {
+      replace: true,
+      state: { checkinNav: { ...checkinNav, index } },
+    });
+  };
   const { toggleLandmark, getRegionSelection, updateTrip, setMapFocus, setMapFocusPoint } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { coords } = useGeo();
@@ -305,9 +323,38 @@ export default function LandmarkDetail() {
 
   return (
     <div>
-      <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)} style={{ marginBottom: 16 }}>
-        {'← Back'}
-      </button>
+      <div className="detail-topbar">
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
+          {'← Back'}
+        </button>
+        {checkinNav && (
+          <div className="checkin-stepper">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm checkin-stepper-btn"
+              onClick={() => stepCheckin(-1)}
+              disabled={!navPrev}
+              aria-label={navPrev ? `Previous check-in: ${navPrev.name}` : 'No previous check-in'}
+              title={navPrev?.name || ''}
+            >
+              {'\u{2039}'}
+            </button>
+            <span className="checkin-stepper-count">
+              {checkinNav.index + 1} / {checkinNav.sequence.length}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm checkin-stepper-btn"
+              onClick={() => stepCheckin(1)}
+              disabled={!navNext}
+              aria-label={navNext ? `Next check-in: ${navNext.name}` : 'No next check-in'}
+              title={navNext?.name || ''}
+            >
+              {'\u{203A}'}
+            </button>
+          </div>
+        )}
+      </div>
 
       <LandmarkPostcard landmark={landmark} size="lg" swipeable myPhotos={myPhotos} onImageClick={setLightboxSrc} />
 

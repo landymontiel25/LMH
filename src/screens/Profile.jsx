@@ -449,9 +449,11 @@ export default function Profile() {
   const { stats, streakDays, checkedInToday, badges } = useBadges();
 
   // Your own reviews come from RatingsContext (refreshed after every save),
-  // for the "X/10 rated" progress line and the taste card.
+  // for the "X/10 rated" progress line and the taste card. Only reviews
+  // made through the tier + chips flow count: a leftover star-only review
+  // from before that flow tells Mapr nothing about *why* you liked it.
   const { myReviews: myReviewsById } = useRatings();
-  const myReviews = Object.values(myReviewsById);
+  const myReviews = Object.values(myReviewsById).filter((r) => r.ratingTier);
   const ratingsCount = myReviews.length;
   const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly
   const [scope, setScope] = useState('friends'); // 'friends' | 'global'
