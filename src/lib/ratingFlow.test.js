@@ -14,7 +14,7 @@ import {
   aspectLabel,
   RATING_GOAL,
 } from './ratingFlow';
-import { INTERESTS } from '../data/regions';
+import { INTERESTS, migrateInterests } from '../data/regions';
 
 describe('rateability gate', () => {
   it('rates history, art, and food landmarks', () => {
@@ -31,12 +31,28 @@ describe('rateability gate', () => {
     expect(ids).toContain('entertainment');
     expect(ids).toContain('dorms');
     expect(ids).toContain('airports');
-    expect(ids).toHaveLength(8);
+    expect(ids).toContain('food');
+    expect(ids).toContain('local-life');
+    expect(ids).toContain('sports');
+    expect(ids).not.toContain('food-local-life');
+    expect(ids).toHaveLength(10);
   });
 
   it('rates airports as airports, whatever else they are tagged', () => {
     expect(isRateable({ categories: ['airports'] })).toBe(true);
-    expect(ratingCategory({ categories: ['food-local-life', 'airports'] })).toBe('airports');
+    expect(ratingCategory({ categories: ['food', 'airports'] })).toBe('airports');
+  });
+
+  it('rates a bar as local life and a court as a sports activity', () => {
+    expect(ratingCategory({ categories: ['local-life'] })).toBe('local-life');
+    expect(ratingCategory({ categories: ['food', 'local-life'] })).toBe('food');
+    expect(ratingCategory({ categories: ['parks-nature', 'sports'] })).toBe('sports');
+  });
+
+  it('migrates the retired food-local-life interest into food + local-life', () => {
+    expect(migrateInterests(['food-local-life', 'parks-nature'])).toEqual(['food', 'local-life', 'parks-nature']);
+    expect(migrateInterests(['food', 'food-local-life'])).toEqual(['food', 'local-life']);
+    expect(migrateInterests(undefined)).toEqual([]);
   });
 
   it('never rates a dorm', () => {
@@ -54,7 +70,7 @@ describe('rateability gate', () => {
   });
 
   it('rates a mixed campus + rateable landmark', () => {
-    expect(isRateable({ categories: ['campus-life', 'food-local-life'] })).toBe(true);
+    expect(isRateable({ categories: ['campus-life', 'food'] })).toBe(true);
   });
 
   it('fails safe on a landmark with no categories', () => {
@@ -64,7 +80,7 @@ describe('rateability gate', () => {
   });
 
   it('picks the chip set from the first rateable category, in priority order', () => {
-    expect(ratingCategory({ categories: ['food-local-life', 'history-culture'] })).toBe('history-culture');
+    expect(ratingCategory({ categories: ['food', 'history-culture'] })).toBe('history-culture');
     expect(ratingCategory({ categories: ['campus-life', 'art-museums'] })).toBe('art-museums');
     expect(ratingCategory({ categories: ['campus-life'] })).toBe(null);
   });
@@ -113,7 +129,7 @@ describe('chips', () => {
   });
 
   it('resolves a saved chip id back to its label', () => {
-    const [first] = chipsFor({ categories: ['food-local-life'] }, 'highly-recommend');
+    const [first] = chipsFor({ categories: ['food'] }, 'highly-recommend');
     expect(chipLabel(first.id)).toBe(first.label);
     expect(chipLabel('not-a-real-chip')).toBe('not-a-real-chip');
   });
@@ -133,7 +149,7 @@ describe('limits and aspects', () => {
       expect(ids, c).toContain('location');
       expect(new Set(ids).size, c).toBe(4);
     }
-    expect(aspectsFor({ categories: ['food-local-life'] }).map((a) => a.id)).toEqual([
+    expect(aspectsFor({ categories: ['food'] }).map((a) => a.id)).toEqual([
       'price',
       'location',
       'atmosphere',

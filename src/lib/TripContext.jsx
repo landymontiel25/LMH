@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { migrateInterests } from '../data/regions';
 
 const STORAGE_KEY = 'landmarkhunters.trip.v1';
 
@@ -47,6 +48,10 @@ function loadTrip() {
       t.activeRegion = parsed.region ?? null;
     }
     t.byRegion = t.byRegion || {};
+    // Retired interest ids (e.g. the old "food-local-life") become their
+    // replacements, so a saved preference keeps filtering after a split.
+    t.interests = migrateInterests(t.interests);
+    t.savedInterests = migrateInterests(t.savedInterests);
     return t;
   } catch {
     return DEFAULT_TRIP;

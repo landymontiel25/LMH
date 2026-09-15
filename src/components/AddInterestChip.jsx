@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
 export const OTHER_INTERESTS = [
-  'Nightlife',
   'Shopping',
   'Architecture',
   'Live Music',

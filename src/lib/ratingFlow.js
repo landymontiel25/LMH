@@ -10,11 +10,13 @@ import { INTERESTS } from '../data/regions';
 // ahead of history so a "historic beach park" rates as a park.
 export const RATEABLE_CATEGORIES = [
   'airports',
+  'sports',
   'parks-nature',
   'entertainment',
   'history-culture',
   'art-museums',
-  'food-local-life',
+  'food',
+  'local-life',
 ];
 
 export function isRateable(landmark) {
@@ -50,7 +52,7 @@ export const MAX_ASPECTS = 3;
 // review's `highlights` -- keep ids stable if the labels are ever reworded
 // so old reviews keep meaning the same thing.
 export const CHIPS = {
-  'food-local-life': {
+  food: {
     'highly-recommend': [
       { id: 'great-food', label: 'Great food' },
       { id: 'love-vibe', label: 'Love the vibe' },
@@ -135,6 +137,40 @@ export const CHIPS = {
       { id: 'underwhelming', label: 'Underwhelming' },
     ],
   },
+  'local-life': {
+    'highly-recommend': [
+      { id: 'great-vibe', label: 'Great vibe' },
+      { id: 'fun-crowd', label: 'Fun crowd' },
+      { id: 'good-drinks', label: 'Good drinks' },
+    ],
+    'worth-trying': [
+      { id: 'decent-night', label: 'Decent night out' },
+      { id: 'hit-or-miss', label: 'Hit or miss' },
+      { id: 'pricey-drinks', label: 'Pricey drinks' },
+    ],
+    'probably-skip': [
+      { id: 'dead', label: 'Dead' },
+      { id: 'sketchy', label: 'Sketchy' },
+      { id: 'overpriced', label: 'Overpriced' },
+    ],
+  },
+  sports: {
+    'highly-recommend': [
+      { id: 'great-facilities', label: 'Great facilities' },
+      { id: 'so-much-fun', label: 'So much fun' },
+      { id: 'easy-to-book', label: 'Easy to book' },
+    ],
+    'worth-trying': [
+      { id: 'decent-facilities', label: 'Decent facilities' },
+      { id: 'busy', label: 'Busy' },
+      { id: 'a-bit-pricey', label: 'A bit pricey' },
+    ],
+    'probably-skip': [
+      { id: 'run-down', label: 'Run down' },
+      { id: 'always-full', label: 'Always full' },
+      { id: 'overpriced', label: 'Overpriced' },
+    ],
+  },
   airports: {
     'highly-recommend': [
       { id: 'smooth-experience', label: 'Smooth experience' },
@@ -175,7 +211,7 @@ export function chipLabel(id) {
 // other two are what actually varies between a restaurant, a museum, and a
 // historic site. Saved by id in lovedOrder / dislikedOrder.
 export const ASPECT_SETS = {
-  'food-local-life': [
+  food: [
     { id: 'price', label: 'Price' },
     { id: 'location', label: 'Location' },
     { id: 'atmosphere', label: 'Atmosphere' },
@@ -205,6 +241,18 @@ export const ASPECT_SETS = {
     { id: 'fun-factor', label: 'Fun factor' },
     { id: 'crowd-level', label: 'Crowd level' },
   ],
+  'local-life': [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'vibe', label: 'Vibe' },
+    { id: 'crowd', label: 'Crowd' },
+  ],
+  sports: [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'facilities', label: 'Facilities' },
+    { id: 'availability', label: 'Availability' },
+  ],
   airports: [
     { id: 'price', label: 'Price' },
     { id: 'location', label: 'Location' },
@@ -227,6 +275,7 @@ export function aspectLabel(id) {
 }
 
 export function categoryLabel(id) {
+  if (id === 'food-local-life') return 'Food & Local Life';
   return INTERESTS.find((i) => i.id === id)?.label || id;
 }
 

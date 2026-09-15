@@ -9,7 +9,9 @@ const PALETTES = [
 const CATEGORY_ICON = {
   'history-culture': '\u{1F3DB}\u{FE0F}',
   'art-museums': '\u{1F5BC}\u{FE0F}',
-  'food-local-life': '\u{1F962}',
+  food: '\u{1F37D}\u{FE0F}',
+  'local-life': '\u{1F378}',
+  sports: '\u{1F3C0}',
   'parks-nature': '\u{1F333}',
   'entertainment': '\u{1F39F}\u{FE0F}',
   airports: '\u{2708}\u{FE0F}',
