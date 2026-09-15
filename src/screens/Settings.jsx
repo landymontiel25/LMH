@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTheme } from '../lib/useTheme';
-import { useUnits } from '../lib/UnitsContext';
+import { useUnits, countryName } from '../lib/UnitsContext';
 import { setProfileVisibility, getUserProfile } from '../lib/friends';
 
 export default function Settings() {
@@ -11,7 +11,7 @@ export default function Settings() {
   const { user, firebaseEnabled } = useAuth();
   const { myProfile, reload: reloadFriends } = useFriends();
   const { theme, toggleTheme } = useTheme();
-  const { units, toggleUnits } = useUnits();
+  const { units, mode, setMode, autoCountry } = useUnits();
   const [visBusy, setVisBusy] = useState(false);
   const [visMsg, setVisMsg] = useState(null);
 
@@ -59,10 +59,34 @@ export default function Settings() {
         <h3 style={{ marginTop: 0 }}>{'\u{1F4CF}'} Units</h3>
         <p className="screen-subtitle" style={{ marginTop: 0 }}>
           {units === 'imperial' ? 'Distances show in feet and miles.' : 'Distances show in meters and kilometers.'}
+          {mode === 'auto' && (
+            <>
+              {' '}
+              {autoCountry
+                ? `Picked for ${countryName(autoCountry)}, where you are now.`
+                : 'Picked from your device’s region until we have your location.'}
+            </>
+          )}
         </p>
-        <button type="button" className="btn btn-block btn-ghost" onClick={toggleUnits}>
-          {units === 'imperial' ? 'Switch to Metric (km)' : 'Switch to Imperial (mi)'}
-        </button>
+        <div className="tabs" style={{ margin: 0 }}>
+          <button type="button" className={`tab-btn ${mode === 'auto' ? 'active' : ''}`} onClick={() => setMode('auto')}>
+            Automatic
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${mode === 'imperial' ? 'active' : ''}`}
+            onClick={() => setMode('imperial')}
+          >
+            Imperial (mi)
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${mode === 'metric' ? 'active' : ''}`}
+            onClick={() => setMode('metric')}
+          >
+            Metric (km)
+          </button>
+        </div>
       </div>
 
       {firebaseEnabled && user && (
