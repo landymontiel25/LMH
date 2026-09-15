@@ -18,6 +18,7 @@ export function nearestRegionId(lat, lng) {
   let best = null;
   let bestDist = Infinity;
   for (const r of REGIONS) {
+    if (r.worldwide) continue; // a catalog like Formula 1 Circuits, not a place
     const d = distanceMeters(lat, lng, r.center.lat, r.center.lng);
     if (d < bestDist) {
       bestDist = d;
