@@ -346,7 +346,7 @@ export default function MapExplore() {
         const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
         const position = savedPos ? [savedPos.lat, savedPos.lng] : [l.lat, l.lng];
         return (
-          <Marker key={l.id} position={position} icon={pinIcon(isClaimed, isSelected)}>
+          <Marker key={`${l.regionId}/${l.id}`} position={position} icon={pinIcon(isClaimed, isSelected)}>
             <Popup>
               <div className="map-popup">
                 <div
@@ -512,8 +512,17 @@ export default function MapExplore() {
               <Popup>You are here</Popup>
             </Marker>
           )}
+          {/* Both highlight pins sit on top of the real landmark marker at the
+              same spot. interactive={false} gives them pointer-events: none, so
+              a tap falls through to the real pin and opens its popup -- without
+              it the highlight swallowed the tap and nothing happened. */}
           {focusLandmark && (
-            <Marker position={[focusLandmark.lat, focusLandmark.lng]} icon={focusIcon} zIndexOffset={1000}>
+            <Marker
+              position={[focusLandmark.lat, focusLandmark.lng]}
+              icon={focusIcon}
+              zIndexOffset={1000}
+              interactive={false}
+            >
               {focusLandmark.name && (
                 <Tooltip permanent direction="top" offset={[0, -34]} className="focus-tooltip">
                   {focusLandmark.name}
@@ -522,7 +531,12 @@ export default function MapExplore() {
             </Marker>
           )}
           {searchFocus && (
-            <Marker position={[searchFocus.lat, searchFocus.lng]} icon={focusIcon} zIndexOffset={1000}>
+            <Marker
+              position={[searchFocus.lat, searchFocus.lng]}
+              icon={focusIcon}
+              zIndexOffset={1000}
+              interactive={false}
+            >
               <Tooltip permanent direction="top" offset={[0, -34]} className="focus-tooltip">
                 {searchFocus.name}
               </Tooltip>
