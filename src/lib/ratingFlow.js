@@ -4,8 +4,9 @@ import { INTERESTS } from '../data/regions';
 // campus-life (a dorm, a dining hall) skips straight to "checked in" --
 // rating a residence hall on Price/Atmosphere tells Mapr nothing.
 // Order matters: a landmark tagged with several of these takes its chip
-// and aspect sets from the first match here.
-export const RATEABLE_CATEGORIES = ['history-culture', 'art-museums', 'food-local-life'];
+// and aspect sets from the first match here. Parks and entertainment sit
+// ahead of history so a "historic beach park" rates as a park.
+export const RATEABLE_CATEGORIES = ['parks-nature', 'entertainment', 'history-culture', 'art-museums', 'food-local-life'];
 
 export function isRateable(landmark) {
   return (landmark?.categories || []).some((c) => RATEABLE_CATEGORIES.includes(c));
@@ -91,6 +92,40 @@ export const CHIPS = {
       { id: 'overpriced', label: 'Overpriced' },
     ],
   },
+  'parks-nature': {
+    'highly-recommend': [
+      { id: 'beautiful-views', label: 'Beautiful views' },
+      { id: 'peaceful', label: 'Peaceful' },
+      { id: 'great-for-a-walk', label: 'Great for a walk' },
+    ],
+    'worth-trying': [
+      { id: 'nice-enough', label: 'Nice enough' },
+      { id: 'bit-of-a-trek', label: 'Bit of a trek' },
+      { id: 'crowded', label: 'Crowded' },
+    ],
+    'probably-skip': [
+      { id: 'nothing-special', label: 'Nothing special' },
+      { id: 'poorly-kept', label: 'Poorly kept' },
+      { id: 'hard-to-get-to', label: 'Hard to get to' },
+    ],
+  },
+  entertainment: {
+    'highly-recommend': [
+      { id: 'so-much-fun', label: 'So much fun' },
+      { id: 'worth-the-ticket', label: 'Worth the ticket' },
+      { id: 'great-for-families', label: 'Great for families' },
+    ],
+    'worth-trying': [
+      { id: 'fun-but-pricey', label: 'Fun but pricey' },
+      { id: 'decent-show', label: 'Decent show' },
+      { id: 'long-lines', label: 'Long lines' },
+    ],
+    'probably-skip': [
+      { id: 'not-worth-it', label: 'Not worth it' },
+      { id: 'overpriced', label: 'Overpriced' },
+      { id: 'underwhelming', label: 'Underwhelming' },
+    ],
+  },
 };
 
 export function chipsFor(landmark, tierId) {
@@ -131,6 +166,18 @@ export const ASPECT_SETS = {
     { id: 'location', label: 'Location' },
     { id: 'storytelling', label: 'Storytelling' },
     { id: 'architecture', label: 'Architecture' },
+  ],
+  'parks-nature': [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'scenery', label: 'Scenery' },
+    { id: 'upkeep', label: 'Upkeep' },
+  ],
+  entertainment: [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'fun-factor', label: 'Fun factor' },
+    { id: 'crowd-level', label: 'Crowd level' },
   ],
 };
 

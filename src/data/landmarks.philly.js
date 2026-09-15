@@ -131,7 +131,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9538,
     lng: -75.1668,
     checkInRadiusMeters: 250,
-    categories: ['food-local-life'],
+    categories: ['parks-nature'],
     summary: "A small downtown plaza famous for Robert Indiana's iconic LOVE sculpture, a favorite photo spot in Philadelphia.",
     facts: [
       "Home to Robert Indiana's famous LOVE sculpture since 1976",
@@ -172,7 +172,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9726,
     lng: -75.1959,
     checkInRadiusMeters: 500,
-    categories: ['food-local-life'],
+    categories: ['entertainment'],
     summary: 'The first zoo in the United States, opened in 1874 — a 42-acre Victorian garden zoo home to more than 1,700 animals and famous for its overhead Zoo360 animal trails.',
     facts: [
       'Opened in 1874 as the first true zoo in the United States',
@@ -212,7 +212,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0447,
     lng: -75.3272,
     checkInRadiusMeters: 700,
-    categories: ['food-local-life'],
+    categories: ['parks-nature'],
     summary: 'A free public garden on a former estate in Villanova, filled with native plants, meadows, and woodland trails.',
     facts: [
       'Once a private estate, now open to the public for free',
@@ -251,7 +251,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0398,
     lng: -75.4055,
     checkInRadiusMeters: 800,
-    categories: ['food-local-life'],
+    categories: ['parks-nature'],
     summary: 'A lush, artfully designed pleasure garden in Wayne, often called one of the most romantic gardens in America.',
     facts: [
       'Nicknamed a "pleasure garden" for its artistic plantings',
@@ -271,7 +271,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0459,
     lng: -75.4437,
     checkInRadiusMeters: 800,
-    categories: ['food-local-life'],
+    categories: ['parks-nature'],
     summary: 'A public garden and arboretum in Devon known for its azaleas, rhododendrons, and native woodland plants.',
     facts: [
       'Spans roughly 48 acres of woodland and gardens',
@@ -290,7 +290,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0478,
     lng: -75.3617,
     checkInRadiusMeters: 700,
-    categories: ['history-culture'],
+    categories: ['parks-nature', 'history-culture'],
     summary: 'A historic mansion and public park in Radnor Township with walking trails and gardens.',
     facts: [
       'Once a private estate, now a Radnor Township public park',
@@ -310,7 +310,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0464,
     lng: -75.3611,
     checkInRadiusMeters: 2000,
-    categories: ['food-local-life'],
+    categories: ['parks-nature'],
     summary: 'A paved walking and biking trail that runs through Radnor Township along an old railroad corridor.',
     facts: [
       "Built along the former Pennsylvania Railroad's Radnor Branch",
@@ -485,7 +485,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0037,
     lng: -75.2427,
     checkInRadiusMeters: 700,
-    categories: ['food-local-life'],
+    categories: ['parks-nature'],
     summary: "A historic arboretum in Merion, originally planted by art collector Albert Barnes, now maintained by Saint Joseph's University.",
     facts: [
       'Started as the private garden of collector Albert C. Barnes',
@@ -545,7 +545,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.1000,
     lng: -75.4360,
     checkInRadiusMeters: 3000,
-    categories: ['history-culture'],
+    categories: ['parks-nature', 'history-culture'],
     summary: "The site where George Washington's Continental Army camped during the brutal winter of 1777-1778, now a large national park.",
     facts: [
       "Washington's army camped here during the winter of 1777-1778",
@@ -681,7 +681,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9700,
     lng: -75.1930,
     checkInRadiusMeters: 3000,
-    categories: ['food-local-life'],
+    categories: ['parks-nature'],
     summary: 'A long paved multi-use trail running along the Schuylkill River through Philadelphia and its suburbs.',
     facts: [
       'Stretches over 75 miles when fully connected',
@@ -701,7 +701,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.1215,
     lng: -75.3596,
     checkInRadiusMeters: 500,
-    categories: ['food-local-life'],
+    categories: ['entertainment'],
     summary: 'A family-friendly zoo in Norristown featuring North American wildlife and interactive exhibits.',
     facts: [
       'Focuses largely on North American native animal species',
@@ -779,7 +779,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9059,
     lng: -75.1665,
     checkInRadiusMeters: 500,
-    categories: ['history-culture'],
+    categories: ['entertainment'],
     summary: 'Home ballpark of the Philadelphia Phillies, and one of the best ways to experience Philly sports culture.',
     facts: [
       'Opened in 2004 in the South Philadelphia Sports Complex',
