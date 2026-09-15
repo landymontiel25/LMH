@@ -4,11 +4,9 @@ export const OTHER_INTERESTS = [
   'Nightlife',
   'Shopping',
   'Architecture',
-  'Nature & Parks',
   'Live Music',
   'Photography Spots',
   'Local Markets',
-  'Sports & Recreation',
   'Wellness & Spas',
   'Family-Friendly',
 ];

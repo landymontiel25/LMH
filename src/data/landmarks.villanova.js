@@ -498,7 +498,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0330,
     lng: -75.3468,
-    categories: ['history-culture'],
+    categories: ['entertainment'],
     summary: 'The home football stadium for Villanova University, hosting games and campus events.',
     facts: [
       'Home field for Villanova Wildcats football',
@@ -733,7 +733,7 @@ export const VILLANOVA_LANDMARKS = [
     lat: 40.0115,
     lng: -75.355,
     checkInRadiusMeters: 400,
-    categories: ['food-local-life'],
+    categories: ['parks-nature'],
     summary: 'A 20.5-acre Radnor Township nature park along Ithan Creek, with a hiking trail and small waterfall.',
     facts: [
       'Spans 20.5 acres along Ithan Creek in Radnor Township',

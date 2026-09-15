@@ -10,6 +10,8 @@ const CATEGORY_ICON = {
   'history-culture': '\u{1F3DB}\u{FE0F}',
   'art-museums': '\u{1F5BC}\u{FE0F}',
   'food-local-life': '\u{1F962}',
+  'parks-nature': '\u{1F333}',
+  'entertainment': '\u{1F39F}\u{FE0F}',
   'campus-life': '\u{1F3EB}',
 };
 

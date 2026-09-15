@@ -14,12 +14,27 @@ import {
   aspectLabel,
   RATING_GOAL,
 } from './ratingFlow';
+import { INTERESTS } from '../data/regions';
 
 describe('rateability gate', () => {
   it('rates history, art, and food landmarks', () => {
     for (const c of RATEABLE_CATEGORIES) {
       expect(isRateable({ categories: [c] })).toBe(true);
     }
+  });
+
+  it('rates parks and entertainment too, and lists them as onboarding interests', () => {
+    expect(isRateable({ categories: ['parks-nature'] })).toBe(true);
+    expect(isRateable({ categories: ['entertainment'] })).toBe(true);
+    const ids = INTERESTS.map((i) => i.id);
+    expect(ids).toContain('parks-nature');
+    expect(ids).toContain('entertainment');
+    expect(ids).toHaveLength(6);
+  });
+
+  it('a park that is also historic rates as a park', () => {
+    expect(ratingCategory({ categories: ['history-culture', 'parks-nature'] })).toBe('parks-nature');
+    expect(ratingCategory({ categories: ['parks-nature', 'history-culture'] })).toBe('parks-nature');
   });
 
   it('skips a campus-only landmark', () => {
@@ -123,6 +138,21 @@ describe('limits and aspects', () => {
       'location',
       'storytelling',
       'architecture',
+    ]);
+  });
+
+  it('gives parks and entertainment their own third and fourth aspects', () => {
+    expect(aspectsFor({ categories: ['parks-nature'] }).map((a) => a.id)).toEqual([
+      'price',
+      'location',
+      'scenery',
+      'upkeep',
+    ]);
+    expect(aspectsFor({ categories: ['entertainment'] }).map((a) => a.id)).toEqual([
+      'price',
+      'location',
+      'fun-factor',
+      'crowd-level',
     ]);
   });
 
