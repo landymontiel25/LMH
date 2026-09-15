@@ -175,4 +175,5 @@ export const INTERESTS = [
   { id: 'parks-nature', label: 'Parks & Nature', icon: '\u{1F333}' },
   { id: 'entertainment', label: 'Entertainment & Sports', icon: '\u{1F39F}\u{FE0F}' },
   { id: 'campus-life', label: 'Campus Life', icon: '\u{1F3EB}' },
+  { id: 'dorms', label: 'Dorms', icon: '\u{1F6CF}\u{FE0F}' },
 ];

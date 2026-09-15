@@ -1,8 +1,9 @@
 import { INTERESTS } from '../data/regions';
 
 // Only these categories get the rating flow. A landmark that's ONLY
-// campus-life (a dorm, a dining hall) skips straight to "checked in" --
-// rating a residence hall on Price/Atmosphere tells Mapr nothing.
+// campus-life or dorms (a residence hall, an admissions office) skips
+// straight to "checked in" -- rating a dorm on Price/Atmosphere tells
+// Mapr nothing.
 // Order matters: a landmark tagged with several of these takes its chip
 // and aspect sets from the first match here. Parks and entertainment sit
 // ahead of history so a "historic beach park" rates as a park.

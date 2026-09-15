@@ -29,7 +29,13 @@ describe('rateability gate', () => {
     const ids = INTERESTS.map((i) => i.id);
     expect(ids).toContain('parks-nature');
     expect(ids).toContain('entertainment');
-    expect(ids).toHaveLength(6);
+    expect(ids).toContain('dorms');
+    expect(ids).toHaveLength(7);
+  });
+
+  it('never rates a dorm', () => {
+    expect(isRateable({ categories: ['dorms'] })).toBe(false);
+    expect(isRateable({ categories: ['dorms', 'campus-life'] })).toBe(false);
   });
 
   it('a park that is also historic rates as a park', () => {

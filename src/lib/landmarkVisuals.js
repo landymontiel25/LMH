@@ -13,6 +13,7 @@ const CATEGORY_ICON = {
   'parks-nature': '\u{1F333}',
   'entertainment': '\u{1F39F}\u{FE0F}',
   'campus-life': '\u{1F3EB}',
+  dorms: '\u{1F6CF}\u{FE0F}',
 };
 
 function hashStr(s) {
