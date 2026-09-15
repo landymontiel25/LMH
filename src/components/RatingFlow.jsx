@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TIERS, ASPECTS, MAX_CHIPS, MAX_ASPECTS, chipsFor, aspectLabel } from '../lib/ratingFlow';
+import { TIERS, MAX_CHIPS, MAX_ASPECTS, chipsFor, aspectsFor, aspectLabel } from '../lib/ratingFlow';
 
 // The three-step rating: tier -> chips -> ranked aspects. Shared by the
 // check-in popup and the landmark page's "Rate your visit" card so both
@@ -56,7 +56,7 @@ export default function RatingFlow({ landmark, onChange, initial = null }) {
         {title} <span>tap in order, up to {MAX_ASPECTS}</span>
       </p>
       <div className="chip-grid">
-        {ASPECTS.map((a) => {
+        {aspectsFor(landmark).map((a) => {
           const rank = list.indexOf(a.id);
           const taken = excluded.includes(a.id);
           const full = rank < 0 && list.length >= MAX_ASPECTS;
