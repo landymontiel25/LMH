@@ -176,10 +176,11 @@ export const INTERESTS = [
   { id: 'food', label: 'Food', icon: '\u{1F37D}\u{FE0F}' },
   { id: 'local-life', label: 'Local Life', icon: '\u{1F378}' },
   { id: 'parks-nature', label: 'Parks & Nature', icon: '\u{1F333}' },
-  // Entertainment & Sports is things you watch (stadiums, arenas, shows,
-  // zoos). Sports Activities is things you do (courts, golf, go-karts,
-  // pools, kayaking).
-  { id: 'entertainment', label: 'Entertainment & Sports', icon: '\u{1F39F}\u{FE0F}' },
+  // Entertainment is shows, zoos, aquariums, cruises, amusement parks.
+  // Stadiums is every stadium, arena, ballpark and race track. Sports
+  // Activities is things you do (courts, golf, go-karts, pools, kayaking).
+  { id: 'entertainment', label: 'Entertainment', icon: '\u{1F39F}\u{FE0F}' },
+  { id: 'stadiums', label: 'Stadiums', icon: '\u{1F3DF}\u{FE0F}' },
   { id: 'sports', label: 'Sports Activities', icon: '\u{1F3C0}' },
   { id: 'airports', label: 'Airports', icon: '\u{2708}\u{FE0F}' },
   { id: 'campus-life', label: 'Campus Life', icon: '\u{1F3EB}' },

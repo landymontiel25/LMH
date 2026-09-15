@@ -479,7 +479,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0344,
     lng: -75.3456,
-    categories: ['entertainment', 'campus-life'],
+    categories: ['stadiums', 'campus-life'],
     summary: "Villanova's on-campus arena, home to the Wildcats basketball teams.",
     facts: [
       "Home court for Villanova's men's and women's basketball teams",
@@ -498,7 +498,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0330,
     lng: -75.3468,
-    categories: ['entertainment'],
+    categories: ['stadiums'],
     summary: 'The home football stadium for Villanova University, hosting games and campus events.',
     facts: [
       'Home field for Villanova Wildcats football',

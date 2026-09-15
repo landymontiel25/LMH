@@ -779,7 +779,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9059,
     lng: -75.1665,
     checkInRadiusMeters: 500,
-    categories: ['entertainment'],
+    categories: ['stadiums'],
     summary: 'Home ballpark of the Philadelphia Phillies, and one of the best ways to experience Philly sports culture.',
     facts: [
       'Opened in 2004 in the South Philadelphia Sports Complex',
@@ -799,7 +799,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9009,
     lng: -75.1675,
     checkInRadiusMeters: 500,
-    categories: ['entertainment', 'history-culture'],
+    categories: ['stadiums', 'history-culture'],
     summary: 'Home stadium of the Philadelphia Eagles, a must for NFL fans that also hosted 2026 World Cup matches.',
     facts: [
       'Opened in 2003, seating over 69,000 fans for Eagles games',
@@ -932,7 +932,7 @@ export const PHILLY_LANDMARKS = [
     region: 'philly',
     lat: 39.9514,
     lng: -75.1886,
-    categories: ['entertainment', 'history-culture'],
+    categories: ['stadiums', 'history-culture'],
     summary: 'A historic college basketball arena at Penn, and the legendary home of Philadelphia\'s Big 5 basketball.',
     facts: [
       'Opened in 1927 and nicknamed the "Cathedral of College Basketball"',
@@ -952,7 +952,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9501,
     lng: -75.1900,
     checkInRadiusMeters: 400,
-    categories: ['entertainment', 'history-culture'],
+    categories: ['stadiums', 'history-culture'],
     summary: 'Penn\'s historic stadium and home of the Penn Relays -- a great stop for sports history fans.',
     facts: [
       'Opened in 1895, the oldest stadium still in use in college football',
