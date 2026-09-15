@@ -35,12 +35,18 @@ describe('rateability gate', () => {
     expect(ids).toContain('local-life');
     expect(ids).toContain('sports');
     expect(ids).not.toContain('food-local-life');
-    expect(ids).toHaveLength(10);
+    expect(ids).toContain('stadiums');
+    expect(ids).toHaveLength(11);
   });
 
   it('rates airports as airports, whatever else they are tagged', () => {
     expect(isRateable({ categories: ['airports'] })).toBe(true);
     expect(ratingCategory({ categories: ['food', 'airports'] })).toBe('airports');
+  });
+
+  it('rates a stadium as a stadium ahead of entertainment or history', () => {
+    expect(ratingCategory({ categories: ['stadiums', 'history-culture'] })).toBe('stadiums');
+    expect(ratingCategory({ categories: ['entertainment', 'stadiums'] })).toBe('stadiums');
   });
 
   it('rates a bar as local life and a court as a sports activity', () => {

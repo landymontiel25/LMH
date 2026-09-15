@@ -115,7 +115,7 @@ export const KEYBISCAYNE_LANDMARKS = [
     lat: 25.74305556,
     lng: -80.16972222,
     checkInRadiusMeters: 250,
-    categories: ["entertainment"],
+    categories: ["stadiums"],
     summary: "A dramatic 1963 concrete stadium built for powerboat racing, now a graffiti-covered icon.",
     facts: ["Completed in 1963 on Virginia Key","The first stadium in the U.S. purpose-built for powerboat racing","Designed by Cuban-American architect Hilario Candela at just 28","Its folded cantilever concrete roof was an engineering marvel","The grandstand faces a basin of Biscayne Bay","Hosted boat races, concerts and even floating-stage shows","Closed after Hurricane Andrew damaged it in 1992","Its bare concrete became a canvas for elaborate graffiti murals","Listed among America’s most endangered historic places","The subject of a long campaign to restore it"],
     free: true,

@@ -341,7 +341,7 @@ export const CAPETOWN_LANDMARKS = [
     lat: -33.90346111111111,
     lng: 18.41115277777778,
     checkInRadiusMeters: 300,
-    categories: ["entertainment"],
+    categories: ["stadiums"],
     summary: "The graceful arena built for the 2010 FIFA World Cup at Green Point.",
     facts: ["Built for the 2010 FIFA World Cup","Hosted a World Cup semi-final between the Netherlands and Uruguay","Seats around 55,000 spectators","Its translucent roof and facade glow under the mountain","Set between Signal Hill and the Atlantic at Green Point","The membrane skin filters wind and softens the design","Now hosts rugby, football and major concerts","Home matches of the Stormers rugby team are played here","Ringed by the landscaped Green Point Urban Park","Designed to echo the shape of the surrounding bowl of hills"],
     free: false,

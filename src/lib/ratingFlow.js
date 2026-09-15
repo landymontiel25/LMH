@@ -11,6 +11,7 @@ import { INTERESTS } from '../data/regions';
 export const RATEABLE_CATEGORIES = [
   'airports',
   'sports',
+  'stadiums',
   'parks-nature',
   'entertainment',
   'history-culture',
@@ -171,6 +172,23 @@ export const CHIPS = {
       { id: 'overpriced', label: 'Overpriced' },
     ],
   },
+  stadiums: {
+    'highly-recommend': [
+      { id: 'electric-atmosphere', label: 'Electric atmosphere' },
+      { id: 'great-seats', label: 'Great seats' },
+      { id: 'easy-to-get-to', label: 'Easy to get to' },
+    ],
+    'worth-trying': [
+      { id: 'decent-atmosphere', label: 'Decent atmosphere' },
+      { id: 'far-seats', label: 'Far-away seats' },
+      { id: 'long-lines', label: 'Long lines' },
+    ],
+    'probably-skip': [
+      { id: 'dead-crowd', label: 'Dead crowd' },
+      { id: 'bad-views', label: 'Bad views' },
+      { id: 'overpriced', label: 'Overpriced' },
+    ],
+  },
   airports: {
     'highly-recommend': [
       { id: 'smooth-experience', label: 'Smooth experience' },
@@ -252,6 +270,12 @@ export const ASPECT_SETS = {
     { id: 'location', label: 'Location' },
     { id: 'facilities', label: 'Facilities' },
     { id: 'availability', label: 'Availability' },
+  ],
+  stadiums: [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'atmosphere', label: 'Atmosphere' },
+    { id: 'seating', label: 'Seating & views' },
   ],
   airports: [
     { id: 'price', label: 'Price' },
