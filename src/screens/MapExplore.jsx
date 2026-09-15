@@ -19,6 +19,7 @@ import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks
 import { isAdmin } from '../lib/admins';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
+import QuickRateButton from '../components/QuickRateButton';
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
 
@@ -364,7 +365,10 @@ export default function MapExplore() {
                 >
                   <LandmarkThumb landmark={l} width={228} height={110} myPhoto={myPhotos[l.id]?.[0]} />
                 </div>
-                <h4 style={{ marginTop: 8 }}>{l.name}</h4>
+                <div className="quick-rate-row" style={{ marginTop: 8 }}>
+                  <h4 style={{ margin: 0 }}>{l.name}</h4>
+                  <QuickRateButton landmark={l} />
+                </div>
                 <p style={{ margin: '2px 0 8px', fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
                   {region?.name}
                 </p>
@@ -422,7 +426,10 @@ export default function MapExplore() {
           <Marker key={l.docId} position={[l.lat, l.lng]} icon={pinIcon(isClaimed, false)}>
             <Popup>
               <div className="map-popup">
-                <h4 style={{ marginTop: 0 }}>{l.name}</h4>
+                <div className="quick-rate-row">
+                  <h4 style={{ margin: 0 }}>{l.name}</h4>
+                  <QuickRateButton landmark={l} />
+                </div>
                 <p style={{ margin: '2px 0 8px', fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
                   {region?.name || 'Custom pin'}
                 </p>
