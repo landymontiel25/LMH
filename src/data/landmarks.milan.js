@@ -393,7 +393,7 @@ export const MILAN_LANDMARKS = [
     lat: 45.619106,
     lng: 9.282641,
     checkInRadiusMeters: 2500,
-    categories: ['stadiums'],
+    categories: ['formula-1'],
     summary: 'A historic race track inside Monza Park, nicknamed the "Temple of Speed," and one of the oldest permanent circuits in the world.',
     facts: ["One of the oldest purpose-built racing circuits in the world, opened in 1922","Home of the Formula 1 Italian Grand Prix","Nicknamed the 'Temple of Speed' for its long straights","Set inside the Monza Park north of Milan","The third-oldest permanent racetrack after Brooklands and Indianapolis","Still preserves the steep banked curves of its historic oval","The Italian GP is famously passionate thanks to Ferrari's 'tifosi'","Cars reach some of the highest average speeds on the F1 calendar","Its history includes several tragic accidents","Also hosts other motorsport and public track days"],
     free: false,

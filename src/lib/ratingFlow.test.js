@@ -36,12 +36,19 @@ describe('rateability gate', () => {
     expect(ids).toContain('sports');
     expect(ids).not.toContain('food-local-life');
     expect(ids).toContain('stadiums');
-    expect(ids).toHaveLength(11);
+    expect(ids).toContain('formula-1');
+    expect(ids).toContain('benches');
+    expect(ids).toHaveLength(13);
   });
 
   it('rates airports as airports, whatever else they are tagged', () => {
     expect(isRateable({ categories: ['airports'] })).toBe(true);
     expect(ratingCategory({ categories: ['food', 'airports'] })).toBe('airports');
+  });
+
+  it('rates a circuit as Formula 1 ahead of stadiums, and a bench as a bench', () => {
+    expect(ratingCategory({ categories: ['stadiums', 'formula-1'] })).toBe('formula-1');
+    expect(ratingCategory({ categories: ['benches'] })).toBe('benches');
   });
 
   it('rates a stadium as a stadium ahead of entertainment or history', () => {

@@ -197,8 +197,11 @@ export const INTERESTS = [
   // Activities is things you do (courts, golf, go-karts, pools, kayaking).
   { id: 'entertainment', label: 'Entertainment', icon: '\u{1F39F}\u{FE0F}' },
   { id: 'stadiums', label: 'Stadiums', icon: '\u{1F3DF}\u{FE0F}' },
+  { id: 'formula-1', label: 'Formula 1 Circuits', icon: '\u{1F3CE}\u{FE0F}' },
   { id: 'sports', label: 'Sports Activities', icon: '\u{1F3C0}' },
   { id: 'airports', label: 'Airports', icon: '\u{2708}\u{FE0F}' },
+  // Personal-favourite sitting spots with a view, like The 10/10 Bench.
+  { id: 'benches', label: '10/10 Benches', icon: '\u{1FA91}' },
   { id: 'campus-life', label: 'Campus Life', icon: '\u{1F3EB}' },
   { id: 'dorms', label: 'Dorms', icon: '\u{1F6CF}\u{FE0F}' },
 ];
