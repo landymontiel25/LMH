@@ -3,6 +3,9 @@ import { useLocation } from 'react-router-dom';
 import { getLandmark, getRegion } from '../data/regions';
 import { getUserCheckins } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
+import { isRateable, tierById, tierStars } from '../lib/ratingFlow';
+import { CHECKIN_SORTS, sortCheckins } from '../lib/checkinSort';
+
 
 // Shared "Sep 7, 2026, 10:04 AM" formatting for check-in timestamps.
 function fmtDateTime(seconds) {
@@ -22,6 +25,21 @@ function fmtDateTime(seconds) {
 export default function CheckinsGallery({ user, claimedMap, navigate, totalPoints, title = 'My Check-ins' }) {
   const [checkins, setCheckins] = useState(null);
   const [layout, setLayout] = useState('list'); // 'list' | 'grid'
+  const [sort, setSort] = useState(() => {
+    try {
+      const saved = localStorage.getItem('lh-checkins-sort');
+      return CHECKIN_SORTS.some((o) => o.id === saved) ? saved : 'recent';
+    } catch {
+      return 'recent';
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('lh-checkins-sort', sort);
+    } catch {
+      /* private mode */
+    }
+  }, [sort]);
   // Tapping a check-in navigates to its landmark page; the ErrorBoundary
   // above every route is keyed by pathname, so coming back here via the
   // Back button fully remounts this gallery instead of leaving it in
@@ -35,11 +53,15 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
 
   useEffect(() => {
     let cancelled = false;
-    const build = (c, myPhoto) => {
+    const build = (c, review) => {
       const lm = getLandmark(c.region, c.landmarkId);
       // Prefer the photo saved AT check-in, then a rating photo, then the
       // landmark's stock image.
+      const myPhoto = review?.photoURLs?.length ? review.photoURLs[0] : review?.photoURL || null;
       const mine = c.photoURL || myPhoto || null;
+      // Only a tier rating (the chips flow) counts; a leftover star-only
+      // review sorts as unrated, same as the Profile counter.
+      const tier = review?.ratingTier ? tierById(review.ratingTier) : null;
       return {
         id: c.id,
         landmarkId: c.landmarkId,
@@ -49,7 +71,12 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         isMine: !!mine,
         city: getRegion(c.region)?.name || c.region,
         points: c.points || 0,
+        createdAt: c.createdAt?.seconds || 0,
         date: fmtDateTime(c.createdAt?.seconds),
+        rateable: lm ? isRateable(lm) : true,
+        stars: tier ? tierStars(tier.id) : null,
+        tierEmoji: tier?.emoji || null,
+        tierLabel: tier?.label || null,
       };
     };
 
@@ -63,17 +90,14 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
       if (cancelled) return;
       // Show right away using landmark photos, so the gallery is never blank…
       setCheckins(rows.map((c) => build(c, null)));
-      // …then upgrade each tile to YOUR own photo via direct doc reads (the
-      // reviews/{uid}_{landmarkId} doc), which the security rules allow.
-      const myPhotos = await Promise.all(
-        rows.map((c) =>
-          getMyReview(user.uid, c.landmarkId)
-            .then((r) => (r?.photoURLs?.length ? r.photoURLs[0] : r?.photoURL || null))
-            .catch(() => null)
-        )
+      // …then upgrade each tile with the user's own review via direct doc
+      // reads (the reviews/{uid}_{landmarkId} doc), which the security rules
+      // allow: their photo, and their rating for the rating sorts.
+      const reviews = await Promise.all(
+        rows.map((c) => getMyReview(user.uid, c.landmarkId).catch(() => null))
       );
       if (cancelled) return;
-      if (myPhotos.some(Boolean)) setCheckins(rows.map((c, i) => build(c, myPhotos[i])));
+      if (reviews.some(Boolean)) setCheckins(rows.map((c, i) => build(c, reviews[i])));
     })();
     return () => {
       cancelled = true;
@@ -96,11 +120,14 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
   // its ‹ › arrows can step to the previous / next check-in without coming
   // back here. Each step replaces the history entry, so Back still returns
   // to this list (at the saved scroll position) no matter how far you paged.
+  const shown = checkins ? sortCheckins(checkins, sort) : null;
+  const hiddenCount = checkins && shown ? checkins.length - shown.length : 0;
+
   const go = (it) => {
     sessionStorage.setItem(scrollKey, String(window.scrollY));
-    const sequence = checkins.map((c) => ({ regionId: c.regionId, landmarkId: c.landmarkId, name: c.name }));
+    const sequence = shown.map((c) => ({ regionId: c.regionId, landmarkId: c.landmarkId, name: c.name }));
     navigate(`/landmarks/${it.regionId}/${it.landmarkId}`, {
-      state: { checkinNav: { sequence, index: checkins.indexOf(it) } },
+      state: { checkinNav: { sequence, index: shown.indexOf(it) } },
     });
   };
 
@@ -124,16 +151,39 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         </div>
       </div>
 
+      {checkins && checkins.length > 0 && (
+        <div className="itin-toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
+          <label className="itin-sort">
+            <span>Sort by</span>
+            <select className="radius-select" value={sort} onChange={(e) => setSort(e.target.value)}>
+              {CHECKIN_SORTS.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {hiddenCount > 0 && (
+            <span className="screen-subtitle" style={{ margin: 0, fontSize: '0.75rem' }}>
+              {hiddenCount} unrateable {hiddenCount === 1 ? 'spot' : 'spots'} hidden
+            </span>
+          )}
+        </div>
+      )}
+
       {checkins === null && <p className="screen-subtitle">Loading your check-ins…</p>}
       {checkins !== null && checkins.length === 0 && (
         <div className="empty-state">
           <p>No check-ins yet — find a landmark and check in with a photo! 📸</p>
         </div>
       )}
+      {shown && checkins.length > 0 && shown.length === 0 && (
+        <p className="screen-subtitle">Nothing rateable here yet — switch back to Most recent to see everything.</p>
+      )}
 
-      {checkins && checkins.length > 0 && layout === 'list' && (
+      {shown && shown.length > 0 && layout === 'list' && (
         <div style={{ marginTop: 12 }}>
-          {checkins.map((it) => (
+          {shown.map((it) => (
             <div key={it.id} className="checkin-row" onClick={() => go(it)}>
               {it.photo ? (
                 <img className="checkin-list-thumb" src={it.photo} alt={it.name} loading="lazy" />
@@ -145,6 +195,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
                 <div className="checkin-sub">
                   {it.city}
                   {it.date ? ` · ${it.date}` : ''}
+                  {it.tierEmoji ? ` · ${it.tierEmoji} ${it.tierLabel}` : ''}
                 </div>
               </div>
               <div className="checkin-pts">+{it.points}</div>
@@ -153,9 +204,9 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         </div>
       )}
 
-      {checkins && checkins.length > 0 && layout === 'grid' && (
+      {shown && shown.length > 0 && layout === 'grid' && (
         <div className="checkin-grid">
-          {checkins.map((it) => (
+          {shown.map((it) => (
             <button type="button" key={it.id} className="checkin-tile" onClick={() => go(it)}>
               {it.photo ? (
                 <img src={it.photo} alt={it.name} loading="lazy" />
