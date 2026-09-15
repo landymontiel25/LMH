@@ -171,10 +171,33 @@ export function getLandmark(regionId, landmarkId) {
 export const INTERESTS = [
   { id: 'history-culture', label: 'History & Culture', icon: '\u{1F3DB}\u{FE0F}' },
   { id: 'art-museums', label: 'Art & Museums', icon: '\u{1F5BC}\u{FE0F}' },
-  { id: 'food-local-life', label: 'Food & Local Life', icon: '\u{1F962}' },
+  // Food is restaurants, cafés, bakeries, gelato, food markets. Local Life is
+  // bars, clubs, live-music venues, neighborhoods, squares, shopping streets.
+  { id: 'food', label: 'Food', icon: '\u{1F37D}\u{FE0F}' },
+  { id: 'local-life', label: 'Local Life', icon: '\u{1F378}' },
   { id: 'parks-nature', label: 'Parks & Nature', icon: '\u{1F333}' },
+  // Entertainment & Sports is things you watch (stadiums, arenas, shows,
+  // zoos). Sports Activities is things you do (courts, golf, go-karts,
+  // pools, kayaking).
   { id: 'entertainment', label: 'Entertainment & Sports', icon: '\u{1F39F}\u{FE0F}' },
+  { id: 'sports', label: 'Sports Activities', icon: '\u{1F3C0}' },
   { id: 'airports', label: 'Airports', icon: '\u{2708}\u{FE0F}' },
   { id: 'campus-life', label: 'Campus Life', icon: '\u{1F3EB}' },
   { id: 'dorms', label: 'Dorms', icon: '\u{1F6CF}\u{FE0F}' },
 ];
+
+// Interest ids that no longer exist, mapped to what replaced them. Saved
+// interests (localStorage) and old review docs can still carry these.
+const RETIRED_INTERESTS = {
+  'food-local-life': ['food', 'local-life'],
+};
+
+export function migrateInterests(ids) {
+  const out = [];
+  for (const id of ids || []) {
+    for (const next of RETIRED_INTERESTS[id] || [id]) {
+      if (!out.includes(next)) out.push(next);
+    }
+  }
+  return out;
+}

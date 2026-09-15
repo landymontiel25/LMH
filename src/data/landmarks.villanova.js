@@ -80,7 +80,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.03733,
     lng: -75.34333,
-    categories: ['food-local-life'],
+    categories: ['campus-life'],
     summary: "A large oval lawn at the center of Villanova's campus where students gather, study, and relax outdoors.",
     facts: [
       'A wide open green space at the heart of campus',
@@ -99,7 +99,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.03804,
     lng: -75.34252,
-    categories: ['food-local-life'],
+    categories: ['sports', 'campus-life'],
     summary: "An athletic field on Villanova's campus used for intramural sports and casual games.",
     facts: [
       "Named for the university's nearby Mendel Hall",
@@ -479,7 +479,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0344,
     lng: -75.3456,
-    categories: ['history-culture'],
+    categories: ['entertainment', 'campus-life'],
     summary: "Villanova's on-campus arena, home to the Wildcats basketball teams.",
     facts: [
       "Home court for Villanova's men's and women's basketball teams",
@@ -624,7 +624,7 @@ export const VILLANOVA_LANDMARKS = [
     region: "villanova",
     lat: 40.0372,
     lng: -75.3402,
-    categories: ["food-local-life"],
+    categories: ["campus-life", "food"],
     summary: "Villanova's student union, with dining, the bookstore, and event space.",
     facts: [
       "Position read from satellite imagery and the official campus map",
@@ -714,7 +714,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0359458,
     lng: -75.3476721,
-    categories: ['food-local-life'],
+    categories: ['food'],
     summary: 'An iconic late-night pizza and sandwich spot on Lancaster Avenue, packed with Villanova students on weekend nights.',
     facts: [
       'Open until 1-2 AM Thursday through Saturday',
@@ -751,7 +751,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0246,
     lng: -75.3243,
-    categories: ['food-local-life'],
+    categories: ['food', 'local-life'],
     summary: 'A longtime bar and pub-food spot on Lancaster Avenue in Bryn Mawr, and a go-to for Villanova students.',
     facts: [
       'A regular game-day and weekend gathering spot for Villanova students',
@@ -769,7 +769,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0226043,
     lng: -75.3202824,
-    categories: ['food-local-life'],
+    categories: ['food', 'local-life'],
     summary: 'A Lancaster Avenue restaurant and bar owned by the Raptis family, known for Wednesday trivia and shepherd\'s pie.',
     facts: [
       'Named by Main Line Today as a restaurant frequented by college students',
@@ -787,7 +787,7 @@ export const VILLANOVA_LANDMARKS = [
     region: 'villanova',
     lat: 40.0238357,
     lng: -75.3228607,
-    categories: ['food-local-life'],
+    categories: ['local-life'],
     summary: 'A cheap, no-frills dive bar on Lancaster Avenue popular with Villanova students.',
     facts: [
       'Reviewers describe it as a cheap bar for Villanova students',

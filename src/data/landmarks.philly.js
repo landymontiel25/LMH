@@ -48,7 +48,7 @@ export const PHILLY_LANDMARKS = [
     region: 'philly',
     lat: 39.9533,
     lng: -75.1592,
-    categories: ['food-local-life'],
+    categories: ['food'],
     summary: 'A historic indoor market in downtown Philadelphia packed with food stalls, bakeries, and local vendors.',
     facts: [
       'Operating continuously since 1893',
@@ -408,7 +408,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0089,
     lng: -75.2954,
     checkInRadiusMeters: 500,
-    categories: ['food-local-life'],
+    categories: ['local-life'],
     summary: 'An open-air shopping and dining center in Ardmore, considered one of the first planned shopping centers in the U.S.',
     facts: [
       'Opened in 1928, among the earliest planned shopping centers nationwide',
@@ -426,7 +426,7 @@ export const PHILLY_LANDMARKS = [
     region: 'philly',
     lat: 40.0075,
     lng: -75.2894,
-    categories: ['food-local-life'],
+    categories: ['local-life'],
     summary: 'A lively live-music venue and bar in Ardmore known for intimate concerts.',
     facts: [
       'A converted space known for its close-up concert experience',
@@ -446,7 +446,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0089,
     lng: -75.2606,
     checkInRadiusMeters: 500,
-    categories: ['food-local-life'],
+    categories: ['local-life'],
     summary: 'A small, walkable downtown strip in Narberth Borough packed with independent shops, restaurants, and a classic movie theater.',
     facts: [
       'One of the smallest boroughs in Pennsylvania by area',
@@ -525,7 +525,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0895,
     lng: -75.3960,
     checkInRadiusMeters: 1200,
-    categories: ['food-local-life'],
+    categories: ['local-life'],
     summary: 'One of the largest shopping malls in the United States, with hundreds of stores and restaurants.',
     facts: [
       'One of the largest malls in the U.S. by leasable space',
@@ -799,7 +799,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9009,
     lng: -75.1675,
     checkInRadiusMeters: 500,
-    categories: ['history-culture'],
+    categories: ['entertainment', 'history-culture'],
     summary: 'Home stadium of the Philadelphia Eagles, a must for NFL fans that also hosted 2026 World Cup matches.',
     facts: [
       'Opened in 2003, seating over 69,000 fans for Eagles games',
@@ -856,7 +856,7 @@ export const PHILLY_LANDMARKS = [
     region: 'philly',
     lat: 39.9332,
     lng: -75.1592,
-    categories: ['food-local-life'],
+    categories: ['food'],
     summary: 'One of the classic South Philly spots credited with inventing the Philly cheesesteak.',
     facts: [
       'Founded in 1930 by Pat Olivieri in the Italian Market area',
@@ -875,7 +875,7 @@ export const PHILLY_LANDMARKS = [
     region: 'philly',
     lat: 39.9338,
     lng: -75.1588,
-    categories: ['food-local-life'],
+    categories: ['food'],
     summary: 'Directly across from Pat\'s -- try both and decide which side of Philly\'s great cheesesteak rivalry you\'re on.',
     facts: [
       'Founded in 1966 by Joey Vento, across the street from Pat\'s',
@@ -894,7 +894,7 @@ export const PHILLY_LANDMARKS = [
     region: 'philly',
     lat: 39.9463,
     lng: -75.1452,
-    categories: ['food-local-life'],
+    categories: ['food'],
     summary: 'One of Philadelphia\'s signature restaurants, serving modern Israeli and Middle Eastern cooking.',
     facts: [
       'Opened in 2008 by chef Michael Solomonov near Society Hill',
@@ -932,7 +932,7 @@ export const PHILLY_LANDMARKS = [
     region: 'philly',
     lat: 39.9514,
     lng: -75.1886,
-    categories: ['history-culture'],
+    categories: ['entertainment', 'history-culture'],
     summary: 'A historic college basketball arena at Penn, and the legendary home of Philadelphia\'s Big 5 basketball.',
     facts: [
       'Opened in 1927 and nicknamed the "Cathedral of College Basketball"',
@@ -952,7 +952,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9501,
     lng: -75.1900,
     checkInRadiusMeters: 400,
-    categories: ['history-culture'],
+    categories: ['entertainment', 'history-culture'],
     summary: 'Penn\'s historic stadium and home of the Penn Relays -- a great stop for sports history fans.',
     facts: [
       'Opened in 1895, the oldest stadium still in use in college football',
@@ -972,7 +972,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9495,
     lng: -75.1719,
     checkInRadiusMeters: 300,
-    categories: ['food-local-life'],
+    categories: ['local-life'],
     summary: 'One of the city\'s best areas to walk, grab coffee, and experience upscale Center City Philadelphia.',
     facts: [
       'One of the five original open-space squares planned by William Penn in 1682',
@@ -992,7 +992,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9879,
     lng: -75.4052,
     checkInRadiusMeters: 250,
-    categories: ['food-local-life'],
+    categories: ['local-life'],
     summary: 'A modern hotel set within the 260-acre Ellis Preserve in Newtown Square, with an on-site restaurant and bar — a convenient base near the Main Line, Valley Forge, and King of Prussia.',
     facts: [
       'Located at 3743 West Chester Pike, inside the 260-acre Ellis Preserve',
