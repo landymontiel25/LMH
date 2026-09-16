@@ -192,6 +192,16 @@ export async function enhanceRouteWithDrivingTimes(origin, route) {
   );
 }
 
+export function appleMapsLink(destination, destLat, destLng) {
+  const dest = destLat != null && destLng != null ? `${destLat},${destLng}` : encodeURIComponent(destination);
+  return `https://maps.apple.com/?daddr=${dest}&q=${encodeURIComponent(destination)}`;
+}
+
+export function googleMapsLink(destination, destLat, destLng) {
+  const dest = destLat != null && destLng != null ? `${destLat},${destLng}` : encodeURIComponent(destination);
+  return `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
+}
+
 export function mapsDeepLink(destination, destLat, destLng) {
   const dest = destLat != null && destLng != null ? `${destLat},${destLng}` : encodeURIComponent(destination);
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);

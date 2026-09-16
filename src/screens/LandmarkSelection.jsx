@@ -7,7 +7,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { distanceMeters } from '../lib/geo';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
-import { mapsDeepLink } from '../lib/routing';
+import DirectionsButton from '../components/DirectionsButton';
 import { classifyInterest } from '../lib/interestClassifier';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
@@ -16,6 +16,9 @@ import QuickRateButton from '../components/QuickRateButton';
 import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
+
+// How close a city center has to be to count as "where you are".
+const NEAR_CITY_KM = 80;
 
 const SORT_OPTIONS = [
   { id: 'nearMe', label: '\u{1F4CD} Near Me' },
@@ -111,14 +114,33 @@ export default function LandmarkSelection() {
   // Arriving with no trip region yet (e.g. straight from the bottom-nav tab) still
   // shows everything.
   const [cityFilter, setCityFilter] = useState(() => trip.activeRegion ?? 'all');
+  // Default to the city you're standing in (nearest city center within
+  // NEAR_CITY_KM of your GPS fix). Picking a city yourself wins after that.
+  const cityPickedRef = useRef(false);
+  useEffect(() => {
+    if (!coords || cityPickedRef.current) return;
+    let best = null;
+    let bestKm = NEAR_CITY_KM;
+    for (const r of PICKABLE_REGIONS) {
+      const km = distanceMeters(coords.lat, coords.lng, r.center.lat, r.center.lng) / 1000;
+      if (km < bestKm) {
+        bestKm = km;
+        best = r.id;
+      }
+    }
+    if (best && best !== cityFilter) {
+      setCityFilter(best);
+      updateTrip({ activeRegion: best });
+      setMapFocus(best);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coords?.lat, coords?.lng]);
   // Default to every interest picked on Setup -- built-in categories AND custom
   // ones you typed in -- so "Choose Landmarks" opens already narrowed to what you
   // said you wanted instead of dumping every landmark on you. Empty selection (no
   // interests chosen, or "All" tapped) means show everything.
-  const [activeCategories, setActiveCategories] = useState(() => [
-    ...trip.interests.filter((id) => CATEGORY_ICON[id]),
-    ...trip.customInterests,
-  ]);
+  // Starts on "All categories"; the dropdown narrows from there.
+  const [activeCategories, setActiveCategories] = useState([]);
   // Tapping a row's thumbnail opens the photo full-screen.
   const [lightbox, setLightbox] = useState(null);
   const [search, setSearch] = useState('');
@@ -319,6 +341,7 @@ export default function LandmarkSelection() {
       <CityDropdown
         value={cityFilter}
         onChange={(id) => {
+          cityPickedRef.current = true;
           setCityFilter(id);
           // Remember the city being browsed so the Map opens on it this session.
           if (id !== 'all') {
@@ -429,15 +452,7 @@ export default function LandmarkSelection() {
                 >
                   Info
                 </button>
-                <a
-                  className="btn btn-ghost btn-tight"
-                  href={mapsDeepLink(l.name, l.lat, l.lng)}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {'\u{1F9ED}'} Directions
-                </a>
+                <DirectionsButton name={l.name} lat={l.lat} lng={l.lng} className="btn btn-ghost btn-tight" />
                 <CheckInButton
                   landmark={l}
                   user={user}
