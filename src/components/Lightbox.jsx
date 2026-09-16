@@ -1,13 +1,42 @@
-// Full-screen photo viewer: tap anywhere to close. Used by the landmark
-// page (postcard photos) and the Landmarks tab (row thumbnails).
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+
+// Full-screen photo viewer: solid black, above everything (header and nav
+// hidden), and the page behind it can't scroll while it's open. Tap the
+// photo's surroundings or the ✕ to close.
 export default function Lightbox({ src, alt = 'Photo', onClose }) {
+  // Lock the page: iOS ignores overflow:hidden on body, so pin the body
+  // in place at the current scroll offset and put it back on close.
+  useEffect(() => {
+    if (!src) return;
+    const y = window.scrollY;
+    const { position, top, width, overflow } = document.body.style;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${y}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('lightbox-open');
+    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.position = position;
+      document.body.style.top = top;
+      document.body.style.width = width;
+      document.body.style.overflow = overflow;
+      document.body.classList.remove('lightbox-open');
+      window.removeEventListener('keydown', onKey);
+      window.scrollTo(0, y);
+    };
+  }, [src, onClose]);
+
   if (!src) return null;
-  return (
-    <div className="lightbox" onClick={onClose} role="presentation">
+  return createPortal(
+    <div className="lightbox" onClick={onClose} onTouchMove={(e) => e.preventDefault()} role="dialog" aria-modal="true">
       <img src={src} alt={alt} onClick={(e) => e.stopPropagation()} />
       <button type="button" className="lightbox-close" onClick={onClose} aria-label="Close">
         {'\u{2715}'}
       </button>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -975,8 +975,10 @@ textarea {
 .lightbox {
   position: fixed;
   inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.92);
+  z-index: 5000;
+  background: #000;
+  touch-action: none;
+  overscroll-behavior: contain;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2948,7 +2950,11 @@ textarea {
 body.pin-placing .app-header,
 body.pin-placing .bottom-nav,
 body.pin-placing .ask-landmark-fab,
-body.pin-placing .ask-landmark-panel {
+body.pin-placing .ask-landmark-panel,
+body.lightbox-open .app-header,
+body.lightbox-open .bottom-nav,
+body.lightbox-open .ask-landmark-fab,
+body.lightbox-open .ask-landmark-panel {
   display: none;
 }
 
