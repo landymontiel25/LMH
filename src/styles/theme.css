@@ -2429,6 +2429,34 @@ textarea {
 /* "Add a landmark" -- the one map FAB that's an explicit call to action
    (not a toggle like search/nearby), so it gets the same gold fill as a
    primary button instead of the plain glass circle. */
+/* Category filter button glows once a filter is active, so it's obvious
+   the map is showing a subset. */
+.map-search-btn.active {
+  border-color: var(--color-brass-bright);
+  box-shadow: 0 0 0 2px rgba(201, 161, 90, 0.45);
+}
+
+.map-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.map-filter-chips .chip {
+  font-size: 0.78rem;
+  padding: 6px 10px;
+}
+
+.map-search-heading {
+  padding: 8px 14px 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-parchment-dim);
+}
+
 .map-add-btn {
   background: linear-gradient(180deg, var(--color-brass-bright), var(--color-brass));
   border-color: rgba(255, 255, 255, 0.5);

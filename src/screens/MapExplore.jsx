@@ -190,6 +190,19 @@ export default function MapExplore() {
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Which categories to plot. Empty means "all landmarks" (the default);
+  // otherwise only pins whose category is in the set. Grows with INTERESTS,
+  // so every category added later is filterable here automatically.
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterCats, setFilterCats] = useState(() => new Set());
+  const toggleFilterCat = (id) =>
+    setFilterCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const passesFilter = (l) => filterCats.size === 0 || (l.categories || []).some((c) => filterCats.has(c));
 
   // A pin dropped by long-pressing an exact spot on the map -- lets you
   // pinpoint somewhere that isn't one of the built-in landmarks (e.g. a
@@ -308,12 +321,12 @@ export default function MapExplore() {
   const toggleSearch = () => {
     setSearchOpen((open) => !open);
     setSearchTerm('');
+    setFilterOpen(false);
   };
 
-  // A live, distance-sorted view of what's closest right now -- a faster
-  // alternative to panning/zooming the map to see what's nearby. Only
-  // meaningful with a real GPS fix, so it's just not offered without one.
-  const [nearbyOpen, setNearbyOpen] = useState(false);
+  // A live, distance-sorted view of what's closest right now, shown in the
+  // search panel before you type anything. Only meaningful with a real GPS
+  // fix, so it's just not offered without one.
   const nearbyList = useMemo(() => {
     if (!coords) return [];
     const all = [
@@ -339,7 +352,7 @@ export default function MapExplore() {
   // and zoom in to its landmarks even when you're on another continent.
   const markers = useMemo(
     () =>
-      ALL_LANDMARKS.map((l) => {
+      ALL_LANDMARKS.filter(passesFilter).map((l) => {
         const isSelected = getRegionSelection(l.regionId).includes(l.id);
         const region = getRegion(l.regionId);
         const isClaimed = !!claimedMap[l.id];
@@ -409,12 +422,13 @@ export default function MapExplore() {
         );
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- passesFilter only reads filterCats
+    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides, filterCats]
   );
 
   const customMarkers = useMemo(
     () =>
-      customLandmarks.map((l) => {
+      customLandmarks.filter(passesFilter).map((l) => {
         const region = getRegion(l.region);
         // Needs both regionId (used by claimCheckIn/leaderboard) and region
         // (used by submitReview's review doc) -- omitting the latter used to
@@ -467,7 +481,8 @@ export default function MapExplore() {
           </Marker>
         );
       }),
-    [customLandmarks, claimedMap, checkingIn, user, firebaseEnabled, checkIn, navigate]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- passesFilter only reads filterCats
+    [customLandmarks, claimedMap, checkingIn, user, firebaseEnabled, checkIn, navigate, filterCats]
   );
 
   return (
@@ -603,34 +618,39 @@ export default function MapExplore() {
           >
             {'\u{2795}'}
           </button>
-          {coords && (
-            <button
-              type="button"
-              className="map-search-btn"
-              style={{ top: 'calc(var(--header-h) + 128px)' }}
-              title="What's nearby right now"
-              onClick={() => setNearbyOpen((o) => !o)}
-            >
-              {nearbyOpen ? '\u{2715}' : '\u{1F4E1}'}
-            </button>
-          )}
-          {nearbyOpen && (
+          <button
+            type="button"
+            className={`map-search-btn ${filterCats.size > 0 ? 'active' : ''}`}
+            style={{ top: 'calc(var(--header-h) + 128px)' }}
+            title="Filter the map by category"
+            onClick={() => {
+              setFilterOpen((o) => !o);
+              setSearchOpen(false);
+            }}
+          >
+            {filterOpen ? '\u{2715}' : '\u{1F5C2}\u{FE0F}'}
+          </button>
+          {filterOpen && (
             <div className="map-search-panel">
-              <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '0.9rem' }}>{'\u{1F4E1}'} Nearby Now</p>
-              <div className="map-search-results">
-                {nearbyList.length === 0 && <div className="map-search-empty">Nothing nearby yet.</div>}
-                {nearbyList.map((l) => (
+              <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '0.9rem' }}>Show on the map</p>
+              <div className="map-filter-chips">
+                <button
+                  type="button"
+                  className={`chip ${filterCats.size === 0 ? 'selected' : ''}`}
+                  onClick={() => setFilterCats(new Set())}
+                >
+                  <span className="chip-icon">{'\u{1F4CD}'}</span>
+                  <span>All landmarks</span>
+                </button>
+                {INTERESTS.map((i) => (
                   <button
+                    key={i.id}
                     type="button"
-                    key={l.id}
-                    className="map-search-result"
-                    onClick={() => {
-                      setNearbyOpen(false);
-                      navigate(`/landmarks/${l.region}/${l.landmarkId}`);
-                    }}
+                    className={`chip ${filterCats.has(i.id) ? 'selected' : ''}`}
+                    onClick={() => toggleFilterCat(i.id)}
                   >
-                    <span className="map-search-result-name">{l.name}</span>
-                    <span className="map-search-result-city">{formatDistance(l.meters, units)} away</span>
+                    <span className="chip-icon">{i.icon}</span>
+                    <span>{i.label}</span>
                   </button>
                 ))}
               </div>
@@ -646,6 +666,23 @@ export default function MapExplore() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {!searchTerm.trim() && coords && (
+                <div className="map-search-results">
+                  <div className="map-search-heading">{'\u{1F4E1}'} Nearby now</div>
+                  {nearbyList.length === 0 && <div className="map-search-empty">Nothing nearby yet.</div>}
+                  {nearbyList.map((l) => (
+                    <button
+                      type="button"
+                      key={l.id}
+                      className="map-search-result"
+                      onClick={() => selectSearchResult({ ...l, zoom: 17 })}
+                    >
+                      <span className="map-search-result-name">{l.name}</span>
+                      <span className="map-search-result-city">{formatDistance(l.meters, units)} away</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {searchTerm.trim() && (
                 <div className="map-search-results">
                   {searchResults.length === 0 && (
