@@ -13,6 +13,7 @@ const INSTRUCTIONS =
   `landmarks they have NOT visited yet, one per line as "region/id | name | category | short description". ` +
   `Pick the 4 catalog landmarks this traveler is most likely to love next, most confident first.\n\n` +
   `Rules:\n` +
+  `- Every catalog line ends with how far it is from the traveler right now. These are all nearby; among good fits, prefer the closer one, and never pick something far when a similar closer option exists.\n` +
   `- Weigh what they wrote in their own words most, then their loved places' categories and chips, then saved interests.\n` +
   `- Prefer variety across the 4 picks unless the history is clearly single-minded.\n` +
   `- matchPercentage is your honest confidence, 60-99. Don't give everything 97.\n` +
@@ -22,6 +23,16 @@ const INSTRUCTIONS =
   `{"picks": [{"match": "<region/id>", "matchPercentage": <60-99>, "oneLineSummary": "<text>"}, ...]}`;
 
 const str = (v, n) => String(v ?? '').trim().slice(0, n);
+
+// Haversine, inlined: src/lib/geo.js uses Vite-style extensionless imports
+// that plain Node (where Vercel runs this) can't resolve.
+function distanceKm(lat1, lng1, lat2, lng2) {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -49,14 +60,28 @@ export default async function handler(req, res) {
     const interests = (Array.isArray(body.interests) ? body.interests : []).map((c) => str(c, 30)).slice(0, 20);
     const checkedIn = new Set((Array.isArray(body.checkedInIds) ? body.checkedInIds : []).map((id) => str(id, 80)));
     const regionIds = new Set((Array.isArray(body.regionIds) ? body.regionIds : []).map((id) => str(id, 40)));
+    const origin =
+      body.origin && Number.isFinite(Number(body.origin.lat)) && Number.isFinite(Number(body.origin.lng))
+        ? { lat: Number(body.origin.lat), lng: Number(body.origin.lng) }
+        : null;
 
-    // Pool: places they haven't visited, in cities they've been to (or are
-    // planning) when we know any -- a pick in a city they'll never be in
-    // isn't much of a pick. No rateable-category filter: a dorm never
-    // makes a good pick, so drop the unrateable ones here.
+    // Pool: places they haven't visited, near where they are right now --
+    // everything within NEARBY_KM of their GPS fix, closest first, capped.
+    // In Philadelphia that's Philly + the Main Line + Villanova; on Lake
+    // Como it's Como, Milan and Monza. Without a fix, fall back to the
+    // cities they've been to (or are planning). A dorm never makes a good
+    // pick, so the unrateable categories are dropped here.
+    const NEARBY_KM = 150;
+    const POOL_CAP = 120;
     const UNRATEABLE = new Set(['dorms', 'campus-life']);
     let pool = ALL_LANDMARKS.filter((l) => !checkedIn.has(l.id) && !UNRATEABLE.has(l.categories?.[0]));
-    if (regionIds.size) {
+    if (origin) {
+      pool = pool
+        .map((l) => ({ ...l, km: distanceKm(origin.lat, origin.lng, l.lat, l.lng) }))
+        .sort((a, b) => a.km - b.km);
+      const near = pool.filter((l) => l.km <= NEARBY_KM);
+      pool = (near.length >= 4 ? near : pool).slice(0, POOL_CAP);
+    } else if (regionIds.size) {
       const inCities = pool.filter((l) => regionIds.has(l.regionId));
       if (inCities.length >= 8) pool = inCities;
     }
@@ -75,8 +100,15 @@ export default async function handler(req, res) {
             .join('\n')
         : 'RATING HISTORY: none yet.') +
       (interests.length ? `\n\nSAVED INTERESTS: ${interests.join(', ')}` : '') +
-      '\n\nCATALOG (region/id | name | category | description):\n' +
-      pool.map((l) => `${l.regionId}/${l.id} | ${l.name} | ${l.categories?.[0] || ''} | ${(l.summary || '').slice(0, 120)}`).join('\n');
+      (origin ? '\n\nThe traveler is here right now; every catalog place is nearby.' : '') +
+      '\n\nCATALOG (region/id | name | category | description | distance):\n' +
+      pool
+        .map(
+          (l) =>
+            `${l.regionId}/${l.id} | ${l.name} | ${l.categories?.[0] || ''} | ${(l.summary || '').slice(0, 120)}` +
+            (l.km != null ? ` | ${l.km < 10 ? l.km.toFixed(1) : Math.round(l.km)} km away` : '')
+        )
+        .join('\n');
 
     const client = new Anthropic();
     const msg = await client.beta.messages.create({

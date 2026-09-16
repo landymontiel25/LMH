@@ -1,11 +1,14 @@
 import { ALL_LANDMARKS } from '../data/regions';
 import { isRateable } from './ratingFlow';
+import { distanceMeters } from './geo';
 
 // Local stand-in for /api/mapr-picks when the AI isn't reachable (no key,
 // offline, rate-limited): a simple affinity score from the same inputs.
 // Loved categories count for, skipped ones against, saved interests a
 // little, plus a nudge from the crowd's rating and the editors' popularity.
-export function localMaprPicks({ reviews = [], interests = [], checkedInIds = [], regionIds = [], ratings = {}, limit = 4 }) {
+const NEARBY_KM = 150;
+
+export function localMaprPicks({ reviews = [], interests = [], checkedInIds = [], regionIds = [], origin = null, ratings = {}, limit = 4 }) {
   const affinity = {};
   for (const r of reviews) {
     const w = r.tier === 'highly-recommend' ? 3 : r.tier === 'probably-skip' ? -2 : 1;
@@ -16,7 +19,15 @@ export function localMaprPicks({ reviews = [], interests = [], checkedInIds = []
   const visited = new Set(checkedInIds);
   const cities = new Set(regionIds);
   let pool = ALL_LANDMARKS.filter((l) => !visited.has(l.id) && isRateable(l));
-  if (cities.size) {
+  // Near you first: everything within NEARBY_KM of your fix (or, if that's
+  // too few, the closest 40). Only without a fix do visited cities apply.
+  if (origin) {
+    pool = pool
+      .map((l) => ({ ...l, km: distanceMeters(origin.lat, origin.lng, l.lat, l.lng) / 1000 }))
+      .sort((a, b) => a.km - b.km);
+    const near = pool.filter((l) => l.km <= NEARBY_KM);
+    pool = near.length >= 4 ? near : pool.slice(0, 40);
+  } else if (cities.size) {
     const inCities = pool.filter((l) => cities.has(l.regionId));
     if (inCities.length >= 8) pool = inCities;
   }
@@ -24,7 +35,9 @@ export function localMaprPicks({ reviews = [], interests = [], checkedInIds = []
   const scored = pool.map((l) => {
     const cat = l.categories?.[0];
     const crowd = ratings[l.id]?.avg || 0;
-    const score = (affinity[cat] || 0) * 2 + crowd * 0.8 + (l.popularity || 0) * 0.15;
+    // Closer is better: full bonus at 0 km fading out by NEARBY_KM.
+    const near = l.km != null ? Math.max(0, 1 - l.km / NEARBY_KM) * 3 : 0;
+    const score = (affinity[cat] || 0) * 2 + crowd * 0.8 + (l.popularity || 0) * 0.15 + near;
     return { l, score };
   });
   const max = Math.max(1, ...scored.map((s) => s.score));
@@ -45,7 +58,11 @@ export function localMaprPicks({ reviews = [], interests = [], checkedInIds = []
 // Picks are cached per user for a day, keyed on how many ratings they had
 // at the time -- a new rating is the one thing that should change them.
 const TTL_MS = 24 * 60 * 60 * 1000;
-export const picksCacheKey = (uid, ratingsCount) => `lh-mapr-picks:${uid}:${ratingsCount}`;
+// Keyed on a coarse (~10 km) location too, so walking across town keeps
+// the same picks but flying to another city gets fresh ones.
+export const coarseLocation = (origin) => (origin ? `${origin.lat.toFixed(1)},${origin.lng.toFixed(1)}` : 'nowhere');
+export const picksCacheKey = (uid, ratingsCount, origin) =>
+  `lh-mapr-picks:${uid}:${ratingsCount}:${coarseLocation(origin)}`;
 
 export function readPicksCache(key) {
   try {
