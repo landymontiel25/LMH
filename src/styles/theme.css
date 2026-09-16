@@ -945,6 +945,11 @@ textarea {
   padding: 4px 9px;
 }
 
+.checkin-stats-card {
+  margin-bottom: 16px;
+  border-color: var(--color-border);
+  background: linear-gradient(160deg, rgba(201, 161, 90, 0.12), rgb(var(--color-bg-rgb)));
+}
 .checkin-stats {
   list-style: none;
   margin: 0;

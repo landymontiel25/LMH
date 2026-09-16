@@ -6,11 +6,16 @@ import { useRatings } from '../lib/RatingsContext';
 import { useGeo } from '../lib/GeoContext';
 import { coarseLocation, localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
 
-// "Your Mapr Picks": 3-4 landmarks Mapr thinks you'll love next, as a
+// "Your Mapr Picks": 4 landmarks Mapr thinks you'll love next, as a
 // swipeable card row under the taste card. Asks /api/mapr-picks (Claude,
-// fed your ratings, chips and comments); if that's unavailable it falls
-// back to a local affinity score so the row never comes up empty. Cached
-// for a day per user and rating count.
+// fed your ratings, chips and comments) for 8 at once; 4 show and 4 wait
+// in reserve, so a ✓ or ✗ swaps in the next pick without another call.
+// Once the reserve is gone, the local affinity scorer tops up for free.
+// If the API is unavailable the local scorer fills everything. Cached
+// for a day per user, rating count and coarse location.
+const SHOWN = 4;
+const RESERVE = 8;
+
 export default function MaprPicksCarousel({ reviews, interests = [], checkedInIds = [], regionIds = [] }) {
   const { user } = useAuth();
   const { ratings } = useRatings();
@@ -20,17 +25,19 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // beat for one rather than answer for the wrong city.
   const origin = coords ? { lat: coords.lat, lng: coords.lng } : null;
   const locKey = coarseLocation(origin);
-  const [picks, setPicks] = useState(null);
+  const [queue, setQueue] = useState(null); // all picks; the first SHOWN are on screen
   const [active, setActive] = useState(0);
   // { [landmarkId]: 'yes' | 'no' } -- your ✓ / ✗ on picks, for the buttons'
   // state and as a light signal to Mapr next time.
   const [feedback, setFeedback] = useState({});
+  // Same votes with their categories, for the local top-up scorer.
+  const fbListRef = useRef([]);
   const trackRef = useRef(null);
   const ratingsCount = reviews?.length || 0;
 
   useEffect(() => {
     if (!user) {
-      setPicks(null);
+      setQueue(null);
       return;
     }
     let cancelled = false;
@@ -41,9 +48,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       setFeedback(Object.fromEntries(Object.values(fb).map((f) => [f.landmarkId, f.verdict])));
       const passedIds = recentlyPassedIds(fb);
       const fbList = Object.values(fb).map((f) => ({ name: f.name, region: f.region, categories: f.categories, verdict: f.verdict }));
+      fbListRef.current = fbList;
       const cached = readPicksCache(key);
       if (cached) {
-        setPicks(cached.filter((p) => !passedIds.includes(p.id)));
+        setQueue(cached.filter((p) => !passedIds.includes(p.id)));
         return;
       }
       const fallback = () =>
@@ -56,6 +64,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
           ratings,
           feedback: fbList,
           passedIds,
+          limit: RESERVE,
         });
       let next = null;
       try {
@@ -86,8 +95,8 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       if (cancelled) return;
       // Drop anything checked into since the picks were made.
       const visited = new Set(checkedInIds);
-      const list = (next || fallback()).filter((p) => !visited.has(p.id)).slice(0, 4);
-      setPicks(list);
+      const list = (next || fallback()).filter((p) => !visited.has(p.id)).slice(0, RESERVE);
+      setQueue(list);
       if (next) writePicksCache(key, list);
     })();
     return () => {
@@ -106,21 +115,38 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     setActive(Math.round(el.scrollLeft / w));
   };
 
-  // ✓ keeps the card (marked); ✗ removes it, from the cache too, so it
-  // doesn't come back on the next visit while its cooldown runs.
+  // Either vote records your taste and swaps the card for the next pick
+  // in the reserve. When the reserve runs dry, the local scorer (no API
+  // call, no cost) tops the queue back up, skipping everything you've
+  // already seen, voted on or checked into.
   const vote = (p, verdict) => {
-    setFeedback((cur) => ({ ...cur, [p.id]: verdict }));
+    const nextFeedback = { ...feedback, [p.id]: verdict };
+    setFeedback(nextFeedback);
+    fbListRef.current = [...fbListRef.current, { name: p.name, region: p.region, categories: p.categories || [], verdict }];
     setPickFeedback({ uid: user.uid, landmark: { id: p.id, region: p.region, name: p.name, categories: p.categories || [] }, verdict, origin });
-    if (verdict === 'no') {
-      setPicks((cur) => {
-        const next = (cur || []).filter((x) => x.id !== p.id);
-        writePicksCache(picksCacheKey(user.uid, ratingsCount, origin), next);
-        return next;
-      });
-    }
+    setQueue((cur) => {
+      let next = (cur || []).filter((x) => x.id !== p.id);
+      if (next.length < SHOWN) {
+        const seen = new Set([...next.map((x) => x.id), ...Object.keys(nextFeedback), ...checkedInIds]);
+        const extra = localMaprPicks({
+          reviews: reviews.map((r) => ({ tier: r.ratingTier, categories: r.categories || [] })),
+          interests,
+          checkedInIds: [...seen],
+          regionIds,
+          origin,
+          ratings,
+          feedback: fbListRef.current,
+          limit: RESERVE,
+        }).filter((x) => !seen.has(x.id));
+        next = [...next, ...extra].slice(0, RESERVE);
+      }
+      writePicksCache(picksCacheKey(user.uid, ratingsCount, origin), next);
+      return next;
+    });
   };
 
-  if (!user || !picks || picks.length === 0) return null;
+  if (!user || !queue || queue.length === 0) return null;
+  const picks = queue.slice(0, SHOWN);
 
   return (
     <div className="mapr-picks">
@@ -130,9 +156,8 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       </p>
       <div className="mapr-picks-track" ref={trackRef} onScroll={onScroll}>
         {picks.map((p) => {
-          const v = feedback[p.id];
           return (
-            <div key={`${p.region}/${p.id}`} className={`mapr-pick ${v === 'yes' ? 'liked' : ''}`}>
+            <div key={`${p.region}/${p.id}`} className="mapr-pick">
               <button type="button" className="mapr-pick-main" onClick={() => navigate(`/landmarks/${p.region}/${p.id}`)}>
                 {p.image ? (
                   <img className="mapr-pick-img" src={p.image} alt="" loading="lazy" />
@@ -144,13 +169,8 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
                 <span className="mapr-pick-sub">{p.oneLineSummary}</span>
               </button>
               <div className="mapr-pick-actions">
-                <button
-                  type="button"
-                  className={`mapr-pick-vote yes ${v === 'yes' ? 'on' : ''}`}
-                  onClick={() => vote(p, 'yes')}
-                  title="I'd go"
-                >
-                  {'\u{2713}'} {v === 'yes' ? "You'd go" : "I'd go"}
+                <button type="button" className="mapr-pick-vote yes" onClick={() => vote(p, 'yes')} title="I'd go">
+                  {'\u{2713}'} I'd go
                 </button>
                 <button type="button" className="mapr-pick-vote no" onClick={() => vote(p, 'no')} title="Not for me">
                   {'\u{2715}'} Not for me
