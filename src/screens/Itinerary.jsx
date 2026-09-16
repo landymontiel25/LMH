@@ -494,7 +494,7 @@ export default function Itinerary() {
               )}
             <div className="route-step">
               <div className="route-num">{idx + 1}</div>
-              <div className="card" style={{ flex: 1 }}>
+              <div className={`card ${claimedMap[stop.id] ? 'visited' : ''}`} style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                     <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />

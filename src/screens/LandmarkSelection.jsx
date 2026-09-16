@@ -376,7 +376,7 @@ export default function LandmarkSelection() {
         {landmarks.map((l) => {
           const isSelected = getRegionSelection(l.regionId).includes(l.id);
           return (
-            <div key={l.id} className={`landmark-row ${isSelected ? 'selected' : ''}`}>
+            <div key={l.id} className={`landmark-row ${isSelected ? 'selected' : ''} ${claimedMap[l.id] ? 'visited' : ''}`}>
               <div className="lr-top">
                 <div className="check-circle" onClick={() => handleToggle(l)}>
                   {isSelected ? '✓' : ''}

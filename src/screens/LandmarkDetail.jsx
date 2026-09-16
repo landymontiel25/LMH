@@ -178,6 +178,7 @@ export default function LandmarkDetail() {
             highlights: r.highlights || [],
             lovedOrder: r.lovedOrder || [],
             dislikedOrder: r.dislikedOrder || [],
+            comment: r.comment || '',
           }
         : null
     );

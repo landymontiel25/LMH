@@ -16,6 +16,20 @@ export function estimateTravelMinutes(meters) {
  * with distanceFromPrevMeters and travelMinutesFromPrev.
  */
 export function buildNearestNeighborRoute(origin, landmarks) {
+  return annotateLegs(origin, improveTwoOpt(origin, nearestNeighborOrder(origin, landmarks)));
+}
+
+function annotateLegs(origin, ordered) {
+  let prev = origin;
+  return ordered.map((l) => {
+    const d = distanceMeters(prev.lat, prev.lng, l.lat, l.lng);
+    prev = l;
+    return { ...l, distanceFromPrevMeters: Math.round(d), travelMinutesFromPrev: estimateTravelMinutes(d) };
+  });
+}
+
+// Greedy: from wherever you are, go to the closest place you haven't been.
+function nearestNeighborOrder(origin, landmarks) {
   const remaining = [...landmarks];
   const ordered = [];
   let current = origin;
@@ -31,15 +45,39 @@ export function buildNearestNeighborRoute(origin, landmarks) {
       }
     }
     const next = remaining.splice(bestIdx, 1)[0];
-    ordered.push({
-      ...next,
-      distanceFromPrevMeters: Math.round(bestDist),
-      travelMinutesFromPrev: estimateTravelMinutes(bestDist),
-    });
+    ordered.push(next);
     current = next;
   }
 
   return ordered;
+}
+
+// 2-opt: keep reversing any stretch of the path whose reversal shortens the
+// total walk until nothing improves. Fixes the crossings a greedy chain
+// leaves behind (the classic "back and forth across the island" route).
+// Start point (you) stays fixed; the path is open-ended.
+export function improveTwoOpt(origin, ordered) {
+  const pts = [origin, ...ordered];
+  const n = pts.length;
+  if (n < 4) return ordered;
+  const d = (a, b) => distanceMeters(a.lat, a.lng, b.lat, b.lng);
+  let improved = true;
+  let guard = 0;
+  while (improved && guard++ < 50) {
+    improved = false;
+    for (let i = 1; i < n - 1; i++) {
+      for (let k = i + 1; k < n; k++) {
+        const before = d(pts[i - 1], pts[i]) + (k + 1 < n ? d(pts[k], pts[k + 1]) : 0);
+        const after = d(pts[i - 1], pts[k]) + (k + 1 < n ? d(pts[i], pts[k + 1]) : 0);
+        if (after + 0.5 < before) {
+          const seg = pts.slice(i, k + 1).reverse();
+          pts.splice(i, seg.length, ...seg);
+          improved = true;
+        }
+      }
+    }
+  }
+  return pts.slice(1);
 }
 
 /**
@@ -62,7 +100,6 @@ export function buildNearestFirstList(origin, landmarks) {
 // is picked -- the map's numbered pins always match the cards.
 export const SORT_OPTIONS = [
   { id: 'nearest', label: 'Nearest to me' },
-  { id: 'route', label: 'Best walking order' },
   { id: 'rated', label: 'Highest rated' },
   { id: 'quick', label: 'Quickest visits' },
   { id: 'free', label: 'Free first' },
@@ -73,6 +110,10 @@ export function orderStops(sortId, origin, landmarks, ratings = {}) {
   const nearest = (a, b) => dist(a) - dist(b);
   const list = [...landmarks];
   switch (sortId) {
+    // "Nearest to me" is a walkable chain (closest first, then closest to
+    // *that*, untangled with 2-opt) -- not a plain sort by distance from
+    // you, which zig-zags past places you'll have to come back for.
+    case 'nearest':
     case 'route':
       return buildNearestNeighborRoute(origin, landmarks);
     case 'rated': {

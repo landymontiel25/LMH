@@ -100,6 +100,7 @@ export async function submitReview({ userId, userName, landmark, rating, photoFi
           highlights: rating.highlights || [],
           lovedOrder: rating.lovedOrder || [],
           dislikedOrder: rating.dislikedOrder || [],
+          comment: (rating.comment || '').slice(0, 280),
           // Denormalized (like landmarkName/region above) so the taste card
           // can tally categories without a read per review.
           categories: landmark.categories || [],

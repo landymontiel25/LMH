@@ -19,12 +19,15 @@ export default function RatingFlow({ landmark, onChange, initial = null }) {
   const [highlights, setHighlights] = useState(initial?.highlights || []);
   const [lovedOrder, setLovedOrder] = useState(initial?.lovedOrder || []);
   const [dislikedOrder, setDislikedOrder] = useState(initial?.dislikedOrder || []);
+  // Free text, optional: the one place to say what the chips can't. Mapr
+  // reads it alongside the chips when learning what you like.
+  const [comment, setComment] = useState(initial?.comment || '');
 
   useEffect(() => {
-    onChange?.(tier ? { tier, highlights, lovedOrder, dislikedOrder } : null);
+    onChange?.(tier ? { tier, highlights, lovedOrder, dislikedOrder, comment: comment.trim() } : null);
     // onChange identity changes every parent render; the payload is what matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tier, highlights, lovedOrder, dislikedOrder]);
+  }, [tier, highlights, lovedOrder, dislikedOrder, comment]);
 
   const pickTier = (id) => {
     if (id === tier) return;
@@ -132,6 +135,22 @@ export default function RatingFlow({ landmark, onChange, initial = null }) {
           setList: setDislikedOrder,
           excluded: lovedOrder,
         })}
+
+      {tier && (
+        <div style={{ marginTop: 14 }}>
+          <p className="rating-flow-label">
+            Anything else? <span>optional</span>
+          </p>
+          <textarea
+            className="rating-comment"
+            rows={2}
+            maxLength={280}
+            placeholder="What you liked or didn't — Mapr uses this to learn your taste"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+          />
+        </div>
+      )}
     </div>
   );
 }
