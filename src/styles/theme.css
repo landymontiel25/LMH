@@ -1752,7 +1752,7 @@ textarea {
   /* iOS Safari: a fixed bar can lag and settle mid-screen while the page
      scrolls or the keyboard closes. Promoting it to its own layer and
      anchoring to the safe area keeps it glued to the bottom. */
-  bottom: max(14px, env(safe-area-inset-bottom));
+  bottom: 14px;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
   will-change: transform;
