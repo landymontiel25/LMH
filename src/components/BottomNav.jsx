@@ -28,6 +28,14 @@ export default function BottomNav() {
     const el = navRef.current;
     if (!vv || !el) return;
     const update = () => {
+      // Only when actually zoomed in. At scale 1 iOS (especially the
+      // home-screen app) can report the visible area a few dozen px
+      // shorter than the window, which would nudge the bar up for no
+      // reason and leave a gap under it.
+      if (vv.scale <= 1.02) {
+        el.style.transform = '';
+        return;
+      }
       const shift = Math.round(vv.offsetTop + vv.height - window.innerHeight);
       el.style.transform = shift ? `translateY(${shift}px) translateZ(0)` : '';
     };
