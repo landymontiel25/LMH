@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useRatings } from '../lib/RatingsContext';
-import { localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
+import { useGeo } from '../lib/GeoContext';
+import { coarseLocation, localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
 
 // "Your Mapr Picks": 3-4 landmarks Mapr thinks you'll love next, as a
 // swipeable card row under the taste card. Asks /api/mapr-picks (Claude,
@@ -12,7 +13,12 @@ import { localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '
 export default function MaprPicksCarousel({ reviews, interests = [], checkedInIds = [], regionIds = [] }) {
   const { user } = useAuth();
   const { ratings } = useRatings();
+  const { coords } = useGeo();
   const navigate = useNavigate();
+  // Picks are about where you are right now. Without a fix yet we wait a
+  // beat for one rather than answer for the wrong city.
+  const origin = coords ? { lat: coords.lat, lng: coords.lng } : null;
+  const locKey = coarseLocation(origin);
   const [picks, setPicks] = useState(null);
   const [active, setActive] = useState(0);
   const trackRef = useRef(null);
@@ -24,7 +30,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       return;
     }
     let cancelled = false;
-    const key = picksCacheKey(user.uid, ratingsCount);
+    const key = picksCacheKey(user.uid, ratingsCount, origin);
     const cached = readPicksCache(key);
     if (cached) {
       setPicks(cached);
@@ -36,6 +42,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         interests,
         checkedInIds,
         regionIds,
+        origin,
         ratings,
       });
     (async () => {
@@ -55,6 +62,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
             interests,
             checkedInIds,
             regionIds,
+            origin,
           }),
         });
         const data = await r.json().catch(() => null);
@@ -72,10 +80,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     return () => {
       cancelled = true;
     };
-    // Re-run when the user or their rating count changes; the other inputs
-    // ride along with those.
+    // Re-run when the user, their rating count, or their coarse location
+    // changes; the other inputs ride along with those.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, ratingsCount]);
+  }, [user?.uid, ratingsCount, locKey]);
 
   // Which card is in view, for the dots.
   const onScroll = () => {
@@ -91,7 +99,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     <div className="mapr-picks">
       <div className="taste-card-title">{'\u{1F525}'} Your Mapr Picks</div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>
-        Swipe through — tap one to go there and check in.
+        {origin ? 'Near you right now. ' : ''}Swipe through — tap one to go there and check in.
       </p>
       <div className="mapr-picks-track" ref={trackRef} onScroll={onScroll}>
         {picks.map((p) => (

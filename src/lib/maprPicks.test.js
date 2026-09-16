@@ -20,6 +20,13 @@ describe('localMaprPicks', () => {
     expect(picks.every((p) => p.oneLineSummary.length > 0)).toBe(true);
   });
 
+  it('with a GPS fix, only suggests places near you', () => {
+    // Standing at Villanova: Philly-area picks only, never Miami or Milan.
+    const picks = localMaprPicks({ origin: { lat: 40.037, lng: -75.342 }, regionIds: ['miami'] });
+    expect(picks).toHaveLength(4);
+    expect(picks.every((p) => ['villanova', 'philly'].includes(p.region))).toBe(true);
+  });
+
   it('never suggests a dorm', () => {
     const picks = localMaprPicks({ regionIds: ['villanova'], limit: 40 });
     expect(picks.some((p) => p.id.endsWith('-hall'))).toBe(false);
