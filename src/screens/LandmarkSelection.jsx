@@ -325,46 +325,33 @@ export default function LandmarkSelection() {
         }}
       />
 
-      <div className="tabs" style={{ flexWrap: 'wrap' }}>
-        <button
-          className={`tab-btn ${activeCategories.length === 0 ? 'active' : ''}`}
-          onClick={() => setActiveCategories([])}
+      {/* One dropdown instead of a chip per category: with a dozen-plus
+          categories the tab row wrapped onto four lines. Custom interests
+          typed on Setup sit at the bottom of the same list. */}
+      <label className="itin-sort" style={{ marginBottom: 10 }}>
+        <span>Category</span>
+        <select
+          className="radius-select"
+          value={activeCategories[0] || ''}
+          onChange={(e) => setActiveCategories(e.target.value ? [e.target.value] : [])}
         >
-          All
-        </button>
-        {INTERESTS.map((i) => (
-          <button
-            key={i.id}
-            className={`tab-btn ${activeCategories.includes(i.id) ? 'active' : ''}`}
-            onClick={() =>
-              setActiveCategories((cur) =>
-                cur.includes(i.id) ? cur.filter((id) => id !== i.id) : [...cur, i.id]
-              )
-            }
-          >
-            {i.label}
-          </button>
-        ))}
-        {trip.customInterests.map((text) => {
-          const pending = trip.customInterestMatches[text] === undefined;
-          return (
-            <button
-              key={text}
-              className={`tab-btn ${activeCategories.includes(text) ? 'active' : ''}`}
-              disabled={pending}
-              title={pending ? 'Finding matching landmarks…' : undefined}
-              onClick={() =>
-                setActiveCategories((cur) =>
-                  cur.includes(text) ? cur.filter((k) => k !== text) : [...cur, text]
-                )
-              }
-            >
-              {pending ? '\u{23F3} ' : ''}
-              {text}
-            </button>
-          );
-        })}
-      </div>
+          <option value="">All categories</option>
+          {INTERESTS.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.icon} {i.label}
+            </option>
+          ))}
+          {trip.customInterests.map((text) => {
+            const pending = trip.customInterestMatches[text] === undefined;
+            return (
+              <option key={text} value={text} disabled={pending}>
+                {pending ? '\u{23F3} ' : '\u{2728} '}
+                {text}
+              </option>
+            );
+          })}
+        </select>
+      </label>
 
       <div className="tabs" style={{ marginBottom: sortBy === 'nearMe' && !coords ? 4 : 18 }}>
         {SORT_OPTIONS.map((s) => (
