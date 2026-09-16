@@ -184,27 +184,42 @@ export function getLandmark(regionId, landmarkId) {
   return region?.landmarks.find((l) => l.id === landmarkId) || null;
 }
 
+// `added` is the order each category was introduced to the app (1 = the
+// original four), so lists can show the newest categories first.
 export const INTERESTS = [
-  { id: 'history-culture', label: 'History & Culture', icon: '\u{1F3DB}\u{FE0F}' },
-  { id: 'art-museums', label: 'Art & Museums', icon: '\u{1F5BC}\u{FE0F}' },
+  { id: 'history-culture', label: 'History & Culture', icon: '\u{1F3DB}\u{FE0F}', added: 1 },
+  { id: 'art-museums', label: 'Art & Museums', icon: '\u{1F5BC}\u{FE0F}', added: 2 },
   // Food is restaurants, cafés, bakeries, gelato, food markets. Local Life is
   // bars, clubs, live-music venues, neighborhoods, squares, shopping streets.
-  { id: 'food', label: 'Food', icon: '\u{1F37D}\u{FE0F}' },
-  { id: 'local-life', label: 'Local Life', icon: '\u{1F378}' },
-  { id: 'parks-nature', label: 'Parks & Nature', icon: '\u{1F333}' },
+  { id: 'food', label: 'Food', icon: '\u{1F37D}\u{FE0F}', added: 8 },
+  { id: 'local-life', label: 'Local Life', icon: '\u{1F378}', added: 9 },
+  { id: 'parks-nature', label: 'Parks & Nature', icon: '\u{1F333}', added: 4 },
   // Entertainment is shows, zoos, aquariums, cruises, amusement parks.
   // Stadiums is every stadium, arena, ballpark and race track. Sports
   // Activities is things you do (courts, golf, go-karts, pools, kayaking).
-  { id: 'entertainment', label: 'Entertainment', icon: '\u{1F39F}\u{FE0F}' },
-  { id: 'stadiums', label: 'Stadiums', icon: '\u{1F3DF}\u{FE0F}' },
-  { id: 'formula-1', label: 'Formula 1 Circuits', icon: '\u{1F3CE}\u{FE0F}' },
-  { id: 'sports', label: 'Sports Activities', icon: '\u{1F3C0}' },
-  { id: 'airports', label: 'Airports', icon: '\u{2708}\u{FE0F}' },
+  { id: 'entertainment', label: 'Entertainment', icon: '\u{1F39F}\u{FE0F}', added: 5 },
+  { id: 'stadiums', label: 'Stadiums', icon: '\u{1F3DF}\u{FE0F}', added: 11 },
+  { id: 'formula-1', label: 'Formula 1 Circuits', icon: '\u{1F3CE}\u{FE0F}', added: 12 },
+  { id: 'sports', label: 'Sports Activities', icon: '\u{1F3C0}', added: 10 },
+  { id: 'airports', label: 'Airports', icon: '\u{2708}\u{FE0F}', added: 7 },
   // Personal-favourite sitting spots with a view, like The 10/10 Bench.
-  { id: 'benches', label: '10/10 Benches', icon: '\u{1FA91}' },
-  { id: 'campus-life', label: 'Campus Life', icon: '\u{1F3EB}' },
-  { id: 'dorms', label: 'Dorms', icon: '\u{1F6CF}\u{FE0F}' },
+  { id: 'benches', label: '10/10 Benches', icon: '\u{1FA91}', added: 13 },
+  { id: 'campus-life', label: 'Campus Life', icon: '\u{1F3EB}', added: 3 },
+  { id: 'dorms', label: 'Dorms', icon: '\u{1F6CF}\u{FE0F}', added: 6 },
 ];
+
+export const INTEREST_ORDERS = [
+  { id: 'abc', label: 'A–Z' },
+  { id: 'newest', label: 'Newest first' },
+  { id: 'oldest', label: 'Oldest first' },
+];
+
+export function sortInterests(list, orderId = 'abc') {
+  const out = [...list];
+  if (orderId === 'newest') return out.sort((a, b) => (b.added || 0) - (a.added || 0));
+  if (orderId === 'oldest') return out.sort((a, b) => (a.added || 0) - (b.added || 0));
+  return out.sort((a, b) => a.label.localeCompare(b.label));
+}
 
 // Interest ids that no longer exist, mapped to what replaced them. Saved
 // interests (localStorage) and old review docs can still carry these.
