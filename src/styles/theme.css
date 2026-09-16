@@ -1778,24 +1778,26 @@ textarea {
 
 .bottom-nav {
   position: fixed;
-  bottom: 14px;
-  left: 14px;
-  right: 14px;
-  height: 64px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  /* Flush with the bottom edge; on iPhone the bar extends under the home
+     indicator (safe-area inset) so nothing shows beneath it. */
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
   display: flex;
   /* Solid background (no backdrop blur) keeps this fixed bar from drifting mid-
      screen during scroll on iOS Safari. */
   background: rgb(var(--color-bg-rgb));
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-pill);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
   box-shadow: var(--shadow-float);
   z-index: 20;
   max-width: 692px;
   margin: 0 auto;
-  /* iOS Safari: a fixed bar can lag and settle mid-screen while the page
-     scrolls or the keyboard closes. Promoting it to its own layer and
-     anchoring to the safe area keeps it glued to the bottom. */
-  bottom: 14px;
+  /* iOS Safari: promoted to its own layer so it never lags mid-scroll. */
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
   will-change: transform;
