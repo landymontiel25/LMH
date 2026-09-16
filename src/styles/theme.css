@@ -3372,3 +3372,16 @@ body.pin-placing .ask-landmark-panel {
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/* iOS Safari zooms the whole page when you tap a field whose text is under
+   16px, and every fixed / sticky bar (bottom nav, Build Itinerary) then
+   drifts mid-screen because Safari pins them to the unzoomed page. The
+   base rule above is 16px, but the compact selects and search box went
+   smaller -- this pins them all back on iOS only. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
