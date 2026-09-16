@@ -136,6 +136,13 @@ export async function backfillUserName(userId, userName) {
   await batch.commit();
 }
 
+/** The user's own check-in doc for a landmark (createdAt, points, photo), or null. */
+export async function getMyCheckin(userId, landmarkId) {
+  if (!db || !userId || !landmarkId) return null;
+  const snap = await getDoc(doc(db, 'checkins', `${userId}_${landmarkId}`));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
 export async function hasClaimedLandmark(userId, landmarkId) {
   const snap = await getDoc(doc(db, 'checkins', `${userId}_${landmarkId}`));
   return snap.exists();
