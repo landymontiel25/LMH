@@ -882,6 +882,11 @@ export default function Profile() {
             {'\u{26A0}\u{FE0F}'} Check in today or your {streakDays}-day streak breaks!
           </p>
         )}
+        {streakDays > 0 && checkedInToday && (
+          <p className="tag tag-free" style={{ display: 'block', marginTop: 14 }}>
+            {'\u{2705}'} Checked in today — your {streakDays}-day streak is safe
+          </p>
+        )}
 
         {bonusPoints > 0 && (
           <p className="tag" style={{ marginTop: 14 }}>
