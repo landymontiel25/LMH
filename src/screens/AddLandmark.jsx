@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { INTERESTS, REGIONS, getRegion } from '../data/regions';
+import { REGIONS, getRegion } from '../data/regions';
+import CategorySelect from '../components/CategorySelect';
 import { nearestRegionId } from '../lib/geo';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
@@ -84,15 +85,6 @@ export default function AddLandmark() {
   const [error, setError] = useState('');
   const busy = stage !== 'idle';
 
-  const toggleCategory = (id) =>
-    setCategories((cur) => (cur.includes(id) ? cur.filter((c) => c !== id) : [...cur, id]));
-
-  const addFact = () => {
-    const text = factDraft.trim();
-    if (!text || facts.length >= 5) return;
-    setFacts((cur) => [...cur, text]);
-    setFactDraft('');
-  };
   const removeFact = (i) => setFacts((cur) => cur.filter((_, idx) => idx !== i));
 
   const onPhotoChange = async () => {
@@ -217,20 +209,8 @@ export default function AddLandmark() {
       </div>
 
       <div className="field">
-        <FieldLabel required>Topic — pick at least one</FieldLabel>
-        <div className="chip-grid">
-          {INTERESTS.map((i) => (
-            <button
-              key={i.id}
-              type="button"
-              className={`chip ${categories.includes(i.id) ? 'selected' : ''}`}
-              onClick={() => toggleCategory(i.id)}
-            >
-              <span className="chip-icon">{i.icon}</span>
-              <span>{i.label}</span>
-            </button>
-          ))}
-        </div>
+        <FieldLabel required>Category</FieldLabel>
+        <CategorySelect value={categories[0] || ''} onSelect={(id) => setCategories([id])} />
       </div>
 
       <div className="field">

@@ -290,7 +290,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0478,
     lng: -75.3617,
     checkInRadiusMeters: 700,
-    categories: ['parks-nature', 'history-culture'],
+    categories: ['parks-nature'],
     summary: 'A historic mansion and public park in Radnor Township with walking trails and gardens.',
     facts: [
       'Once a private estate, now a Radnor Township public park',
@@ -408,7 +408,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0089,
     lng: -75.2954,
     checkInRadiusMeters: 500,
-    categories: ['local-life'],
+    categories: ['history-culture'],
     summary: 'An open-air shopping and dining center in Ardmore, considered one of the first planned shopping centers in the U.S.',
     facts: [
       'Opened in 1928, among the earliest planned shopping centers nationwide',
@@ -446,7 +446,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0089,
     lng: -75.2606,
     checkInRadiusMeters: 500,
-    categories: ['local-life'],
+    categories: ['history-culture'],
     summary: 'A small, walkable downtown strip in Narberth Borough packed with independent shops, restaurants, and a classic movie theater.',
     facts: [
       'One of the smallest boroughs in Pennsylvania by area',
@@ -525,7 +525,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.0895,
     lng: -75.3960,
     checkInRadiusMeters: 1200,
-    categories: ['local-life'],
+    categories: ['history-culture'],
     summary: 'One of the largest shopping malls in the United States, with hundreds of stores and restaurants.',
     facts: [
       'One of the largest malls in the U.S. by leasable space',
@@ -545,7 +545,7 @@ export const PHILLY_LANDMARKS = [
     lat: 40.1000,
     lng: -75.4360,
     checkInRadiusMeters: 3000,
-    categories: ['parks-nature', 'history-culture'],
+    categories: ['history-culture'],
     summary: "The site where George Washington's Continental Army camped during the brutal winter of 1777-1778, now a large national park.",
     facts: [
       "Washington's army camped here during the winter of 1777-1778",
@@ -799,7 +799,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9009,
     lng: -75.1675,
     checkInRadiusMeters: 500,
-    categories: ['stadiums', 'history-culture'],
+    categories: ['stadiums'],
     summary: 'Home stadium of the Philadelphia Eagles, a must for NFL fans that also hosted 2026 World Cup matches.',
     facts: [
       'Opened in 2003, seating over 69,000 fans for Eagles games',
@@ -932,7 +932,7 @@ export const PHILLY_LANDMARKS = [
     region: 'philly',
     lat: 39.9514,
     lng: -75.1886,
-    categories: ['stadiums', 'history-culture'],
+    categories: ['stadiums'],
     summary: 'A historic college basketball arena at Penn, and the legendary home of Philadelphia\'s Big 5 basketball.',
     facts: [
       'Opened in 1927 and nicknamed the "Cathedral of College Basketball"',
@@ -952,7 +952,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9501,
     lng: -75.1900,
     checkInRadiusMeters: 400,
-    categories: ['stadiums', 'history-culture'],
+    categories: ['stadiums'],
     summary: 'Penn\'s historic stadium and home of the Penn Relays -- a great stop for sports history fans.',
     facts: [
       'Opened in 1895, the oldest stadium still in use in college football',
@@ -972,7 +972,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9495,
     lng: -75.1719,
     checkInRadiusMeters: 300,
-    categories: ['local-life'],
+    categories: ['parks-nature'],
     summary: 'One of the city\'s best areas to walk, grab coffee, and experience upscale Center City Philadelphia.',
     facts: [
       'One of the five original open-space squares planned by William Penn in 1682',
@@ -992,7 +992,7 @@ export const PHILLY_LANDMARKS = [
     lat: 39.9879,
     lng: -75.4052,
     checkInRadiusMeters: 250,
-    categories: ['local-life'],
+    categories: ['food'],
     summary: 'A modern hotel set within the 260-acre Ellis Preserve in Newtown Square, with an on-site restaurant and bar — a convenient base near the Main Line, Valley Forge, and King of Prussia.',
     facts: [
       'Located at 3743 West Chester Pike, inside the 260-acre Ellis Preserve',

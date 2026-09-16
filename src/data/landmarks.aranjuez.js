@@ -712,7 +712,7 @@ export const ARANJUEZ_LANDMARKS = [
     lat: 40.03305,
     lng: -3.59921,
     checkInRadiusMeters: 100,
-    categories: ["food", "local-life"],
+    categories: ["food"],
     summary: "A popular tapas bar in central Aranjuez.",
     facts: ["A popular tapas bar in central Aranjuez","Serves modern Spanish tapas and sharing plates","A lively, casual spot","Great for sampling several dishes","Uses fresh local ingredients","A favorite for a relaxed meal","Located on the historic Calle de las Postas","Blends tradition with contemporary flavors","Good for groups and sharing","A tasty stop in the town center"],
     free: false,
