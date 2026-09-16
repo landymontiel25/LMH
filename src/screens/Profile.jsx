@@ -448,6 +448,7 @@ export default function Profile() {
   const { trip } = useTrip();
   const navigate = useNavigate();
   const { stats, streakDays, checkedInToday, badges } = useBadges();
+  const { claimedMap } = useCheckIn();
 
   // Your own reviews come from RatingsContext (refreshed after every save),
   // for the "X/10 rated" progress line and the taste card. Only reviews
