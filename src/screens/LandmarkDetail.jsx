@@ -10,7 +10,8 @@ import { useRatings } from '../lib/RatingsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
 import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
-import { isRateable } from '../lib/ratingFlow';
+import { isRateable, tierById } from '../lib/ratingFlow';
+import { getMyCheckin } from '../lib/leaderboard';
 import RatingFlow from '../components/RatingFlow';
 import LandmarkPostcard from '../components/LandmarkPostcard';
 import ReviewReplies from '../components/ReviewReplies';
@@ -20,6 +21,14 @@ import { mapsDeepLink } from '../lib/routing';
 import { pickPhoto } from '../lib/imageUtils';
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
+
+// "Tuesday, Sep 15 at 3:47 PM"
+function fmtCheckinTime(seconds) {
+  const d = new Date(seconds * 1000);
+  const day = d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `${day} at ${time}`;
+}
 const FACTS_PREVIEW = 5;
 
 export default function LandmarkDetail() {
@@ -95,6 +104,8 @@ export default function LandmarkDetail() {
   // savedRating: what's already on file, to pre-fill the flow on an edit.
   const [myRating, setMyRating] = useState(null);
   const [savedRating, setSavedRating] = useState(null);
+  // Your own check-in doc here (for "Checked in: Tuesday, Sep 15 at 3:47 PM").
+  const [myCheckin, setMyCheckin] = useState(null);
   const [myPhotos, setMyPhotos] = useState([]);
   const [photoFiles, setPhotoFiles] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
@@ -188,6 +199,23 @@ export default function LandmarkDetail() {
   useEffect(() => {
     loadMyReview();
   }, [loadMyReview]);
+
+  const checkedInHere = !!(landmark && claimedMap[landmark.id]);
+  useEffect(() => {
+    if (!firebaseEnabled || !user || !landmark || !checkedInHere) {
+      setMyCheckin(null);
+      return;
+    }
+    let cancelled = false;
+    getMyCheckin(user.uid, landmark.id)
+      .then((c) => {
+        if (!cancelled) setMyCheckin(c);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseEnabled, user, landmark, checkedInHere]);
 
   const loadReviews = useCallback(async () => {
     if (!firebaseEnabled || !landmark) return;
@@ -444,6 +472,27 @@ export default function LandmarkDetail() {
           </button>
         )}
       </div>
+      )}
+
+      {firebaseEnabled && user && (
+        <div className="section">
+          <h3>Your Check-in Stats</h3>
+          {!checkedInHere ? (
+            <p className="screen-subtitle" style={{ margin: 0 }}>
+              You haven't checked in yet. Check in to see your stats.
+            </p>
+          ) : (
+            <ul className="checkin-stats">
+              <li>
+                <span>Checked in:</span> {myCheckin?.createdAt?.seconds ? fmtCheckinTime(myCheckin.createdAt.seconds) : '…'}
+              </li>
+              <li>
+                <span>Your rating:</span>{' '}
+                {savedRating?.tier ? `${tierById(savedRating.tier)?.emoji || ''} ${tierById(savedRating.tier)?.label || ''}` : 'Not rated yet'}
+              </li>
+            </ul>
+          )}
+        </div>
       )}
 
       <a

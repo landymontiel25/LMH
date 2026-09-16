@@ -192,13 +192,8 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="checkin-name">{it.name}</div>
-                <div className="checkin-sub">
-                  {it.city}
-                  {it.date ? ` · ${it.date}` : ''}
-                  {it.tierEmoji ? ` · ${it.tierEmoji} ${it.tierLabel}` : ''}
-                </div>
+                <div className="checkin-sub">{it.tierEmoji ? `${it.tierEmoji} ${it.tierLabel}` : 'Not rated yet'}</div>
               </div>
-              <div className="checkin-pts">+{it.points}</div>
             </div>
           ))}
         </div>

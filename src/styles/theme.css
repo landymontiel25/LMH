@@ -945,6 +945,22 @@ textarea {
   padding: 4px 9px;
 }
 
+.checkin-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.checkin-stats span {
+  color: var(--color-parchment-dim);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+
 /* Landmark page header: Back on the left, and when you came from a
    check-ins gallery, ‹ 3 / 12 › on the right to step through them. */
 .detail-topbar {
