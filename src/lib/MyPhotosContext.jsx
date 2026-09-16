@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { getUserReviewPhotos } from './reviews';
+import { getUserCheckins } from './leaderboard';
 
 // Loads the signed-in user's own check-in/review photos once, as
 // { [landmarkId]: [photoURL, ...] }, so every landmark thumbnail across the
@@ -20,7 +21,19 @@ export function MyPhotosProvider({ children }) {
       return;
     }
     try {
-      setMyPhotos(await getUserReviewPhotos(user.uid));
+      // Review photos plus any photo saved on the check-in itself -- the
+      // check-in one leads, same order the check-ins gallery uses.
+      const [fromReviews, checkins] = await Promise.all([
+        getUserReviewPhotos(user.uid),
+        getUserCheckins(user.uid).catch(() => []),
+      ]);
+      const map = { ...fromReviews };
+      for (const c of checkins) {
+        if (c.photoURL && !(map[c.landmarkId] || []).includes(c.photoURL)) {
+          map[c.landmarkId] = [c.photoURL, ...(map[c.landmarkId] || [])];
+        }
+      }
+      setMyPhotos(map);
     } catch {
       /* offline / rules not set yet -- leave it empty */
     }

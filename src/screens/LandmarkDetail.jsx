@@ -210,7 +210,9 @@ export default function LandmarkDetail() {
     let cancelled = false;
     getMyCheckin(user.uid, landmark.id)
       .then((c) => {
-        if (!cancelled) setMyCheckin(c);
+        if (cancelled) return;
+        setMyCheckin(c);
+        if (c?.photoURL) setMyPhotos((prev) => (prev.includes(c.photoURL) ? prev : [c.photoURL, ...prev]));
       })
       .catch(() => {});
     return () => {

@@ -5,6 +5,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { submitReview } from '../lib/reviews';
+import { attachCheckinPhoto } from '../lib/leaderboard';
 import { pickPhoto } from '../lib/imageUtils';
 import { isRateable } from '../lib/ratingFlow';
 import RatingFlow from './RatingFlow';
@@ -97,6 +98,14 @@ export default function CheckInReview() {
         }
       } catch {
         setMsg("Checked in! Your rating couldn't save — you can try rating it again from the landmark page.");
+      }
+    } else if (photoFiles.length) {
+      // No rating here, so the photo lives on the check-in doc instead.
+      try {
+        await attachCheckinPhoto(user.uid, justCheckedIn.id, photoFiles[0]);
+        await reloadMyPhotos();
+      } catch {
+        setMsg("Checked in! Your photo couldn't upload — tap Done to close.");
       }
     }
     setPosted(true);
