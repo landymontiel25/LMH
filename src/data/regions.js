@@ -162,6 +162,11 @@ export const REGIONS = [
   },
 ];
 
+// Regions a user can pick as a city. The Formula 1 catalog is worldwide,
+// not a place, so it stays out of city pickers -- its circuits are still
+// on the map, in search, and in "All cities" landmark lists.
+export const PICKABLE_REGIONS = REGIONS.filter((r) => !r.worldwide);
+
 export function getRegion(id) {
   return REGIONS.find((r) => r.id === id) || null;
 }

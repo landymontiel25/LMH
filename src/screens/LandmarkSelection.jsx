@@ -12,7 +12,7 @@ import { classifyInterest } from '../lib/interestClassifier';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 import QuickRateButton from '../components/QuickRateButton';
-import { ALL_LANDMARKS, REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
+import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
 
@@ -39,7 +39,7 @@ function CityDropdown({ value, onChange }) {
   }, []);
 
   const term = search.trim().toLowerCase();
-  const filtered = REGIONS.filter((r) => r.city.toLowerCase().includes(term));
+  const filtered = PICKABLE_REGIONS.filter((r) => r.city.toLowerCase().includes(term));
   const selectedLabel = value === 'all' ? 'All Cities' : getRegion(value)?.city ?? 'All Cities';
 
   const choose = (id) => {
