@@ -976,6 +976,191 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
+/* Optional free-text line at the end of the rating flow. */
+.rating-comment {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 56px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: rgb(var(--color-bg-rgb));
+  color: var(--color-parchment);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+.rating-comment::placeholder {
+  color: var(--color-parchment-dim);
+}
+
+/* A landmark you've already checked into reads green wherever it's listed
+   (Landmarks tab rows, itinerary stop cards). */
+.landmark-row.visited,
+.card.visited {
+  border-color: var(--color-green);
+  background: rgba(79, 122, 92, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(79, 122, 92, 0.35);
+}
+.landmark-row.visited.selected {
+  border-color: var(--color-green);
+}
+
+/* ---------- Check-in blast ---------- */
+.checkin-blast {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 224, 130, 0.35), rgba(20, 24, 28, 0.94) 60%);
+  animation: blast-bg 0.5s ease-out;
+}
+@keyframes blast-bg {
+  from {
+    background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.9), rgba(20, 24, 28, 0.2) 30%);
+  }
+}
+.blast-ring {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  border: 6px solid #ffe94d;
+  opacity: 0;
+  animation: blast-ring 1.4s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+.blast-ring-2 {
+  border-color: #ff3d71;
+  animation-delay: 0.15s;
+}
+.blast-ring-3 {
+  border-color: #38bdf8;
+  animation-delay: 0.3s;
+}
+@keyframes blast-ring {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(28);
+    opacity: 0;
+  }
+}
+.blast-pieces {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+}
+.blast-piece {
+  position: absolute;
+  width: var(--size);
+  height: calc(var(--size) * 0.6);
+  animation: blast-fly 1.9s cubic-bezier(0.15, 0.85, 0.35, 1) var(--delay) forwards;
+  opacity: 0;
+}
+@keyframes blast-fly {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0.4);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1);
+    opacity: 0;
+  }
+}
+.blast-body {
+  position: relative;
+  text-align: center;
+  padding: 0 24px;
+  animation: blast-pop 0.55s cubic-bezier(0.34, 1.7, 0.64, 1);
+}
+@keyframes blast-pop {
+  0% {
+    transform: scale(0.3) rotate(-6deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+.blast-pin {
+  font-size: 4.5rem;
+  line-height: 1;
+  animation: blast-bounce 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s infinite alternate;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.5));
+}
+@keyframes blast-bounce {
+  from {
+    transform: translateY(0) scale(1);
+  }
+  to {
+    transform: translateY(-14px) scale(1.08);
+  }
+}
+.blast-title {
+  margin: 10px 0 6px;
+  font-family: var(--font-heading);
+  font-size: clamp(2.2rem, 11vw, 3.6rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  background: linear-gradient(90deg, #ff3d71, #ffb020, #ffe94d, #3ddc84, #38bdf8, #a78bfa, #ff3d71);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: blast-rainbow 1.6s linear infinite;
+  text-shadow: none;
+}
+@keyframes blast-rainbow {
+  to {
+    background-position: 300% 0;
+  }
+}
+.blast-name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+.blast-points {
+  margin: 8px 0 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffe94d;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  animation: blast-pop 0.5s cubic-bezier(0.34, 1.7, 0.64, 1) 0.35s both;
+}
+.blast-message {
+  margin: 10px 0 0;
+  color: #fff;
+  font-size: 0.95rem;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .blast-piece,
+  .blast-ring {
+    display: none;
+  }
+  .blast-pin,
+  .blast-title {
+    animation: none;
+  }
+}
+
 .quick-rate-btn.rated {
   border-color: var(--color-green);
   color: #bfe0c8;
@@ -1401,6 +1586,15 @@ textarea {
   z-index: 20;
   max-width: 692px;
   margin: 0 auto;
+  /* iOS Safari: a fixed bar can lag and settle mid-screen while the page
+     scrolls or the keyboard closes. Promoting it to its own layer and
+     anchoring to the safe area keeps it glued to the bottom. */
+  bottom: max(14px, env(safe-area-inset-bottom));
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .bottom-nav a {

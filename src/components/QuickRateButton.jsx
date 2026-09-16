@@ -39,6 +39,7 @@ export default function QuickRateButton({ landmark }) {
         highlights: mine.highlights || [],
         lovedOrder: mine.lovedOrder || [],
         dislikedOrder: mine.dislikedOrder || [],
+        comment: mine.comment || '',
       }
     : null;
 

@@ -20,6 +20,20 @@ describe('SORT_OPTIONS', () => {
 });
 
 describe('orderStops', () => {
+  it('nearest: a walkable chain, never a zig-zag past places you have to come back for', () => {
+    // North, south, further north, further south of you. A plain sort by
+    // distance-from-you visits them a, b, c, d (crossing back and forth);
+    // the chain goes a, c then b, d.
+    const o = { lat: 0, lng: 0 };
+    const pts = [
+      { id: 'a', lat: 0.01, lng: 0 },
+      { id: 'b', lat: -0.011, lng: 0 },
+      { id: 'c', lat: 0.02, lng: 0 },
+      { id: 'd', lat: -0.021, lng: 0 },
+    ];
+    expect(ids(orderStops('nearest', o, pts))).toEqual(['a', 'c', 'b', 'd']);
+  });
+
   it('nearest: closest to you first, regardless of input order', () => {
     expect(ids(orderStops('nearest', origin, shuffled))).toEqual(['a', 'b', 'c', 'd']);
   });

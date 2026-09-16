@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
@@ -8,6 +8,7 @@ import { submitReview } from '../lib/reviews';
 import { pickPhoto } from '../lib/imageUtils';
 import { isRateable } from '../lib/ratingFlow';
 import RatingFlow from './RatingFlow';
+import CheckInBlast from './CheckInBlast';
 
 // Pops up the moment "Check In" is tapped -- nothing is claimed yet. Tapping
 // Post is what actually registers the check-in (via commitCheckIn) and awards
@@ -29,6 +30,10 @@ export default function CheckInReview() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
   const [posted, setPosted] = useState(false);
+  // The full-screen blast shows the instant a check-in posts, then hands
+  // off to the quieter "Checked in! +100" panel below.
+  const [blast, setBlast] = useState(false);
+  const endBlast = useCallback(() => setBlast(false), []);
 
   useEffect(() => {
     if (justCheckedIn) {
@@ -37,6 +42,7 @@ export default function CheckInReview() {
       setPhotoPreviews([]);
       setMsg(null);
       setPosted(false);
+      setBlast(false);
     }
   }, [justCheckedIn]);
 
@@ -94,10 +100,22 @@ export default function CheckInReview() {
       }
     }
     setPosted(true);
+    setBlast(true);
     setSaving(false);
   };
 
   const close = () => clearJustCheckedIn();
+
+  if (posted && blast) {
+    return (
+      <CheckInBlast
+        landmarkName={justCheckedIn.landmark?.name || justCheckedIn.name || ''}
+        points={celebration?.points ?? justCheckedIn.points ?? 100}
+        message={celebration?.message}
+        onDone={endBlast}
+      />
+    );
+  }
 
   return (
     <div className="modal-backdrop" onClick={() => !saving && close()}>
