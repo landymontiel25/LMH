@@ -18,7 +18,7 @@ import Lightbox from '../components/Lightbox';
 import ReviewReplies from '../components/ReviewReplies';
 import CheckInButton from '../components/CheckInButton';
 import RatingStars from '../components/RatingStars';
-import { mapsDeepLink } from '../lib/routing';
+import DirectionsButton from '../components/DirectionsButton';
 import { pickPhoto } from '../lib/imageUtils';
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
@@ -498,15 +498,15 @@ export default function LandmarkDetail() {
         </div>
       )}
 
-      <a
+      <DirectionsButton
+        name={landmark.name}
+        lat={landmark.lat}
+        lng={landmark.lng}
         className="btn btn-ghost btn-block"
-        href={mapsDeepLink(landmark.name, landmark.lat, landmark.lng)}
-        target="_blank"
-        rel="noreferrer"
         style={{ marginBottom: 12 }}
       >
         {'\u{1F9ED}'} Get Directions
-      </a>
+      </DirectionsButton>
 
       <button
         type="button"

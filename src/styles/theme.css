@@ -966,6 +966,11 @@ textarea {
   margin-right: 6px;
 }
 
+.directions-sheet .directions-choice {
+  margin-bottom: 8px;
+  text-decoration: none;
+}
+
 /* Full-screen photo viewer */
 .lightbox {
   position: fixed;

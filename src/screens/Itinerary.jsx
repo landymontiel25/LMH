@@ -18,7 +18,8 @@ import { createGroupTrip, listMyGroupTrips } from '../lib/groupTrips';
 import { getRegion } from '../data/regions';
 import { geocodeLocation } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
-import { SORT_OPTIONS, orderStops, annotateRoute, enhanceRouteWithDrivingTimes, mapsDeepLink } from '../lib/routing';
+import { SORT_OPTIONS, orderStops, annotateRoute, enhanceRouteWithDrivingTimes } from '../lib/routing';
+import DirectionsButton from '../components/DirectionsButton';
 import { useRatings } from '../lib/RatingsContext';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
 
@@ -108,14 +109,9 @@ function ItineraryMap({ origin, stops, onDetails }) {
                   {idx + 1}. {s.name}
                 </h4>
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                  <a
-                    className="btn btn-primary btn-sm"
-                    href={mapsDeepLink(s.name, s.lat, s.lng)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <DirectionsButton name={s.name} lat={s.lat} lng={s.lng} className="btn btn-primary btn-sm">
                     {'\u{1F9ED}'} Get Directions
-                  </a>
+                  </DirectionsButton>
                   {onDetails && (
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDetails(s)}>
                       Details
@@ -517,14 +513,9 @@ export default function Itinerary() {
                   <span className="tag">{'\u{23F1}\u{FE0F}'} ~{stop.typicalMinutes} min there</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <a
-                    className="btn btn-ghost btn-sm"
-                    href={mapsDeepLink(stop.name, stop.lat, stop.lng)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <DirectionsButton name={stop.name} lat={stop.lat} lng={stop.lng} className="btn btn-ghost btn-sm">
                     Get Directions
-                  </a>
+                  </DirectionsButton>
                   {stop.free ? (
                     <button className="btn btn-sm" disabled style={{ borderColor: 'var(--color-green)', color: '#bfe0c8' }}>
                       Free to Visit
