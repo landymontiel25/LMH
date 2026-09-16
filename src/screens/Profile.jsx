@@ -34,6 +34,7 @@ import FriendPopoverName from '../components/FriendPopoverName';
 import CheckInButton from '../components/CheckInButton';
 import RegionSearch from '../components/RegionSearch';
 import ProfileTasteCard from '../components/ProfileTasteCard';
+import MaprPicksCarousel from '../components/MaprPicksCarousel';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -876,6 +877,12 @@ export default function Profile() {
           </div>
         </div>
         <ProfileTasteCard reviews={myReviews} />
+        <MaprPicksCarousel
+          reviews={myReviews}
+          interests={trip.savedInterests}
+          checkedInIds={Object.keys(claimedMap)}
+          regionIds={[...(stats?.cityIds || []), ...(trip.activeRegion ? [trip.activeRegion] : [])]}
+        />
 
         {streakAtRisk && (
           <p className="tag tag-error" style={{ display: 'block', marginTop: 14 }}>
