@@ -475,8 +475,8 @@ export default function LandmarkDetail() {
       )}
 
       {firebaseEnabled && user && (
-        <div className="section">
-          <h3>Your Check-in Stats</h3>
+        <div className="card checkin-stats-card">
+          <h3 style={{ marginTop: 0 }}>{'\u{1F4CD}'} Your Check-in Stats</h3>
           {!checkedInHere ? (
             <p className="screen-subtitle" style={{ margin: 0 }}>
               You haven't checked in yet. Check in to see your stats.

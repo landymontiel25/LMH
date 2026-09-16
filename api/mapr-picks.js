@@ -11,12 +11,12 @@ const INSTRUCTIONS =
   `You are Mapr, the taste engine inside the app "Landmark Hunters". You get a traveler's rating history ` +
   `(places they loved or would skip, the short reasons they tapped, anything they wrote) and a catalog of real ` +
   `landmarks they have NOT visited yet, one per line as "region/id | name | category | short description". ` +
-  `Pick the 4 catalog landmarks this traveler is most likely to love next, most confident first.\n\n` +
+  `Pick the 8 catalog landmarks this traveler is most likely to love next, most confident first (the app shows 4 and keeps the rest in reserve).\n\n` +
   `Rules:\n` +
   `- Every catalog line ends with how far it is from the traveler right now. These are all nearby; among good fits, prefer the closer one, and never pick something far when a similar closer option exists.\n` +
   `- Weigh what they wrote in their own words most, then their loved places' categories and chips, then saved interests.\n` +
   `- PICK FEEDBACK (✓ "I'd go" / ✗ "not for me" on earlier picks) is a light signal about general taste -- lighter than a rating, and context-dependent: someone may ✗ a cathedral at night in Miami and still love cathedrals in Italy, or ✓ Yankee Stadium in New York but never a ballpark in Colorado. Use it to nudge category preferences, not to rule categories out.\n` +
-  `- Prefer variety across the 4 picks unless the history is clearly single-minded.\n` +
+  `- Prefer variety across the 8 picks unless the history is clearly single-minded.\n` +
   `- matchPercentage is your honest confidence, 60-99. Don't give everything 97.\n` +
   `- oneLineSummary: under 12 words, concrete, about the place itself (not "you'll love it").\n` +
   `- Only use region/id values that appear in the catalog. Never invent one.\n\n` +
@@ -129,7 +129,7 @@ export default async function handler(req, res) {
     const client = new Anthropic();
     const msg = await client.beta.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 800,
+      max_tokens: 1400,
       // Ranking a short list is routine work; low effort keeps it quick.
       output_config: { effort: 'low' },
       betas: ['server-side-fallback-2026-06-01'],
@@ -174,7 +174,7 @@ export default async function handler(req, res) {
       })
       .filter(Boolean)
       .sort((a, b) => b.matchPercentage - a.matchPercentage)
-      .slice(0, 4);
+      .slice(0, 8);
 
     res.status(200).json({ picks });
   } catch (err) {
