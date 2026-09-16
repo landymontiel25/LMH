@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { REGIONS } from '../data/regions';
+import { PICKABLE_REGIONS } from '../data/regions';
 
 export const ANY_REGION = { id: '', name: 'Any region', tagline: 'Search everywhere' };
 
@@ -20,7 +20,7 @@ export default function RegionSearch({ region, onSelect, includeAny = false, pla
   }, []);
 
   const q = query.trim().toLowerCase();
-  const options = includeAny ? [ANY_REGION, ...REGIONS] : REGIONS;
+  const options = includeAny ? [ANY_REGION, ...PICKABLE_REGIONS] : PICKABLE_REGIONS;
   const matches = q
     ? options.filter((r) => r.name.toLowerCase().includes(q) || r.city?.toLowerCase().includes(q) || r.country?.toLowerCase().includes(q))
     : options;
