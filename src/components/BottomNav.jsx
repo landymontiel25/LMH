@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { isAdmin } from '../lib/admins';
@@ -17,6 +17,28 @@ export default function BottomNav() {
   const { user, firebaseEnabled } = useAuth();
   const admin = firebaseEnabled && isAdmin(user?.email);
   const [pendingCount, setPendingCount] = useState(0);
+  const navRef = useRef(null);
+
+  // If the page is zoomed anyway (pinch), position: fixed sticks to the
+  // unzoomed layout viewport on iOS and the bar lands mid-screen. The
+  // visual viewport API says where the visible area actually is; shift
+  // the bar by the difference so it stays on the visible bottom edge.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = navRef.current;
+    if (!vv || !el) return;
+    const update = () => {
+      const shift = Math.round(vv.offsetTop + vv.height - window.innerHeight);
+      el.style.transform = shift ? `translateY(${shift}px) translateZ(0)` : '';
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update();
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
 
   // Live count, not a one-time fetch -- a new submission (or one someone
   // else just approved) updates the badge without needing to open Profile.
@@ -29,7 +51,7 @@ export default function BottomNav() {
   }, [admin]);
 
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav" ref={navRef}>
       {items.map((item) => (
         <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'active' : '')}>
           <span className="nav-icon" style={{ position: 'relative' }}>
