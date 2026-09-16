@@ -12,7 +12,7 @@ import { classifyInterest } from '../lib/interestClassifier';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 import QuickRateButton from '../components/QuickRateButton';
-import { ALL_LANDMARKS, REGIONS, INTERESTS, INTEREST_ORDERS, sortInterests, getRegion } from '../data/regions';
+import { ALL_LANDMARKS, REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
 
@@ -118,23 +118,6 @@ export default function LandmarkSelection() {
     ...trip.interests.filter((id) => CATEGORY_ICON[id]),
     ...trip.customInterests,
   ]);
-  // How the category list itself is ordered: A–Z by default, or by when a
-  // category was added to the app. Remembered across visits.
-  const [categoryOrder, setCategoryOrder] = useState(() => {
-    try {
-      const saved = localStorage.getItem('lh-category-order');
-      return INTEREST_ORDERS.some((o) => o.id === saved) ? saved : 'abc';
-    } catch {
-      return 'abc';
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem('lh-category-order', categoryOrder);
-    } catch {
-      /* private mode */
-    }
-  }, [categoryOrder]);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('popularity');
   // Which of Visited/Unvisited are active -- multi-select like the interest
@@ -354,7 +337,7 @@ export default function LandmarkSelection() {
             onChange={(e) => setActiveCategories(e.target.value ? [e.target.value] : [])}
           >
             <option value="">All categories</option>
-            {sortInterests(INTERESTS, categoryOrder).map((i) => (
+            {sortInterests(INTERESTS).map((i) => (
             <option key={i.id} value={i.id}>
               {i.icon} {i.label}
             </option>
@@ -368,16 +351,6 @@ export default function LandmarkSelection() {
               </option>
             );
           })}
-          </select>
-        </label>
-        <label className="itin-sort">
-          <span>Order</span>
-          <select className="radius-select" value={categoryOrder} onChange={(e) => setCategoryOrder(e.target.value)}>
-            {INTEREST_ORDERS.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
           </select>
         </label>
       </div>
