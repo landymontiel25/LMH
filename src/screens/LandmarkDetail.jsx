@@ -14,6 +14,7 @@ import { isRateable, tierById } from '../lib/ratingFlow';
 import { getMyCheckin } from '../lib/leaderboard';
 import RatingFlow from '../components/RatingFlow';
 import LandmarkPostcard from '../components/LandmarkPostcard';
+import Lightbox from '../components/Lightbox';
 import ReviewReplies from '../components/ReviewReplies';
 import CheckInButton from '../components/CheckInButton';
 import RatingStars from '../components/RatingStars';
@@ -732,27 +733,7 @@ export default function LandmarkDetail() {
         </div>
       )}
 
-      {lightboxSrc && (
-        <div
-          onClick={() => setLightboxSrc(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1000,
-            background: 'rgba(0, 0, 0, 0.92)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-          }}
-        >
-          <img
-            src={lightboxSrc}
-            alt="Visit photo"
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 10 }}
-          />
-        </div>
-      )}
+      <Lightbox src={lightboxSrc} alt="Visit photo" onClose={() => setLightboxSrc(null)} />
     </div>
   );
 }
