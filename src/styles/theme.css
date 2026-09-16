@@ -1257,6 +1257,55 @@ textarea {
   cursor: pointer;
   font-family: var(--font-body);
 }
+.mapr-pick-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+.mapr-pick.liked {
+  border-color: var(--color-green);
+  box-shadow: inset 0 0 0 1px rgba(79, 122, 92, 0.45);
+}
+.mapr-pick-actions {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 12px 0;
+  box-sizing: border-box;
+}
+.mapr-pick-vote {
+  flex: 1;
+  padding: 7px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border);
+  background: rgb(var(--color-bg-rgb));
+  color: var(--color-parchment-dim);
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.mapr-pick-vote.yes.on {
+  border-color: var(--color-green);
+  color: #bfe0c8;
+  background: rgba(79, 122, 92, 0.2);
+}
+.mapr-pick-vote.no:hover,
+.mapr-pick-vote.no:focus-visible {
+  border-color: var(--color-rust);
+  color: #f0beb3;
+}
 .mapr-pick-img {
   width: 100%;
   height: 150px;

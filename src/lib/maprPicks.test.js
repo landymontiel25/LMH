@@ -32,3 +32,20 @@ describe('localMaprPicks', () => {
     expect(picks.some((p) => p.id.endsWith('-hall'))).toBe(false);
   });
 });
+
+describe('pick feedback', () => {
+  it('keeps a recently ✗’d place out and nudges categories only lightly', () => {
+    const origin = { lat: 25.7743, lng: -80.1937 };
+    const base = localMaprPicks({ origin, limit: 500 });
+    const target = base[0];
+    const after = localMaprPicks({ origin, passedIds: [target.id], limit: 500 });
+    expect(after.map((p) => p.id)).not.toContain(target.id);
+    // A single ✗ on a category is worth less than a single "probably skip" rating.
+    const cat = target.categories[0];
+    const viaVote = localMaprPicks({ origin, feedback: [{ verdict: 'no', categories: [cat] }], limit: 500 });
+    const viaRating = localMaprPicks({ origin, reviews: [{ tier: 'probably-skip', categories: [cat] }], limit: 500 });
+    const rank = (list) => list.findIndex((p) => p.id === target.id);
+    expect(rank(viaVote)).toBeGreaterThanOrEqual(0);
+    expect(rank(viaRating)).toBeGreaterThanOrEqual(rank(viaVote));
+  });
+});

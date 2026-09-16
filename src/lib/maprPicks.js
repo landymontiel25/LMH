@@ -8,15 +8,30 @@ import { distanceMeters } from './geo';
 // little, plus a nudge from the crowd's rating and the editors' popularity.
 const NEARBY_KM = 150;
 
-export function localMaprPicks({ reviews = [], interests = [], checkedInIds = [], regionIds = [], origin = null, ratings = {}, limit = 4 }) {
+export function localMaprPicks({
+  reviews = [],
+  interests = [],
+  checkedInIds = [],
+  regionIds = [],
+  origin = null,
+  ratings = {},
+  feedback = [],
+  passedIds = [],
+  limit = 4,
+}) {
   const affinity = {};
   for (const r of reviews) {
     const w = r.tier === 'highly-recommend' ? 3 : r.tier === 'probably-skip' ? -2 : 1;
     for (const c of r.categories || []) affinity[c] = (affinity[c] || 0) + w;
   }
   for (const c of interests) affinity[c] = (affinity[c] || 0) + 1;
+  // ✓ / ✗ on earlier picks: a lighter nudge than a rating (±1 per category).
+  for (const f of feedback) {
+    const w = f.verdict === 'yes' ? 1 : -1;
+    for (const c of f.categories || []) affinity[c] = (affinity[c] || 0) + w;
+  }
 
-  const visited = new Set(checkedInIds);
+  const visited = new Set([...checkedInIds, ...passedIds]);
   const cities = new Set(regionIds);
   let pool = ALL_LANDMARKS.filter((l) => !visited.has(l.id) && isRateable(l));
   // Near you first: everything within NEARBY_KM of your fix (or, if that's
@@ -50,6 +65,7 @@ export function localMaprPicks({ reviews = [], interests = [], checkedInIds = []
       region: l.regionId,
       name: l.name,
       image: l.images?.[0] || null,
+      categories: l.categories || [],
       matchPercentage: Math.round(70 + (28 * (score - min)) / (max - min || 1)),
       oneLineSummary: (l.summary || '').split(/[.!?]/)[0].slice(0, 90),
     }));
