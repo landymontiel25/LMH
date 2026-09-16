@@ -13,7 +13,9 @@ import {
   increment,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { updateDoc as _updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from './firebase';
 import { distanceMeters } from './geo';
 import { getUserProfile } from './friends';
 
@@ -134,6 +136,22 @@ export async function backfillUserName(userId, userName) {
   checkins.docs.forEach((d) => batch.update(d.ref, { userName }));
   entries.docs.forEach((d) => batch.update(d.ref, { userName }));
   await batch.commit();
+}
+
+/**
+ * Saves a photo on the check-in itself (checkins/{uid}_{landmarkId}.photoURL),
+ * for check-ins that carry no rating (a dorm, a campus spot, or a rating
+ * that didn't save) -- those never get a review doc to hang the photo on.
+ * Storage path checkin_photos/{landmarkId}/{uid}.jpg; the Firestore rule
+ * lets an owner update photoURL on their own check-in.
+ */
+export async function attachCheckinPhoto(userId, landmarkId, file) {
+  if (!db || !storage || !userId || !landmarkId || !file) return null;
+  const storageRef = ref(storage, `checkin_photos/${landmarkId}/${userId}.jpg`);
+  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+  const photoURL = await getDownloadURL(storageRef);
+  await _updateDoc(doc(db, 'checkins', `${userId}_${landmarkId}`), { photoURL });
+  return photoURL;
 }
 
 /** The user's own check-in doc for a landmark (createdAt, points, photo), or null. */
