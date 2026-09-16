@@ -197,6 +197,16 @@ service cloud.firestore {
             || reviewId.split('_')[0] == request.auth.uid
             || request.auth.token.email in ['landymontiel25@gmail.com']);
     }
+    // ✓ / ✗ on a Mapr pick ("I'd go" / "not for me"). Private to its
+    // owner; one doc per user+landmark, so the id is pinned to both.
+    match /pick_feedback/{id} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create, update: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.landmarkId
+        && request.resource.data.verdict in ['yes', 'no'];
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
     match /landmark_ratings/{id} {
       allow read: if true;
       allow write: if request.auth != null;

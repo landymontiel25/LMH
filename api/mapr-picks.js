@@ -15,6 +15,7 @@ const INSTRUCTIONS =
   `Rules:\n` +
   `- Every catalog line ends with how far it is from the traveler right now. These are all nearby; among good fits, prefer the closer one, and never pick something far when a similar closer option exists.\n` +
   `- Weigh what they wrote in their own words most, then their loved places' categories and chips, then saved interests.\n` +
+  `- PICK FEEDBACK (✓ "I'd go" / ✗ "not for me" on earlier picks) is a light signal about general taste -- lighter than a rating, and context-dependent: someone may ✗ a cathedral at night in Miami and still love cathedrals in Italy, or ✓ Yankee Stadium in New York but never a ballpark in Colorado. Use it to nudge category preferences, not to rule categories out.\n` +
   `- Prefer variety across the 4 picks unless the history is clearly single-minded.\n` +
   `- matchPercentage is your honest confidence, 60-99. Don't give everything 97.\n` +
   `- oneLineSummary: under 12 words, concrete, about the place itself (not "you'll love it").\n` +
@@ -60,6 +61,13 @@ export default async function handler(req, res) {
     const interests = (Array.isArray(body.interests) ? body.interests : []).map((c) => str(c, 30)).slice(0, 20);
     const checkedIn = new Set((Array.isArray(body.checkedInIds) ? body.checkedInIds : []).map((id) => str(id, 80)));
     const regionIds = new Set((Array.isArray(body.regionIds) ? body.regionIds : []).map((id) => str(id, 40)));
+    const feedback = (Array.isArray(body.feedback) ? body.feedback : []).slice(0, 80).map((f) => ({
+      name: str(f.name, 80),
+      region: str(f.region, 40),
+      categories: (Array.isArray(f.categories) ? f.categories : []).map((c) => str(c, 30)).slice(0, 3),
+      verdict: f.verdict === 'yes' ? 'yes' : 'no',
+    }));
+    const passedIds = new Set((Array.isArray(body.passedIds) ? body.passedIds : []).map((id) => str(id, 80)));
     const origin =
       body.origin && Number.isFinite(Number(body.origin.lat)) && Number.isFinite(Number(body.origin.lng))
         ? { lat: Number(body.origin.lat), lng: Number(body.origin.lng) }
@@ -74,7 +82,9 @@ export default async function handler(req, res) {
     const NEARBY_KM = 150;
     const POOL_CAP = 120;
     const UNRATEABLE = new Set(['dorms', 'campus-life']);
-    let pool = ALL_LANDMARKS.filter((l) => !checkedIn.has(l.id) && !UNRATEABLE.has(l.categories?.[0]));
+    let pool = ALL_LANDMARKS.filter(
+      (l) => !checkedIn.has(l.id) && !passedIds.has(l.id) && !UNRATEABLE.has(l.categories?.[0])
+    );
     if (origin) {
       pool = pool
         .map((l) => ({ ...l, km: distanceKm(origin.lat, origin.lng, l.lat, l.lng) }))
@@ -100,6 +110,12 @@ export default async function handler(req, res) {
             .join('\n')
         : 'RATING HISTORY: none yet.') +
       (interests.length ? `\n\nSAVED INTERESTS: ${interests.join(', ')}` : '') +
+      (feedback.length
+        ? '\n\nPICK FEEDBACK:\n' +
+          feedback
+            .map((f) => `- ${f.verdict === 'yes' ? '✓ would go' : '✗ not for me'}: ${f.name} [${f.categories.join(', ') || '?'}]${f.region ? ` (${f.region})` : ''}`)
+            .join('\n')
+        : '') +
       (origin ? '\n\nThe traveler is here right now; every catalog place is nearby.' : '') +
       '\n\nCATALOG (region/id | name | category | description | distance):\n' +
       pool
@@ -151,6 +167,7 @@ export default async function handler(req, res) {
           region: landmark.regionId,
           name: landmark.name,
           image: landmark.images?.[0] || null,
+          categories: landmark.categories || [],
           matchPercentage: Number.isFinite(pct) ? Math.min(99, Math.max(60, pct)) : 80,
           oneLineSummary: str(p?.oneLineSummary, 90) || (landmark.summary || '').split(/[.!?]/)[0].slice(0, 90),
         };

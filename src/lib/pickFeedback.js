@@ -1,0 +1,78 @@
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
+import { db } from './firebase';
+
+// ✓ / ✗ on a Mapr pick: "I'd go" / "not for me". A light, general-taste
+// signal -- lighter than a rating, and context-dependent (you might skip
+// a cathedral at night in Miami and still love cathedrals in Italy), so
+// it nudges category preferences rather than ruling anything out. Only
+// the exact place you ✗'d is kept out of your picks for a while.
+//
+// Stored two ways: localStorage (instant, always works) and Firestore
+// pick_feedback/{uid}_{landmarkId} (best-effort; survives a new phone).
+
+const KEY = (uid) => `lh-pick-feedback:${uid}`;
+export const NO_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
+
+function readLocal(uid) {
+  try {
+    return JSON.parse(localStorage.getItem(KEY(uid)) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLocal(uid, map) {
+  try {
+    localStorage.setItem(KEY(uid), JSON.stringify(map));
+  } catch {
+    /* private mode */
+  }
+}
+
+export async function setPickFeedback({ uid, landmark, verdict, origin }) {
+  const entry = {
+    landmarkId: landmark.id,
+    region: landmark.region,
+    name: landmark.name,
+    categories: landmark.categories || [],
+    verdict, // 'yes' | 'no'
+    at: Date.now(),
+    near: origin ? { lat: Number(origin.lat.toFixed(2)), lng: Number(origin.lng.toFixed(2)) } : null,
+  };
+  const map = readLocal(uid);
+  map[landmark.id] = entry;
+  writeLocal(uid, map);
+  if (!db) return entry;
+  try {
+    await setDoc(doc(db, 'pick_feedback', `${uid}_${landmark.id}`), { userId: uid, ...entry, updatedAt: serverTimestamp() });
+  } catch {
+    /* rules not deployed yet, or offline -- the local copy still counts */
+  }
+  return entry;
+}
+
+export async function getPickFeedback(uid) {
+  const map = readLocal(uid);
+  if (db) {
+    try {
+      const snap = await getDocs(query(collection(db, 'pick_feedback'), where('userId', '==', uid)));
+      for (const d of snap.docs) {
+        const r = d.data();
+        if (!map[r.landmarkId] || (r.at || 0) > (map[r.landmarkId].at || 0)) {
+          map[r.landmarkId] = { landmarkId: r.landmarkId, region: r.region, name: r.name, categories: r.categories || [], verdict: r.verdict, at: r.at || 0, near: r.near || null };
+        }
+      }
+      writeLocal(uid, map);
+    } catch {
+      /* fall back to the local copy */
+    }
+  }
+  return map;
+}
+
+// Ids ✗'d recently enough to keep out of the picks for now.
+export function recentlyPassedIds(feedback, now = Date.now()) {
+  return Object.values(feedback || {})
+    .filter((f) => f.verdict === 'no' && now - (f.at || 0) < NO_COOLDOWN_MS)
+    .map((f) => f.landmarkId);
+}
