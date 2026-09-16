@@ -572,7 +572,7 @@ export const EL_ESCORIAL_LANDMARKS = [
     lat: 40.59,
     lng: -4.146,
     checkInRadiusMeters: 150,
-    categories: ["local-life", "history-culture"],
+    categories: ["history-culture"],
     summary: "The social heart of San Lorenzo de El Escorial.",
     facts: ["The social heart of San Lorenzo de El Escorial","Lined with cafés, terraces, and historic buildings","The best place to feel the town rather than just tour it","A lively square just steps from the monastery","Surrounded by arcades and shops","A favorite spot for a coffee or aperitivo","Hosts local markets and events","The center of town life for residents","Framed by elegant granite architecture","Where the royal town gathers"],
     free: true,
