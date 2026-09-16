@@ -11,6 +11,7 @@ import { mapsDeepLink } from '../lib/routing';
 import { classifyInterest } from '../lib/interestClassifier';
 import CheckInButton from '../components/CheckInButton';
 import LandmarkThumb from '../components/LandmarkThumb';
+import Lightbox from '../components/Lightbox';
 import QuickRateButton from '../components/QuickRateButton';
 import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
 
@@ -118,6 +119,8 @@ export default function LandmarkSelection() {
     ...trip.interests.filter((id) => CATEGORY_ICON[id]),
     ...trip.customInterests,
   ]);
+  // Tapping a row's thumbnail opens the photo full-screen.
+  const [lightbox, setLightbox] = useState(null);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('popularity');
   // Which of Visited/Unvisited are active -- multi-select like the interest
@@ -382,7 +385,21 @@ export default function LandmarkSelection() {
                   {isSelected ? '✓' : ''}
                 </div>
                 <div onClick={() => handleToggle(l)} style={{ flexShrink: 0 }}>
-                  <LandmarkThumb landmark={l} myPhoto={myPhotos[l.id]?.[0]} />
+                  {(myPhotos[l.id]?.[0] || l.images?.[0]) ? (
+                    <button
+                      type="button"
+                      className="lr-thumb-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLightbox({ src: myPhotos[l.id]?.[0] || l.images[0], alt: l.name });
+                      }}
+                      aria-label={`View photo of ${l.name}`}
+                    >
+                      <LandmarkThumb landmark={l} myPhoto={myPhotos[l.id]?.[0]} />
+                    </button>
+                  ) : (
+                    <LandmarkThumb landmark={l} myPhoto={myPhotos[l.id]?.[0]} />
+                  )}
                 </div>
                 <div className="lr-main" onClick={() => handleToggle(l)}>
                   <h4>
@@ -450,6 +467,7 @@ export default function LandmarkSelection() {
           </button>
         </div>
       </div>
+      <Lightbox src={lightbox?.src} alt={lightbox?.alt} onClose={() => setLightbox(null)} />
     </div>
   );
 }
