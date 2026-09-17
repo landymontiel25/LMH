@@ -1003,4 +1003,23 @@ export const PHILLY_LANDMARKS = [
     bookingUrl: null,
     typicalMinutes: 60,
   },
+  {
+    id: 'f1-arcade-philadelphia',
+    popularity: 5, // no Wikipedia page; based on press coverage as the world's largest F1 Arcade location
+    name: 'F1 Arcade Philadelphia',
+    region: 'philly',
+    lat: 39.9515,
+    lng: -75.1642,
+    checkInRadiusMeters: 200,
+    categories: ['entertainment'],
+    summary: 'A racing-themed bar and restaurant in Center City packed with professional-grade Formula 1 simulators.',
+    facts: [
+      'Opened in 2025 on Chestnut Street in Center City',
+      "The world's largest F1 Arcade location, with 80 racing simulators across more than 19,000 square feet",
+      'Pairs competitive sim racing with a full bar and restaurant menu',
+    ],
+    free: false,
+    bookingUrl: 'https://f1arcade.com/us/philadelphia',
+    typicalMinutes: 120,
+  },
 ];
