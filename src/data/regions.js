@@ -10,6 +10,7 @@ import { FRANKFURT_LANDMARKS } from './landmarks.frankfurt.js';
 import { NYC_LANDMARKS } from './landmarks.nyc.js';
 import { CAPETOWN_LANDMARKS } from './landmarks.capetown.js';
 import { KEYBISCAYNE_LANDMARKS } from './landmarks.keybiscayne.js';
+import { CORALGABLES_LANDMARKS } from './landmarks.coralgables.js';
 import { F1_LANDMARKS } from './landmarks.f1.js';
 
 export const REGIONS = [
@@ -34,6 +35,17 @@ export const REGIONS = [
     center: { lat: 25.6908, lng: -80.1625 },
     viewbox: { minLat: 25.63, minLng: -80.21, maxLat: 25.8, maxLng: -80.12 },
     landmarks: KEYBISCAYNE_LANDMARKS,
+  },
+  {
+    id: 'coral-gables',
+    name: 'Coral Gables',
+    tagline: 'The City Beautiful — Mediterranean charm & Miracle Mile',
+    city: 'Coral Gables',
+    state: 'Florida',
+    country: 'USA',
+    center: { lat: 25.7519, lng: -80.2562 },
+    viewbox: { minLat: 25.72, minLng: -80.28, maxLat: 25.77, maxLng: -80.24 },
+    landmarks: CORALGABLES_LANDMARKS,
   },
   {
     id: 'nyc',
