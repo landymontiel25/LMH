@@ -55,7 +55,12 @@ export default async function handler(req, res) {
     return;
   }
   if (!account.emailVerified) {
-    res.status(403).json({ error: 'Verify your email first — check your inbox for the link, then try again.' });
+    // `code` lets the client detect this specific case (to auto-resend the
+    // verification email) without matching on the message text.
+    res.status(403).json({
+      code: 'email-not-verified',
+      error: 'Verify your email first — check your inbox for the link, then try again.',
+    });
     return;
   }
   if (isRateLimited(req, 'verify-landmark', { limit: 15, windowMs: 10 * 60 * 1000 })) {
