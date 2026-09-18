@@ -87,6 +87,13 @@ export default function AddLandmark() {
 
   const removeFact = (i) => setFacts((cur) => cur.filter((_, idx) => idx !== i));
 
+  const addFact = () => {
+    const value = factDraft.trim();
+    if (!value) return;
+    setFacts((cur) => [...cur, value]);
+    setFactDraft('');
+  };
+
   const onPhotoChange = async () => {
     const f = await pickPhoto();
     if (!f) return;

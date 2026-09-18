@@ -18,6 +18,7 @@ import { getLandmarkOverrides } from '../lib/landmarkOverrides';
 import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks';
 import { isAdmin } from '../lib/admins';
 import CheckInButton from '../components/CheckInButton';
+import DirectionsButton from '../components/DirectionsButton';
 import LandmarkThumb from '../components/LandmarkThumb';
 import QuickRateButton from '../components/QuickRateButton';
 
@@ -393,7 +394,7 @@ export default function MapExplore() {
                   ))}
                   <span className={`tag ${l.free ? 'tag-free' : ''}`}>{l.free ? 'Free' : 'Ticketed'}</span>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     className={`btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'}`}
@@ -401,6 +402,9 @@ export default function MapExplore() {
                   >
                     {isSelected ? '✓ Added to Itinerary' : 'Add to Itinerary'}
                   </button>
+                  <DirectionsButton name={l.name} lat={position[0]} lng={position[1]} className="btn btn-ghost btn-sm">
+                    {'\u{1F9ED}'} Directions
+                  </DirectionsButton>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={goToDetails}>
                     Details
                   </button>
@@ -456,6 +460,9 @@ export default function MapExplore() {
                   onCheckIn={checkIn}
                   className="btn-block"
                 />
+                <DirectionsButton name={l.name} lat={l.lat} lng={l.lng} className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 8 }}>
+                  {'\u{1F9ED}'} Directions
+                </DirectionsButton>
                 {l.summary && (
                   <button
                     type="button"
