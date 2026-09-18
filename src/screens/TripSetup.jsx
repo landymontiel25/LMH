@@ -12,6 +12,7 @@ import { createGroupTrip } from '../lib/groupTrips';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import AddInterestChip from '../components/AddInterestChip';
 import RegionSearch from '../components/RegionSearch';
+import PreferenceChips from '../components/PreferenceChips';
 
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
 
@@ -261,11 +262,6 @@ export default function TripSetup() {
 
       <div className="field">
         <label>What are you interested in?</label>
-        {trip.savedInterests.length === 0 && trip.savedCustomInterests.length === 0 && (
-          <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginBottom: 10 }}>
-            Save your usual picks on your <Link to="/profile">Profile</Link> to fill this in with one tap.
-          </p>
-        )}
         {(trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0) && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
             <button
@@ -313,6 +309,14 @@ export default function TripSetup() {
           ))}
           <AddInterestChip existing={trip.customInterests} onAdd={addCustomInterest} />
         </div>
+      </div>
+
+      <div className="card section">
+        <h3 style={{ marginTop: 0 }}>{'⭐'} My Preferences</h3>
+        <p className="screen-subtitle" style={{ marginTop: -6 }}>
+          Save what you're usually into once, and "Use My Preferences" above fills it in with one tap on every trip.
+        </p>
+        <PreferenceChips />
       </div>
 
       <div className="field">
