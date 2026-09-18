@@ -225,7 +225,6 @@ export default function MapExplore() {
   const startPlacingPin = () => {
     setPinDrop(null);
     setSearchOpen(false);
-    setNearbyOpen(false);
     setPlacingPin(true);
   };
 
