@@ -39,7 +39,11 @@ function withTimeout(promise, ms) {
  */
 export async function submitReview({ userId, userName, landmark, rating, photoFiles, photoFile }) {
   const landmarkId = landmark.id;
-  const stars = tierStars(rating?.tier);
+  // Two ways in: the tier flow (Highly recommend / Worth trying / Probably
+  // skip) derives its stars from the tier, or a plain 1-5 star tap sets
+  // stars directly with no tier at all. Whichever was used last is what
+  // wins -- rating.tier is only ever set by one or the other, never both.
+  const stars = rating?.tier ? tierStars(rating.tier) : Number(rating?.stars) || 0;
   if (!stars) throw new Error('Pick a rating first.');
 
   // Must have checked in here first.
@@ -96,7 +100,9 @@ export async function submitReview({ userId, userName, landmark, rating, photoFi
           landmarkName: landmark.name,
           region: landmark.region,
           stars,
-          ratingTier: rating.tier,
+          // null (not undefined -- the SDK rejects that) in star mode, so a
+          // saved review unambiguously says which flow it came from.
+          ratingTier: rating.tier || null,
           highlights: rating.highlights || [],
           lovedOrder: rating.lovedOrder || [],
           dislikedOrder: rating.dislikedOrder || [],

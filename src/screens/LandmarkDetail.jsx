@@ -13,6 +13,7 @@ import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyRe
 import { isRateable, tierById } from '../lib/ratingFlow';
 import { getMyCheckin, addCheckinPhoto, removeCheckinPhoto, MAX_CHECKIN_PHOTOS } from '../lib/leaderboard';
 import RatingFlow from '../components/RatingFlow';
+import StarRatingFlow from '../components/StarRatingFlow';
 import LandmarkPostcard from '../components/LandmarkPostcard';
 import Lightbox from '../components/Lightbox';
 import ReviewReplies from '../components/ReviewReplies';
@@ -101,10 +102,14 @@ export default function LandmarkDetail() {
   const { ratings, reload: reloadRatings } = useRatings();
   const { reload: reloadMyPhotos } = useMyPhotos();
   const { myUsername } = useFriends();
-  // myRating: live RatingFlow payload (null until a tier is picked).
-  // savedRating: what's already on file, to pre-fill the flow on an edit.
+  // myRating: live RatingFlow/StarRatingFlow payload (null until something's
+  // picked). savedRating: what's already on file, to pre-fill on an edit.
+  // ratingMode picks which flow is showing -- 'tags' (Highly recommend /
+  // Worth trying / Probably skip) or 'stars' (a plain 1-5 tap); switches to
+  // match whichever a saved rating was made with.
   const [myRating, setMyRating] = useState(null);
   const [savedRating, setSavedRating] = useState(null);
+  const [ratingMode, setRatingMode] = useState('tags');
   // Your own check-in doc here (for "Checked in: Tuesday, Sep 15 at 3:47 PM").
   const [myCheckin, setMyCheckin] = useState(null);
   const [myPhotos, setMyPhotos] = useState([]);
@@ -119,6 +124,10 @@ export default function LandmarkDetail() {
   // True right after a successful save: the button itself reads "Rating
   // submitted!" until the user changes something in the flow again.
   const [submitted, setSubmitted] = useState(false);
+  // Whether that save was an edit of an existing rating vs. a first-time
+  // one -- captured at save time since savedRating itself flips true
+  // immediately after ANY save, first-time included.
+  const [justEdited, setJustEdited] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reportedNow, setReportedNow] = useState(() => new Set());
   const [blockedNow, setBlockedNow] = useState(() => new Set());
@@ -185,8 +194,10 @@ export default function LandmarkDetail() {
     if (!firebaseEnabled || !user || !landmark) return;
     const r = await getMyReview(user.uid, landmark.id);
     if (!r) return;
-    // A pre-tier review (plain stars, no ratingTier) doesn't pre-fill the
-    // new flow -- the user just rates fresh, which overwrites it.
+    // Whichever flow made this review, pre-fill that same one on an edit:
+    // a tier (Highly recommend / etc.) pre-fills the tag flow, a plain
+    // star count -- including an old review from before the tag flow
+    // existed -- pre-fills the star picker instead.
     setSavedRating(
       r.ratingTier
         ? {
@@ -196,8 +207,11 @@ export default function LandmarkDetail() {
             dislikedOrder: r.dislikedOrder || [],
             comment: r.comment || '',
           }
+        : r.stars
+        ? { stars: r.stars, comment: r.comment || '' }
         : null
     );
+    setRatingMode(r.ratingTier ? 'tags' : r.stars ? 'stars' : 'tags');
     setMyPhotos(r.photoURLs?.length ? r.photoURLs : r.photoURL ? [r.photoURL] : []);
   }, [firebaseEnabled, user, landmark]);
 
@@ -277,6 +291,10 @@ export default function LandmarkDetail() {
       setSaveMsg('Pick one of the three first.');
       return;
     }
+    // Captured before the save (and its loadMyReview reload below, which
+    // would otherwise make savedRating true either way) so the button can
+    // still tell "submitted" from "updated" after this specific save.
+    const wasEdit = !!savedRating;
     setSaving(true);
     setSaveMsg(null);
     try {
@@ -293,6 +311,7 @@ export default function LandmarkDetail() {
       await reloadMyPhotos();
       setPhotoFiles([]);
       setPhotoPreviews([]);
+      setJustEdited(wasEdit);
       setSubmitted(true);
       setSaveMsg(res?.photoFailed ? "Rating saved — but your photo couldn't upload." : null);
     } catch (e) {
@@ -536,7 +555,11 @@ export default function LandmarkDetail() {
               </li>
               <li>
                 <span>Your rating:</span>{' '}
-                {savedRating?.tier ? `${tierById(savedRating.tier)?.emoji || ''} ${tierById(savedRating.tier)?.label || ''}` : 'Not rated yet'}
+                {savedRating?.tier
+                  ? `${tierById(savedRating.tier)?.emoji || ''} ${tierById(savedRating.tier)?.label || ''}`
+                  : savedRating?.stars
+                  ? '★'.repeat(savedRating.stars) + '☆'.repeat(5 - savedRating.stars)
+                  : 'Not rated yet'}
               </li>
             </ul>
           )}
@@ -700,18 +723,55 @@ export default function LandmarkDetail() {
             <>
               {savedRating && (
                 <p className="screen-subtitle" style={{ marginTop: 0 }}>
-                  {'\u{2713}'} Already rated — change anything below and submit again.
+                  {'\u{2713}'} Already rated — change anything below to update it.
                 </p>
               )}
-              <RatingFlow
-                key={landmark.id}
-                landmark={landmark}
-                initial={savedRating}
-                onChange={(r) => {
-                  setMyRating(r);
-                  setSubmitted(false);
-                }}
-              />
+              <div className="tabs" style={{ margin: '0 0 14px' }}>
+                <button
+                  type="button"
+                  className={`tab-btn ${ratingMode === 'tags' ? 'active' : ''}`}
+                  onClick={() => {
+                    if (ratingMode === 'tags') return;
+                    setRatingMode('tags');
+                    setMyRating(null);
+                    setSubmitted(false);
+                  }}
+                >
+                  Quick Tags
+                </button>
+                <button
+                  type="button"
+                  className={`tab-btn ${ratingMode === 'stars' ? 'active' : ''}`}
+                  onClick={() => {
+                    if (ratingMode === 'stars') return;
+                    setRatingMode('stars');
+                    setMyRating(null);
+                    setSubmitted(false);
+                  }}
+                >
+                  Star Rating
+                </button>
+              </div>
+              {ratingMode === 'tags' ? (
+                <RatingFlow
+                  key={landmark.id}
+                  landmark={landmark}
+                  initial={savedRating?.tier ? savedRating : null}
+                  onChange={(r) => {
+                    setMyRating(r);
+                    setSubmitted(false);
+                  }}
+                />
+              ) : (
+                <StarRatingFlow
+                  key={landmark.id}
+                  initial={savedRating?.stars ? savedRating : null}
+                  onChange={(r) => {
+                    setMyRating(r);
+                    setSubmitted(false);
+                  }}
+                />
+              )}
               {photoPreviews.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   {photoPreviews.map((src, i) => (
@@ -750,7 +810,13 @@ export default function LandmarkDetail() {
                 disabled={saving || submitted || !myRating}
                 onClick={handleSubmitReview}
               >
-                {saving ? 'Saving…' : submitted ? '\u{2713} Rating submitted!' : 'Submit Rating'}
+                {saving
+                  ? 'Saving…'
+                  : submitted
+                  ? `\u{2713} Rating ${justEdited ? 'updated' : 'submitted'}!`
+                  : savedRating
+                  ? 'Update Rating'
+                  : 'Submit Rating'}
               </button>
               {saveMsg && (
                 <p className="screen-subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
