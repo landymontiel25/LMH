@@ -12,9 +12,11 @@ import {
   serverTimestamp,
   increment,
   writeBatch,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { updateDoc as _updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from './firebase';
 import { distanceMeters } from './geo';
 import { getUserProfile } from './friends';
@@ -152,6 +154,43 @@ export async function attachCheckinPhoto(userId, landmarkId, file) {
   const photoURL = await getDownloadURL(storageRef);
   await _updateDoc(doc(db, 'checkins', `${userId}_${landmarkId}`), { photoURL });
   return photoURL;
+}
+
+// How many personal photos a check-in's own gallery can hold, independent of
+// (and on top of) any photos attached to a review.
+export const MAX_CHECKIN_PHOTOS = 9;
+
+/**
+ * Adds one photo to the check-in's own gallery
+ * (checkins/{uid}_{landmarkId}.photoURLs) -- unlike attachCheckinPhoto above
+ * (a single photo, meant for the check-in moment itself), this accumulates:
+ * you can come back anytime after checking in and add more. Independent of
+ * any rating, so it works for every landmark, rateable or not. Storage path
+ * checkin_photos/{landmarkId}/{uid}_{timestamp}.jpg keeps each upload its
+ * own file instead of overwriting the last one.
+ */
+export async function addCheckinPhoto(userId, landmarkId, file) {
+  if (!db || !storage || !userId || !landmarkId || !file) return null;
+  const storageRef = ref(storage, `checkin_photos/${landmarkId}/${userId}_${Date.now()}.jpg`);
+  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+  const photoURL = await getDownloadURL(storageRef);
+  await _updateDoc(doc(db, 'checkins', `${userId}_${landmarkId}`), { photoURLs: arrayUnion(photoURL) });
+  return photoURL;
+}
+
+/** Removes one photo from the check-in's gallery, and its file in Storage. */
+export async function removeCheckinPhoto(userId, landmarkId, photoURL) {
+  if (!db || !userId || !landmarkId || !photoURL) return;
+  await _updateDoc(doc(db, 'checkins', `${userId}_${landmarkId}`), { photoURLs: arrayRemove(photoURL) });
+  if (storage) {
+    try {
+      await deleteObject(ref(storage, photoURL));
+    } catch {
+      // Already gone, or the URL didn't parse to a Storage ref -- the
+      // Firestore removal above is what actually controls visibility, so
+      // this is best-effort cleanup only.
+    }
+  }
 }
 
 /** The user's own check-in doc for a landmark (createdAt, points, photo), or null. */

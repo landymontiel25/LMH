@@ -11,7 +11,7 @@ import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
 import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
 import { isRateable, tierById } from '../lib/ratingFlow';
-import { getMyCheckin } from '../lib/leaderboard';
+import { getMyCheckin, addCheckinPhoto, removeCheckinPhoto, MAX_CHECKIN_PHOTOS } from '../lib/leaderboard';
 import RatingFlow from '../components/RatingFlow';
 import LandmarkPostcard from '../components/LandmarkPostcard';
 import Lightbox from '../components/Lightbox';
@@ -108,6 +108,10 @@ export default function LandmarkDetail() {
   // Your own check-in doc here (for "Checked in: Tuesday, Sep 15 at 3:47 PM").
   const [myCheckin, setMyCheckin] = useState(null);
   const [myPhotos, setMyPhotos] = useState([]);
+  // "My Photos" panel -- your own check-in gallery, addable/removable
+  // anytime after checking in, independent of the star rating below.
+  const [checkinPhotoBusy, setCheckinPhotoBusy] = useState(false);
+  const [checkinPhotoError, setCheckinPhotoError] = useState(null);
   const [photoFiles, setPhotoFiles] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -302,10 +306,51 @@ export default function LandmarkDetail() {
     await deleteMyReview(user.uid, landmark.id);
     setSavedRating(null);
     setMyRating(null);
-    setMyPhotos([]);
+    // The review's own photos are gone, but any check-in gallery photos
+    // (added independently via "My Photos" below) aren't touched by this.
+    setMyPhotos(myCheckin?.photoURLs || (myCheckin?.photoURL ? [myCheckin.photoURL] : []));
     await reloadRatings();
     await loadReviews();
     await reloadMyPhotos();
+  };
+
+  const checkinPhotos = myCheckin?.photoURLs || (myCheckin?.photoURL ? [myCheckin.photoURL] : []);
+
+  const addMyCheckinPhoto = async () => {
+    if (checkinPhotos.length >= MAX_CHECKIN_PHOTOS) return;
+    const f = await pickPhoto();
+    if (!f) return;
+    setCheckinPhotoBusy(true);
+    setCheckinPhotoError(null);
+    try {
+      const url = await addCheckinPhoto(user.uid, landmark.id, f);
+      setMyCheckin((prev) => ({ ...prev, photoURLs: [...(prev?.photoURLs || []), url] }));
+      setMyPhotos((prev) => (prev.includes(url) ? prev : [url, ...prev]));
+      await reloadMyPhotos();
+    } catch (e) {
+      setCheckinPhotoError(e.message || "Couldn't upload — try again.");
+    } finally {
+      setCheckinPhotoBusy(false);
+    }
+  };
+
+  const removeMyCheckinPhoto = async (url) => {
+    setCheckinPhotoBusy(true);
+    setCheckinPhotoError(null);
+    try {
+      await removeCheckinPhoto(user.uid, landmark.id, url);
+      setMyCheckin((prev) => ({
+        ...prev,
+        photoURLs: (prev?.photoURLs || []).filter((u) => u !== url),
+        photoURL: prev?.photoURL === url ? null : prev?.photoURL,
+      }));
+      setMyPhotos((prev) => prev.filter((u) => u !== url));
+      await reloadMyPhotos();
+    } catch (e) {
+      setCheckinPhotoError(e.message || "Couldn't remove — try again.");
+    } finally {
+      setCheckinPhotoBusy(false);
+    }
   };
 
   const handleReport = async (rv) => {
@@ -593,6 +638,53 @@ export default function LandmarkDetail() {
         <p className="screen-subtitle" style={{ textAlign: 'center', marginTop: 6, marginBottom: 0 }}>
           {shareMsg}
         </p>
+      )}
+
+      {firebaseEnabled && user && checkedInHere && (
+        <div className="card section" style={{ marginTop: 16 }}>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F4F8}'} My Photos</h3>
+          <p className="screen-subtitle" style={{ marginTop: 0 }}>
+            Your own photos of this spot — add more anytime, remove any you don't want.
+          </p>
+          {checkinPhotos.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {checkinPhotos.map((url) => (
+                <div key={url} style={{ position: 'relative' }}>
+                  <img
+                    src={url}
+                    alt="Your photo"
+                    onClick={() => setLightboxSrc(url)}
+                    style={{ width: 92, height: 92, objectFit: 'cover', borderRadius: 10, display: 'block', cursor: 'pointer' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeMyCheckinPhoto(url)}
+                    disabled={checkinPhotoBusy}
+                    aria-label="Remove photo"
+                    style={{
+                      position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%',
+                      border: 'none', background: 'rgba(0,0,0,0.78)', color: '#fff', cursor: 'pointer', lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {checkinPhotos.length < MAX_CHECKIN_PHOTOS && (
+            <div style={{ marginTop: checkinPhotos.length > 0 ? 12 : 0 }}>
+              <button type="button" className="btn btn-ghost btn-sm" disabled={checkinPhotoBusy} onClick={addMyCheckinPhoto}>
+                {checkinPhotoBusy ? 'Working…' : `${'\u{1F4F8}'} Add photo (${checkinPhotos.length}/${MAX_CHECKIN_PHOTOS})`}
+              </button>
+            </div>
+          )}
+          {checkinPhotoError && (
+            <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
+              {checkinPhotoError}
+            </p>
+          )}
+        </div>
       )}
 
       {firebaseEnabled && isRateable(landmark) && (
