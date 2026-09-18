@@ -798,4 +798,22 @@ export const VILLANOVA_LANDMARKS = [
     bookingUrl: null,
     typicalMinutes: 45,
   },
+  {
+    id: "hopes-cookies",
+    popularity: 1, // no Wikipedia page to source a view count from
+    name: "Hope's Cookies",
+    region: 'villanova',
+    lat: 40.0247,
+    lng: -75.3246,
+    categories: ['food'],
+    summary: 'A longtime Main Line bakery on Lancaster Avenue in Bryn Mawr, known for baked-to-order gourmet cookies.',
+    facts: [
+      'Founded by Bryn Mawr College grad Hope Spivak in the early 1980s',
+      'Cookies are baked-to-order and hand-packed, with nationwide shipping',
+      'A Main Line staple just up Lancaster Avenue from Villanova',
+    ],
+    free: false,
+    bookingUrl: null,
+    typicalMinutes: 15,
+  },
 ];
