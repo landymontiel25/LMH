@@ -8,6 +8,7 @@ import CategorySelect from '../components/CategorySelect';
 import { nearestRegionId } from '../lib/geo';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
+import { useAuth } from '../lib/AuthContext';
 import { useTrip } from '../lib/TripContext';
 import { addCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
 import { fileToSmallDataUrl, pickPhoto } from '../lib/imageUtils';
@@ -59,6 +60,7 @@ export default function AddLandmark() {
   const location = useLocation();
   const { coords } = useGeo();
   const { user, firebaseEnabled } = useCheckIn();
+  const { resendVerification } = useAuth();
   const { trip } = useTrip();
 
   // The map screen's "+" button passes along the exact spot you were
@@ -123,6 +125,14 @@ export default function AddLandmark() {
         }),
       });
       const verified = await verifyRes.json().catch(() => null);
+      if (verified?.code === 'email-not-verified') {
+        // The original link is probably buried in an inbox from whenever they
+        // signed up -- easier to just fire off a fresh one than ask them to
+        // go dig for it. Best-effort: Firebase rate-limits repeat sends, and
+        // that failure shouldn't block showing the "check your inbox" message.
+        resendVerification().catch(() => {});
+        throw new Error("Verify your email first — we just sent a fresh link to your inbox (check spam too), then try again.");
+      }
       if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this submission — try again.');
       if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different name or add a photo.");
 
