@@ -21,17 +21,19 @@ export function MyPhotosProvider({ children }) {
       return;
     }
     try {
-      // Review photos plus any photo saved on the check-in itself -- the
-      // check-in one leads, same order the check-ins gallery uses.
+      // Review photos plus any photos saved on the check-in itself (its own
+      // gallery, plus the legacy single photoURL) -- check-in photos lead,
+      // same order the check-ins gallery uses.
       const [fromReviews, checkins] = await Promise.all([
         getUserReviewPhotos(user.uid),
         getUserCheckins(user.uid).catch(() => []),
       ]);
       const map = { ...fromReviews };
       for (const c of checkins) {
-        if (c.photoURL && !(map[c.landmarkId] || []).includes(c.photoURL)) {
-          map[c.landmarkId] = [c.photoURL, ...(map[c.landmarkId] || [])];
-        }
+        const checkinPhotos = [...(c.photoURLs || []), ...(c.photoURL ? [c.photoURL] : [])];
+        const existing = map[c.landmarkId] || [];
+        const fresh = checkinPhotos.filter((url) => !existing.includes(url));
+        if (fresh.length) map[c.landmarkId] = [...fresh, ...existing];
       }
       setMyPhotos(map);
     } catch {
