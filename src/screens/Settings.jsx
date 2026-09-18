@@ -5,6 +5,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { useTheme } from '../lib/useTheme';
 import { useUnits, countryName } from '../lib/UnitsContext';
 import { setProfileVisibility, getUserProfile } from '../lib/friends';
+import PreferenceChips from '../components/PreferenceChips';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -87,6 +88,14 @@ export default function Settings() {
             Metric (km)
           </button>
         </div>
+      </div>
+
+      <div className="card section">
+        <h3 style={{ marginTop: 0 }}>{'⭐'} My Preferences</h3>
+        <p className="screen-subtitle" style={{ marginTop: -6 }}>
+          Save what you're usually into — Setup can fill it in for you with one tap.
+        </p>
+        <PreferenceChips />
       </div>
 
       {firebaseEnabled && user && (

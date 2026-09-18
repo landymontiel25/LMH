@@ -17,9 +17,8 @@ import { authErrorMessage } from '../lib/authErrors';
 import { getUserProfile } from '../lib/friends';
 import { useRatings } from '../lib/RatingsContext';
 import { RATING_GOAL } from '../lib/ratingFlow';
-import { getRegion, REGIONS, INTERESTS, ALL_LANDMARKS } from '../data/regions';
+import { getRegion, REGIONS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
-import { classifyInterest } from '../lib/interestClassifier';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
 import { useBadges } from '../lib/BadgesContext';
 import { closestUnearnedBadge } from '../lib/streaks';
@@ -28,7 +27,7 @@ import { completeOnboarding, hasCompletedOnboardingLocally, markOnboardingComple
 import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
-import AddInterestChip from '../components/AddInterestChip';
+import PreferenceChips from '../components/PreferenceChips';
 import LandmarkThumb from '../components/LandmarkThumb';
 import FriendPopoverName from '../components/FriendPopoverName';
 import CheckInButton from '../components/CheckInButton';
@@ -71,104 +70,6 @@ function InviteButton({ myUsername }) {
     <button className="btn btn-primary btn-block" onClick={share}>
       {copied ? '✓ Invite copied!' : '\u{1F465} Invite Friends to Compete'}
     </button>
-  );
-}
-
-// The actual chip-grid for saved preferences -- shared by the "My
-// Preferences" card below and the one-time onboarding step right after
-// signup, so both stay in sync with the same trip.saved* fields.
-function PreferenceChips() {
-  const {
-    trip,
-    toggleSavedInterest,
-    addSavedCustomInterest,
-    removeSavedCustomInterest,
-    toggleSavedCustomInterestSelected,
-    setCustomInterestMatches,
-    setCustomInterestEmoji,
-  } = useTrip();
-  const [classifying, setClassifying] = useState(() => new Set());
-
-  const addCustom = (text) => {
-    addSavedCustomInterest(text);
-    setClassifying((cur) => new Set(cur).add(text));
-    classifyInterest(text).then(({ matches, emoji }) => {
-      setCustomInterestMatches(text, matches);
-      setCustomInterestEmoji(text, emoji);
-      setClassifying((cur) => {
-        const next = new Set(cur);
-        next.delete(text);
-        return next;
-      });
-    });
-  };
-
-  return (
-    <div className="chip-grid">
-      {INTERESTS.map((i) => (
-        <button
-          key={i.id}
-          type="button"
-          className={`chip ${trip.savedInterests.includes(i.id) ? 'selected' : ''}`}
-          onClick={() => toggleSavedInterest(i.id)}
-        >
-          <span className="chip-icon">{i.icon}</span>
-          <span>{i.label}</span>
-        </button>
-      ))}
-      {trip.savedCustomInterests.map((text) => {
-        const isSelected = !trip.deselectedCustomInterests.includes(text);
-        return (
-          <div
-            key={text}
-            role="button"
-            tabIndex={0}
-            className={`chip ${isSelected ? 'selected' : ''}`}
-            title={classifying.has(text) ? 'Finding matching landmarks…' : isSelected ? 'Tap to turn off' : 'Tap to turn on'}
-            onClick={() => toggleSavedCustomInterestSelected(text)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                toggleSavedCustomInterestSelected(text);
-              }
-            }}
-          >
-            <span className="chip-icon">
-              {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
-            </span>
-            <span>{text}</span>
-            <button
-              type="button"
-              className="chip-remove"
-              aria-label={`Remove ${text}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                removeSavedCustomInterest(text);
-              }}
-            >
-              {'\u{1F5D1}\u{FE0F}'}
-            </button>
-          </div>
-        );
-      })}
-      <AddInterestChip existing={trip.savedCustomInterests} onAdd={addCustom} />
-    </div>
-  );
-}
-
-// "My Preferences" — save your usual interests once here so Setup can fill
-// them in with one tap instead of re-choosing them on every trip. Reuses the
-// same chip UI as Setup's own interest picker, just writing to the trip's
-// saved* fields instead of its live ones.
-function PreferencesPanel() {
-  return (
-    <div className="card section">
-      <h3 style={{ marginTop: 0 }}>{'⭐'} My Preferences</h3>
-      <p className="screen-subtitle" style={{ marginTop: -6 }}>
-        Save what you're usually into — Setup can fill it in for you with one tap.
-      </p>
-      <PreferenceChips />
-    </div>
   );
 }
 
@@ -929,9 +830,6 @@ export default function Profile() {
           </div>
         )}
       </div>
-
-      {/* 4.5 — My Preferences */}
-      <PreferencesPanel />
 
       {/* 5 — Account */}
       <div className="card section">
