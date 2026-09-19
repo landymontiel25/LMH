@@ -64,10 +64,18 @@ export default function StreakWarningBanner() {
   if (!withinWarningWindow) return null;
 
   return (
-    <div
-      role="status"
+    <button
+      type="button"
+      // aria-live keeps the same "announce the ticking countdown" behavior
+      // role="status" gave, but on a real, keyboard-focusable, Enter/Space-
+      // activatable control instead of a plain div only a mouse could use.
+      aria-live="polite"
       onClick={() => navigate('/profile')}
       style={{
+        display: 'block',
+        width: '100%',
+        border: 'none',
+        font: 'inherit',
         background: 'var(--color-error, #b3503f)',
         color: '#fff',
         textAlign: 'center',
@@ -78,6 +86,6 @@ export default function StreakWarningBanner() {
       }}
     >
       {'\u{23F3}'} Your {streakDays}-day streak expires in {formatCountdown(msLeft)} — check in, or vote on {PICKS_STREAK_THRESHOLD} Mapr Picks, to keep it!
-    </div>
+    </button>
   );
 }

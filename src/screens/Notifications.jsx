@@ -111,7 +111,15 @@ export default function Notifications() {
           {groupInvites.map((n) => (
             <div
               key={n.id}
+              role="button"
+              tabIndex={0}
               onClick={() => openItem(n)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  openItem(n);
+                }
+              }}
               style={{
                 padding: '10px 0',
                 borderTop: '1px solid rgba(255,255,255,0.08)',
@@ -131,7 +139,15 @@ export default function Notifications() {
           {otherUpdates.map((n) => (
             <div
               key={n.id}
+              role="button"
+              tabIndex={0}
               onClick={() => openItem(n)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  openItem(n);
+                }
+              }}
               style={{
                 padding: '10px 0',
                 borderTop: '1px solid rgba(255,255,255,0.08)',

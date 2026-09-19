@@ -136,6 +136,15 @@ export default function SignInForm({ onSignedUp }) {
             {errorCode && <span style={{ opacity: 0.7 }}> ({errorCode})</span>}
           </p>
         )}
+        {mode === 'signup' && (
+          <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--color-parchment-dim)', margin: '0 0 10px' }}>
+            By creating an account, you agree to our{' '}
+            <Link to="/legal" style={{ color: 'var(--color-parchment-dim)' }}>
+              Terms of Service & Privacy Policy
+            </Link>
+            .
+          </p>
+        )}
         <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
           {mode === 'signup' ? 'Create Account' : 'Sign In'}
         </button>
