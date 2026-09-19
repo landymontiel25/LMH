@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useBadges } from '../lib/BadgesContext';
-import { msUntilStreakLapse } from '../lib/streaks';
+import { msUntilStreakLapse, PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { notifyUser } from '../lib/notifications';
 
-// Alert once 5 hours remain in the UTC day with no check-in yet -- the same
-// boundary computeStreakDays counts by, so this is exactly when an active
-// streak is about to actually lapse.
+// Alert once 5 hours remain in the UTC day with the streak not yet secured
+// today (no check-in, and fewer than PICKS_STREAK_THRESHOLD Mapr Picks
+// votes) -- the same boundary computeStreakDays counts by, so this is
+// exactly when an active streak is about to actually lapse.
 const WARNING_WINDOW_MS = 5 * 60 * 60 * 1000;
 const NOTIFIED_PREFIX = 'landmarkhunters.streakWarned.';
 
@@ -56,7 +57,7 @@ export default function StreakWarningBanner() {
     }
     notifyUser(user.uid, {
       type: 'streak_warning',
-      message: `\u{23F3} Your ${streakDays}-day streak expires today — check in soon to keep it going!`,
+      message: `\u{23F3} Your ${streakDays}-day streak expires today — check in, or vote on ${PICKS_STREAK_THRESHOLD} Mapr Picks, to keep it going!`,
     }).catch(() => {});
   }, [user, withinWarningWindow, streakDays]);
 
@@ -65,7 +66,7 @@ export default function StreakWarningBanner() {
   return (
     <div
       role="status"
-      onClick={() => navigate('/')}
+      onClick={() => navigate('/profile')}
       style={{
         background: 'var(--color-error, #b3503f)',
         color: '#fff',
@@ -76,7 +77,7 @@ export default function StreakWarningBanner() {
         cursor: 'pointer',
       }}
     >
-      {'\u{23F3}'} Your {streakDays}-day streak expires in {formatCountdown(msLeft)} — check in to keep it!
+      {'\u{23F3}'} Your {streakDays}-day streak expires in {formatCountdown(msLeft)} — check in, or vote on {PICKS_STREAK_THRESHOLD} Mapr Picks, to keep it!
     </div>
   );
 }

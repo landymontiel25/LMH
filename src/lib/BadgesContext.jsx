@@ -1,11 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { useAuth } from './AuthContext';
 import { useFriends } from './FriendsContext';
 import { useCheckIn } from './useCheckIn';
 import { getUserStats, getUserCheckins } from './leaderboard';
-import { computeStreakDays, computeBadges, hasCheckedInToday } from './streaks';
+import { getPickFeedback } from './pickFeedback';
+import { computeStreakDays, computeBadges, hasSecuredStreakToday } from './streaks';
 import { hasCompletedOnboardingLocally } from './onboarding';
 
 // Your check-in/city/streak counts and the badges earned from them -- one
@@ -46,45 +47,48 @@ export function BadgesProvider({ children }) {
   const { myProfile, profileFresh, reload: reloadFriends } = useFriends();
   const [stats, setStats] = useState(null);
   const [streakDays, setStreakDays] = useState(0);
+  // Whether today's streak is already secured -- a real check-in, or
+  // PICKS_STREAK_THRESHOLD Mapr Picks votes (see streaks.js). Despite the
+  // name this is broader than "checked in" on purpose: it's "is the streak
+  // safe today", which is the only thing either caller of this actually
+  // wants to know.
   const [checkedInToday, setCheckedInToday] = useState(false);
   // Badges this session has seen freshly persisted (not yet in
   // myProfile.badgeEarnedAt at the moment they were computed) -- consumed
   // by CelebrationOverlay, which dismisses each one after showing it.
   const [justEarned, setJustEarned] = useState([]);
 
-  useEffect(() => {
+  // Pulled out of the effect (and exposed as `reload`) so voting on a Mapr
+  // Pick can refresh the streak the moment a day's 5th vote lands, instead
+  // of waiting for claimedMap to change (which a vote never does).
+  const load = useCallback(async () => {
     if (!firebaseEnabled || !user) {
       setStats(null);
       setStreakDays(0);
       setCheckedInToday(false);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      let s;
-      try {
-        s = await getUserStats(user.uid);
-      } catch {
-        s = { totalPoints: 0, checkins: 0, cities: 0 };
-      }
-      if (cancelled) return;
-      setStats(s);
-      try {
-        const rows = await getUserCheckins(user.uid);
-        if (cancelled) return;
-        setStreakDays(computeStreakDays(rows));
-        setCheckedInToday(hasCheckedInToday(rows));
-      } catch {
-        if (!cancelled) {
-          setStreakDays(0);
-          setCheckedInToday(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [firebaseEnabled, user, claimedMap]);
+    let s;
+    try {
+      s = await getUserStats(user.uid);
+    } catch {
+      s = { totalPoints: 0, checkins: 0, cities: 0 };
+    }
+    setStats(s);
+    try {
+      const [rows, feedback] = await Promise.all([getUserCheckins(user.uid), getPickFeedback(user.uid)]);
+      const fbList = Object.values(feedback || {});
+      setStreakDays(computeStreakDays(rows, new Date(), fbList));
+      setCheckedInToday(hasSecuredStreakToday(rows, fbList));
+    } catch {
+      setStreakDays(0);
+      setCheckedInToday(false);
+    }
+  }, [firebaseEnabled, user]);
+
+  useEffect(() => {
+    load();
+  }, [load, claimedMap]);
 
   // Derived from state rather than fetched separately, so completing
   // onboarding (which flips myProfile.onboardingCompleted, not the
@@ -145,8 +149,9 @@ export function BadgesProvider({ children }) {
       badgeEarnedAt: myProfile?.badgeEarnedAt || {},
       justEarned,
       dismissJustEarned,
+      reload: load,
     }),
-    [stats, streakDays, checkedInToday, badges, myProfile?.badgeEarnedAt, justEarned]
+    [stats, streakDays, checkedInToday, badges, myProfile?.badgeEarnedAt, justEarned, load]
   );
 
   return <BadgesContext.Provider value={value}>{children}</BadgesContext.Provider>;

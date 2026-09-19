@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { getPickFeedback, recentlyPassedIds, setPickFeedback } from '../lib/pickFeedback';
+import { getPickFeedback, votedIds, setPickFeedback } from '../lib/pickFeedback';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useGeo } from '../lib/GeoContext';
+import { useBadges } from '../lib/BadgesContext';
 import { coarseLocation, localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
 
 // "Your Mapr Picks": 4 landmarks Mapr thinks you'll love next, as a
@@ -20,6 +21,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   const { user } = useAuth();
   const { ratings } = useRatings();
   const { coords } = useGeo();
+  const { reload: reloadBadges } = useBadges();
   const navigate = useNavigate();
   // Picks are about where you are right now. Without a fix yet we wait a
   // beat for one rather than answer for the wrong city.
@@ -46,7 +48,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       const fb = await getPickFeedback(user.uid);
       if (cancelled) return;
       setFeedback(Object.fromEntries(Object.values(fb).map((f) => [f.landmarkId, f.verdict])));
-      const passedIds = recentlyPassedIds(fb);
+      const passedIds = votedIds(fb);
       const fbList = Object.values(fb).map((f) => ({ name: f.name, region: f.region, categories: f.categories, verdict: f.verdict }));
       fbListRef.current = fbList;
       const cached = readPicksCache(key);
@@ -124,6 +126,11 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     setFeedback(nextFeedback);
     fbListRef.current = [...fbListRef.current, { name: p.name, region: p.region, categories: p.categories || [], verdict }];
     setPickFeedback({ uid: user.uid, landmark: { id: p.id, region: p.region, name: p.name, categories: p.categories || [] }, verdict, origin });
+    // setPickFeedback writes localStorage synchronously before its own first
+    // await, so this always sees today's just-added vote -- refreshes the
+    // streak the moment a day's 5th vote lands (see streaks.js), instead of
+    // waiting for claimedMap to change, which a vote never does.
+    reloadBadges();
     setQueue((cur) => {
       let next = (cur || []).filter((x) => x.id !== p.id);
       if (next.length < SHOWN) {
