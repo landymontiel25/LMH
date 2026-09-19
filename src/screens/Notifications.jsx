@@ -32,6 +32,10 @@ export default function Notifications() {
       navigate(`/group/${n.groupTripId}`);
       return;
     }
+    if (n.featureRequestId) {
+      navigate('/request-feature', { state: { tab: 'review' } });
+      return;
+    }
     if (n.landmarkId) {
       const landmark = ALL_LANDMARKS.find((l) => l.id === n.landmarkId);
       if (landmark) navigate(`/landmarks/${landmark.regionId}/${landmark.id}`);
