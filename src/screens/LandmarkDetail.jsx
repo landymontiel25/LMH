@@ -24,6 +24,17 @@ import { pickPhoto } from '../lib/imageUtils';
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
 
+// Newest-added check-in photo first: photoURLs is stored oldest->newest
+// (each add appends via arrayUnion), so this reverses it before it ever
+// gets prepended onto myPhotos -- the photo you most recently added stays
+// the landmark's lead photo, not whichever you added first. Folds in the
+// legacy single photoURL field too, if it isn't already among photoURLs.
+function checkinPhotosNewestFirst(checkin) {
+  const photos = [...(checkin?.photoURLs || [])].reverse();
+  if (checkin?.photoURL && !photos.includes(checkin.photoURL)) photos.push(checkin.photoURL);
+  return photos;
+}
+
 // "Tuesday, Sep 15 at 3:47 PM"
 function fmtCheckinTime(seconds) {
   const d = new Date(seconds * 1000);
@@ -230,7 +241,16 @@ export default function LandmarkDetail() {
       .then((c) => {
         if (cancelled) return;
         setMyCheckin(c);
-        if (c?.photoURL) setMyPhotos((prev) => (prev.includes(c.photoURL) ? prev : [c.photoURL, ...prev]));
+        // Prepended ahead of whatever's already here (review photos), so a
+        // photo you added after checking in stays the landmark's lead photo
+        // even on a fresh page load, not just right after adding it.
+        const checkinPhotos = checkinPhotosNewestFirst(c);
+        if (checkinPhotos.length) {
+          setMyPhotos((prev) => {
+            const fresh = checkinPhotos.filter((u) => !prev.includes(u));
+            return fresh.length ? [...fresh, ...prev] : prev;
+          });
+        }
       })
       .catch(() => {});
     return () => {
@@ -327,7 +347,7 @@ export default function LandmarkDetail() {
     setMyRating(null);
     // The review's own photos are gone, but any check-in gallery photos
     // (added independently via "My Photos" below) aren't touched by this.
-    setMyPhotos(myCheckin?.photoURLs || (myCheckin?.photoURL ? [myCheckin.photoURL] : []));
+    setMyPhotos(checkinPhotosNewestFirst(myCheckin));
     await reloadRatings();
     await loadReviews();
     await reloadMyPhotos();
