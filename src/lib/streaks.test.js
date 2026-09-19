@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeStreakDays, computeBadges, closestUnearnedBadge, hasCheckedInToday } from './streaks';
+import { computeStreakDays, computeBadges, closestUnearnedBadge, hasCheckedInToday, msUntilStreakLapse } from './streaks';
 
 const sec = (isoDate) => Math.floor(new Date(isoDate).getTime() / 1000);
 const checkin = (isoDate) => ({ createdAt: { seconds: sec(isoDate) } });
@@ -88,5 +88,16 @@ describe('hasCheckedInToday', () => {
   it('is false with no check-ins today', () => {
     const now = new Date('2026-03-10T20:00:00Z');
     expect(hasCheckedInToday([checkin('2026-03-09T08:00:00Z')], now)).toBe(false);
+  });
+});
+
+describe('msUntilStreakLapse', () => {
+  it('counts down to the next UTC midnight', () => {
+    expect(msUntilStreakLapse(new Date('2026-03-10T19:00:00Z'))).toBe(5 * 60 * 60 * 1000);
+    expect(msUntilStreakLapse(new Date('2026-03-10T23:59:59Z'))).toBe(1000);
+  });
+
+  it('is a full day right at midnight', () => {
+    expect(msUntilStreakLapse(new Date('2026-03-10T00:00:00Z'))).toBe(24 * 60 * 60 * 1000);
   });
 });

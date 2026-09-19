@@ -13,6 +13,7 @@ import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
+import StreakWarningBanner from './components/StreakWarningBanner';
 import CheckInReview from './components/CheckInReview';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
 import CelebrationOverlay from './components/CelebrationOverlay';
@@ -90,6 +91,7 @@ export default function App() {
           <UnitsProvider>
           <HashRouter>
           <OfflineBanner />
+          <StreakWarningBanner />
           <Header />
           <main className="app-main">
             <AppRoutes />

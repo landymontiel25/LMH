@@ -11,6 +11,17 @@ export function hasCheckedInToday(checkins, now = new Date()) {
 }
 
 /**
+ * Milliseconds until the current UTC day ends -- the moment an active
+ * streak with no check-in yet today actually lapses (computeStreakDays
+ * counts by UTC calendar day, so this is the same boundary). Feeds the
+ * "your streak expires in ..." countdown banner.
+ */
+export function msUntilStreakLapse(now = new Date()) {
+  const nextMidnightUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0);
+  return nextMidnightUTC - now.getTime();
+}
+
+/**
  * Consecutive days (UTC) with at least one check-in, counting back from
  * today. A day with no check-in yet doesn't break the streak until
  * tomorrow -- so "yesterday, but not yet today" still counts.
