@@ -30,7 +30,11 @@ export function MyPhotosProvider({ children }) {
       ]);
       const map = { ...fromReviews };
       for (const c of checkins) {
-        const checkinPhotos = [...(c.photoURLs || []), ...(c.photoURL ? [c.photoURL] : [])];
+        // Newest-added first: photoURLs is stored oldest->newest (each add
+        // appends via arrayUnion), so the photo you most recently added is
+        // what actually leads -- not whichever you added first.
+        const checkinPhotos = [...(c.photoURLs || [])].reverse();
+        if (c.photoURL && !checkinPhotos.includes(c.photoURL)) checkinPhotos.push(c.photoURL);
         const existing = map[c.landmarkId] || [];
         const fresh = checkinPhotos.filter((url) => !existing.includes(url));
         if (fresh.length) map[c.landmarkId] = [...fresh, ...existing];
