@@ -404,7 +404,20 @@ export default function LandmarkSelection() {
           return (
             <div key={l.id} className={`landmark-row ${isSelected ? 'selected' : ''} ${claimedMap[l.id] ? 'visited' : ''}`}>
               <div className="lr-top">
-                <div className="check-circle" onClick={() => handleToggle(l)}>
+                <div
+                  className="check-circle"
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  aria-label={`${isSelected ? 'Remove' : 'Add'} ${l.name} ${isSelected ? 'from' : 'to'} itinerary`}
+                  tabIndex={0}
+                  onClick={() => handleToggle(l)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleToggle(l);
+                    }
+                  }}
+                >
                   {isSelected ? '✓' : ''}
                 </div>
                 <div onClick={() => handleToggle(l)} style={{ flexShrink: 0 }}>

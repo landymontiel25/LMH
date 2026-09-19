@@ -184,7 +184,19 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
       {shown && shown.length > 0 && layout === 'list' && (
         <div style={{ marginTop: 12 }}>
           {shown.map((it) => (
-            <div key={it.id} className="checkin-row" onClick={() => go(it)}>
+            <div
+              key={it.id}
+              className="checkin-row"
+              role="button"
+              tabIndex={0}
+              onClick={() => go(it)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  go(it);
+                }
+              }}
+            >
               {it.photo ? (
                 <img className="checkin-list-thumb" src={it.photo} alt={it.name} loading="lazy" />
               ) : (
