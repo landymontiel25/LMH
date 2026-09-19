@@ -14,12 +14,21 @@ export default function SignInForm({ onSignedUp }) {
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  // Self-certified age gate (item 3): not proof, but it's what puts a new
+  // account outside COPPA's "actual knowledge" standard -- the checkbox
+  // itself is `required` too, so a browser blocks submission before this
+  // check ever runs for anyone who just left it unticked.
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setErrorCode('');
     setResetSent(false);
+    if (mode === 'signup' && !ageConfirmed) {
+      setError('You must confirm you’re 13 or older to create an account.');
+      return;
+    }
     setBusy(true);
     const normalizedEmail = email.trim().toLowerCase();
     try {
@@ -135,6 +144,28 @@ export default function SignInForm({ onSignedUp }) {
             {error}
             {errorCode && <span style={{ opacity: 0.7 }}> ({errorCode})</span>}
           </p>
+        )}
+        {mode === 'signup' && (
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+              fontSize: '0.78rem',
+              color: 'var(--color-parchment-dim)',
+              margin: '0 0 12px',
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={ageConfirmed}
+              onChange={(e) => setAgeConfirmed(e.target.checked)}
+              required
+              style={{ marginTop: 2 }}
+            />
+            <span>I am 13 years of age or older.</span>
+          </label>
         )}
         {mode === 'signup' && (
           <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--color-parchment-dim)', margin: '0 0 10px' }}>
