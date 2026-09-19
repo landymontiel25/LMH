@@ -839,6 +839,9 @@ export default function Profile() {
         <Link to="/settings" className="btn btn-ghost btn-block" style={{ marginTop: 12 }}>
           {'\u{2699}\u{FE0F}'} Settings
         </Link>
+        <Link to="/request-feature" className="btn btn-ghost btn-block" style={{ marginTop: 8 }}>
+          {'\u{1F4A1}'} Request a Feature
+        </Link>
         {!user.emailVerified && (
           <div style={{ marginTop: 12 }}>
             <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>
@@ -870,14 +873,14 @@ export default function Profile() {
             )}
           </div>
         )}
-        <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
-          Sign Out
-        </button>
         <p style={{ textAlign: 'center', marginTop: 12, marginBottom: 0, fontSize: '0.78rem' }}>
           <Link to="/legal" style={{ color: 'var(--color-parchment-dim)' }}>
             Privacy Policy & Terms of Service
           </Link>
         </p>
+        <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
+          Sign Out
+        </button>
         <button
           className="btn btn-ghost btn-block"
           style={{ marginTop: 8, color: 'var(--color-error, #b3503f)' }}

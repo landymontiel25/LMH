@@ -245,6 +245,21 @@ service cloud.firestore {
         && (resource.data.createdBy == request.auth.uid || request.auth.token.email in ['landymontiel25@gmail.com']);
     }
 
+    // Profile's "Request a Feature" -- anyone signed in can submit one
+    // (always starting "pending", same enforced-not-just-client-side
+    // pattern as custom_landmarks above); only the submitter or an admin
+    // can read it back, and only an admin can flip its status via the
+    // Approve/Reject Features tab.
+    match /feature_requests/{id} {
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid || request.auth.token.email in ['landymontiel25@gmail.com']);
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update: if request.auth != null && request.auth.token.email in ['landymontiel25@gmail.com'];
+      allow delete: if request.auth != null && request.auth.token.email in ['landymontiel25@gmail.com'];
+    }
+
     // A trip a few friends build together (item i6). Only current members
     // can see or touch it at all; only the owner can change who's a member
     // (add/remove), while any member can edit the shared landmark list --
@@ -274,8 +289,12 @@ service cloud.firestore {
     // added to a group trip") -- both the writer and the notified uid must
     // already be members of that same trip, which by write order (member
     // added first, notification second) is only ever true right after a
-    // real invite. Nothing lets one regular account write into another's
-    // notifications outside that one case.
+    // real invite. A regular account can also notify the admin specifically
+    // (never anyone else) about a new "Request a Feature" submission --
+    // resolved by the target uid's OWN users/{uid}.email rather than a
+    // hardcoded uid, so this doesn't need updating if the admin account
+    // ever changes. Nothing lets one regular account write into another's
+    // notifications outside those two cases.
     match /notifications/{id} {
       allow get, list: if request.auth != null && resource.data.uid == request.auth.uid;
       allow create: if request.auth != null
@@ -286,7 +305,11 @@ service cloud.firestore {
                 && request.auth.uid in
                    get(/databases/$(database)/documents/group_trips/$(request.resource.data.groupTripId)).data.memberUids
                 && request.resource.data.uid in
-                   get(/databases/$(database)/documents/group_trips/$(request.resource.data.groupTripId)).data.memberUids));
+                   get(/databases/$(database)/documents/group_trips/$(request.resource.data.groupTripId)).data.memberUids)
+            || (request.resource.data.type == 'feature_request'
+                && exists(/databases/$(database)/documents/users/$(request.resource.data.uid))
+                && get(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.get('email', '')
+                   in ['landymontiel25@gmail.com']));
       allow update: if request.auth != null
         && resource.data.uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
