@@ -21,7 +21,7 @@ import { getRegion, REGIONS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
 import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
 import { useBadges } from '../lib/BadgesContext';
-import { closestUnearnedBadge } from '../lib/streaks';
+import { closestUnearnedBadge, PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
 import { completeOnboarding, hasCompletedOnboardingLocally, markOnboardingCompletedLocally } from '../lib/onboarding';
 import { isAdmin } from '../lib/admins';
@@ -388,6 +388,7 @@ export default function Profile() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   const [bonusPoints, setBonusPoints] = useState(0);
+  const [streakInfoOpen, setStreakInfoOpen] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -752,11 +753,30 @@ export default function Profile() {
             <span className="profile-stat-num">{stats ? stats.cities : '…'}</span>
             <span className="profile-stat-label">cities{stats?.cityIds?.length ? ' ›' : ''}</span>
           </button>
-          <div className="profile-stat">
+          <button
+            type="button"
+            className="profile-stat profile-stat-btn"
+            onClick={() => setStreakInfoOpen((v) => !v)}
+            aria-expanded={streakInfoOpen}
+          >
             <span className="profile-stat-num">{streakDays}{streakDays > 0 ? ' \u{1F525}' : ''}</span>
-            <span className="profile-stat-label">day streak</span>
-          </div>
+            <span className="profile-stat-label">day streak {streakInfoOpen ? '\u{25BE}' : '\u{25B8}'}</span>
+          </button>
         </div>
+
+        {streakInfoOpen && (
+          <div className="card section" style={{ marginTop: 10 }}>
+            <p className="screen-subtitle" style={{ margin: 0 }}>
+              <strong>Two ways to keep your streak alive each day:</strong>
+            </p>
+            <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: '0.85rem' }}>
+              <li>Check in at any landmark, or</li>
+              <li>
+                {'\u{2713}'}/{'\u{2715}'} on {PICKS_STREAK_THRESHOLD} of your Mapr Picks below — even without checking in anywhere
+              </li>
+            </ul>
+          </div>
+        )}
 
         <div className="rating-progress">
           {ratingsCount >= RATING_GOAL ? (
@@ -788,12 +808,12 @@ export default function Profile() {
 
         {streakAtRisk && (
           <p className="tag tag-error" style={{ display: 'block', marginTop: 14 }}>
-            {'\u{26A0}\u{FE0F}'} Check in today or your {streakDays}-day streak breaks!
+            {'\u{26A0}\u{FE0F}'} Check in, or vote on {PICKS_STREAK_THRESHOLD} Mapr Picks, today — or your {streakDays}-day streak breaks!
           </p>
         )}
         {streakDays > 0 && checkedInToday && (
           <p className="tag tag-free" style={{ display: 'block', marginTop: 14 }}>
-            {'\u{2705}'} Checked in today — your {streakDays}-day streak is safe
+            {'\u{2705}'} Your {streakDays}-day streak is safe today
           </p>
         )}
 

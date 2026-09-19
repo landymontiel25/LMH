@@ -10,6 +10,40 @@ export function hasCheckedInToday(checkins, now = new Date()) {
   return checkins.some((c) => c.createdAt?.seconds && dayKey(new Date(c.createdAt.seconds * 1000)) === today);
 }
 
+// Minimum distinct landmarks you must vote ✓/✗ on in a day (Mapr Picks) for
+// that day to count toward your streak, same as an actual check-in would --
+// lets a day with no real visit still keep the streak alive. Never earns
+// check-in points, a check-in count, or a city credit; it only feeds this
+// streak math, from pick_feedback entries (voted landmarkId + `at` epoch ms).
+export const PICKS_STREAK_THRESHOLD = 5;
+
+// Day-keys (UTC) with at least `minVotes` distinct landmarks voted on.
+function pickVoteDayKeys(pickFeedback, minVotes = PICKS_STREAK_THRESHOLD) {
+  const idsByDay = new Map();
+  for (const f of pickFeedback || []) {
+    if (!f.at || !f.landmarkId) continue;
+    const key = dayKey(new Date(f.at));
+    if (!idsByDay.has(key)) idsByDay.set(key, new Set());
+    idsByDay.get(key).add(f.landmarkId);
+  }
+  const days = new Set();
+  for (const [key, ids] of idsByDay) {
+    if (ids.size >= minVotes) days.add(key);
+  }
+  return days;
+}
+
+/**
+ * Whether today's streak is already secured -- a real check-in, or voting
+ * ✓/✗ on PICKS_STREAK_THRESHOLD distinct Mapr Picks. Supersedes
+ * hasCheckedInToday wherever "is the streak safe today" (not "did you
+ * literally check in") is the actual question -- the streak-risk banner
+ * and Profile's streak messaging both want this one.
+ */
+export function hasSecuredStreakToday(checkins, pickFeedback = [], now = new Date()) {
+  return hasCheckedInToday(checkins, now) || pickVoteDayKeys(pickFeedback).has(dayKey(now));
+}
+
 /**
  * Milliseconds until the current UTC day ends -- the moment an active
  * streak with no check-in yet today actually lapses (computeStreakDays
@@ -22,17 +56,19 @@ export function msUntilStreakLapse(now = new Date()) {
 }
 
 /**
- * Consecutive days (UTC) with at least one check-in, counting back from
- * today. A day with no check-in yet doesn't break the streak until
- * tomorrow -- so "yesterday, but not yet today" still counts.
+ * Consecutive days (UTC) with at least one check-in -- or a qualifying
+ * Mapr Picks voting day, see hasSecuredStreakToday -- counting back from
+ * today. A day with neither yet doesn't break the streak until tomorrow --
+ * so "yesterday, but not yet today" still counts.
  */
-export function computeStreakDays(checkins, now = new Date()) {
+export function computeStreakDays(checkins, now = new Date(), pickFeedback = []) {
   const days = new Set();
   for (const c of checkins) {
     const sec = c.createdAt?.seconds;
     if (!sec) continue;
     days.add(dayKey(new Date(sec * 1000)));
   }
+  for (const key of pickVoteDayKeys(pickFeedback)) days.add(key);
   if (days.size === 0) return 0;
 
   const cursor = new Date(now);

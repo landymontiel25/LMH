@@ -4,14 +4,14 @@ import { db } from './firebase';
 // ✓ / ✗ on a Mapr pick: "I'd go" / "not for me". A light, general-taste
 // signal -- lighter than a rating, and context-dependent (you might skip
 // a cathedral at night in Miami and still love cathedrals in Italy), so
-// it nudges category preferences rather than ruling anything out. Only
-// the exact place you ✗'d is kept out of your picks for a while.
+// it nudges category preferences rather than ruling anything out. Whichever
+// way you vote, that exact place is kept out of your picks for good --
+// once you've weighed in on it, Mapr doesn't need to ask again.
 //
 // Stored two ways: localStorage (instant, always works) and Firestore
 // pick_feedback/{uid}_{landmarkId} (best-effort; survives a new phone).
 
 const KEY = (uid) => `lh-pick-feedback:${uid}`;
-export const NO_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
 function readLocal(uid) {
   try {
@@ -70,9 +70,8 @@ export async function getPickFeedback(uid) {
   return map;
 }
 
-// Ids ✗'d recently enough to keep out of the picks for now.
-export function recentlyPassedIds(feedback, now = Date.now()) {
-  return Object.values(feedback || {})
-    .filter((f) => f.verdict === 'no' && now - (f.at || 0) < NO_COOLDOWN_MS)
-    .map((f) => f.landmarkId);
+// Every landmark you've ever voted ✓ or ✗ on -- once you vote on one, Mapr
+// never shows it again, whichever way you voted.
+export function votedIds(feedback) {
+  return Object.values(feedback || {}).map((f) => f.landmarkId);
 }
