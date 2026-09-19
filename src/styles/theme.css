@@ -1694,6 +1694,27 @@ textarea {
   color: var(--color-brass-bright);
 }
 
+/* Same floating-popover language as .points-popover, but for wrapping
+   paragraph/list content instead of a one-line stat -- anchored under the
+   Profile "day streak" stat tile specifically, not the whole stats row. */
+.streak-info-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: 240px;
+  background: rgb(var(--color-bg-rgb));
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--color-brass);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: var(--color-parchment);
+  text-align: left;
+}
+
 .points-popover-joined {
   font-size: 0.62rem;
   font-weight: 600;
