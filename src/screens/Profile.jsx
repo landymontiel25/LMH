@@ -753,30 +753,30 @@ export default function Profile() {
             <span className="profile-stat-num">{stats ? stats.cities : '…'}</span>
             <span className="profile-stat-label">cities{stats?.cityIds?.length ? ' ›' : ''}</span>
           </button>
-          <button
-            type="button"
-            className="profile-stat profile-stat-btn"
-            onClick={() => setStreakInfoOpen((v) => !v)}
-            aria-expanded={streakInfoOpen}
-          >
-            <span className="profile-stat-num">{streakDays}{streakDays > 0 ? ' \u{1F525}' : ''}</span>
-            <span className="profile-stat-label">day streak {streakInfoOpen ? '\u{25BE}' : '\u{25B8}'}</span>
-          </button>
-        </div>
-
-        {streakInfoOpen && (
-          <div className="card section" style={{ marginTop: 10 }}>
-            <p className="screen-subtitle" style={{ margin: 0 }}>
-              <strong>Two ways to keep your streak alive each day:</strong>
-            </p>
-            <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: '0.85rem' }}>
-              <li>Check in at any landmark, or</li>
-              <li>
-                {'\u{2713}'}/{'\u{2715}'} on {PICKS_STREAK_THRESHOLD} of your Mapr Picks below — even without checking in anywhere
-              </li>
-            </ul>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <button
+              type="button"
+              className="profile-stat profile-stat-btn"
+              style={{ width: '100%' }}
+              onClick={() => setStreakInfoOpen((v) => !v)}
+              aria-expanded={streakInfoOpen}
+            >
+              <span className="profile-stat-num">{streakDays}{streakDays > 0 ? ' \u{1F525}' : ''}</span>
+              <span className="profile-stat-label">day streak {streakInfoOpen ? '\u{25BE}' : '\u{25B8}'}</span>
+            </button>
+            {streakInfoOpen && (
+              <div className="streak-info-popover">
+                <p style={{ margin: 0, fontWeight: 700 }}>Two ways to keep your streak alive each day:</p>
+                <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                  <li>Check in at any landmark, or</li>
+                  <li>
+                    {'\u{2713}'}/{'\u{2715}'} on {PICKS_STREAK_THRESHOLD} of your Mapr Picks below — even without checking in anywhere
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         <div className="rating-progress">
           {ratingsCount >= RATING_GOAL ? (
