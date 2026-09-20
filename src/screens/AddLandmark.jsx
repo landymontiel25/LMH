@@ -127,11 +127,24 @@ export default function AddLandmark() {
       const verified = await verifyRes.json().catch(() => null);
       if (verified?.code === 'email-not-verified') {
         // The original link is probably buried in an inbox from whenever they
-        // signed up -- easier to just fire off a fresh one than ask them to
-        // go dig for it. Best-effort: Firebase rate-limits repeat sends, and
-        // that failure shouldn't block showing the "check your inbox" message.
-        resendVerification().catch(() => {});
-        throw new Error("Verify your email first — we just sent a fresh link to your inbox (check spam too), then try again.");
+        // signed up -- easier to try firing off a fresh one than ask them to
+        // go dig for it. Firebase rate-limits repeat sends, though, and
+        // resending on every failed attempt hits that limit fast -- so this
+        // must only claim a new email went out when one actually did, or
+        // someone stuck in this loop (rate-limited on every retry) keeps
+        // getting told to check for a "fresh" link that was never sent.
+        let resent = false;
+        try {
+          await resendVerification();
+          resent = true;
+        } catch {
+          /* rate-limited or offline -- fall through to the "already sent" message */
+        }
+        throw new Error(
+          resent
+            ? "Verify your email first — we just sent a fresh link to your inbox (check spam too), then try again."
+            : "Verify your email first — check your inbox for the verification link we already sent you (check spam too), then try again."
+        );
       }
       if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this submission — try again.');
       if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different name or add a photo.");
