@@ -9,6 +9,7 @@ import { nearestRegionId } from '../lib/geo';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
+import { authErrorMessage } from '../lib/authErrors';
 import { useTrip } from '../lib/TripContext';
 import { addCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
 import { fileToSmallDataUrl, pickPhoto } from '../lib/imageUtils';
@@ -134,16 +135,20 @@ export default function AddLandmark() {
         // someone stuck in this loop (rate-limited on every retry) keeps
         // getting told to check for a "fresh" link that was never sent.
         let resent = false;
+        let resendErr = null;
         try {
           await resendVerification();
           resent = true;
-        } catch {
-          /* rate-limited or offline -- fall through to the "already sent" message */
+        } catch (e) {
+          // Surface the real reason instead of a silent swallow -- "it just
+          // doesn't work" with no error code is undiagnosable. A specific
+          // reason (rate-limited, network, etc.) is something we can act on.
+          resendErr = e;
         }
         throw new Error(
           resent
             ? "Verify your email first — we just sent a fresh link to your inbox (check spam too), then try again."
-            : "Verify your email first — check your inbox for the verification link we already sent you (check spam too), then try again."
+            : `Verify your email first — check your inbox for the verification link we already sent you (check spam too), then try again. (Couldn't send another one: ${authErrorMessage(resendErr)})`
         );
       }
       if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this submission — try again.');
