@@ -106,6 +106,32 @@ describe('computeBadges', () => {
     const withIt = computeBadges({ checkinsCount: 0, citiesCount: 0, streakDays: 0, onboardingCompleted: true });
     expect(withIt.map((b) => b.id)).toContain('welcome');
   });
+
+  it('ignores extra-kind badges entirely when no extra counts are given', () => {
+    const badges = computeBadges({ checkinsCount: 100, citiesCount: 3, streakDays: 30 });
+    expect(badges.map((b) => b.id)).not.toContain('friend-finder');
+  });
+
+  it('awards extra-kind badges (numeric and boolean) once their counts are given', () => {
+    const badges = computeBadges({
+      checkinsCount: 0,
+      citiesCount: 0,
+      streakDays: 0,
+      extra: { friends: 5, photoCheckins: 3, top10: true, nightOwl: false },
+    });
+    const ids = badges.map((b) => b.id);
+    expect(ids).toContain('friend-finder');
+    expect(ids).toContain('competitor'); // boolean true counts as >= 1
+    expect(ids).not.toContain('photo-contributor'); // 3 < 10
+    expect(ids).not.toContain('night-owl'); // boolean false
+  });
+
+  it('checkins-based expedition/cartographer stack on the same kind as checkins-25', () => {
+    const ids = computeBadges({ checkinsCount: 100, citiesCount: 0, streakDays: 0 }).map((b) => b.id);
+    expect(ids).toContain('checkins-25');
+    expect(ids).toContain('expedition');
+    expect(ids).toContain('cartographer');
+  });
 });
 
 describe('closestUnearnedBadge', () => {
@@ -115,8 +141,10 @@ describe('closestUnearnedBadge', () => {
     expect(closest.id).toBe('checkins-5');
   });
 
-  it('is null once every badge is earned', () => {
-    expect(closestUnearnedBadge({ checkinsCount: 25, citiesCount: 3, streakDays: 30, onboardingCompleted: true })).toBeNull();
+  it('is null once every original-4-kind badge is earned', () => {
+    // 100, not 25 -- expedition/cartographer share the same `checkins`
+    // kind as checkins-25, at higher thresholds.
+    expect(closestUnearnedBadge({ checkinsCount: 100, citiesCount: 3, streakDays: 30, onboardingCompleted: true })).toBeNull();
   });
 });
 

@@ -83,8 +83,8 @@ export default function App() {
     <AuthProvider>
       <FriendsProvider>
       <CheckInProvider>
-      <BadgesProvider>
       <TripProvider>
+      <BadgesProvider>
         <GeoProvider>
           <RatingsProvider>
           <MyPhotosProvider>
@@ -105,8 +105,8 @@ export default function App() {
           </MyPhotosProvider>
           </RatingsProvider>
         </GeoProvider>
-      </TripProvider>
       </BadgesProvider>
+      </TripProvider>
       </CheckInProvider>
       </FriendsProvider>
     </AuthProvider>

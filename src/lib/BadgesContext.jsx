@@ -4,9 +4,23 @@ import { db } from './firebase';
 import { useAuth } from './AuthContext';
 import { useFriends } from './FriendsContext';
 import { useCheckIn } from './useCheckIn';
-import { getUserStats, getUserCheckins } from './leaderboard';
+import { useTrip } from './TripContext';
+import { getUserStats, getUserCheckins, isInTopLeaderboard, hasFriendTagTeam } from './leaderboard';
 import { getPickFeedback } from './pickFeedback';
+import { getUserReviews } from './reviews';
+import { getCustomLandmarks, getPendingLandmarks } from './customLandmarks';
+import { getRegion, getLandmark } from '../data/regions';
 import { computeStreakDays, computeBadges, hasSecuredStreakToday } from './streaks';
+import {
+  countPhotoCheckins,
+  maxRegionCheckins,
+  countDistinctStates,
+  countDistinctCountries,
+  hasNightOwlCheckin,
+  hasGoldenHourCheckin,
+  countCuisineTypes,
+  hasAllStarWeek,
+} from './badgeStats';
 import { hasCompletedOnboardingLocally } from './onboarding';
 
 // Your check-in/city/streak counts and the badges earned from them -- one
@@ -41,10 +55,28 @@ function markCelebrated(uid, badgeId) {
   }
 }
 
+// Resolves a check-in to the state/country/categories of the landmark it
+// was for, for the geographic-coverage and variety-challenge badges below.
+// customLandmarksById covers user-submitted spots the built-in catalog
+// doesn't know about; a check-in this can't resolve at all (a landmark that
+// got removed, say) is simply left without those fields, not guessed at.
+function annotateCheckin(c, customLandmarksById) {
+  const region = getRegion(c.region);
+  const builtIn = getLandmark(c.region, c.landmarkId);
+  const custom = !builtIn ? customLandmarksById.get(c.landmarkId) : null;
+  return {
+    ...c,
+    state: region?.state || null,
+    country: region?.country || null,
+    categories: builtIn?.categories || custom?.categories || [],
+  };
+}
+
 export function BadgesProvider({ children }) {
   const { user, firebaseEnabled } = useAuth();
   const { claimedMap } = useCheckIn();
-  const { myProfile, profileFresh, reload: reloadFriends } = useFriends();
+  const { myProfile, profileFresh, friendUids, reload: reloadFriends } = useFriends();
+  const { trip } = useTrip();
   const [stats, setStats] = useState(null);
   const [streakDays, setStreakDays] = useState(0);
   // Whether today's streak is already secured -- a real check-in, or
@@ -53,6 +85,12 @@ export function BadgesProvider({ children }) {
   // safe today", which is the only thing either caller of this actually
   // wants to know.
   const [checkedInToday, setCheckedInToday] = useState(false);
+  // Everything past the original 4 (checkins/cities/streak/milestone) that
+  // ALL_BADGES' newer entries check against -- see badgeStats.js and the
+  // leaderboard.js helpers for how each one is actually derived. Best-effort
+  // as a whole: a failure here degrades to "nothing new earned this load"
+  // rather than breaking the rest of Profile/Full Stats.
+  const [extra, setExtra] = useState({});
   // Badges this session has seen freshly persisted (not yet in
   // myProfile.badgeEarnedAt at the moment they were computed) -- consumed
   // by CelebrationOverlay, which dismisses each one after showing it.
@@ -66,6 +104,7 @@ export function BadgesProvider({ children }) {
       setStats(null);
       setStreakDays(0);
       setCheckedInToday(false);
+      setExtra({});
       return;
     }
     let s;
@@ -75,8 +114,10 @@ export function BadgesProvider({ children }) {
       s = { totalPoints: 0, checkins: 0, cities: 0 };
     }
     setStats(s);
+    let rows = [];
     try {
-      const [rows, feedback] = await Promise.all([getUserCheckins(user.uid), getPickFeedback(user.uid)]);
+      const [checkinRows, feedback] = await Promise.all([getUserCheckins(user.uid), getPickFeedback(user.uid)]);
+      rows = checkinRows;
       const fbList = Object.values(feedback || {});
       setStreakDays(computeStreakDays(rows, new Date(), fbList));
       setCheckedInToday(hasSecuredStreakToday(rows, fbList));
@@ -84,7 +125,48 @@ export function BadgesProvider({ children }) {
       setStreakDays(0);
       setCheckedInToday(false);
     }
-  }, [firebaseEnabled, user]);
+
+    try {
+      const [reviews, approved, pending] = await Promise.all([
+        getUserReviews(user.uid).catch(() => []),
+        getCustomLandmarks().catch(() => []),
+        getPendingLandmarks().catch(() => []),
+      ]);
+      const allCustom = [...approved, ...pending];
+      const customLandmarksById = new Map(allCustom.map((l) => [l.id, l]));
+      const factLandmarks = allCustom.filter((l) => l.createdBy === user.uid && (l.facts || []).length > 0).length;
+      const annotated = rows.map((c) => annotateCheckin(c, customLandmarksById));
+      const friendUidList = [...friendUids];
+
+      const [top10, tagTeam] = await Promise.all([
+        isInTopLeaderboard(user.uid).catch(() => false),
+        hasFriendTagTeam(user.uid, friendUidList, rows).catch(() => false),
+      ]);
+
+      const tripLandmarks = Math.max(0, ...Object.values(trip.byRegion || {}).map((ids) => ids.length));
+
+      setExtra({
+        photoCheckins: countPhotoCheckins(rows),
+        fiveStarReview: reviews.some((r) => r.ratingTier === 'highly-recommend'),
+        factLandmarks,
+        friends: friendUidList.length,
+        top10,
+        tagTeam,
+        regionMax: maxRegionCheckins(rows),
+        states: countDistinctStates(annotated),
+        countries: countDistinctCountries(annotated),
+        tripLandmarks,
+        allStarWeek: hasAllStarWeek(annotated),
+        cuisineTypes: countCuisineTypes(annotated),
+        nightOwl: hasNightOwlCheckin(rows),
+        goldenHour: hasGoldenHourCheckin(rows),
+      });
+    } catch {
+      // Best-effort -- the original 4 badge kinds (and everything else on
+      // Profile) still work even if this whole block fails.
+      setExtra({});
+    }
+  }, [firebaseEnabled, user, friendUids, trip.byRegion]);
 
   useEffect(() => {
     load();
@@ -107,8 +189,23 @@ export function BadgesProvider({ children }) {
       citiesCount: stats.cities,
       streakDays,
       onboardingCompleted: onboardingDone,
+      extra,
     });
-  }, [stats, streakDays, onboardingDone]);
+  }, [stats, streakDays, onboardingDone, extra]);
+
+  // Same shape computeBadges builds internally, exposed so Profile's
+  // "closest badge" card can reason about every badge (not just the
+  // original 4) instead of keeping its own out-of-sync partial copy.
+  const badgeCounts = useMemo(
+    () => ({
+      checkins: stats?.checkins || 0,
+      cities: stats?.cities || 0,
+      streak: streakDays,
+      milestone: onboardingDone ? 1 : 0,
+      ...extra,
+    }),
+    [stats, streakDays, onboardingDone, extra]
+  );
 
   // Wait for a real profile read (not just `user` existing) before deciding
   // what's "new" -- otherwise a still-loading myProfile looks like nothing
@@ -146,12 +243,13 @@ export function BadgesProvider({ children }) {
       streakDays,
       checkedInToday,
       badges,
+      badgeCounts,
       badgeEarnedAt: myProfile?.badgeEarnedAt || {},
       justEarned,
       dismissJustEarned,
       reload: load,
     }),
-    [stats, streakDays, checkedInToday, badges, myProfile?.badgeEarnedAt, justEarned, load]
+    [stats, streakDays, checkedInToday, badges, badgeCounts, myProfile?.badgeEarnedAt, justEarned, load]
   );
 
   return <BadgesContext.Provider value={value}>{children}</BadgesContext.Provider>;
