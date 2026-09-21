@@ -22,6 +22,16 @@ describe('findPossibleDuplicate', () => {
     expect(match).toBeNull();
   });
 
+  it('catches a plain typo of an existing landmark', async () => {
+    const match = await findPossibleDuplicate({ name: 'Helstone', regionId: 'miami' });
+    expect(match?.name).toBe('Hillstone Restaurant');
+  });
+
+  it('does not flag a genuinely different, similarly-short name', async () => {
+    const match = await findPossibleDuplicate({ name: 'Quailridge Diner', regionId: 'miami' });
+    expect(match).toBeNull();
+  });
+
   it('returns null for a name shorter than 2 characters or a missing region', async () => {
     expect(await findPossibleDuplicate({ name: 'S', regionId: 'miami' })).toBeNull();
     expect(await findPossibleDuplicate({ name: 'South Beach', regionId: null })).toBeNull();
