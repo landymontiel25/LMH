@@ -922,6 +922,16 @@ export default function Profile() {
             })}
           </p>
         )}
+        {/* Always visible (not just when unverified) -- so there's an
+            unambiguous, no-digging-required answer to "is my email really
+            verified or not," matching whatever refreshUser() last synced
+            from Firebase's live account state. */}
+        <p
+          className={`tag ${user.emailVerified ? 'tag-free' : 'tag-error'}`}
+          style={{ display: 'block', textAlign: 'center', marginTop: 12 }}
+        >
+          {user.emailVerified ? '\u{2705} Your email has been verified.' : "\u{274C} Your email isn't verified yet."}
+        </p>
       </div>
 
       {showDeleteAccount && (
