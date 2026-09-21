@@ -72,6 +72,19 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          // Typing a full address and pressing Enter (or tabbing/clicking
+          // away) is how most people expect this to work -- clicking a
+          // dropdown item was previously the only way the pin ever moved.
+          if (e.key === 'Enter' && suggestions.length > 0) {
+            e.preventDefault();
+            onSelect(suggestions[0]);
+            setOpen(false);
+          }
+        }}
+        onBlur={() => {
+          if (suggestions.length > 0) onSelect(suggestions[0]);
+        }}
         autoComplete="off"
       />
       {open && (loading || suggestions.length > 0 || searchError) && (
