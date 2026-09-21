@@ -95,9 +95,19 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         /* offline -- fall through to the local scorer */
       }
       if (cancelled) return;
-      // Drop anything checked into since the picks were made.
-      const visited = new Set(checkedInIds);
-      const list = (next || fallback()).filter((p) => !visited.has(p.id)).slice(0, RESERVE);
+      // Drop anything checked into since the picks were made. The local
+      // scorer is a pure function and shouldn't throw, but this section had
+      // previously been the one un-guarded step in an otherwise all-caught
+      // chain -- if it ever did, the queue was left stuck at null forever
+      // (nothing else here sets it), silently hiding the whole carousel for
+      // that visit with no retry. Fail to an empty queue instead.
+      let list = [];
+      try {
+        const visited = new Set(checkedInIds);
+        list = (next || fallback()).filter((p) => !visited.has(p.id)).slice(0, RESERVE);
+      } catch {
+        /* leave list empty rather than leaving the queue stuck at null */
+      }
       setQueue(list);
       if (next) writePicksCache(key, list);
     })();
