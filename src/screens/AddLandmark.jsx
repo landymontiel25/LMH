@@ -144,11 +144,17 @@ export default function AddLandmark() {
           // doesn't work" with no error code is undiagnosable. A specific
           // reason (rate-limited, network, etc.) is something we can act on.
           resendErr = e;
+        try {
+          await resendVerification();
+          resent = true;
+        } catch {
+          /* rate-limited or offline -- fall through to the "already sent" message */
         }
         throw new Error(
           resent
             ? "Verify your email first — we just sent a fresh link to your inbox (check spam too), then try again."
             : `Verify your email first — check your inbox for the verification link we already sent you (check spam too), then try again. (Couldn't send another one: ${authErrorMessage(resendErr)})`
+            : "Verify your email first — check your inbox for the verification link we already sent you (check spam too), then try again."
         );
       }
       if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this submission — try again.');
