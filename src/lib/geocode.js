@@ -80,22 +80,23 @@ export async function searchLocations(text, region, limit = 5) {
     params.set('viewbox', `${minLng},${maxLat},${maxLng},${minLat}`);
   }
 
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) return [];
-    const results = await res.json();
-    return results.map((r) => {
-      const parts = String(r.display_name).split(',');
-      return {
-        primary: parts[0].trim(),
-        secondary: parts.slice(1).join(',').trim(),
-        lat: parseFloat(r.lat),
-        lng: parseFloat(r.lon),
-      };
-    });
-  } catch {
-    return [];
-  }
+  // No catch here -- a genuinely failed search (network error, Nominatim
+  // rate-limiting, a non-2xx response) needs to reach the caller as an
+  // error, not come back silently as "zero matches." Those look identical
+  // in the UI otherwise, which makes a real outage undiagnosable from a
+  // screen that's just quietly showing nothing.
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error(`Nominatim search failed: HTTP ${res.status}`);
+  const results = await res.json();
+  return results.map((r) => {
+    const parts = String(r.display_name).split(',');
+    return {
+      primary: parts[0].trim(),
+      secondary: parts.slice(1).join(',').trim(),
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
+    };
+  });
 }

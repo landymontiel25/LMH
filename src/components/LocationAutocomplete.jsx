@@ -6,6 +6,7 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const boxRef = useRef(null);
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
       return;
     }
     setLoading(true);
+    setSearchError('');
     const q = value.trim().toLowerCase();
     const handle = setTimeout(async () => {
       const localMatches = ALL_LANDMARKS.filter((l) => l.name.toLowerCase().includes(q))
@@ -37,11 +39,20 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
         }));
 
       const region = regionId ? getRegion(regionId) : null;
-      const remote = await searchLocations(value, region, 5);
-      const remoteMatches = remote
-        .filter((r) => !localMatches.some((lm) => lm.primary.toLowerCase() === r.primary.toLowerCase()))
-        .slice(0, 5)
-        .map((r, i) => ({ key: `r-${i}-${r.lat}`, ...r }));
+      // A failed remote search (network error, Nominatim rate-limiting, a
+      // non-2xx response) shouldn't look identical to "no matches" -- that
+      // makes a real outage undiagnosable from a box that's just quietly
+      // empty. Local landmark matches still show even if this fails.
+      let remoteMatches = [];
+      try {
+        const remote = await searchLocations(value, region, 5);
+        remoteMatches = remote
+          .filter((r) => !localMatches.some((lm) => lm.primary.toLowerCase() === r.primary.toLowerCase()))
+          .slice(0, 5)
+          .map((r, i) => ({ key: `r-${i}-${r.lat}`, ...r }));
+      } catch (e) {
+        setSearchError(e.message || 'Address search failed.');
+      }
 
       setSuggestions([...localMatches, ...remoteMatches].slice(0, 7));
       setLoading(false);
@@ -63,9 +74,12 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
         onFocus={() => setOpen(true)}
         autoComplete="off"
       />
-      {open && (loading || suggestions.length > 0) && (
+      {open && (loading || suggestions.length > 0 || searchError) && (
         <div className="autocomplete-list">
           {loading && <div className="autocomplete-loading">Searching…</div>}
+          {!loading && searchError && suggestions.length === 0 && (
+            <div className="autocomplete-loading">{searchError}</div>
+          )}
           {!loading &&
             suggestions.map((s) => (
               <button
