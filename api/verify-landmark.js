@@ -35,12 +35,20 @@ const INSTRUCTIONS =
   `Reply with ONLY a JSON object, no other text:\n` +
   `{"ok": true|false, "reason": "<if ok is false, one short sentence why>", "summary": "<1-2 sentence honest description>", "facts": ["<fact>", ...], "free": true|false}`;
 
+// Turned off by request -- submissions were getting rejected too often and
+// it was making Add Landmark feel broken. Left in place (not deleted) so
+// it's a one-line flip to turn back on once that's tuned or wanted again.
+// While off, every submission is accepted outright with no AI call at all
+// (no plausibility screening, no photo check) -- the pending-approval queue
+// is the only remaining filter.
+const AI_MODERATION_ENABLED = false;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (AI_MODERATION_ENABLED && !process.env.ANTHROPIC_API_KEY) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
     return;
   }
@@ -82,10 +90,24 @@ export default async function handler(req, res) {
       ? body.userFacts.map((f) => String(f).trim().slice(0, 160)).filter(Boolean).slice(0, 5)
       : [];
 
-    if (!name || categories.length === 0 || !Number.isFinite(lat) || !Number.isFinite(lng) || (imageDataUrl && !match)) {
-      res.status(400).json({ error: 'Missing name, category, or location.' });
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lng) || (imageDataUrl && !match)) {
+      res.status(400).json({ error: 'Missing name or location.' });
       return;
     }
+
+    if (!AI_MODERATION_ENABLED) {
+      res.status(200).json({
+        ok: true,
+        reason: '',
+        summary: userFacts.length
+          ? ''
+          : `A community-submitted spot${categories[0] ? ` (${categories[0]})` : ''}.`,
+        facts: userFacts,
+        free: true,
+      });
+      return;
+    }
+
     const [, mediaType, imageB64] = hasPhoto ? match : [];
 
     // Best-effort reverse geocode for real-world grounding -- never blocks
