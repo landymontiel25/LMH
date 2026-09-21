@@ -139,13 +139,11 @@ export default function AddLandmark() {
     setPhotoPreview(URL.createObjectURL(f));
   };
 
-  const canSubmit =
-    name.trim() &&
-    categories.length > 0 &&
-    position &&
-    user &&
-    !duplicateChecking &&
-    (!duplicateMatch || duplicateOverridden);
+  // Address (the pin) is the only real requirement -- Name and Category are
+  // now optional (auto-filled below if left blank), and the duplicate check
+  // is informational only, never blocking. It still always has SOME value
+  // since the map defaults to your current location or the trip's region.
+  const canSubmit = position && user;
 
   const submit = async () => {
     if (!canSubmit || busy) return;
@@ -154,11 +152,12 @@ export default function AddLandmark() {
       setStage('verifying');
       const imageDataUrl = photo ? await fileToSmallDataUrl(photo) : '';
       const idToken = await user.getIdToken();
+      const finalName = name.trim() || addressText.trim() || 'New Landmark';
       const verifyRes = await fetch('/api/verify-landmark', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
-          name: name.trim(),
+          name: finalName,
           categories,
           lat: position.lat,
           lng: position.lng,
@@ -201,7 +200,7 @@ export default function AddLandmark() {
       const imageUrl = photo ? await uploadLandmarkPhoto(tempId, user.uid, photo) : null;
       const created = await addCustomLandmark({
         region,
-        name: name.trim(),
+        name: finalName,
         lat: position.lat,
         lng: position.lng,
         userId: user.uid,
@@ -317,12 +316,15 @@ export default function AddLandmark() {
       </div>
 
       <div className="field">
-        <FieldLabel required>Name</FieldLabel>
+        <FieldLabel>Name</FieldLabel>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
+          Leave blank and we'll use the address.
+        </p>
         <input type="text" placeholder="e.g. Farley Hall" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
       </div>
 
       <div className="field">
-        <FieldLabel required>Category</FieldLabel>
+        <FieldLabel>Category</FieldLabel>
         <CategorySelect value={categories[0] || ''} onSelect={(id) => setCategories([id])} />
       </div>
 
