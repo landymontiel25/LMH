@@ -216,6 +216,7 @@ function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding 
     citiesCount: badgeCounts.cities,
     streakDays: badgeCounts.streak,
     onboardingCompleted,
+    extra: badgeCounts,
   });
 
   if (!closestBadge) {
@@ -226,7 +227,10 @@ function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding 
     );
   }
 
-  const current = badgeCounts[closestBadge.kind];
+  // Several of the newer badges are boolean ("reached top 10 once", not a
+  // count) -- Number(false) reads as 0 here rather than the literal word
+  // "false" showing up in "0/1 until Competitor".
+  const current = Number(badgeCounts[closestBadge.kind]) || 0;
   const pct = Math.min(1, current / closestBadge.n);
   const canStartOnboarding = closestBadge.kind === 'milestone' && !onboardingCompleted;
 
@@ -348,7 +352,7 @@ export default function Profile() {
   const { myUsername, friendUids, myProfile } = useFriends();
   const { trip } = useTrip();
   const navigate = useNavigate();
-  const { stats, streakDays, checkedInToday, badges } = useBadges();
+  const { stats, streakDays, checkedInToday, badges, badgeCounts: liveBadgeCounts } = useBadges();
   const { claimedMap } = useCheckIn();
 
   // Your own reviews come from RatingsContext (refreshed after every save),
@@ -551,12 +555,11 @@ export default function Profile() {
   // can't reappear on this device even on a load where myProfile hasn't
   // picked up the Firestore flag.
   const onboardingDone = !!myProfile?.onboardingCompleted || hasCompletedOnboardingLocally(user.uid);
-  const badgeCounts = {
-    checkins: stats?.checkins || 0,
-    cities: stats?.cities || 0,
-    streak: streakDays,
-    milestone: onboardingDone ? 1 : 0,
-  };
+  // Sourced from BadgesContext (the same object computeBadges itself used)
+  // rather than rebuilt here, so "closest badge" can reason about every
+  // badge -- not just the original 4 -- instead of keeping its own
+  // out-of-sync partial copy.
+  const badgeCounts = liveBadgeCounts;
 
   // Streak urgency: you have an active streak from a prior day, but haven't
   // checked in yet today -- it lapses if today passes with no check-in.

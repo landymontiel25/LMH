@@ -336,6 +336,56 @@ export async function getRegionalLeaderboard(period, regionId, topN = 100) {
   return [...totals.values()].sort((a, b) => b.points - a.points).slice(0, topN);
 }
 
+/**
+ * One-shot: is this user currently in the top N of a leaderboard period?
+ * Feeds the "Competitor" badge. Rank isn't stored anywhere (see
+ * subscribeLeaderboard below) so this is a live snapshot, not a historical
+ * guarantee -- it only catches "reached top 10" if the app happens to check
+ * while it's still true. Once it does, BadgesContext's badgeEarnedAt makes
+ * that permanent, same as every other badge here.
+ */
+export async function isInTopLeaderboard(userId, period = 'weekly', topN = 10) {
+  if (!db || !userId) return false;
+  const keys = periodKeys();
+  const snap = await getDocs(
+    query(
+      collection(db, 'leaderboard_entries'),
+      where('period', '==', period),
+      where('periodKey', '==', keys[period]),
+      orderBy('points', 'desc'),
+      limit(topN)
+    )
+  );
+  return snap.docs.some((d) => d.data().userId === userId);
+}
+
+/**
+ * Best-effort "Tag Team" check: did a friend check in to the same landmark
+ * as you within 24 hours? Bounded to your 10 most recently first-visited
+ * distinct landmarks (checkins is expected newest-first) to keep this to
+ * one query instead of scanning your whole history -- a real joint visit
+ * is almost always recent, and once earned this badge is permanent (see
+ * BadgesContext), so it doesn't need to re-scan everything on every load.
+ */
+export async function hasFriendTagTeam(userId, friendUids, checkins) {
+  if (!db || !userId || !friendUids?.length || !checkins?.length) return false;
+  const byLandmark = new Map(); // landmarkId -> my createdAt seconds
+  for (const c of checkins) {
+    if (!c.landmarkId || !c.createdAt?.seconds) continue;
+    if (!byLandmark.has(c.landmarkId)) byLandmark.set(c.landmarkId, c.createdAt.seconds);
+  }
+  const landmarkIds = [...byLandmark.keys()].slice(0, 10);
+  if (!landmarkIds.length) return false;
+  const snap = await getDocs(query(collection(db, 'checkins'), where('landmarkId', 'in', landmarkIds)));
+  const friendSet = new Set(friendUids);
+  return snap.docs.some((d) => {
+    const x = d.data();
+    if (!friendSet.has(x.userId) || !x.createdAt?.seconds) return false;
+    const mySec = byLandmark.get(x.landmarkId);
+    return mySec != null && Math.abs(x.createdAt.seconds - mySec) <= 86400;
+  });
+}
+
 export function subscribeLeaderboard(period, onData, topN = 50) {
   const keys = periodKeys();
   const q = query(
