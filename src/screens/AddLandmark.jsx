@@ -232,8 +232,11 @@ export default function AddLandmark() {
             regionId={nearestRegionId(position.lat, position.lng)}
             onChange={setAddressText}
             onSelect={(s) => {
+              // Move the pin, but leave the typed address text alone --
+              // the geocoder's top match is sometimes the nearest known
+              // business at that address, not the address itself, and
+              // overwriting what was typed with that name is confusing.
               setPosition({ lat: s.lat, lng: s.lng });
-              setAddressText(s.primary);
             }}
           />
         </div>
