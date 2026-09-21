@@ -70,10 +70,14 @@ export async function searchLocations(text, region, limit = 5) {
     addressdetails: '0',
   });
 
+  // viewbox alone (no bounded=1) is a ranking preference, not a hard filter --
+  // it nudges same-name matches near the current pin ahead of unrelated ones
+  // elsewhere (e.g. a same-named place on another continent) without hiding
+  // a real match just because the pin defaulted to the wrong region when the
+  // whole point of this search is often to move it somewhere else entirely.
   if (region?.viewbox) {
     const { minLat, minLng, maxLat, maxLng } = region.viewbox;
     params.set('viewbox', `${minLng},${maxLat},${maxLng},${minLat}`);
-    params.set('bounded', '1');
   }
 
   try {
