@@ -12,6 +12,7 @@ import { useAuth } from '../lib/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
 import { useTrip } from '../lib/TripContext';
 import { addCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
+import { findPossibleDuplicate } from '../lib/duplicateLandmarkCheck';
 import { fileToSmallDataUrl, pickPhoto } from '../lib/imageUtils';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
@@ -88,6 +89,31 @@ export default function AddLandmark() {
   const [error, setError] = useState('');
   const busy = stage !== 'idle';
 
+  // Catches "I'm re-adding something that's already on the map" before the
+  // AI/moderation round trip, not after -- checked against both the
+  // built-in catalog and anyone else's submissions (approved or still
+  // pending review) in the same region as the current pin.
+  const regionId = nearestRegionId(position.lat, position.lng);
+  const [duplicateMatch, setDuplicateMatch] = useState(null);
+  const [duplicateOverridden, setDuplicateOverridden] = useState(false);
+  useEffect(() => {
+    setDuplicateOverridden(false);
+    const trimmed = name.trim();
+    if (trimmed.length < 2) {
+      setDuplicateMatch(null);
+      return;
+    }
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      const match = await findPossibleDuplicate({ name: trimmed, regionId }).catch(() => null);
+      if (!cancelled) setDuplicateMatch(match);
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [name, regionId]);
+
   const removeFact = (i) => setFacts((cur) => cur.filter((_, idx) => idx !== i));
 
   const addFact = () => {
@@ -104,7 +130,8 @@ export default function AddLandmark() {
     setPhotoPreview(URL.createObjectURL(f));
   };
 
-  const canSubmit = name.trim() && categories.length > 0 && position && user;
+  const canSubmit =
+    name.trim() && categories.length > 0 && position && user && (!duplicateMatch || duplicateOverridden);
 
   const submit = async () => {
     if (!canSubmit || busy) return;
@@ -229,7 +256,7 @@ export default function AddLandmark() {
           <LocationAutocomplete
             placeholder="Or search an address…"
             value={addressText}
-            regionId={nearestRegionId(position.lat, position.lng)}
+            regionId={regionId}
             onChange={setAddressText}
             onSelect={(s) => {
               // Move the pin, but leave the typed address text alone --
@@ -245,6 +272,25 @@ export default function AddLandmark() {
       <div className="field">
         <FieldLabel required>Name</FieldLabel>
         <input type="text" placeholder="e.g. Farley Hall" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
+        {duplicateMatch && !duplicateOverridden && (
+          <div className="card" style={{ marginTop: 8, padding: '10px 12px' }}>
+            <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>
+              {'\u{26A0}\u{FE0F}'} This is already a landmark: {duplicateMatch.name}
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => navigate(`/landmarks/${duplicateMatch.region}/${duplicateMatch.id}`)}
+              >
+                View it
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDuplicateOverridden(true)}>
+                This is a different place — continue
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="field">
