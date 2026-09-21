@@ -1,14 +1,45 @@
 import { ALL_LANDMARKS } from '../data/regions';
 import { getCustomLandmarks, getPendingLandmarks } from './customLandmarks';
 
-// Loose enough to catch "Hillstone" vs "Hillstone Restaurant", strict enough
-// not to flag two unrelated places that just share a common word.
+function levenshtein(a, b) {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] =
+        a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+// Loose enough to catch "Hillstone" vs "Hillstone Restaurant" (substring), and
+// "Helstone" vs "Hillstone" (a plain typo -- close enough in edit distance
+// that a person would recognize it as the same place, even though it's not
+// a substring match). Strict enough not to flag two unrelated places that
+// just share a common word, or names that are only vaguely similar.
 function namesMatch(a, b) {
   const norm = (s) => s.trim().toLowerCase();
   const x = norm(a);
   const y = norm(b);
   if (!x || !y) return false;
-  return x === y || x.includes(y) || y.includes(x);
+  if (x === y || x.includes(y) || y.includes(x)) return true;
+
+  // Compare the shorter string against each individual word of the longer
+  // one -- "Helstone" should match against "Hillstone" inside "Hillstone
+  // Restaurant" even though the two full strings are very different lengths.
+  const [shorter, longer] = x.length <= y.length ? [x, y] : [y, x];
+  const candidates = [longer, ...longer.split(/\s+/)];
+  return candidates.some((word) => {
+    if (Math.abs(word.length - shorter.length) > 3) return false;
+    const threshold = Math.max(1, Math.round(Math.min(word.length, shorter.length) * 0.3));
+    return levenshtein(shorter, word) <= threshold;
+  });
 }
 
 // Is there already a landmark by this name in this region -- the built-in
