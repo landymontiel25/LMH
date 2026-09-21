@@ -877,8 +877,8 @@ export default function Profile() {
                 try {
                   await resendVerification();
                   setVerifyMsg('Verification email sent — check your inbox (and spam folder).');
-                } catch {
-                  setVerifyMsg('Could not send it right now — try again in a bit.');
+                } catch (e) {
+                  setVerifyMsg(`Could not send it right now: ${authErrorMessage(e)}`);
                 } finally {
                   setVerifyBusy(false);
                 }
