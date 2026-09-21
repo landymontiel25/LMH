@@ -229,6 +229,7 @@ export default function AddLandmark() {
           <LocationAutocomplete
             placeholder="Or search an address…"
             value={addressText}
+            regionId={nearestRegionId(position.lat, position.lng)}
             onChange={setAddressText}
             onSelect={(s) => {
               setPosition({ lat: s.lat, lng: s.lng });
