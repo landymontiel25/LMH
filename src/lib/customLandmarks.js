@@ -16,20 +16,32 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
 import { notifyUser } from './notifications';
 
+// Turned off by request -- approval was too much friction for now. Left in
+// place (not deleted): the Firestore write still always starts a submission
+// as "pending" (enforced server-side by the rules, unchanged), the
+// Approve/Reject queue on Profile still works exactly as before, and
+// flipping this back to true is the one change needed to require approval
+// again -- nothing else to undo.
+const LANDMARK_APPROVAL_ENABLED = false;
+
 // User-created landmarks (e.g. a dorm hall not yet in the built-in catalog)
 // live in their own Firestore collection and get merged onto the map
-// alongside the static ones once approved. Check-ins on them reuse the same
-// claimCheckIn flow as any other landmark -- it only ever needs id/name/region.
+// alongside the static ones. Check-ins on them reuse the same claimCheckIn
+// flow as any other landmark -- it only ever needs id/name/region.
 //
 // Every submission starts life as status: "pending" (enforced by the
-// Firestore rules, not just this client code) and only shows up here --
+// Firestore rules, not just this client code). With approval OFF, that's
+// cosmetic -- this returns pending submissions too, so anyone's landmark
+// goes live immediately; the admin queue below still lets you pull a bad
+// one after the fact. With approval ON, a submission only shows up here --
 // i.e. on the map, in search, at its own URL to a random visitor -- once an
-// admin approves it via approveCustomLandmark. The submitter can still open
-// their own pending landmark's detail page directly to see it.
+// admin approves it via approveCustomLandmark. The submitter can always
+// open their own pending landmark's detail page directly either way.
 export async function getCustomLandmarks() {
   if (!db) return [];
   const snap = await getDocs(collection(db, 'custom_landmarks'));
-  return snap.docs.map((d) => ({ docId: d.id, ...d.data() })).filter((l) => l.status === 'approved');
+  const all = snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
+  return LANDMARK_APPROVAL_ENABLED ? all.filter((l) => l.status === 'approved') : all;
 }
 
 export async function getPendingLandmarks() {
