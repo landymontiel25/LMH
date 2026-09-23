@@ -368,7 +368,18 @@ export default function MapExplore() {
     if (!term) return [];
     const landmarkMatches = ALL_LANDMARKS.filter(
       (l) => l.name.toLowerCase().includes(term) || getRegion(l.regionId)?.name.toLowerCase().includes(term)
-    ).map((l) => ({ id: `landmark-${l.id}`, name: l.name, sub: getRegion(l.regionId)?.name, lat: l.lat, lng: l.lng, zoom: 17 }));
+    ).map((l) => ({
+      // A landmark's own id is only unique within its region (two cities
+      // can both have a "the-battery"), so the region has to be part of the
+      // key too -- otherwise two different results collide on one React key
+      // and the list can visibly duplicate/misrender as you type.
+      id: `landmark-${l.regionId}-${l.id}`,
+      name: l.name,
+      sub: getRegion(l.regionId)?.name,
+      lat: l.lat,
+      lng: l.lng,
+      zoom: 17,
+    }));
     const placeMatches = SEARCHABLE_PLACES.filter((p) => p.name.toLowerCase().includes(term));
     return [...landmarkMatches, ...placeMatches].slice(0, 8);
   }, [searchTerm]);
@@ -399,7 +410,14 @@ export default function MapExplore() {
   const nearbyList = useMemo(() => {
     if (!coords) return [];
     const all = [
-      ...ALL_LANDMARKS.map((l) => ({ id: `landmark-${l.id}`, name: l.name, region: l.regionId, landmarkId: l.id, lat: l.lat, lng: l.lng })),
+      ...ALL_LANDMARKS.map((l) => ({
+        id: `landmark-${l.regionId}-${l.id}`,
+        name: l.name,
+        region: l.regionId,
+        landmarkId: l.id,
+        lat: l.lat,
+        lng: l.lng,
+      })),
       ...customLandmarks.map((l) => ({ id: `custom-${l.docId}`, name: l.name, region: l.region, landmarkId: l.id, lat: l.lat, lng: l.lng })),
     ];
     return all
