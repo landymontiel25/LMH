@@ -117,8 +117,15 @@ export default function LandmarkSelection() {
   // shows everything.
   const [cityFilter, setCityFilter] = useState(() => trip.activeRegion ?? 'all');
   // Default to the city you're standing in (nearest city center within
-  // NEAR_CITY_KM of your GPS fix). Picking a city yourself wins after that.
-  const cityPickedRef = useRef(false);
+  // NEAR_CITY_KM of your GPS fix), but only when no region has ever been set
+  // yet. Once one has -- by picking a city here, from Trip Setup, or by
+  // panning the Explore map to a different city (that "sticks" the same
+  // way) -- it's seeded from trip.activeRegion itself, not a per-mount ref,
+  // so switching tabs (which remounts this screen) can't silently swap a
+  // browsed city back to your GPS location just because coords are still
+  // available. Only an explicit action -- picking a city, or tapping the
+  // map's "center on my location" button -- changes it after that.
+  const cityPickedRef = useRef(!!trip.activeRegion);
   useEffect(() => {
     if (!coords || cityPickedRef.current) return;
     let best = null;

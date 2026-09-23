@@ -5,12 +5,12 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
-import { ALL_LANDMARKS, ALL_LANDMARKS_BOUNDS, INTERESTS, getRegion } from '../data/regions';
+import { ALL_LANDMARKS, ALL_LANDMARKS_BOUNDS, INTERESTS, PICKABLE_REGIONS, getRegion } from '../data/regions';
 import { SEARCHABLE_PLACES } from '../data/places';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useZoomRadius, ZOOM_RADIUS_OPTIONS } from '../lib/useZoomRadius';
-import { distanceMeters } from '../lib/geo';
+import { distanceMeters, nearestRegionId } from '../lib/geo';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useMyPhotos } from '../lib/MyPhotosContext';
@@ -162,7 +162,38 @@ function PinDropHandler({ onDrop, disabled }) {
   return null;
 }
 
-function LocateControl({ coords, radiusMiles }) {
+// How far (km) the map's center can settle from a region's center and still
+// count as "browsing that region" -- generous enough that panning around
+// within a city doesn't miss it, but a pan out over open water or between
+// two far-apart regions doesn't spuriously pick either one.
+const REGION_FOLLOW_KM = 60;
+
+// Dragging the map onto a different region makes that the region Landmarks
+// (and everywhere else keyed off trip.activeRegion) shows once you switch
+// back to it -- panning around to browse a city "sticks" the same way
+// picking it from the city dropdown does. Only a user drag triggers this
+// (the map's own initial fitBounds/flyTo doesn't fire 'dragend'), and only
+// once the center has actually settled near a different region.
+function RegionFollowHandler({ activeRegion, onFollow }) {
+  const map = useMapEvents({
+    dragend() {
+      const center = map.getCenter();
+      let best = null;
+      let bestKm = REGION_FOLLOW_KM;
+      for (const r of PICKABLE_REGIONS) {
+        const km = distanceMeters(center.lat, center.lng, r.center.lat, r.center.lng) / 1000;
+        if (km < bestKm) {
+          bestKm = km;
+          best = r.id;
+        }
+      }
+      if (best && best !== activeRegion) onFollow(best);
+    },
+  });
+  return null;
+}
+
+function LocateControl({ coords, radiusMiles, onRecenter }) {
   const map = useMap();
   return (
     <button
@@ -170,7 +201,11 @@ function LocateControl({ coords, radiusMiles }) {
       className="map-locate-btn"
       disabled={!coords}
       title={coords ? 'Center on my location' : 'Locating…'}
-      onClick={() => coords && map.flyTo([coords.lat, coords.lng], zoomForRadiusMiles(map, coords.lat, radiusMiles))}
+      onClick={() => {
+        if (!coords) return;
+        map.flyTo([coords.lat, coords.lng], zoomForRadiusMiles(map, coords.lat, radiusMiles));
+        onRecenter?.();
+      }}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" transform="rotate(45 12 12)" />
@@ -180,7 +215,8 @@ function LocateControl({ coords, radiusMiles }) {
 }
 
 export default function MapExplore() {
-  const { toggleLandmark, getRegionSelection, trip, mapFocus, mapFocusPoint, setMapFocusPoint } = useTrip();
+  const { toggleLandmark, getRegionSelection, trip, updateTrip, mapFocus, setMapFocus, mapFocusPoint, setMapFocusPoint } =
+    useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
@@ -518,8 +554,28 @@ export default function MapExplore() {
             focusPoint={focusLandmark}
             radiusMiles={radiusMiles}
           />
-          {!placingPin && <LocateControl coords={coords} radiusMiles={radiusMiles} />}
+          {!placingPin && (
+            <LocateControl
+              coords={coords}
+              radiusMiles={radiusMiles}
+              onRecenter={() => {
+                if (!coords) return;
+                const id = nearestRegionId(coords.lat, coords.lng);
+                if (id && id !== trip.activeRegion) {
+                  updateTrip({ activeRegion: id });
+                  setMapFocus(id);
+                }
+              }}
+            />
+          )}
           <PinDropHandler onDrop={setPinDrop} disabled={placingPin} />
+          <RegionFollowHandler
+            activeRegion={trip.activeRegion}
+            onFollow={(id) => {
+              updateTrip({ activeRegion: id });
+              setMapFocus(id);
+            }}
+          />
           <TileLayer
             key={satellite ? 'satellite' : 'street'}
             attribution={TILE_LAYERS[satellite ? 'satellite' : 'street'].attribution}
