@@ -20,9 +20,3 @@ npm-debug.log*
 # Local Claude Code permission allowlist -- personal to each machine/session,
 # not project config that should be shared.
 .claude/settings.local.json
-
-# Claude Code skills installed locally via `npx skills add` (e.g. Refero's
-# design-reference skill) -- personal tooling config, not app code.
-.agents/
-.claude/skills/
-skills-lock.json
