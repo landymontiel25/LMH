@@ -43,7 +43,9 @@ function CityDropdown({ value, onChange }) {
   }, []);
 
   const term = search.trim().toLowerCase();
-  const filtered = PICKABLE_REGIONS.filter((r) => r.city.toLowerCase().includes(term));
+  const filtered = PICKABLE_REGIONS.filter((r) => r.city.toLowerCase().includes(term)).sort((a, b) =>
+    a.city.localeCompare(b.city)
+  );
   const selectedLabel = value === 'all' ? 'All Cities' : getRegion(value)?.city ?? 'All Cities';
 
   const choose = (id) => {
