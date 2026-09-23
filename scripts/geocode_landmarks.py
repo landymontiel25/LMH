@@ -93,21 +93,34 @@ def judge(result, address, city, zip_code):
 
     wanted = house_number_range(address)
     got = addr.get("house_number")
+    # OSM sometimes carries the number in the feature's name instead of an
+    # addr:housenumber tag (the "164 South Park" historic marker, campus
+    # driveways named "2200 Mission College Boulevard"); that still pins
+    # the requested building.
+    name_num = re.match(r"^\s*(\d+)\b", result.get("name") or "")
     if wanted:
-        if not got:
+        nums = [int(n) for n in re.findall(r"\d+", got or "")]
+        if name_num:
+            nums.append(int(name_num.group(1)))
+        if not nums:
             reasons.append(f"no house number in match ({result.get('addresstype')})")
-        else:
-            nums = [int(n) for n in re.findall(r"\d+", got)]
-            if not any(wanted[0] <= n <= wanted[1] for n in nums):
-                reasons.append(f"house number {got} != {address.split()[0]}")
+        elif not any(wanted[0] <= n <= wanted[1] for n in nums):
+            reasons.append(f"house number {got or name_num.group(1)} != {address.split()[0]}")
     elif result.get("addresstype") in AREA_TYPES:
         reasons.append(f"matched an area ({result.get('addresstype')}), not a place")
+
+    got_zip = addr.get("postcode", "")
+    zip_agrees = bool(zip_code and got_zip and got_zip[:5] == zip_code[:5])
 
     got_city = result_city(addr)
     if city and got_city and city.lower() not in got_city.lower() and got_city.lower() not in city.lower():
         # Nominatim files some places under a neighbouring town, or only
-        # the county; a county hit is fine, a different city is not.
+        # the county; a county hit is fine, and so is a different town
+        # label when the ZIP agrees (Mount Hamilton sits inside San Jose's
+        # limits as far as OSM is concerned). A different city is not.
         if addr.get("county") and city.lower() in addr.get("county", "").lower() and not addr.get("city"):
+            pass
+        elif zip_agrees:
             pass
         else:
             reasons.append(f"city {got_city} != {city}")
@@ -115,9 +128,8 @@ def judge(result, address, city, zip_code):
     # OSM postcodes are patchy (Townsend St filed under 94017, Mission
     # Dolores under UCSF's 94143), so a ZIP disagreement is noted for the
     # reviewer but does not on its own flag a house-number + city match.
-    got_zip = addr.get("postcode", "")
     note = ""
-    if zip_code and got_zip and got_zip[:5] != zip_code[:5]:
+    if zip_code and got_zip and not zip_agrees:
         note = f"(osm zip {got_zip}, csv {zip_code})"
 
     if reasons:

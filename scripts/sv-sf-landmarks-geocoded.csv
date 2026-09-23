@@ -1,43 +1,43 @@
 Name,Address,City,State,Zip,Category,Status,Notes,Latitude,Longitude,Geocode_Status,Geocode_Match
-a16z Menlo Park Headquarters,2865 Sand Hill Road Suite 101,Menlo Park,CA,94025,a16z Company,Active,Current official HQ per a16z.com/offices,,,NOT_FOUND,
-a16z The Quad Expansion,2400-2450 Sand Hill Road,Menlo Park,CA,94025,a16z Company,Active,2024 lease ~34000 sq ft,,,NOT_FOUND,
-a16z San Francisco Office,180 Townsend Street,San Francisco,CA,94107,a16z Company,Active,Firm's SF outpost,37.7793711,-122.3926487,LOW_CONFIDENCE_REVIEW,"zip 94017 != 94107 | Andreessen Horowitz, 180, Townsend Street, South Beach, Mission Bay, San Francisco, California, 94017, United States"
+a16z Menlo Park Headquarters,2865 Sand Hill Road,Menlo Park,CA,94025,a16z Company,Active,Current official HQ per a16z.com/offices,37.4205534,-122.2118564,OK,"2865, Sand Hill Road, Menlo Park, San Mateo County, California, 94025, United States"
+a16z The Quad Expansion,2400 Sand Hill Road,Menlo Park,CA,94025,a16z Company,Active,2024 lease ~34000 sq ft,37.4222817,-122.1985294,OK,"2400, Sand Hill Road, Stanford Hills, Menlo Park, San Mateo County, California, 94025, United States"
+a16z San Francisco Office,180 Townsend Street,San Francisco,CA,94107,a16z Company,Active,Firm's SF outpost,37.7793711,-122.3926487,OK,"(osm zip 94017, csv 94107) | Andreessen Horowitz, 180, Townsend Street, South Beach, Mission Bay, San Francisco, California, 94017, United States"
 Netscape Communications Original HQ,501 E Middlefield Road,Mountain View,CA,94043,a16z Company Origin,Verify tenant,Marc Andreessen co-founded here 1994,37.3963509,-122.0564241,OK,"501, East Middlefield Road, Mountain View, Santa Clara County, California, 94043, United States"
 Loudcloud/Opsware HQ,599 N Mathilda Avenue,Sunnyvale,CA,94085,a16z Company Origin,Verify tenant,Founded 9/9/99 by Andreessen and Horowitz sold to HP 2007 for 1.65B,37.3919969,-122.0318622,OK,"Apple Mathilda 9, 599, North Mathilda Avenue, Sunnyvale, Santa Clara County, California, 94085, United States"
 HP Garage,367 Addison Ave,Palo Alto,CA,94301,Historic Origin,Visitable - private museum,National Register + CA Historical Landmark 976,37.4430220,-122.1546434,OK,"367, Addison Avenue, University South, Palo Alto, Santa Clara County, California, 94301, United States"
 Shockley Semiconductor Site,391 San Antonio Rd,Mountain View,CA,94040,Historic Origin,Visitable - retail center,IEEE Milestone superplaque + sculptures,37.4048186,-122.1108683,OK,"Yahoo, 391, San Antonio Road, Mountain View, Santa Clara County, California, 94040, United States"
 Fairchild Semiconductor Original Building,844 Charleston Rd,Palo Alto,CA,94303,Historic Origin,Standing,Planar process / integrated circuit,37.4216379,-122.1033317,OK,"Apex.AI, 844, East Charleston Road, Palo Alto, Santa Clara County, California, 94303, United States"
 Apple Garage,2066 Crist Drive,Los Altos,CA,94024,Historic Origin,Private residence - view from street,Steve Jobs childhood home,37.3403426,-122.0688735,OK,"2066, Crist Drive, Los Altos, Santa Clara County, California, 94024, United States"
-Google Garage,232 Santa Margarita Ave,Menlo Park,CA,94025,Historic Origin,Private - viewable from street,Owned by Google as tribute,37.4579732,-122.1636922,LOW_CONFIDENCE_REVIEW,"zip 94301 != 94025 | 232, Santa Margarita Avenue, Menlo Park, San Mateo County, California, 94301, United States"
-Emerson/Channing Plaque,Corner of Emerson St and Channing Ave,Palo Alto,CA,94301,Historic Origin,Plaque only,Triode vacuum tube development site,,,NOT_FOUND,
+Google Garage,232 Santa Margarita Ave,Menlo Park,CA,94025,Historic Origin,Private - viewable from street,Owned by Google as tribute,37.4579732,-122.1636922,OK,"(osm zip 94301, csv 94025) | 232, Santa Margarita Avenue, Menlo Park, San Mateo County, California, 94301, United States"
+Emerson/Channing Plaque,913 Emerson St,Palo Alto,CA,94301,Historic Origin,Plaque only,Triode vacuum tube development site,,,PENDING,
 Xerox PARC,3333 Coyote Hill Rd,Palo Alto,CA,94304,Historic Origin,Exterior viewable only,Jobs saw GUI/mouse here Dec 1979,37.4027346,-122.1486011,OK,"Future Concepts division, 3333, Coyote Hill Road, Palo Alto, Santa Clara County, California, 94304, United States"
 SRI International,333 Ravenswood Ave,Menlo Park,CA,94025,Historic Origin,Exterior viewable only,Site of Doug Engelbart's 1968 Mother of All Demos - mouse hypertext video conferencing,37.4566052,-122.1746860,OK,"SRI International, 333, Ravenswood Avenue, Menlo Park, San Mateo County, California, 94025, United States"
-Varian Associates,611 Hansen Way,Palo Alto,CA,94304,Historic Origin,Verify address,Klystron tube inventors first tenant of Stanford Industrial Park,37.4184176,-122.1383549,LOW_CONFIDENCE_REVIEW,"zip 94306 != 94304 | 611, Hansen Way, Palo Alto, Santa Clara County, California, 94306, United States"
+Varian Associates,611 Hansen Way,Palo Alto,CA,94304,Historic Origin,Verify address,Klystron tube inventors first tenant of Stanford Industrial Park,37.4184176,-122.1383549,OK,"(osm zip 94306, csv 94304) | 611, Hansen Way, Palo Alto, Santa Clara County, California, 94306, United States"
 Silicon Graphics (SGI) Original Campus,2011 N Shoreline Blvd,Mountain View,CA,94043,Historic Origin,Verify current tenant,Jim Clark founded SGI 1981 - campus later became Googleplex,37.4240516,-122.0781194,OK,"2011, North Shoreline Boulevard, Mountain View, Santa Clara County, California, 94043, United States"
 Computer History Museum,1401 N Shoreline Blvd,Mountain View,CA,94043,Historic Origin,Visitable museum,Holds Wagon Wheel artifacts,37.4142930,-122.0774488,OK,"Computer History Museum, 1401, North Shoreline Boulevard, Mountain View, Santa Clara County, California, 94043, United States"
-Intel Museum,2200 Mission College Blvd,Santa Clara,CA,95054,Historic Origin,Visitable museum,Inside Intel HQ,,,PENDING,
-IBM Building 025 Memorial,Approx 37.2536 -121.8016 (Lowe's parking lot),San Jose,CA,,Historic Origin,Visitable marker,Memorial to 1950s IBM research campus,,,PENDING,
-Center of Santa Clara Valley Plaque,Remote bike trail approx 37.2297 -121.7567,San Jose,CA,,Historic Origin,Visitable marker,Binary code plaque,,,PENDING,
-Nikola Tesla Statue,Approx 37.4262 -122.1412,Palo Alto,CA,,Historic Origin,Visitable,Hidden time capsule opens 2043,,,PENDING,
-Doc Herrold Radio Broadcast Site,Approx 37.3338 -121.8892,San Jose,CA,,Historic Origin,Plaque only,First radio broadcast 1909,,,PENDING,
-YouTube Garage,765 Hobart St,Menlo Park,CA,94025,Historic Origin Tier3,Verify address,Chad Hurley's home garage,,,PENDING,
-Nest Labs First Office,235 Alma St,Palo Alto,CA,94301,Historic Origin Tier3,Verify address,Rented via Craigslist,,,PENDING,
-Cisco Original Site,199 Oak Grove Ave,Atherton,CA,94027,Historic Origin Tier3,Verify address,Bosack/Lerner 1984 founding house,,,PENDING,
-Electronic Arts First Base,415 Camino Al Lago,San Mateo,CA,94402,Historic Origin Tier3,Verify address,Trip Hawkins house 1982,,,PENDING,
-Cromemco Origin,1049 Evelyn St,Menlo Park,CA,94025,Historic Origin Tier3,Verify - weak sourcing,,,,PENDING,
-IDEO David Kelley Design Origin,715 Emerson St,Palo Alto,CA,94301,Historic Origin Tier3,Verify - weak sourcing,,,,PENDING,
-GoPro Origin Cottage,2132 Vallemar St,Moss Beach,CA,94038,Historic Origin Tier3,Verify - weak sourcing,Nick Woodman rented cottage,,,PENDING,
-Zilog Federico Faggin Origin,178 Lowell Ave,Los Altos,CA,94022,Historic Origin Tier3,Verify - weak sourcing,,,,PENDING,
-VM Labs Origin,24790 Summerhill Ave,Los Altos Hills,CA,94022,Historic Origin Tier3,Verify - weak sourcing,,,,PENDING,
-Logitech Early US Base,1350 Bryant St,Palo Alto,CA,94301,Historic Origin Tier3,Verify - weak sourcing,,,,PENDING,
-Dolby Labs Early Bay Area Lab,222 Waverley St,Palo Alto,CA,94301,Historic Origin Tier3,Verify - weak sourcing,,,,PENDING,
-Craigslist Origin Apartment,140 Clarendon Ave,San Francisco,CA,94131,Historic Origin Tier3,Verify address,Craig Newmark's apartment 1995,,,PENDING,
-The Lucky Building / Karma Building,165 University Ave,Palo Alto,CA,94301,Historic Origin,Active offices,First office of Google PayPal Logitech and more,,,PENDING,
-X.com Early Address,394 University Ave,Palo Alto,CA,94301,Historic Origin,Verify current tenant,Elon Musk per PayPal S-1,,,PENDING,
-Facebook First Office Plaque,471 Emerson St,Palo Alto,CA,94301,Historic Origin,Plaque visitable,Jan 2005 to July 2006,,,PENDING,
-Genentech Founding Site,460 Point San Bruno Blvd,South San Francisco,CA,94080,Historic Origin,Verify address,Founding site of the biotech industry,,,PENDING,
-Atari HQ,1265 Borregas Ave,Sunnyvale,CA,94089,Historic Origin,Verify tenant,Founded by Nolan Bushnell 1972,,,PENDING,
-Odeo/Twitter Birthplace,164 South Park,San Francisco,CA,94107,Historic Origin,Verify tenant,Twitter founded here 2006,,,PENDING,
+Intel Museum,2200 Mission College Blvd,Santa Clara,CA,95054,Historic Origin,Visitable museum,Inside Intel HQ,37.3882663,-121.9637790,OK,"2200 Mission College Boulevard, Mission College Boulevard, Agnew, Santa Clara, Santa Clara County, California, 95054, United States"
+IBM Building 025 Memorial,Approx 37.2536 -121.8016 (Lowe's parking lot),San Jose,CA,,Historic Origin,Visitable marker,Memorial to 1950s IBM research campus,,,NOT_FOUND,
+Center of Santa Clara Valley Plaque,Remote bike trail approx 37.2297 -121.7567,San Jose,CA,,Historic Origin,Visitable marker,Binary code plaque,,,NOT_FOUND,
+Nikola Tesla Statue,Approx 37.4262 -122.1412,Palo Alto,CA,,Historic Origin,Visitable,Hidden time capsule opens 2043,,,NOT_FOUND,
+Doc Herrold Radio Broadcast Site,Approx 37.3338 -121.8892,San Jose,CA,,Historic Origin,Plaque only,First radio broadcast 1909,,,NOT_FOUND,
+YouTube Garage,765 Hobart St,Menlo Park,CA,94025,Historic Origin Tier3,Verify address,Chad Hurley's home garage,37.4394561,-122.1902043,OK,"765, Hobart Street, Menlo Park, San Mateo County, California, 94025, United States"
+Nest Labs First Office,235 Alma St,Palo Alto,CA,94301,Historic Origin Tier3,Verify address,Rented via Craigslist,37.4457428,-122.1668677,OK,"235, Alma Street, Downtown North, Palo Alto, Santa Clara County, California, 94301, United States"
+Cisco Original Site,199 Oak Grove Ave,Atherton,CA,94027,Historic Origin Tier3,Verify address,Bosack/Lerner 1984 founding house,37.4609456,-122.1792247,LOW_CONFIDENCE_REVIEW,"no house number in match (road); (osm zip 94025, csv 94027) | Oak Grove Avenue, Lindenwood, Atherton, San Mateo County, California, 94025, United States"
+Electronic Arts First Base,415 Camino Al Lago,San Mateo,CA,94402,Historic Origin Tier3,Verify address,Trip Hawkins house 1982,37.4401763,-122.2101375,LOW_CONFIDENCE_REVIEW,"no house number in match (road); (osm zip 94027, csv 94402) | Camino Al Lago, Atherton, San Mateo County, California, 94027, United States"
+Cromemco Origin,1049 Evelyn St,Menlo Park,CA,94025,Historic Origin Tier3,Verify - weak sourcing,,37.4497576,-122.1852337,OK,"1049, Evelyn Street, Downtown Menlo Park, Menlo Park, San Mateo County, California, 94025, United States"
+IDEO David Kelley Design Origin,715 Emerson St,Palo Alto,CA,94301,Historic Origin Tier3,Verify - weak sourcing,,37.4430130,-122.1599428,OK,"715, Emerson Street, University South, Palo Alto, Santa Clara County, California, 94301, United States"
+GoPro Origin Cottage,2132 Vallemar St,Moss Beach,CA,94038,Historic Origin Tier3,Verify - weak sourcing,Nick Woodman rented cottage,37.5313549,-122.5172106,OK,"2132, Vallemar Street, Moss Beach, San Mateo County, California, 94038, United States"
+Zilog Federico Faggin Origin,178 Lowell Ave,Los Altos,CA,94022,Historic Origin Tier3,Verify - weak sourcing,,,,NOT_FOUND,
+VM Labs Origin,24790 Summerhill Ave,Los Altos Hills,CA,94022,Historic Origin Tier3,Verify - weak sourcing,,37.3650707,-122.1137077,OK,"(osm zip 94024, csv 94022) | 24790, Summerhill Avenue, Los Altos, Santa Clara County, California, 94024, United States"
+Logitech Early US Base,1350 Bryant St,Palo Alto,CA,94301,Historic Origin Tier3,Verify - weak sourcing,,37.4391605,-122.1510729,OK,"1350, Bryant Street, Old Palo Alto, Palo Alto, Santa Clara County, California, 94301, United States"
+Dolby Labs Early Bay Area Lab,222 Waverley St,Palo Alto,CA,94301,Historic Origin Tier3,Verify - weak sourcing,,37.4491399,-122.1638009,OK,"222, Waverley Street, Downtown North, Palo Alto, Santa Clara County, California, 94301, United States"
+Craigslist Origin Apartment,140 Clarendon Ave,San Francisco,CA,94131,Historic Origin Tier3,Verify address,Craig Newmark's apartment 1995,37.7585065,-122.4523725,OK,"(osm zip 94117, csv 94131) | 140, Clarendon Avenue, San Francisco, California, 94117, United States"
+The Lucky Building / Karma Building,165 University Ave,Palo Alto,CA,94301,Historic Origin,Active offices,First office of Google PayPal Logitech and more,37.4444091,-122.1633054,OK,"T-Mobile, 165, University Avenue, Palo Alto, Santa Clara County, California, 94301, United States"
+X.com Early Address,394 University Ave,Palo Alto,CA,94301,Historic Origin,Verify current tenant,Elon Musk per PayPal S-1,37.4469024,-122.1604517,OK,"Letter Perfect, 394, University Avenue, Palo Alto, Santa Clara County, California, 94301, United States"
+Facebook First Office Plaque,471 Emerson St,Palo Alto,CA,94301,Historic Origin,Plaque visitable,Jan 2005 to July 2006,37.4449509,-122.1629991,OK,"471, Emerson Street, Downtown North, Palo Alto, Santa Clara County, California, 94301, United States"
+Genentech Founding Site,460 Point San Bruno Blvd,South San Francisco,CA,94080,Historic Origin,Verify address,Founding site of the biotech industry,37.6567514,-122.3789157,OK,"460, Point San Bruno Boulevard, South San Francisco, San Mateo County, California, 94080, United States"
+Atari HQ,1265 Borregas Ave,Sunnyvale,CA,94089,Historic Origin,Verify tenant,Founded by Nolan Bushnell 1972,37.4094150,-122.0195082,OK,"Google, 1265, Borregas Avenue, Sunnyvale, Santa Clara County, California, 94089, United States"
+Odeo/Twitter Birthplace,164 South Park,San Francisco,CA,94107,Historic Origin,Verify tenant,Twitter founded here 2006,37.7811718,-122.3947815,OK,"(osm zip 94017, csv 94107) | 164 South Park, South Park, South Beach, San Francisco, California, 94017, United States"
 Alpine Inn (Zott's/Rossotti's),3915 Alpine Rd,Portola Valley,CA,94028,Founder Hangout,Open,1976 first inter-network transmission plaque on site,37.3816138,-122.1948737,OK,"3915, Alpine Road, Portola Valley, San Mateo County, California, 94028, United States"
 Buck's of Woodside,3062 Woodside Rd,Woodside,CA,94062,Founder Hangout,Open,Hotmail PayPal Tesla dealmaking lore,37.4297913,-122.2551877,OK,"Buck's of Woodside, 3062, Woodside Road, Adobe Corner, Woodside, San Mateo County, California, 94062, United States"
 Dutch Goose,3567 Alameda de las Pulgas,Menlo Park,CA,94025,Founder Hangout,Open,Atari founders hangout,37.4320836,-122.2015319,OK,"3567, Alameda de las Pulgas, West Menlo Park, Menlo Park, San Mateo County, California, 94025, United States"
@@ -47,76 +47,76 @@ Il Fornaio Palo Alto,520 Cowper St,Palo Alto,CA,94301,Founder Hangout,Open,VC/re
 Peninsula Creamery,566 Emerson St,Palo Alto,CA,94301,Founder Hangout,Open,Classic engineer diner,37.4438901,-122.1617670,OK,"Palo Alto Creamery, 566, Emerson Street, University South, Palo Alto, Santa Clara County, California, 94301, United States"
 Red Rock Coffee,201 Castro St,Mountain View,CA,94041,Founder Hangout,Open,Coder night hangout,37.3936438,-122.0788638,OK,"Red Rock Coffee, 201, Castro Street, Mountain View, Santa Clara County, California, 94041, United States"
 The Battery,717 Battery St,San Francisco,CA,94111,Private Club,Members only,Est 2013 tech members club,37.7979342,-122.4011367,OK,"The Battery, 717, Battery Street, Telegraph Hill, Financial District, San Francisco, California, 94111, United States"
-The Institute,415 Mission St 59th Floor (Salesforce Tower),San Francisco,CA,94105,Private Club,Members only - invite only,Founded 2024 by Hering and Tamas,,,NOT_FOUND,
+The Institute,415 Mission St,San Francisco,CA,94105,Private Club,Members only - invite only,Founded 2024 by Hering and Tamas,37.7897744,-122.3969321,OK,"Salesforce Tower, 415, Mission Street, Rincon Hill, Financial District, San Francisco, California, 94105, United States"
 Rosewood Sand Hill / Madera,2825 Sand Hill Rd,Menlo Park,CA,94025,Private Club,Open to public restaurant,VERIFIED coords 37.419764 -122.211789,37.4195318,-122.2125422,OK,"Rosewood Sand Hill, 2825, Sand Hill Road, Menlo Park, San Mateo County, California, 94025, United States"
 The Village Pub,2967 Woodside Rd,Woodside,CA,94062,Private Club,Open,VC second office,37.4289517,-122.2514580,OK,"The Village Pub, 2967, Woodside Road, Woodside, San Mateo County, California, 94062, United States"
 Corgi Cafe,9 Claude Lane,San Francisco,CA,94108,AI-Era Hangout,Verify which locations open,Below AI-insurance startup Corgi,37.7899480,-122.4043475,OK,"9, Claude Lane, Union Square, Financial District, San Francisco, California, 94108, United States"
 Frontier Tower,995 Market St,San Francisco,CA,94103,AI-Era Hangout,Open,16-floor vertical tech hub,37.7822426,-122.4099718,OK,"Frontier Tower, Berlinhouse, 995, Market Street, South of Market, Tenderloin, San Francisco, California, 94103, United States"
-Andon Market,2102 Union St,San Francisco,CA,94123,AI-Era Hangout,Open,First AI-run store opened April 2026,,,PENDING,
-Tiat,151 Powell St,San Francisco,CA,94102,AI-Era Hangout,Open,Immersive art/tech gallery,,,PENDING,
-World Flagship Store,281 Geary St,San Francisco,CA,94102,AI-Era Hangout,Open,Sam Altman's World retina-scan Orbs,,,PENDING,
-OpenAI Office,1455 3rd St,San Francisco,CA,94158,AI-Era Hangout,Active - not open to public,Former Uber HQ Mission Bay,,,PENDING,
-Anthropic Office,500 Howard St,San Francisco,CA,94105,AI-Era Hangout,Active - not open to public,Foundry Square,,,PENDING,
-Waymo Depot,590 Brannan St,San Francisco,CA,94107,AI-Era Hangout,Visible exterior,Robotaxi hub,,,PENDING,
-Y Combinator Mountain View Office,335 Pioneer Way,Mountain View,CA,94041,AI-Era Hangout,Verify address,Arguably the seed of the current AI wave,,,PENDING,
-The Interval at Long Now,Fort Mason Center Landmark Building A,San Francisco,CA,94123,AI-Era Hangout,Open,Bar/cafe tied to Long Now Foundation - popular for AI-crowd talks and meetups,,,PENDING,
-Sightglass Coffee Flagship,270 7th St,San Francisco,CA,94103,Founder Cafe,Open,Top founder coffee shop per Mercury data,,,PENDING,
-Saint Frank Coffee,2340 Polk St,San Francisco,CA,94109,Founder Cafe,Open,,,,PENDING,
-Ritual Coffee Roasters,1026 Valencia St,San Francisco,CA,94110,Founder Cafe,Open,,,,PENDING,
-Four Barrel Coffee,375 Valencia St,San Francisco,CA,94103,Founder Cafe,Open,Wi-Fi-refusing Mission landmark,,,PENDING,
-Blue Bottle Coffee Original Kiosk,315 Linden St,San Francisco,CA,94102,Founder Cafe,Verify open,2005 origin location Hayes Valley,,,PENDING,
-HF0 Hacker Fellowship,1000 Fulton St,San Francisco,CA,94117,Hacker House,Active - private,Archbishop's Mansion now 1000 Fulton Hotel,,,PENDING,
-South Park,South Park,San Francisco,CA,94107,Historic SF,Public park visitable,Dot-com and Web 2.0 cradle,,,PENDING,
-Coupa Cafe,538 Ramona St,Palo Alto,CA,94301,Founder Hangout,Open,Jobs Andreessen Paul Graham spotted here,,,PENDING,
-Caffe Centro,South Park,San Francisco,CA,94107,Founder Hangout,Open,,,,PENDING,
-Sam's Grill,374 Bush St,San Francisco,CA,94104,Founder Hangout,Open,Original West Coast VC lunch club,,,PENDING,
-Bird Dog,420 Ramona St,Palo Alto,CA,94301,Founder Hangout,Open,Co-financed by VCs Palihapitiya and Lau,,,PENDING,
-Evvia Estiatorio,420 Emerson St,Palo Alto,CA,94301,Founder Hangout,Open,,,,PENDING,
-Calafia Cafe,855 El Camino Real #130,Palo Alto,CA,94301,Founder Hangout,Open,Sergey Brin regular,,,PENDING,
-Twitter/X HQ,1355 Market St,San Francisco,CA,94103,Tech HQ,Active,Current X headquarters,,,PENDING,
-Airbnb HQ,888 Brannan St,San Francisco,CA,94103,Tech HQ,Active,Company headquarters,,,PENDING,
-Dropbox HQ,1800 Owens St,San Francisco,CA,94158,Tech HQ,Active,Company headquarters,,,PENDING,
-Uber HQ,1725 3rd St,San Francisco,CA,94158,Tech HQ,Active,Current Mission Bay campus,,,PENDING,
+Andon Market,2102 Union St,San Francisco,CA,94123,AI-Era Hangout,Open,First AI-run store opened April 2026,37.7973565,-122.4340443,OK,"2102, Union Street, Cow Hollow, Pacific Heights, San Francisco, California, 94123, United States"
+Tiat,151 Powell St,San Francisco,CA,94102,AI-Era Hangout,Open,Immersive art/tech gallery,37.7861679,-122.4083354,OK,"(osm zip 94108, csv 94102) | Herbert Hotel, 151;153;155;157;159;161, Powell Street, Union Square, Tenderloin, San Francisco, California, 94108, United States"
+World Flagship Store,281 Geary St,San Francisco,CA,94102,AI-Era Hangout,Open,Sam Altman's World retina-scan Orbs,37.7873282,-122.4078127,OK,"281, Geary Street, Union Square, Tenderloin, San Francisco, California, 94102, United States"
+OpenAI Office,1455 3rd St,San Francisco,CA,94158,AI-Era Hangout,Active - not open to public,Former Uber HQ Mission Bay,37.7700459,-122.3887896,OK,"Uber Headquarters Building 1, 1455, 3rd Street, Mission Bay, San Francisco, California, 94158, United States"
+Anthropic Office,500 Howard St,San Francisco,CA,94105,AI-Era Hangout,Active - not open to public,Foundry Square,37.7885108,-122.3967378,OK,"Foundry Square IV, 500, Howard Street, South of Market, Financial District, San Francisco, California, 94105, United States"
+Waymo Depot,590 Brannan St,San Francisco,CA,94107,AI-Era Hangout,Visible exterior,Robotaxi hub,37.7768850,-122.3986150,OK,"590, Brannan Street, South of Market, Mission Bay, San Francisco, California, 94107, United States"
+Y Combinator Mountain View Office,335 Pioneer Way,Mountain View,CA,94041,AI-Era Hangout,Verify address,Arguably the seed of the current AI wave,37.3862565,-122.0668804,OK,"Y Combinator, 335, Pioneer Way, Mountain View, Santa Clara County, California, 94041, United States"
+The Interval at Long Now,Fort Mason Center Landmark Building A,San Francisco,CA,94123,AI-Era Hangout,Open,Bar/cafe tied to Long Now Foundation - popular for AI-crowd talks and meetups,,,NOT_FOUND,
+Sightglass Coffee Flagship,270 7th St,San Francisco,CA,94103,Founder Cafe,Open,Top founder coffee shop per Mercury data,37.7769757,-122.4085498,OK,"268;270, 7th Street, South of Market, Tenderloin, Mission, San Francisco, California, 94103, United States"
+Saint Frank Coffee,2340 Polk St,San Francisco,CA,94109,Founder Cafe,Open,,37.7984855,-122.4220547,OK,"Saint Frank, 2340, Polk Street, Russian Hill, Nob Hill, San Francisco, California, 94109, United States"
+Ritual Coffee Roasters,1026 Valencia St,San Francisco,CA,94110,Founder Cafe,Open,,37.7564283,-122.4213758,OK,"1026, Valencia Street, Mission, San Francisco, California, 94110, United States"
+Four Barrel Coffee,375 Valencia St,San Francisco,CA,94103,Founder Cafe,Open,Wi-Fi-refusing Mission landmark,37.7670162,-122.4219251,OK,"Four Barrel Coffee, 375, Valencia Street, Mission, San Francisco, California, 94103, United States"
+Blue Bottle Coffee Original Kiosk,315 Linden St,San Francisco,CA,94102,Founder Cafe,Verify open,2005 origin location Hayes Valley,37.7763144,-122.4232552,OK,"Blue Bottle Coffee, 315, Linden Street, Hayes Valley, Western Addition, San Francisco, California, 94102, United States"
+HF0 Hacker Fellowship,1000 Fulton St,San Francisco,CA,94117,Hacker House,Active - private,Archbishop's Mansion now 1000 Fulton Hotel,37.7776767,-122.4335916,OK,"(osm zip 95115, csv 94117) | Archbishop's Mansion, 1000, Fulton Street, Western Addition, San Francisco, California, 95115, United States"
+South Park,South Park,San Francisco,CA,94107,Historic SF,Public park visitable,Dot-com and Web 2.0 cradle,37.7808808,-122.3948741,OK,"(osm zip 94017, csv 94107) | South Park, South Beach, San Francisco, California, 94017, United States"
+Coupa Cafe,538 Ramona St,Palo Alto,CA,94301,Founder Hangout,Open,Jobs Andreessen Paul Graham spotted here,37.4447794,-122.1615829,OK,"Coupa Cafe, 538, Ramona Street, University South, Palo Alto, Santa Clara County, California, 94301, United States"
+Caffe Centro,South Park,San Francisco,CA,94107,Founder Hangout,Open,,37.7808808,-122.3948741,OK,"(osm zip 94017, csv 94107) | South Park, South Beach, San Francisco, California, 94017, United States"
+Sam's Grill,374 Bush St,San Francisco,CA,94104,Founder Hangout,Open,Original West Coast VC lunch club,37.7909548,-122.4036505,OK,"Sam's Grill, 374, Bush Street, Union Square, Financial District, San Francisco, California, 94104, United States"
+Bird Dog,420 Ramona St,Palo Alto,CA,94301,Founder Hangout,Open,Co-financed by VCs Palihapitiya and Lau,37.4456702,-122.1632442,OK,"420, Ramona Street, Downtown North, Palo Alto, Santa Clara County, California, 94301, United States"
+Evvia Estiatorio,420 Emerson St,Palo Alto,CA,94301,Founder Hangout,Open,,37.4450784,-122.1638155,OK,"Evvia Estiatorio, 420, Emerson Street, Downtown North, Palo Alto, Santa Clara County, California, 94301, United States"
+Calafia Cafe,855 El Camino Real #130,Palo Alto,CA,94301,Founder Hangout,Open,Sergey Brin regular,,,NOT_FOUND,
+Twitter/X HQ,1355 Market St,San Francisco,CA,94103,Tech HQ,Active,Current X headquarters,37.7765419,-122.4168068,OK,"X, 1355, Market Street, South of Market, Tenderloin, Mission, San Francisco, California, 94103, United States"
+Airbnb HQ,888 Brannan St,San Francisco,CA,94103,Tech HQ,Active,Company headquarters,37.7719568,-122.4054484,OK,"Airbnb, 888, Brannan Street, West SoMa, Mission, San Francisco, California, 94103, United States"
+Dropbox HQ,1800 Owens St,San Francisco,CA,94158,Tech HQ,Active,Company headquarters,37.7656261,-122.3928771,OK,"Pear VC, 1800, Owens Street, Mission Bay, San Francisco, California, 94158, United States"
+Uber HQ,1725 3rd St,San Francisco,CA,94158,Tech HQ,Active,Current Mission Bay campus,37.7673882,-122.3885810,OK,"Uber Headquarters Building 4, 1725, 3rd Street, Mission Bay, San Francisco, California, 94158, United States"
 LinkedIn HQ,222 2nd St,San Francisco,CA,94105,Tech HQ,Active,Company headquarters,37.7864738,-122.3982635,OK,"LinkedIn, 222, 2nd Street, South of Market, Financial District, San Francisco, California, 94105, United States"
 Pinterest HQ,505 Brannan St,San Francisco,CA,94107,Tech HQ,Active,Company headquarters,37.7775851,-122.3967622,OK,"505, Brannan Street, South of Market, Mission Bay, San Francisco, California, 94107, United States"
 Adobe HQ,345 Park Ave,San Jose,CA,95110,Tech HQ,Active,Iconic Adobe Towers skyline,37.3294709,-121.8947723,OK,"345, Park Avenue, Buena Vista, San Jose, Santa Clara County, California, 95110, United States"
 eBay HQ,2025 Hamilton Ave,San Jose,CA,95125,Tech HQ,Active,Company headquarters,37.2951544,-121.9261317,OK,"eBay Inc., 2025, East Hamilton Avenue, Dry Creek, San Jose, Santa Clara County, California, 95125, United States"
 PayPal HQ,2211 N First St,San Jose,CA,95131,Tech HQ,Active,Company headquarters,37.3768714,-121.9228061,OK,"PayPal Building 10/11 - Main Lobby, 2211, North 1st Street, North San Jose, San Jose, Santa Clara County, California, 95131, United States"
-Yahoo HQ,701 First Ave,Sunnyvale,CA,94089,Tech HQ,Active,Company headquarters,,,NOT_FOUND,
+Yahoo HQ,701 1st Ave,Sunnyvale,CA,94089,Tech HQ,Active,Company headquarters,,,PENDING,
 Netflix HQ,100 Winchester Circle,Los Gatos,CA,95032,Tech HQ,Active,Company headquarters,37.2596224,-121.9626790,OK,"100, Winchester Circle, Vasona Junction, Los Gatos, Santa Clara County, California, 95032, United States"
 Nvidia HQ,2788 San Tomas Expressway,Santa Clara,CA,95051,Tech HQ,Active,Ship-shaped Endeavor building,37.3705437,-121.9670806,OK,"NVIDIA Endeavor, 2788, San Tomas Expressway, Santa Clara, Santa Clara County, California, 95051, United States"
 Apple Original HQ,1 Infinite Loop,Cupertino,CA,95014,Tech HQ Origin,Verify current tenant,Apple's original headquarters address,37.3316697,-122.0300982,OK,"Infinite Loop 1, 1, Infinite Loop, Apple Campus, Cupertino, Santa Clara County, California, 95014, United States"
-Oracle HQ,500 Oracle Parkway,Redwood City,CA,94065,Tech HQ,Active,Glass towers and fountains along 101,37.5308068,-122.2622662,LOW_CONFIDENCE_REVIEW,"no house number in match (highway); zip 94064 != 94065 | 500 Oracle Parkway, Oracle Parkway, Redwood City, San Mateo County, California, 94064, United States"
-Cisco Current HQ,170 W Tasman Drive,San Jose,CA,95134,Tech HQ,Verify address,Current campus distinct from 1984 Atherton origin house,,,PENDING,
-Applied Materials HQ,3050 Bowers Ave,Santa Clara,CA,95054,Tech HQ,Verify address,Largest semiconductor equipment maker,,,PENDING,
-Stripe HQ,354 Oyster Point Blvd,South San Francisco,CA,94080,Tech HQ,Verify address,Moved to South SF campus,,,PENDING,
-DoorDash HQ,303 2nd St,San Francisco,CA,94107,Tech HQ,Verify address,Company headquarters,,,PENDING,
-Databricks HQ,160 Spear St,San Francisco,CA,94105,Tech HQ,Verify address,Company headquarters,,,PENDING,
-Lyft HQ,185 Berry St,San Francisco,CA,94107,Tech HQ,Verify address,Company headquarters,,,PENDING,
-Slack Original HQ,500 Howard St,San Francisco,CA,94105,Tech HQ Origin,Verify current use,Pre-Salesforce-acquisition HQ near Salesforce Tower,,,PENDING,
-Salesforce HQ,415 Mission St,San Francisco,CA,94105,Tech HQ,Active,Same tower as Iconic SF entry - listed separately as company HQ,,,PENDING,
-Block (Square) HQ,1955 Broadway,Oakland,CA,94612,Tech HQ,Active,Formerly Square,,,PENDING,
-Reddit HQ,548 Market St,San Francisco,CA,94104,Tech HQ,Verify address,Company headquarters,,,PENDING,
-Instacart HQ,50 Beale St,San Francisco,CA,94105,Tech HQ,Verify address,Company headquarters,,,PENDING,
-Palantir Original Palo Alto Office,100 Hamilton Ave,Palo Alto,CA,94301,Tech HQ Origin,Verify address,Before the company's move to Denver,,,PENDING,
-Golden Gate Bridge,Golden Gate Bridge Toll Plaza,San Francisco,CA,94129,Iconic SF,Visitable,Most photographed SF landmark,,,PENDING,
-Alcatraz Island,Pier 33,San Francisco,CA,94133,Iconic SF,Visitable - ferry departure,Former federal prison,,,PENDING,
-Fisherman's Wharf,Jefferson St,San Francisco,CA,94133,Iconic SF,Visitable,Waterfront tourist district,,,PENDING,
-Pier 39,Pier 39,San Francisco,CA,94133,Iconic SF,Visitable,Sea lions and shops,,,PENDING,
-Painted Ladies,710-720 Steiner St,San Francisco,CA,94117,Iconic SF,Visitable exterior,Postcard Row at Alamo Square,,,PENDING,
-Coit Tower,1 Telegraph Hill Blvd,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill tower and murals,,,PENDING,
-Lombard Street,Lombard St between Hyde and Leavenworth,San Francisco,CA,94109,Iconic SF,Visitable,Crookedest street,,,PENDING,
-Golden Gate Park,John F Kennedy Dr,San Francisco,CA,94122,Iconic SF,Visitable,Large urban park,,,PENDING,
-Ferry Building,1 Ferry Building,San Francisco,CA,94111,Iconic SF,Visitable,Marketplace and clock tower,,,PENDING,
-Chinatown Gate,Grant Ave and Bush St,San Francisco,CA,94108,Iconic SF,Visitable,Dragon's Gate entrance,,,PENDING,
-Palace of Fine Arts,3301 Lyon St,San Francisco,CA,94123,Iconic SF,Visitable,Marina District rotunda,,,PENDING,
-Twin Peaks,501 Twin Peaks Blvd,San Francisco,CA,94114,Iconic SF,Visitable overlook,City skyline view,,,PENDING,
-Union Square,333 Post St,San Francisco,CA,94108,Iconic SF,Visitable,Shopping and plaza,,,PENDING,
-Transamerica Pyramid,600 Montgomery St,San Francisco,CA,94111,Iconic SF,Exterior visitable,Iconic pyramid skyscraper,,,PENDING,
-Salesforce Tower,415 Mission St,San Francisco,CA,94105,Iconic SF,Exterior visitable,Tallest SF building,,,PENDING,
-Powell Street Cable Car Turntable,Powell St and Market St,San Francisco,CA,94102,Iconic SF,Visitable,Manual cable car turnaround,,,PENDING,
-Japantown Peace Pagoda,1625 Post St,San Francisco,CA,94115,Iconic SF,Visitable,Peace Plaza landmark,,,PENDING,
-Mission Dolores,3321 16th St,San Francisco,CA,94114,Iconic SF,Visitable,Oldest building in SF,37.7643530,-122.4269535,LOW_CONFIDENCE_REVIEW,"zip 94143 != 94114 | Mission Dolores Basilica, 3321, 16th Street, Duboce Triangle, Castro District, Mission, San Francisco, California, 94143, United States"
+Oracle HQ,500 Oracle Parkway,Redwood City,CA,94065,Tech HQ,Active,Glass towers and fountains along 101,37.5308068,-122.2622662,OK,"(osm zip 94064, csv 94065) | 500 Oracle Parkway, Oracle Parkway, Redwood City, San Mateo County, California, 94064, United States"
+Cisco Current HQ,170 W Tasman Drive,San Jose,CA,95134,Tech HQ,Verify address,Current campus distinct from 1984 Atherton origin house,37.4083584,-121.9540909,OK,"Cisco Systems Building D, 180;170, West Tasman Drive, San Jose, Santa Clara County, California, 95134, United States"
+Applied Materials HQ,3050 Bowers Ave,Santa Clara,CA,95054,Tech HQ,Verify address,Largest semiconductor equipment maker,37.3768290,-121.9778900,OK,"3050, Bowers Avenue, Santa Clara, Santa Clara County, California, 95054, United States"
+Stripe HQ,354 Oyster Point Blvd,South San Francisco,CA,94080,Tech HQ,Verify address,Moved to South SF campus,37.6625466,-122.3858727,OK,"354, Oyster Point Boulevard, South San Francisco, San Mateo County, California, 94080, United States"
+DoorDash HQ,303 2nd St,San Francisco,CA,94107,Tech HQ,Verify address,Company headquarters,37.7848586,-122.3957025,OK,"303, 2nd Street, South of Market, San Francisco, California, 94107, United States"
+Databricks HQ,160 Spear St,San Francisco,CA,94105,Tech HQ,Verify address,Company headquarters,37.7914376,-122.3935588,OK,"160, Spear Street, Financial District, San Francisco, California, 94105, United States"
+Lyft HQ,185 Berry St,San Francisco,CA,94107,Tech HQ,Verify address,Company headquarters,37.7762432,-122.3917021,OK,"China Basin - Wharfside Building, 185, Berry Street, Mission Bay, San Francisco, California, 94107, United States"
+Slack Original HQ,500 Howard St,San Francisco,CA,94105,Tech HQ Origin,Verify current use,Pre-Salesforce-acquisition HQ near Salesforce Tower,37.7885108,-122.3967378,OK,"Foundry Square IV, 500, Howard Street, South of Market, Financial District, San Francisco, California, 94105, United States"
+Salesforce HQ,415 Mission St,San Francisco,CA,94105,Tech HQ,Active,Same tower as Iconic SF entry - listed separately as company HQ,37.7897744,-122.3969321,OK,"Salesforce Tower, 415, Mission Street, Rincon Hill, Financial District, San Francisco, California, 94105, United States"
+Block (Square) HQ,1955 Broadway,Oakland,CA,94612,Tech HQ,Active,Formerly Square,37.8086721,-122.2687246,OK,"One Medical, 1955, Broadway, Uptown, Downtown Oakland, Oakland, Alameda County, California, 94612, United States"
+Reddit HQ,548 Market St,San Francisco,CA,94104,Tech HQ,Verify address,Company headquarters,37.7899932,-122.4008494,OK,"Change.org, 548, Market Street, Financial District, San Francisco, California, 94104, United States"
+Instacart HQ,50 Beale St,San Francisco,CA,94105,Tech HQ,Verify address,Company headquarters,37.7912566,-122.3964864,OK,"50 Beale Street, 50, Beale Street, Financial District, San Francisco, California, 94105, United States"
+Palantir Original Palo Alto Office,100 Hamilton Ave,Palo Alto,CA,94301,Tech HQ Origin,Verify address,Before the company's move to Denver,37.4426058,-122.1620996,OK,"Palantir, 100, Hamilton Avenue, University South, Palo Alto, Santa Clara County, California, 94301, United States"
+Golden Gate Bridge,Golden Gate Bridge Toll Plaza,San Francisco,CA,94129,Iconic SF,Visitable,Most photographed SF landmark,37.8066806,-122.4754717,OK,"(osm zip 24129, csv 94129) | Golden Gate Bridge Toll Plaza, Presidio Parkway, San Francisco, California, 24129, United States"
+Alcatraz Island,Pier 33,San Francisco,CA,94133,Iconic SF,Visitable - ferry departure,Former federal prison,37.8079008,-122.4045883,OK,"Pier 33, The Embarcadero, North Beach, San Francisco, California, 94133, United States"
+Fisherman's Wharf,Jefferson St,San Francisco,CA,94133,Iconic SF,Visitable,Waterfront tourist district,37.8085250,-122.4134052,OK,"Jefferson Street, Fisherman's Wharf, North Beach, San Francisco, California, 94133, United States"
+Pier 39,Pier 39,San Francisco,CA,94133,Iconic SF,Visitable,Sea lions and shops,37.8098463,-122.4103491,OK,"Pier 39, North Beach, San Francisco, California, 94133, United States"
+Painted Ladies,710-720 Steiner St,San Francisco,CA,94117,Iconic SF,Visitable exterior,Postcard Row at Alamo Square,37.7705056,-122.4318265,LOW_CONFIDENCE_REVIEW,"no house number in match (road); (osm zip 94114, csv 94117) | Steiner Street, Duboce Triangle, Western Addition, San Francisco, California, 94114, United States"
+Coit Tower,1 Telegraph Hill Blvd,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill tower and murals,37.8022765,-122.4062978,LOW_CONFIDENCE_REVIEW,"no house number in match (road); (osm zip 94113, csv 94133) | Telegraph Hill Boulevard, Telegraph Hill, North Beach, San Francisco, California, 94113, United States"
+Lombard Street,Lombard St between Hyde and Leavenworth,San Francisco,CA,94109,Iconic SF,Visitable,Crookedest street,,,NOT_FOUND,
+Golden Gate Park,John F Kennedy Dr,San Francisco,CA,94122,Iconic SF,Visitable,Large urban park,37.7724223,-122.4686882,OK,"John F. Kennedy Promenade, Inner Richmond, Richmond District, San Francisco, California, 94122, United States"
+Ferry Building,1 Ferry Building,San Francisco,CA,94111,Iconic SF,Visitable,Marketplace and clock tower,37.7955487,-122.3934746,OK,"San Francisco Ferry Building, 1, Ferry Plaza, Financial District, San Francisco, California, 94111, United States"
+Chinatown Gate,Grant Ave and Bush St,San Francisco,CA,94108,Iconic SF,Visitable,Dragon's Gate entrance,,,NOT_FOUND,
+Palace of Fine Arts,3301 Lyon St,San Francisco,CA,94123,Iconic SF,Visitable,Marina District rotunda,37.8029186,-122.4484029,OK,"Palace of Fine Arts, 3301, Lyon Street, Marina District, San Francisco, California, 94123, United States"
+Twin Peaks,501 Twin Peaks Blvd,San Francisco,CA,94114,Iconic SF,Visitable overlook,City skyline view,37.7608143,-122.4466596,LOW_CONFIDENCE_REVIEW,"no house number in match (road); (osm zip 94117, csv 94114) | Twin Peaks Boulevard, Haight-Ashbury, San Francisco, California, 94117, United States"
+Union Square,333 Post St,San Francisco,CA,94108,Iconic SF,Visitable,Shopping and plaza,37.7881153,-122.4074900,OK,"333, Post Street, Union Square, Tenderloin, San Francisco, California, 94108, United States"
+Transamerica Pyramid,600 Montgomery St,San Francisco,CA,94111,Iconic SF,Exterior visitable,Iconic pyramid skyscraper,37.7951883,-122.4027902,OK,"Transamerica Pyramid, 600, Montgomery Street, Financial District, San Francisco, California, 94111, United States"
+Salesforce Tower,415 Mission St,San Francisco,CA,94105,Iconic SF,Exterior visitable,Tallest SF building,37.7897744,-122.3969321,OK,"Salesforce Tower, 415, Mission Street, Rincon Hill, Financial District, San Francisco, California, 94105, United States"
+Powell Street Cable Car Turntable,Powell St and Market St,San Francisco,CA,94102,Iconic SF,Visitable,Manual cable car turnaround,37.7847137,-122.4071968,OK,"(osm zip 94108, csv 94102) | Powell Street, Market Street, South of Market, Tenderloin, San Francisco, California, 94108, United States"
+Japantown Peace Pagoda,1625 Post St,San Francisco,CA,94115,Iconic SF,Visitable,Peace Plaza landmark,37.7853863,-122.4286236,OK,"Hotel Kabuki, 1625, Post Street, Japantown, Western Addition, San Francisco, California, 94115, United States"
+Mission Dolores,3321 16th St,San Francisco,CA,94114,Iconic SF,Visitable,Oldest building in SF,37.7643530,-122.4269535,OK,"(osm zip 94143, csv 94114) | Mission Dolores Basilica, 3321, 16th Street, Duboce Triangle, Castro District, Mission, San Francisco, California, 94143, United States"
 Exploratorium,Pier 15,San Francisco,CA,94111,Iconic SF,Visitable museum,Science museum,37.8016231,-122.3973665,OK,"Pier 15, Fog Bridge, Financial District, San Francisco, California, 94111, United States"
 De Young Museum,50 Hagiwara Tea Garden Dr,San Francisco,CA,94118,Iconic SF,Visitable museum,Golden Gate Park,37.7714976,-122.4690915,OK,"de Young Museum, 50, Hagiwara Tea Garden Drive, Inner Richmond, Richmond District, San Francisco, California, 94118, United States"
 California Academy of Sciences,55 Music Concourse Dr,San Francisco,CA,94118,Iconic SF,Visitable museum,Golden Gate Park,37.7698235,-122.4660971,OK,"California Academy of Sciences, 55, Music Concourse Drive, Inner Richmond, Richmond District, San Francisco, California, 94118, United States"
@@ -125,72 +125,72 @@ Musee Mecanique,Pier 45,San Francisco,CA,94133,Iconic SF,Visitable,Antique arcad
 Haight-Ashbury Intersection,Haight St and Ashbury St,San Francisco,CA,94117,Iconic SF,Visitable,1960s counterculture landmark,37.7695770,-122.4515622,OK,"Haight Street Nails, 1784, Haight Street, Cole Valley, Haight-Ashbury, Richmond District, San Francisco, California, 94117, United States"
 San Francisco City Hall,1 Dr Carlton B Goodlett Pl,San Francisco,CA,94102,Iconic SF,Visitable,Beaux-Arts dome,37.7792929,-122.4192601,OK,"San Francisco City Hall, 1, Dr. Carlton B. Goodlett Place, Civic Center, San Francisco, California, 94102, United States"
 Grace Cathedral,1100 California St,San Francisco,CA,94108,Iconic SF,Visitable,Nob Hill cathedral,37.7923572,-122.4067525,LOW_CONFIDENCE_REVIEW,"no house number in match (road) | California Street, Chinatown, San Francisco, California, 94108, United States"
-Crissy Field,1199 East Beach,San Francisco,CA,94129,Iconic SF,Visitable,Waterfront park near bridge,,,PENDING,
-Sutro Baths Ruins,1004 Point Lobos Ave,San Francisco,CA,94121,Iconic SF,Visitable ruins,Historic bathhouse remains,,,PENDING,
-Lands End Lookout,680 Point Lobos Ave,San Francisco,CA,94121,Iconic SF,Visitable,Coastal trail viewpoint,,,PENDING,
-Castro Theatre,429 Castro St,San Francisco,CA,94114,Iconic SF,Exterior visitable,Historic movie palace,,,PENDING,
-Vaillancourt Fountain,Justin Herman Plaza,San Francisco,CA,94111,Iconic SF,Visitable,Embarcadero plaza fountain,,,PENDING,
-Oracle Park,24 Willie Mays Plaza,San Francisco,CA,94107,Iconic SF,Visitable,SF Giants stadium,,,PENDING,
-Chase Center,1 Warriors Way,San Francisco,CA,94158,Iconic SF,Visitable,Golden State Warriors arena,,,PENDING,
-Wave Organ,83 Marina Green Dr,San Francisco,CA,94123,Iconic SF,Visitable,Acoustic sculpture jetty,,,PENDING,
-Ghirardelli Square,900 North Point St,San Francisco,CA,94109,Iconic SF,Visitable,Historic chocolate factory square,,,PENDING,
-Cable Car Museum,1201 Mason St,San Francisco,CA,94108,Iconic SF,Visitable museum,Free cable car history museum,,,PENDING,
-Filbert Steps,Filbert St and Montgomery St,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill garden stairway,,,PENDING,
-Bernal Heights Park,Bernal Heights Blvd,San Francisco,CA,94110,Iconic SF,Visitable overlook,Hilltop park with city views,,,PENDING,
-SFMOMA,151 3rd St,San Francisco,CA,94103,Iconic SF,Visitable museum,Modern art museum,,,PENDING,
-Yerba Buena Gardens,750 Howard St,San Francisco,CA,94103,Iconic SF,Visitable,Downtown gardens and memorials,,,PENDING,
-Palace Hotel,2 New Montgomery St,San Francisco,CA,94105,Iconic SF,Visitable exterior/lobby,Historic Garden Court hotel,,,PENDING,
-Presidio Tunnel Tops,Presidio Blvd,San Francisco,CA,94129,Iconic SF,Visitable,New park overlooking bridge,,,PENDING,
-Baker Beach,Gettysburg Dr,San Francisco,CA,94129,Iconic SF,Visitable,Beach with bridge views,,,PENDING,
-Washington Square Park,Union St and Stockton St,San Francisco,CA,94133,Iconic SF,Visitable,North Beach park,,,PENDING,
-Dolores Park,Dolores St and 19th St,San Francisco,CA,94114,Iconic SF,Visitable,Popular hillside park,,,PENDING,
-Conservatory of Flowers,100 John F Kennedy Dr,San Francisco,CA,94118,Iconic SF,Visitable,Victorian greenhouse,,,PENDING,
-Aquarium of the Bay,Beach St and The Embarcadero,San Francisco,CA,94133,Iconic SF,Visitable,Pier 39 aquarium,,,PENDING,
+Crissy Field,1199 East Beach,San Francisco,CA,94129,Iconic SF,Visitable,Waterfront park near bridge,37.8057618,-122.4490994,OK,"Crissy Field Center, 1199, East Beach Road, San Francisco, California, 94129, United States"
+Sutro Baths Ruins,1004 Point Lobos Ave,San Francisco,CA,94121,Iconic SF,Visitable ruins,Historic bathhouse remains,37.7778201,-122.5132753,OK,"1004, Point Lobos Avenue, San Francisco, California, 94121, United States"
+Lands End Lookout,680 Point Lobos Ave,San Francisco,CA,94121,Iconic SF,Visitable,Coastal trail viewpoint,37.7797604,-122.5116041,OK,"Lands End Lookout Visitor Center, 680, Point Lobos Avenue, San Francisco, California, 94121, United States"
+Castro Theatre,429 Castro St,San Francisco,CA,94114,Iconic SF,Exterior visitable,Historic movie palace,37.7619914,-122.4347500,OK,"Castro Theatre, 429, Castro Street, Castro District, Mission, San Francisco, California, 94114, United States"
+Vaillancourt Fountain,Justin Herman Plaza,San Francisco,CA,94111,Iconic SF,Visitable,Embarcadero plaza fountain,,,NOT_FOUND,
+Oracle Park,24 Willie Mays Plaza,San Francisco,CA,94107,Iconic SF,Visitable,SF Giants stadium,37.7786059,-122.3894716,OK,"Oracle Park, 24, King Street, Mission Bay, San Francisco, California, 94107, United States"
+Chase Center,1 Warriors Way,San Francisco,CA,94158,Iconic SF,Visitable,Golden State Warriors arena,37.7679001,-122.3874223,OK,"Chase Center, 1, Warriors Way, Mission Bay, San Francisco, California, 94158, United States"
+Wave Organ,83 Marina Green Dr,San Francisco,CA,94123,Iconic SF,Visitable,Acoustic sculpture jetty,37.8071570,-122.4358921,OK,"83, Marina Green Drive, Marina District, San Francisco, California, 94123, United States"
+Ghirardelli Square,900 North Point St,San Francisco,CA,94109,Iconic SF,Visitable,Historic chocolate factory square,37.8061593,-122.4225336,OK,"McCormick & Schmick's, 900, North Point Street, Fisherman's Wharf, San Francisco, California, 94109, United States"
+Cable Car Museum,1201 Mason St,San Francisco,CA,94108,Iconic SF,Visitable museum,Free cable car history museum,37.7947602,-122.4118528,OK,"Cable Car Powerhouse and Barn, 1201, Mason Street, Russian Hill, Nob Hill, San Francisco, California, 94108, United States"
+Filbert Steps,Filbert St and Montgomery St,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill garden stairway,,,NOT_FOUND,
+Bernal Heights Park,Bernal Heights Blvd,San Francisco,CA,94110,Iconic SF,Visitable overlook,Hilltop park with city views,37.7422827,-122.4129425,OK,"Bernal Heights Boulevard, Bernal Heights, Mission, San Francisco, California, 94110, United States"
+SFMOMA,151 3rd St,San Francisco,CA,94103,Iconic SF,Visitable museum,Modern art museum,37.7859150,-122.4007359,OK,"San Francisco Museum of Modern Art, 151, 3rd Street, South of Market, Financial District, San Francisco, California, 94103, United States"
+Yerba Buena Gardens,750 Howard St,San Francisco,CA,94103,Iconic SF,Visitable,Downtown gardens and memorials,37.7846500,-122.4023448,OK,"Yerba Buena Gardens, 750, Howard Street, South of Market, San Francisco, California, 94103, United States"
+Palace Hotel,2 New Montgomery St,San Francisco,CA,94105,Iconic SF,Visitable exterior/lobby,Historic Garden Court hotel,37.7879475,-122.4019176,OK,"(osm zip 94104, csv 94105) | Palace Hotel, 2, New Montgomery Street, Union Square, Financial District, San Francisco, California, 94104, United States"
+Presidio Tunnel Tops,Presidio Blvd,San Francisco,CA,94129,Iconic SF,Visitable,New park overlooking bridge,37.7984659,-122.4545106,OK,"Presidio Boulevard, Richmond District, San Francisco, California, 94129, United States"
+Baker Beach,Gettysburg Dr,San Francisco,CA,94129,Iconic SF,Visitable,Beach with bridge views,,,NOT_FOUND,
+Washington Square Park,Union St and Stockton St,San Francisco,CA,94133,Iconic SF,Visitable,North Beach park,37.8005759,-122.4093150,OK,"Stockton Street & Union Street, Stockton Street, Telegraph Hill, North Beach, San Francisco, California, 94133, United States"
+Dolores Park,Dolores St and 19th St,San Francisco,CA,94114,Iconic SF,Visitable,Popular hillside park,37.7597203,-122.4271323,OK,"Mission Dolores Park, 19th Street, Castro District, Mission, San Francisco, California, 94114, United States"
+Conservatory of Flowers,100 John F Kennedy Dr,San Francisco,CA,94118,Iconic SF,Visitable,Victorian greenhouse,37.7726071,-122.4602276,OK,"Conservatory of Flowers, 100, John F. Kennedy Promenade, Inner Richmond, Richmond District, San Francisco, California, 94118, United States"
+Aquarium of the Bay,Beach St and The Embarcadero,San Francisco,CA,94133,Iconic SF,Visitable,Pier 39 aquarium,,,NOT_FOUND,
 USS Pampanito,Pier 45,San Francisco,CA,94133,Iconic SF,Visitable,WWII submarine museum,37.8101195,-122.4177169,OK,"Pier 45, Fisherman's Wharf, North Beach, San Francisco, California, 94133, United States"
 SS Jeremiah O'Brien,Pier 45,San Francisco,CA,94133,Iconic SF,Visitable,WWII Liberty ship museum,37.8101195,-122.4177169,OK,"Pier 45, Fisherman's Wharf, North Beach, San Francisco, California, 94133, United States"
-Angel Island Immigration Station,Angel Island State Park,Tiburon,CA,94920,Iconic SF,Visitable - ferry access,Historic immigration station,,,PENDING,
-The Presidio,Presidio Blvd,San Francisco,CA,94129,Iconic SF,Visitable,Full park; Tunnel Tops and Crissy Field are sub-sites,,,PENDING,
-Bay Bridge,San Francisco-Oakland Bay Bridge,San Francisco,CA,94105,Iconic SF,Visitable,Major bridge landmark,,,PENDING,
-Japanese Tea Garden,75 Hagiwara Tea Garden Dr,San Francisco,CA,94118,Iconic SF,Visitable,Golden Gate Park one of most-visited spots,,,PENDING,
-Cliff House,1090 Point Lobos Ave,San Francisco,CA,94121,Iconic SF,Currently closed exterior visitable,Historic restaurant site near Sutro Baths,,,PENDING,
-Fort Point,Marine Dr,San Francisco,CA,94129,Iconic SF,Visitable,National Historic Site under Golden Gate Bridge,,,PENDING,
-Cathedral of St Mary of the Assumption,1111 Gough St,San Francisco,CA,94109,Iconic SF,Visitable,Modernist cathedral skyline feature,,,PENDING,
+Angel Island Immigration Station,Angel Island State Park,Tiburon,CA,94920,Iconic SF,Visitable - ferry access,Historic immigration station,37.8659102,-122.4352148,OK,"Angel Island State Park Visitor Center, Perimeter Road, Fort McDowell, Tiburon, Marin County, California, 94920, United States"
+The Presidio,Presidio Blvd,San Francisco,CA,94129,Iconic SF,Visitable,Full park; Tunnel Tops and Crissy Field are sub-sites,37.7984659,-122.4545106,OK,"Presidio Boulevard, Richmond District, San Francisco, California, 94129, United States"
+Bay Bridge,San Francisco-Oakland Bay Bridge,San Francisco,CA,94105,Iconic SF,Visitable,Major bridge landmark,37.7856483,-122.3914560,OK,"(osm zip 94017, csv 94105) | San Francisco–Oakland Bay Bridge, Route 80, Rincon Hill, Financial District, San Francisco, California, 94017, United States"
+Japanese Tea Garden,75 Hagiwara Tea Garden Dr,San Francisco,CA,94118,Iconic SF,Visitable,Golden Gate Park one of most-visited spots,37.7702930,-122.4701237,OK,"Japanese Tea Garden, 75, Hagiwara Tea Garden Drive, Inner Richmond, Richmond District, San Francisco, California, 94118, United States"
+Cliff House,1090 Point Lobos Ave,San Francisco,CA,94121,Iconic SF,Currently closed exterior visitable,Historic restaurant site near Sutro Baths,37.7785548,-122.5140798,OK,"Cliff House, 1090, Point Lobos Avenue, San Francisco, California, 94121, United States"
+Fort Point,Marine Dr,San Francisco,CA,94129,Iconic SF,Visitable,National Historic Site under Golden Gate Bridge,37.8085008,-122.4714958,OK,"Marine Drive, San Francisco, California, 94129, United States"
+Cathedral of St Mary of the Assumption,1111 Gough St,San Francisco,CA,94109,Iconic SF,Visitable,Modernist cathedral skyline feature,37.7840235,-122.4253376,OK,"Cathedral of Saint Mary of the Assumption, 1111, Gough Street, Japantown, Western Addition, San Francisco, California, 94109, United States"
 Hyde Street Pier,2905 Hyde St,San Francisco,CA,94109,Iconic SF,Visitable,Historic ship collection near Ghirardelli Square,37.8077271,-122.4208756,OK,"2905, Hyde Street, Fisherman's Wharf, San Francisco, California, 94109, United States"
 City Lights Bookstore,261 Columbus Ave,San Francisco,CA,94133,Iconic SF,Visitable,Beat Generation landmark National Literary Landmark,37.7976525,-122.4066167,OK,"City Lights Booksellers, 261, Columbus Avenue, Chinatown, San Francisco, California, 94133, United States"
 Asian Art Museum,200 Larkin St,San Francisco,CA,94102,Iconic SF,Visitable museum,Civic Center museum next to City Hall,37.7803150,-122.4159922,OK,"Asian Art Museum of San Francisco, 200, Larkin Street, Civic Center, San Francisco, California, 94102, United States"
 War Memorial Opera House,301 Van Ness Ave,San Francisco,CA,94102,Iconic SF,Visitable,Civic Center arts complex,37.7785369,-122.4209276,OK,"War Memorial Opera House, 301, Van Ness Avenue, Civic Center, San Francisco, California, 94102, United States"
 Davies Symphony Hall,201 Van Ness Ave,San Francisco,CA,94102,Iconic SF,Visitable,Civic Center arts complex,37.7776472,-122.4204585,OK,"Louise M. Davies Symphony Hall, 201, Van Ness Avenue, Civic Center, San Francisco, California, 94102, United States"
 Salesforce Park,55 Stevenson St,San Francisco,CA,94105,Iconic SF,Visitable,Rooftop park on Transit Center distinct from tower,37.7895975,-122.3996758,OK,"Louie's Bar, 55, Stevenson Street, Financial District, San Francisco, California, 94105, United States"
-Ocean Beach,Great Highway,San Francisco,CA,94122,Iconic SF,Visitable,City's longest beach,37.7495507,-122.5084431,LOW_CONFIDENCE_REVIEW,"zip 94166 != 94122 | Sunset Dunes, Outer Sunset, Sunset District, San Francisco, California, 94166, United States"
+Ocean Beach,Great Highway,San Francisco,CA,94122,Iconic SF,Visitable,City's longest beach,37.7495507,-122.5084431,OK,"(osm zip 94166, csv 94122) | Sunset Dunes, Outer Sunset, Sunset District, San Francisco, California, 94166, United States"
 Balmy Alley,Balmy St,San Francisco,CA,94110,Iconic SF,Visitable,Mission District mural corridor,37.7517740,-122.4124056,OK,"Balmy Street, Mission, San Francisco, California, 94110, United States"
-Clarion Alley,Clarion Alley,San Francisco,CA,94110,Iconic SF,Visitable,Mission District mural corridor,37.7630465,-122.4195560,LOW_CONFIDENCE_REVIEW,"zip 94143 != 94110 | Clarion Alley, Mission, San Francisco, California, 94143, United States"
-Ross Alley,Ross Alley,San Francisco,CA,94108,Iconic SF,Visitable,Chinatown alley,37.7954647,-122.4073621,LOW_CONFIDENCE_REVIEW,"zip 94113 != 94108 | Ross Alley, Chinatown, San Francisco, California, 94113, United States"
+Clarion Alley,Clarion Alley,San Francisco,CA,94110,Iconic SF,Visitable,Mission District mural corridor,37.7630465,-122.4195560,OK,"(osm zip 94143, csv 94110) | Clarion Alley, Mission, San Francisco, California, 94143, United States"
+Ross Alley,Ross Alley,San Francisco,CA,94108,Iconic SF,Visitable,Chinatown alley,37.7954647,-122.4073621,OK,"(osm zip 94113, csv 94108) | Ross Alley, Chinatown, San Francisco, California, 94113, United States"
 Tin How Temple,125 Waverly Pl,San Francisco,CA,94108,Iconic SF,Visitable - respectful visit,Oldest Chinese temple in the US,37.7945605,-122.4070074,OK,"Tin How Temple, 125, Waverly Place, Chinatown, San Francisco, California, 94108, United States"
-Apple Park Visitor Center,10600 N Tantau Ave,Cupertino,CA,95014,Iconic Silicon Valley,Visitable,Apple's spaceship campus viewpoint,,,PENDING,
-Googleplex,1600 Amphitheatre Pkwy,Mountain View,CA,94043,Iconic Silicon Valley,Visitable exterior,Google HQ and Android statues,,,PENDING,
-Meta HQ,1 Hacker Way,Menlo Park,CA,94025,Iconic Silicon Valley,Visitable exterior,Facebook/Meta headquarters sign,,,PENDING,
-Tesla Fremont Factory,45500 Fremont Blvd,Fremont,CA,94538,Iconic Silicon Valley,Exterior visitable,Tesla's main US assembly plant,,,PENDING,
-NASA Ames / Hangar One,Moffett Blvd,Mountain View,CA,94035,Iconic Silicon Valley,Visitable exterior,Historic airship hangar,,,PENDING,
-Stanford Main Quad / Hoover Tower,450 Serra Mall,Stanford,CA,94305,Iconic Silicon Valley,Visitable campus,Stanford's central quad and tower,,,PENDING,
-Stanford Dish Trail,1310 Junipero Serra Blvd,Stanford,CA,94305,Iconic Silicon Valley,Visitable trailhead,Popular hiking loop,,,PENDING,
-Winchester Mystery House,525 S Winchester Blvd,San Jose,CA,95128,Iconic Silicon Valley,Visitable museum,Famous sprawling Victorian mansion,,,PENDING,
-The Tech Interactive,201 S Market St,San Jose,CA,95113,Iconic Silicon Valley,Visitable museum,Tech Museum of Innovation,,,PENDING,
-Rosicrucian Egyptian Museum,1660 Park Ave,San Jose,CA,95191,Iconic Silicon Valley,Visitable museum,Egyptian antiquities collection,,,PENDING,
-Levi's Stadium,4900 Marie P DeBartolo Way,Santa Clara,CA,95054,Iconic Silicon Valley,Visitable,SF 49ers stadium,,,PENDING,
-SAP Center,525 W Santa Clara St,San Jose,CA,95113,Iconic Silicon Valley,Visitable,San Jose Sharks arena,,,PENDING,
-Filoli Historic House & Garden,86 Canada Rd,Woodside,CA,94062,Iconic Silicon Valley,Visitable,Historic estate and gardens,,,PENDING,
-Cantor Arts Center,328 Lomita Dr,Stanford,CA,94305,Iconic Silicon Valley,Visitable museum,Stanford's free art museum,,,PENDING,
-Villa Montalvo / Montalvo Arts Center,15400 Montalvo Rd,Saratoga,CA,95071,Iconic Silicon Valley,Visitable,Historic estate and arts center,,,PENDING,
-Rengstorff House,3070 N Shoreline Blvd,Mountain View,CA,94043,Iconic Silicon Valley,Visitable,Victorian house museum,,,PENDING,
-Shoreline Amphitheatre,1 Amphitheatre Pkwy,Mountain View,CA,94043,Iconic Silicon Valley,Visitable,Major concert venue,,,PENDING,
-Municipal Rose Garden,1649 Naglee Ave,San Jose,CA,95126,Iconic Silicon Valley,Visitable,Historic rose garden,,,PENDING,
-Japanese Friendship Garden,1300 Senter Rd,San Jose,CA,95112,Iconic Silicon Valley,Visitable,Kelley Park garden,,,PENDING,
-Palo Alto Baylands Nature Preserve,2775 Embarcadero Rd,Palo Alto,CA,94303,Iconic Silicon Valley,Visitable,Wetland nature preserve,,,PENDING,
-Mission Santa Clara de Asis,500 El Camino Real,Santa Clara,CA,95053,Iconic Silicon Valley,Visitable,Historic mission on SCU campus,,,PENDING,
-Stanford Memorial Church,450 Jane Stanford Way,Stanford,CA,94305,Iconic Silicon Valley,Visitable,Landmark campus church,,,PENDING,
-History San Jose / History Park,1650 Senter Rd,San Jose,CA,95112,Iconic Silicon Valley,Visitable,Historic buildings collection,,,PENDING,
-Guadalupe River Park,438 Coleman Ave,San Jose,CA,95110,Iconic Silicon Valley,Visitable,Downtown San Jose riverside park,,,PENDING,
-Hakone Estate and Gardens,21000 Big Basin Way,Saratoga,CA,95070,Iconic Silicon Valley,Visitable,Japanese-style gardens,,,PENDING,
-California's Great America,4701 Great America Pkwy,Santa Clara,CA,95054,Iconic Silicon Valley,Visitable,Theme park,,,PENDING,
-Lick Observatory,7281 Mount Hamilton Rd,Mount Hamilton,CA,95140,Iconic Silicon Valley,Visitable,Sits atop Mount Hamilton,,,PENDING,
-Santana Row,377 Santana Row,San Jose,CA,95128,Iconic Silicon Valley,Visitable,Shopping and dining district,,,PENDING,
+Apple Park Visitor Center,10600 N Tantau Ave,Cupertino,CA,95014,Iconic Silicon Valley,Visitable,Apple's spaceship campus viewpoint,37.3314830,-122.0056970,OK,"10600, North Tantau Avenue, Cupertino, Santa Clara County, California, 95014, United States"
+Googleplex,1600 Amphitheatre Pkwy,Mountain View,CA,94043,Iconic Silicon Valley,Visitable exterior,Google HQ and Android statues,37.4224858,-122.0855846,OK,"Google Building 41, 1600, Amphitheatre Parkway, Mountain View, Santa Clara County, California, 94043, United States"
+Meta HQ,1 Hacker Way,Menlo Park,CA,94025,Iconic Silicon Valley,Visitable exterior,Facebook/Meta headquarters sign,37.4846680,-122.1483655,OK,"1 Hacker Way, 1, Belle Haven, Menlo Park, San Mateo County, California, 94025, United States"
+Tesla Fremont Factory,45500 Fremont Blvd,Fremont,CA,94538,Iconic Silicon Valley,Exterior visitable,Tesla's main US assembly plant,37.4971142,-121.9450092,OK,"45500, Fremont Boulevard, Warm Springs District, Fremont, Alameda County, California, 94538, United States"
+NASA Ames / Hangar One,Moffett Blvd,Mountain View,CA,94035,Iconic Silicon Valley,Visitable exterior,Historic airship hangar,37.4096278,-122.0644286,OK,"Moffett Boulevard, Mountain View, Santa Clara County, California, 94035, United States"
+Stanford Main Quad / Hoover Tower,450 Serra Mall,Stanford,CA,94305,Iconic Silicon Valley,Visitable campus,Stanford's central quad and tower,37.4373687,-122.1688001,OK,"Angel of Grief, 450, Jane Stanford Way, Stanford, Santa Clara County, California, 94305, United States"
+Stanford Dish Trail,1310 Junipero Serra Blvd,Stanford,CA,94305,Iconic Silicon Valley,Visitable trailhead,Popular hiking loop,37.4209880,-122.1787766,LOW_CONFIDENCE_REVIEW,"no house number in match (road) | Junipero Serra Boulevard, Stanford, Santa Clara County, California, 94305, United States"
+Winchester Mystery House,525 S Winchester Blvd,San Jose,CA,95128,Iconic Silicon Valley,Visitable museum,Famous sprawling Victorian mansion,37.3182932,-121.9509886,OK,"Winchester Mystery House, 525, Winchester Boulevard, San Jose, Santa Clara County, California, 95128, United States"
+The Tech Interactive,201 S Market St,San Jose,CA,95113,Iconic Silicon Valley,Visitable museum,Tech Museum of Innovation,37.3314040,-121.8901566,OK,"The Tech Interactive, 201, South Market Street, Downtown Historic District, Japantown, San Jose, Santa Clara County, California, 95113, United States"
+Rosicrucian Egyptian Museum,1660 Park Ave,San Jose,CA,95191,Iconic Silicon Valley,Visitable museum,Egyptian antiquities collection,37.3335045,-121.9228994,OK,"(osm zip 95126, csv 95191) | Rosicrucian Egyptian Museum, 1660, Park Avenue, Rose Garden, San Jose, Santa Clara County, California, 95126, United States"
+Levi's Stadium,4900 Marie P DeBartolo Way,Santa Clara,CA,95054,Iconic Silicon Valley,Visitable,SF 49ers stadium,37.4029867,-121.9696489,OK,"Levi’s Stadium, 4900, Marie P. DeBartolo Way, Agnew, Santa Clara, Santa Clara County, California, 95054, United States"
+SAP Center,525 W Santa Clara St,San Jose,CA,95113,Iconic Silicon Valley,Visitable,San Jose Sharks arena,37.3328604,-121.9012247,OK,"SAP Center, 525, West Santa Clara Street, Little Italy, Japantown, San Jose, Santa Clara County, California, 95113, United States"
+Filoli Historic House & Garden,86 Canada Rd,Woodside,CA,94062,Iconic Silicon Valley,Visitable,Historic estate and gardens,37.4699240,-122.3113516,OK,"Filoli Estate, 86, Cañada Road, Woodside, San Mateo County, California, 94062, United States"
+Cantor Arts Center,328 Lomita Dr,Stanford,CA,94305,Iconic Silicon Valley,Visitable museum,Stanford's free art museum,37.4330144,-122.1708751,OK,"Cantor Arts Center, 328, Lomita Drive, Stanford, Santa Clara County, California, 94305, United States"
+Villa Montalvo / Montalvo Arts Center,15400 Montalvo Rd,Saratoga,CA,95071,Iconic Silicon Valley,Visitable,Historic estate and arts center,37.2437292,-122.0310114,OK,"(osm zip 95070, csv 95071) | Montalvo Art Center, 15400, Montalvo Road, Saratoga, Santa Clara County, California, 95070, United States"
+Rengstorff House,3070 N Shoreline Blvd,Mountain View,CA,94043,Iconic Silicon Valley,Visitable,Victorian house museum,37.4314578,-122.0871135,OK,"Rengstorff House, 3070, North Shoreline Boulevard, Mountain View, Santa Clara County, California, 94043, United States"
+Shoreline Amphitheatre,1 Amphitheatre Pkwy,Mountain View,CA,94043,Iconic Silicon Valley,Visitable,Major concert venue,37.4268616,-122.0806072,OK,"Shoreline Amphitheatre, 1, Amphitheatre Parkway, Mountain View, Santa Clara County, California, 94043, United States"
+Municipal Rose Garden,1649 Naglee Ave,San Jose,CA,95126,Iconic Silicon Valley,Visitable,Historic rose garden,37.3312800,-121.9276830,OK,"1649, Naglee Avenue, Rose Garden, San Jose, Santa Clara County, California, 95126, United States"
+Japanese Friendship Garden,1300 Senter Rd,San Jose,CA,95112,Iconic Silicon Valley,Visitable,Kelley Park garden,37.3258672,-121.8629016,OK,"Happy Hollow Park and Zoo, 1300, Senter Road, San Jose, Santa Clara County, California, 95112, United States"
+Palo Alto Baylands Nature Preserve,2775 Embarcadero Rd,Palo Alto,CA,94303,Iconic Silicon Valley,Visitable,Wetland nature preserve,37.4596228,-122.1063351,OK,"Lucy Evans Baylands Nature Interpretive Center, 2775, Embarcadero Road, Palo Alto, Santa Clara County, California, 94303, United States"
+Mission Santa Clara de Asis,500 El Camino Real,Santa Clara,CA,95053,Iconic Silicon Valley,Visitable,Historic mission on SCU campus,37.3486243,-121.9365440,OK,"Santa Clara University, 500, El Camino Real, Santa Clara, Santa Clara County, California, 95053, United States"
+Stanford Memorial Church,450 Jane Stanford Way,Stanford,CA,94305,Iconic Silicon Valley,Visitable,Landmark campus church,37.4376428,-122.1736507,OK,"450, Jane Stanford Way, Stanford, Santa Clara County, California, 94305, United States"
+History San Jose / History Park,1650 Senter Rd,San Jose,CA,95112,Iconic Silicon Valley,Visitable,Historic buildings collection,37.3201266,-121.8579056,OK,"History San José, 1650, Senter Road, San Jose, Santa Clara County, California, 95112, United States"
+Guadalupe River Park,438 Coleman Ave,San Jose,CA,95110,Iconic Silicon Valley,Visitable,Downtown San Jose riverside park,37.3432352,-121.9045973,OK,"438, Coleman Avenue, Japantown, San Jose, Santa Clara County, California, 95110, United States"
+Hakone Estate and Gardens,21000 Big Basin Way,Saratoga,CA,95070,Iconic Silicon Valley,Visitable,Japanese-style gardens,37.2519315,-122.0477915,LOW_CONFIDENCE_REVIEW,"no house number in match (road) | Big Basin Way, Saratoga, Santa Clara County, California, 95070, United States"
+California's Great America,4701 Great America Pkwy,Santa Clara,CA,95054,Iconic Silicon Valley,Visitable,Theme park,37.3947920,-121.9701707,OK,"Woodstock Express, 4701, Great America Parkway, Santa Clara, Santa Clara County, California, 95054, United States"
+Lick Observatory,7281 Mount Hamilton Rd,Mount Hamilton,CA,95140,Iconic Silicon Valley,Visitable,Sits atop Mount Hamilton,37.3422937,-121.6401718,OK,"Mount Hamilton Garage 7231, 7281, Mount Hamilton Road, San Jose, Santa Clara County, California, 95140, United States"
+Santana Row,377 Santana Row,San Jose,CA,95128,Iconic Silicon Valley,Visitable,Shopping and dining district,37.3193428,-121.9493282,OK,"Atelier Studio, 377, Santana Row, San Jose, Santa Clara County, California, 95128, United States"
