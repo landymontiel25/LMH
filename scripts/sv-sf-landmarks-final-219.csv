@@ -66,9 +66,9 @@ Ritual Coffee Roasters,1026 Valencia St,San Francisco,CA,94110,Founder Cafe,Open
 Four Barrel Coffee,375 Valencia St,San Francisco,CA,94103,Founder Cafe,Open,Wi-Fi-refusing Mission landmark
 Blue Bottle Coffee Original Kiosk,315 Linden St,San Francisco,CA,94102,Founder Cafe,Verify open,2005 origin location Hayes Valley
 HF0 Hacker Fellowship,1000 Fulton St,San Francisco,CA,94117,Hacker House,Active - private,Archbishop's Mansion now 1000 Fulton Hotel
-South Park,South Park,San Francisco,CA,94107,Historic SF,Public park visitable,Dot-com and Web 2.0 cradle
+South Park,South Park,San Francisco,CA,94107,Historic SF,Public park visitable,Dot-com and Web 2.0 cradle. Geocoded to the named OSM feature (no street number)
 Coupa Cafe,538 Ramona St,Palo Alto,CA,94301,Founder Hangout,Open,Jobs Andreessen Paul Graham spotted here
-Caffe Centro,South Park,San Francisco,CA,94107,Founder Hangout,Open,
+Caffe Centro,Caffe Centro,San Francisco,CA,94107,Founder Hangout,Open,102 South Park. Geocoded to the named OSM feature (no street number)
 Sam's Grill,374 Bush St,San Francisco,CA,94104,Founder Hangout,Open,Original West Coast VC lunch club
 Bird Dog,420 Ramona St,Palo Alto,CA,94301,Founder Hangout,Open,Co-financed by VCs Palihapitiya and Lau
 Evvia Estiatorio,420 Emerson St,Palo Alto,CA,94301,Founder Hangout,Open,
@@ -99,14 +99,14 @@ Block (Square) HQ,1955 Broadway,Oakland,CA,94612,Tech HQ,Active,Formerly Square
 Reddit HQ,548 Market St,San Francisco,CA,94104,Tech HQ,Verify address,Company headquarters
 Instacart HQ,50 Beale St,San Francisco,CA,94105,Tech HQ,Verify address,Company headquarters
 Palantir Original Palo Alto Office,100 Hamilton Ave,Palo Alto,CA,94301,Tech HQ Origin,Verify address,Before the company's move to Denver
-Golden Gate Bridge,Golden Gate Bridge Toll Plaza,San Francisco,CA,94129,Iconic SF,Visitable,Most photographed SF landmark
+Golden Gate Bridge,Golden Gate Bridge,San Francisco,CA,94129,Iconic SF,Visitable,Most photographed SF landmark. Pin is mid-span; the toll plaza / Welcome Center is at the south end. Geocoded to the named OSM feature (no street number)
 Alcatraz Island,Pier 33,San Francisco,CA,94133,Iconic SF,Visitable - ferry departure,Former federal prison
-Fisherman's Wharf,Jefferson St,San Francisco,CA,94133,Iconic SF,Visitable,Waterfront tourist district
+Fisherman's Wharf,Fisherman's Wharf,San Francisco,CA,94133,Iconic SF,Visitable,Waterfront tourist district. Jefferson St waterfront district. Geocoded to the named OSM feature (no street number)
 Pier 39,Pier 39,San Francisco,CA,94133,Iconic SF,Visitable,Sea lions and shops
 Painted Ladies,Painted Ladies,San Francisco,CA,94117,Iconic SF,Visitable exterior,Postcard Row at Alamo Square. 710-720 Steiner St. Geocoded to the named OSM feature (no street number)
 Coit Tower,Coit Tower,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill tower and murals. 1 Telegraph Hill Blvd. Geocoded to the named OSM feature (no street number)
 Lombard Street,1001 Lombard St,San Francisco,CA,94109,Iconic SF,Visitable,Crookedest street. Top of the crooked block at Hyde St
-Golden Gate Park,John F Kennedy Dr,San Francisco,CA,94122,Iconic SF,Visitable,Large urban park
+Golden Gate Park,Golden Gate Park,San Francisco,CA,94122,Iconic SF,Visitable,Large urban park. Entrances along John F Kennedy Dr. Geocoded to the named OSM feature (no street number)
 Ferry Building,1 Ferry Building,San Francisco,CA,94111,Iconic SF,Visitable,Marketplace and clock tower
 Chinatown Gate,Dragon Gate,San Francisco,CA,94108,Iconic SF,Visitable,Dragon's Gate entrance. Grant Ave at Bush St. Geocoded to the named OSM feature (no street number)
 Palace of Fine Arts,3301 Lyon St,San Francisco,CA,94123,Iconic SF,Visitable,Marina District rotunda
@@ -121,7 +121,7 @@ Exploratorium,Pier 15,San Francisco,CA,94111,Iconic SF,Visitable museum,Science 
 De Young Museum,50 Hagiwara Tea Garden Dr,San Francisco,CA,94118,Iconic SF,Visitable museum,Golden Gate Park
 California Academy of Sciences,55 Music Concourse Dr,San Francisco,CA,94118,Iconic SF,Visitable museum,Golden Gate Park
 Legion of Honor,100 34th Ave,San Francisco,CA,94121,Iconic SF,Visitable museum,Lincoln Park art museum
-Musee Mecanique,Pier 45,San Francisco,CA,94133,Iconic SF,Visitable,Antique arcade museum
+Musee Mecanique,Musée Mécanique,San Francisco,CA,94133,Iconic SF,Visitable,Antique arcade museum. Pier 45. Geocoded to the named OSM feature (no street number)
 Haight-Ashbury Intersection,Haight St and Ashbury St,San Francisco,CA,94117,Iconic SF,Visitable,1960s counterculture landmark
 San Francisco City Hall,1 Dr Carlton B Goodlett Pl,San Francisco,CA,94102,Iconic SF,Visitable,Beaux-Arts dome
 Grace Cathedral,Grace Cathedral,San Francisco,CA,94108,Iconic SF,Visitable,Nob Hill cathedral. 1100 California St. Geocoded to the named OSM feature (no street number)
@@ -136,24 +136,24 @@ Wave Organ,83 Marina Green Dr,San Francisco,CA,94123,Iconic SF,Visitable,Acousti
 Ghirardelli Square,900 North Point St,San Francisco,CA,94109,Iconic SF,Visitable,Historic chocolate factory square
 Cable Car Museum,1201 Mason St,San Francisco,CA,94108,Iconic SF,Visitable museum,Free cable car history museum
 Filbert Steps,Filbert Steps,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill garden stairway. Filbert St at Montgomery St. Geocoded to the named OSM feature (no street number)
-Bernal Heights Park,Bernal Heights Blvd,San Francisco,CA,94110,Iconic SF,Visitable overlook,Hilltop park with city views
+Bernal Heights Park,Bernal Heights Park,San Francisco,CA,94110,Iconic SF,Visitable overlook,Hilltop park with city views. Bernal Heights Blvd. Geocoded to the named OSM feature (no street number)
 SFMOMA,151 3rd St,San Francisco,CA,94103,Iconic SF,Visitable museum,Modern art museum
 Yerba Buena Gardens,750 Howard St,San Francisco,CA,94103,Iconic SF,Visitable,Downtown gardens and memorials
 Palace Hotel,2 New Montgomery St,San Francisco,CA,94105,Iconic SF,Visitable exterior/lobby,Historic Garden Court hotel
-Presidio Tunnel Tops,Presidio Blvd,San Francisco,CA,94129,Iconic SF,Visitable,New park overlooking bridge
+Presidio Tunnel Tops,Presidio Tunnel Tops,San Francisco,CA,94129,Iconic SF,Visitable,New park overlooking bridge. Off Presidio Blvd. Geocoded to the named OSM feature (no street number)
 Baker Beach,Baker Beach,San Francisco,CA,94129,Iconic SF,Visitable,Beach with bridge views. Off Gettysburg Dr. Geocoded to the named OSM feature (no street number)
-Washington Square Park,Union St and Stockton St,San Francisco,CA,94133,Iconic SF,Visitable,North Beach park
+Washington Square Park,Washington Square Park,San Francisco,CA,94133,Iconic SF,Visitable,North Beach park. Union St at Stockton St. Geocoded to the named OSM feature (no street number)
 Dolores Park,Dolores St and 19th St,San Francisco,CA,94114,Iconic SF,Visitable,Popular hillside park
 Conservatory of Flowers,100 John F Kennedy Dr,San Francisco,CA,94118,Iconic SF,Visitable,Victorian greenhouse
 Aquarium of the Bay,Aquarium of the Bay,San Francisco,CA,94133,Iconic SF,Visitable,Pier 39 aquarium. Beach St at The Embarcadero. Geocoded to the named OSM feature (no street number)
-USS Pampanito,Pier 45,San Francisco,CA,94133,Iconic SF,Visitable,WWII submarine museum
-SS Jeremiah O'Brien,Pier 45,San Francisco,CA,94133,Iconic SF,Visitable,WWII Liberty ship museum
+USS Pampanito,USS Pampanito,San Francisco,CA,94133,Iconic SF,Visitable,WWII submarine museum. Pier 45. Geocoded to the named OSM feature (no street number)
+SS Jeremiah O'Brien,SS Jeremiah O'Brien,San Francisco,CA,94133,Iconic SF,Visitable,WWII Liberty ship museum. Berthed at Pier 45 historically; OSM places the ship near Pier 35 today. Geocoded to the named OSM feature (no street number)
 Angel Island Immigration Station,Angel Island State Park,Tiburon,CA,94920,Iconic SF,Visitable - ferry access,Historic immigration station
-The Presidio,Presidio Blvd,San Francisco,CA,94129,Iconic SF,Visitable,Full park; Tunnel Tops and Crissy Field are sub-sites
+The Presidio,Presidio of San Francisco,San Francisco,CA,94129,Iconic SF,Visitable,Full park; Tunnel Tops and Crissy Field are sub-sites. Main gate on Presidio Blvd; pin is the park centroid. Geocoded to the named OSM feature (no street number)
 Bay Bridge,San Francisco-Oakland Bay Bridge,San Francisco,CA,94105,Iconic SF,Visitable,Major bridge landmark
 Japanese Tea Garden,75 Hagiwara Tea Garden Dr,San Francisco,CA,94118,Iconic SF,Visitable,Golden Gate Park one of most-visited spots
 Cliff House,1090 Point Lobos Ave,San Francisco,CA,94121,Iconic SF,Currently closed exterior visitable,Historic restaurant site near Sutro Baths
-Fort Point,Marine Dr,San Francisco,CA,94129,Iconic SF,Visitable,National Historic Site under Golden Gate Bridge
+Fort Point,Fort Point National Historic Site,San Francisco,CA,94129,Iconic SF,Visitable,National Historic Site under Golden Gate Bridge. End of Marine Dr. Geocoded to the named OSM feature (no street number)
 Cathedral of St Mary of the Assumption,1111 Gough St,San Francisco,CA,94109,Iconic SF,Visitable,Modernist cathedral skyline feature
 Hyde Street Pier,2905 Hyde St,San Francisco,CA,94109,Iconic SF,Visitable,Historic ship collection near Ghirardelli Square
 City Lights Bookstore,261 Columbus Ave,San Francisco,CA,94133,Iconic SF,Visitable,Beat Generation landmark National Literary Landmark
@@ -161,8 +161,8 @@ Asian Art Museum,200 Larkin St,San Francisco,CA,94102,Iconic SF,Visitable museum
 War Memorial Opera House,301 Van Ness Ave,San Francisco,CA,94102,Iconic SF,Visitable,Civic Center arts complex
 Davies Symphony Hall,201 Van Ness Ave,San Francisco,CA,94102,Iconic SF,Visitable,Civic Center arts complex
 Salesforce Park,55 Stevenson St,San Francisco,CA,94105,Iconic SF,Visitable,Rooftop park on Transit Center distinct from tower
-Ocean Beach,Great Highway,San Francisco,CA,94122,Iconic SF,Visitable,City's longest beach
-Balmy Alley,Balmy St,San Francisco,CA,94110,Iconic SF,Visitable,Mission District mural corridor
+Ocean Beach,Ocean Beach,San Francisco,CA,94122,Iconic SF,Visitable,City's longest beach. Along the Great Highway. Geocoded to the named OSM feature (no street number)
+Balmy Alley,Balmy Alley,San Francisco,CA,94110,Iconic SF,Visitable,Mission District mural corridor. Officially Balmy Street. Geocoded to the named OSM feature (no street number)
 Clarion Alley,Clarion Alley,San Francisco,CA,94110,Iconic SF,Visitable,Mission District mural corridor
 Ross Alley,Ross Alley,San Francisco,CA,94108,Iconic SF,Visitable,Chinatown alley
 Tin How Temple,125 Waverly Pl,San Francisco,CA,94108,Iconic SF,Visitable - respectful visit,Oldest Chinese temple in the US
@@ -170,7 +170,7 @@ Apple Park Visitor Center,10600 N Tantau Ave,Cupertino,CA,95014,Iconic Silicon V
 Googleplex,1600 Amphitheatre Pkwy,Mountain View,CA,94043,Iconic Silicon Valley,Visitable exterior,Google HQ and Android statues
 Meta HQ,1 Hacker Way,Menlo Park,CA,94025,Iconic Silicon Valley,Visitable exterior,Facebook/Meta headquarters sign
 Tesla Fremont Factory,45500 Fremont Blvd,Fremont,CA,94538,Iconic Silicon Valley,Exterior visitable,Tesla's main US assembly plant
-NASA Ames / Hangar One,Moffett Blvd,Mountain View,CA,94035,Iconic Silicon Valley,Visitable exterior,Historic airship hangar
+NASA Ames / Hangar One,Moffett Federal Airfield,Mountain View,CA,94035,Iconic Silicon Valley,Visitable exterior,"Historic airship hangar. Off Moffett Blvd; pin is the airfield, Hangar One stands at its south end. Geocoded to the named OSM feature (no street number)"
 Stanford Main Quad / Hoover Tower,450 Serra Mall,Stanford,CA,94305,Iconic Silicon Valley,Visitable campus,Stanford's central quad and tower
 Stanford Dish Trail,Stanford Dish,Stanford,CA,94305,Iconic Silicon Valley,Visitable trailhead,Popular hiking loop. Trailhead gate at 1310 Junipero Serra Blvd; pin is the Dish itself. Geocoded to the named OSM feature (no street number)
 Winchester Mystery House,525 S Winchester Blvd,San Jose,CA,95128,Iconic Silicon Valley,Visitable museum,Famous sprawling Victorian mansion
