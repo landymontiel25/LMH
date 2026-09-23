@@ -21,6 +21,11 @@ const SAT_TILE = {
   attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
 };
 
+const LABELS_TILE = {
+  url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+  attribution: 'Place labels &copy; Esri',
+};
+
 const DRAG_PIN_ICON = L.divIcon({
   className: '',
   html: '<div class="map-pin-wrap"><div class="map-pin map-pin-focus"></div></div>',
@@ -238,6 +243,7 @@ export default function AddLandmark() {
         <div className="itinerary-map" style={{ height: 260 }}>
           <MapContainer center={[position.lat, position.lng]} zoom={17} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
             <TileLayer url={SAT_TILE.url} attribution={SAT_TILE.attribution} />
+            <TileLayer url={LABELS_TILE.url} attribution={LABELS_TILE.attribution} zIndex={650} />
             <RecenterOnPosition position={position} />
             <Marker
               position={[position.lat, position.lng]}
