@@ -16,6 +16,7 @@ export const RATEABLE_CATEGORIES = [
   'benches',
   'parks-nature',
   'entertainment',
+  'tech',
   'history-culture',
   'art-museums',
   'food',
@@ -155,6 +156,23 @@ export const CHIPS = {
       { id: 'dead', label: 'Dead' },
       { id: 'sketchy', label: 'Sketchy' },
       { id: 'overpriced', label: 'Overpriced' },
+    ],
+  },
+  tech: {
+    'highly-recommend': [
+      { id: 'legendary-story', label: 'Legendary story' },
+      { id: 'great-photo-op', label: 'Great photo op' },
+      { id: 'felt-the-history', label: 'Felt the history' },
+    ],
+    'worth-trying': [
+      { id: 'quick-stop', label: 'Quick stop' },
+      { id: 'exterior-only', label: 'Exterior only' },
+      { id: 'for-the-fans', label: 'One for the fans' },
+    ],
+    'probably-skip': [
+      { id: 'just-an-office', label: 'Just an office' },
+      { id: 'nothing-to-see', label: 'Nothing to see' },
+      { id: 'hard-to-reach', label: 'Hard to reach' },
     ],
   },
   sports: {
@@ -300,6 +318,12 @@ export const ASPECT_SETS = {
     { id: 'location', label: 'Location' },
     { id: 'vibe', label: 'Vibe' },
     { id: 'crowd', label: 'Crowd' },
+  ],
+  tech: [
+    { id: 'price', label: 'Price' },
+    { id: 'location', label: 'Location' },
+    { id: 'storytelling', label: 'Storytelling' },
+    { id: 'access', label: 'Access' },
   ],
   sports: [
     { id: 'price', label: 'Price' },

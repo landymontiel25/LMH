@@ -12,6 +12,8 @@ import { CAPETOWN_LANDMARKS } from './landmarks.capetown.js';
 import { KEYBISCAYNE_LANDMARKS } from './landmarks.keybiscayne.js';
 import { CORALGABLES_LANDMARKS } from './landmarks.coralgables.js';
 import { F1_LANDMARKS } from './landmarks.f1.js';
+import { SANFRANCISCO_LANDMARKS } from './landmarks.sanfrancisco.js';
+import { SILICONVALLEY_LANDMARKS } from './landmarks.siliconvalley.js';
 
 export const REGIONS = [
   {
@@ -46,6 +48,32 @@ export const REGIONS = [
     center: { lat: 25.7519, lng: -80.2562 },
     viewbox: { minLat: 25.72, minLng: -80.28, maxLat: 25.77, maxLng: -80.24 },
     landmarks: CORALGABLES_LANDMARKS,
+  },
+  {
+    id: 'san-francisco',
+    name: 'San Francisco',
+    tagline: 'Golden Gate icons, AI-era offices & founder cafés',
+    city: 'San Francisco',
+    state: 'California',
+    country: 'USA',
+    center: { lat: 37.7749, lng: -122.4194 },
+    // Reaches Oakland (Block HQ) and Angel Island; the Peninsula south of
+    // South San Francisco belongs to silicon-valley.
+    viewbox: { minLat: 37.7, minLng: -122.55, maxLat: 37.9, maxLng: -122.25 },
+    landmarks: SANFRANCISCO_LANDMARKS,
+  },
+  {
+    id: 'silicon-valley',
+    name: 'Silicon Valley',
+    tagline: 'Founding garages, HQ campuses & Sand Hill Road',
+    city: 'Silicon Valley',
+    state: 'California',
+    country: 'USA',
+    center: { lat: 37.4419, lng: -122.143 },
+    // South San Francisco down to San Jose, the coast at Moss Beach out to
+    // Lick Observatory on Mount Hamilton.
+    viewbox: { minLat: 37.15, minLng: -122.55, maxLat: 37.7, maxLng: -121.6 },
+    landmarks: SILICONVALLEY_LANDMARKS,
   },
   {
     id: 'nyc',
@@ -221,6 +249,9 @@ export const INTERESTS = [
   { id: 'airports', label: 'Airports', icon: '\u{2708}\u{FE0F}', added: 7 },
   // Personal-favourite sitting spots with a view, like The 10/10 Bench.
   { id: 'benches', label: '10/10 Benches', icon: '\u{1FA91}', added: 13 },
+  // Where tech happened and happens: founding garages, HQ campuses, labs,
+  // founder hangouts, hacker houses. The Bay Area catalog is mostly this.
+  { id: 'tech', label: 'Tech & Startups', icon: '\u{1F4BB}', added: 14 },
   { id: 'campus-life', label: 'Campus Life', icon: '\u{1F3EB}', added: 3 },
   { id: 'dorms', label: 'Dorms', icon: '\u{1F6CF}\u{FE0F}', added: 6 },
 ];
