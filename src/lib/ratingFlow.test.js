@@ -38,7 +38,8 @@ describe('rateability gate', () => {
     expect(ids).toContain('stadiums');
     expect(ids).toContain('formula-1');
     expect(ids).toContain('benches');
-    expect(ids).toHaveLength(13);
+    expect(ids).toContain('tech');
+    expect(ids).toHaveLength(14);
   });
 
   it('rates airports as airports, whatever else they are tagged', () => {

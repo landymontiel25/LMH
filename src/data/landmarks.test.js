@@ -25,7 +25,7 @@ describe('landmark catalog', () => {
 describe('sortInterests', () => {
   it('orders A–Z by default, newest and oldest by when the category was added', () => {
     expect(sortInterests(INTERESTS)[0].label).toBe('10/10 Benches');
-    expect(sortInterests(INTERESTS, 'newest')[0].id).toBe('benches');
+    expect(sortInterests(INTERESTS, 'newest')[0].id).toBe('tech');
     expect(sortInterests(INTERESTS, 'oldest')[0].id).toBe('history-culture');
     expect(new Set(INTERESTS.map((i) => i.added)).size).toBe(INTERESTS.length);
   });
