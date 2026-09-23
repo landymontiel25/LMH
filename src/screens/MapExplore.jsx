@@ -14,7 +14,7 @@ import { distanceMeters, nearestRegionId } from '../lib/geo';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useMyPhotos } from '../lib/MyPhotosContext';
-import { getLandmarkOverrides } from '../lib/landmarkOverrides';
+import { getLandmarkOverrides, saveLandmarkPosition } from '../lib/landmarkOverrides';
 import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks';
 import { isAdmin } from '../lib/admins';
 import CheckInButton from '../components/CheckInButton';
@@ -241,6 +241,31 @@ export default function MapExplore() {
     });
   const passesFilter = (l) => filterCats.size === 0 || (l.categories || []).some((c) => filterCats.has(c));
 
+  // "Move pins" mode: built-in landmark markers become draggable and a
+  // drop saves the corrected spot to the shared landmark_overrides
+  // collection (landmarkOverrides.js) -- the same mechanism the old,
+  // always-on drag-to-fix behavior wrote to, brought back as an explicit,
+  // discoverable toggle instead. Requires being signed in (Firestore's own
+  // rule for the collection does too); doesn't cover custom/user-submitted
+  // landmarks, which already store their own exact position.
+  const [editMode, setEditMode] = useState(false);
+  const [pinSavedNote, setPinSavedNote] = useState(null);
+  useEffect(() => {
+    if (!pinSavedNote) return;
+    const t = setTimeout(() => setPinSavedNote(null), 2500);
+    return () => clearTimeout(t);
+  }, [pinSavedNote]);
+  const handlePinDragEnd = (l, e) => {
+    const { lat, lng } = e.target.getLatLng();
+    setSavedOverrides((prev) => ({ ...prev, [`${l.regionId}/${l.id}`]: { lat, lng } }));
+    setPinSavedNote(l.name);
+    saveLandmarkPosition({ region: l.regionId, id: l.id, name: l.name, lat, lng, userId: user?.uid }).catch(() => {
+      // Firestore write failed -- the corrected pin still shows in the
+      // right spot for this session, it just won't persist for everyone
+      // until it's dragged again with a working connection.
+    });
+  };
+
   // A pin dropped by long-pressing an exact spot on the map -- lets you
   // pinpoint somewhere that isn't one of the built-in landmarks (e.g. a
   // specific building on a campus) and carry that exact location straight
@@ -261,6 +286,7 @@ export default function MapExplore() {
   const startPlacingPin = () => {
     setPinDrop(null);
     setSearchOpen(false);
+    setEditMode(false);
     setPlacingPin(true);
   };
 
@@ -358,6 +384,13 @@ export default function MapExplore() {
     setSearchOpen((open) => !open);
     setSearchTerm('');
     setFilterOpen(false);
+    setEditMode(false);
+  };
+
+  const toggleEditMode = () => {
+    setEditMode((on) => !on);
+    setSearchOpen(false);
+    setFilterOpen(false);
   };
 
   // A live, distance-sorted view of what's closest right now, shown in the
@@ -396,7 +429,13 @@ export default function MapExplore() {
         const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
         const position = savedPos ? [savedPos.lat, savedPos.lng] : [l.lat, l.lng];
         return (
-          <Marker key={`${l.regionId}/${l.id}`} position={position} icon={pinIcon(isClaimed, isSelected)}>
+          <Marker
+            key={`${l.regionId}/${l.id}`}
+            position={position}
+            icon={pinIcon(isClaimed, isSelected)}
+            draggable={editMode}
+            eventHandlers={editMode ? { dragend: (e) => handlePinDragEnd(l, e) } : undefined}
+          >
             <Popup>
               <div className="map-popup">
                 <div
@@ -462,7 +501,7 @@ export default function MapExplore() {
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps -- passesFilter only reads filterCats
-    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides, filterCats]
+    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides, filterCats, editMode]
   );
 
   const customMarkers = useMemo(
@@ -688,6 +727,7 @@ export default function MapExplore() {
             onClick={() => {
               setFilterOpen((o) => !o);
               setSearchOpen(false);
+              setEditMode(false);
             }}
           >
             {filterOpen ? '\u{2715}' : '\u{1F5C2}\u{FE0F}'}
@@ -717,6 +757,31 @@ export default function MapExplore() {
                 ))}
               </div>
             </div>
+          )}
+          {(!searchOpen && !filterOpen) || editMode ? (
+            <button
+              type="button"
+              className={`map-edit-btn ${editMode ? 'active' : ''}`}
+              disabled={!user}
+              title={user ? 'Move pins to fix their spot' : 'Sign in to move pins'}
+              onClick={toggleEditMode}
+            >
+              {editMode ? (
+                '\u{2715}'
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                  <line x1="5" y1="6.5" x2="19" y2="6.5" />
+                  <line x1="5" y1="11.5" x2="19" y2="11.5" />
+                  <line x1="5" y1="16.5" x2="19" y2="16.5" />
+                  <line x1="5" y1="21.5" x2="13" y2="21.5" />
+                </svg>
+              )}
+            </button>
+          ) : null}
+          {pinSavedNote ? (
+            <p className="tag tag-free map-edit-hint">Saved: {pinSavedNote}</p>
+          ) : (
+            editMode && <p className="tag map-edit-hint">Drag a pin to fix its spot — saves for everyone</p>
           )}
           {searchOpen && (
             <div className="map-search-panel">
