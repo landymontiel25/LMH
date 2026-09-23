@@ -110,8 +110,29 @@ export const SILICONVALLEY_LANDMARKS = [
     typicalMinutes: 45
   },
   {
-    id: "googleplex",
+    id: "apple-park",
     editorialRank: 6,
+    popularity: 8,
+    cost: "Free",
+    neighborhood: "Apple Park",
+    firstTimerPriority: "Medium",
+    images: ["https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Apple_Park_dllu.jpg?width=1200", "https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Apple_Park.jpg?width=1200"],
+    name: "Apple Park",
+    region: 'silicon-valley',
+    lat: 37.334835,
+    lng: -122.011392,
+    checkInRadiusMeters: 600,
+    categories: ["tech"],
+    summary: "Apple's ring-shaped corporate headquarters, nicknamed \"the spaceship,\" home to the company's main campus since 2017.",
+    tip: "This is Apple's secure, badge-only corporate campus, not open to the public or to sightseeing on foot — it's here so Apple employees and other badge holders have a landmark to check into at work. Visitors wanting the closest public look at the ring should go to the Apple Park Visitor Center instead.",
+    facts: ["The ring-shaped main building is nicknamed \"the spaceship\"", "Designed by Foster + Partners, with input from Steve Jobs before his death in 2011", "Employees began moving in during April 2017", "Built in part on land that once held a Hewlett-Packard campus along Pruneridge Avenue", "Reported to have cost around $5 billion to build", "Houses roughly 12,000 employees", "The curved glass panels used on the ring are among the largest ever made for a building", "Landscaped with roughly 9,000 drought-tolerant and fruit trees, including a large apricot orchard", "The address 1 Apple Park Way replaced 1 Infinite Loop as Apple's headquarters address in 2017", "A fitness center and an employee-only café sit inside the ring alongside office space"],
+    free: true,
+    bookingUrl: null,
+    typicalMinutes: 10
+  },
+  {
+    id: "googleplex",
+    editorialRank: 7,
     popularity: 8,
     cost: "Free",
     neighborhood: "North Bayshore",
@@ -132,7 +153,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "meta-hq",
-    editorialRank: 7,
+    editorialRank: 8,
     popularity: 8,
     cost: "Free",
     neighborhood: "Belle Haven",
@@ -153,7 +174,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "winchester-mystery-house",
-    editorialRank: 8,
+    editorialRank: 9,
     popularity: 8,
     cost: "$$$",
     neighborhood: "West San Jose",
@@ -174,7 +195,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "levis-stadium",
-    editorialRank: 9,
+    editorialRank: 10,
     popularity: 8,
     cost: "$$$",
     neighborhood: "North Santa Clara",
@@ -195,7 +216,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "apple-garage",
-    editorialRank: 10,
+    editorialRank: 11,
     popularity: 7,
     cost: "Free",
     neighborhood: "Los Altos",
@@ -216,7 +237,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "computer-history-museum",
-    editorialRank: 11,
+    editorialRank: 12,
     popularity: 7,
     cost: "$$",
     neighborhood: "North Bayshore",
@@ -237,7 +258,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "facebook-first-office-plaque",
-    editorialRank: 12,
+    editorialRank: 13,
     popularity: 7,
     cost: "Free",
     neighborhood: "Downtown Palo Alto",
@@ -258,7 +279,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "adobe-hq",
-    editorialRank: 13,
+    editorialRank: 14,
     popularity: 7,
     cost: "Free",
     neighborhood: "Downtown San Jose",
@@ -279,7 +300,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "ebay-hq",
-    editorialRank: 14,
+    editorialRank: 15,
     popularity: 7,
     cost: "Free",
     neighborhood: "West San Jose, near Campbell",
@@ -300,7 +321,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "yahoo-hq",
-    editorialRank: 15,
+    editorialRank: 16,
     popularity: 7,
     cost: "Free",
     neighborhood: "Moffett Park, Sunnyvale",
@@ -321,7 +342,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "oracle-hq",
-    editorialRank: 16,
+    editorialRank: 17,
     popularity: 7,
     cost: "Free",
     neighborhood: "Redwood Shores",
@@ -342,7 +363,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "cisco-current-hq",
-    editorialRank: 17,
+    editorialRank: 18,
     popularity: 7,
     cost: "Free",
     neighborhood: "North San Jose",
@@ -363,7 +384,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "tesla-fremont-factory",
-    editorialRank: 18,
+    editorialRank: 19,
     popularity: 7,
     cost: "Free",
     neighborhood: "Warm Springs",
@@ -384,7 +405,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "the-tech-interactive",
-    editorialRank: 19,
+    editorialRank: 20,
     popularity: 7,
     cost: "$$",
     neighborhood: "Downtown San Jose",
@@ -405,7 +426,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "sap-center",
-    editorialRank: 20,
+    editorialRank: 21,
     popularity: 7,
     cost: "$$$",
     neighborhood: "Downtown San Jose",
@@ -426,7 +447,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "shoreline-amphitheatre",
-    editorialRank: 21,
+    editorialRank: 22,
     popularity: 7,
     cost: "$$$",
     neighborhood: "Shoreline Park",
@@ -447,7 +468,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "stanford-memorial-church",
-    editorialRank: 22,
+    editorialRank: 23,
     popularity: 7,
     cost: "Free",
     neighborhood: "Stanford Main Quad",
@@ -468,7 +489,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "a16z-menlo-park-headquarters",
-    editorialRank: 23,
+    editorialRank: 24,
     popularity: 6,
     cost: "Free",
     neighborhood: "Sand Hill Road",
@@ -489,7 +510,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "hp-garage",
-    editorialRank: 24,
+    editorialRank: 25,
     popularity: 6,
     cost: "Free",
     neighborhood: "Professorville",
@@ -510,7 +531,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "google-garage",
-    editorialRank: 25,
+    editorialRank: 26,
     popularity: 6,
     cost: "Free",
     neighborhood: "Menlo Park",
@@ -531,7 +552,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "xerox-parc",
-    editorialRank: 26,
+    editorialRank: 27,
     popularity: 6,
     cost: "Free",
     neighborhood: "Stanford Research Park",
@@ -552,7 +573,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "intel-museum",
-    editorialRank: 27,
+    editorialRank: 28,
     popularity: 6,
     cost: "Free",
     neighborhood: "Mission College",
@@ -573,7 +594,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "the-lucky-building-karma-building",
-    editorialRank: 28,
+    editorialRank: 29,
     popularity: 6,
     cost: "Free",
     neighborhood: "Downtown Palo Alto",
@@ -594,7 +615,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "genentech-founding-site",
-    editorialRank: 29,
+    editorialRank: 30,
     popularity: 6,
     cost: "Free",
     neighborhood: "Oyster Point",
@@ -615,7 +636,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "atari-hq",
-    editorialRank: 30,
+    editorialRank: 31,
     popularity: 6,
     cost: "Free",
     neighborhood: "Moffett Park",
@@ -636,7 +657,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "alpine-inn-zotts-rossottis",
-    editorialRank: 31,
+    editorialRank: 32,
     popularity: 6,
     cost: "$",
     neighborhood: "Portola Valley",
@@ -657,7 +678,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "bucks-of-woodside",
-    editorialRank: 32,
+    editorialRank: 33,
     popularity: 6,
     cost: "$$",
     neighborhood: "Woodside",
@@ -678,7 +699,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "y-combinator-mountain-view-office",
-    editorialRank: 33,
+    editorialRank: 34,
     popularity: 6,
     cost: "Free",
     neighborhood: "North Shoreline",
@@ -699,7 +720,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "paypal-hq",
-    editorialRank: 34,
+    editorialRank: 35,
     popularity: 6,
     cost: "Free",
     neighborhood: "North San Jose",
@@ -720,7 +741,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "stripe-hq",
-    editorialRank: 35,
+    editorialRank: 36,
     popularity: 6,
     cost: "Free",
     neighborhood: "Oyster Point",
@@ -741,7 +762,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "palantir-original-palo-alto-office",
-    editorialRank: 36,
+    editorialRank: 37,
     popularity: 6,
     cost: "Free",
     neighborhood: "Downtown Palo Alto",
@@ -762,7 +783,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "nasa-ames-hangar-one",
-    editorialRank: 37,
+    editorialRank: 38,
     popularity: 6,
     cost: "Free",
     neighborhood: "Moffett Field",
@@ -783,7 +804,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "stanford-dish-trail",
-    editorialRank: 38,
+    editorialRank: 39,
     popularity: 6,
     cost: "Free",
     neighborhood: "Stanford foothills",
@@ -804,7 +825,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "rosicrucian-egyptian-museum",
-    editorialRank: 39,
+    editorialRank: 40,
     popularity: 6,
     cost: "$$",
     neighborhood: "Rose Garden",
@@ -825,7 +846,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "filoli-historic-house-and-garden",
-    editorialRank: 40,
+    editorialRank: 41,
     popularity: 6,
     cost: "$$",
     neighborhood: "Woodside",
@@ -846,7 +867,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "cantor-arts-center",
-    editorialRank: 41,
+    editorialRank: 42,
     popularity: 6,
     cost: "Free",
     neighborhood: "Stanford Campus",
@@ -867,7 +888,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "mission-santa-clara-de-asis",
-    editorialRank: 42,
+    editorialRank: 43,
     popularity: 6,
     cost: "Free",
     neighborhood: "Santa Clara University",
@@ -888,7 +909,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "californias-great-america",
-    editorialRank: 43,
+    editorialRank: 44,
     popularity: 6,
     cost: "$$$",
     neighborhood: "North Santa Clara",
@@ -909,7 +930,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "lick-observatory",
-    editorialRank: 44,
+    editorialRank: 45,
     popularity: 6,
     cost: "Free",
     neighborhood: "Mount Hamilton",
@@ -930,7 +951,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "santana-row",
-    editorialRank: 45,
+    editorialRank: 46,
     popularity: 6,
     cost: "Free",
     neighborhood: "Santana Row",
@@ -951,7 +972,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "netscape-communications-original-hq",
-    editorialRank: 46,
+    editorialRank: 47,
     popularity: 5,
     cost: "Free",
     neighborhood: "Middlefield / North Mountain View",
@@ -972,7 +993,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "fairchild-semiconductor-original-building",
-    editorialRank: 47,
+    editorialRank: 48,
     popularity: 5,
     cost: "Free",
     neighborhood: "South Palo Alto",
@@ -993,7 +1014,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "sri-international",
-    editorialRank: 48,
+    editorialRank: 49,
     popularity: 5,
     cost: "Free",
     neighborhood: "Menlo Park",
@@ -1014,7 +1035,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "youtube-garage",
-    editorialRank: 49,
+    editorialRank: 50,
     popularity: 5,
     cost: "Free",
     neighborhood: "Allied Arts",
@@ -1035,7 +1056,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "cisco-original-site",
-    editorialRank: 50,
+    editorialRank: 51,
     popularity: 5,
     cost: "Free",
     neighborhood: "Atherton",
@@ -1056,7 +1077,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "electronic-arts-first-base",
-    editorialRank: 51,
+    editorialRank: 52,
     popularity: 5,
     cost: "Free",
     neighborhood: "Hillsdale",
@@ -1077,7 +1098,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "x-com-early-address",
-    editorialRank: 52,
+    editorialRank: 53,
     popularity: 5,
     cost: "Free",
     neighborhood: "Downtown Palo Alto",
@@ -1098,7 +1119,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "peninsula-creamery",
-    editorialRank: 53,
+    editorialRank: 54,
     popularity: 5,
     cost: "$$",
     neighborhood: "Downtown Palo Alto",
@@ -1118,7 +1139,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "rosewood-sand-hill-madera",
-    editorialRank: 54,
+    editorialRank: 55,
     popularity: 5,
     cost: "$$$$",
     neighborhood: "Sand Hill Road",
@@ -1138,7 +1159,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "coupa-cafe",
-    editorialRank: 55,
+    editorialRank: 56,
     popularity: 5,
     cost: "$",
     neighborhood: "Downtown Palo Alto",
@@ -1158,7 +1179,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "evvia-estiatorio",
-    editorialRank: 56,
+    editorialRank: 57,
     popularity: 5,
     cost: "$$$",
     neighborhood: "Downtown Palo Alto",
@@ -1179,7 +1200,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "villa-montalvo-montalvo-arts-center",
-    editorialRank: 57,
+    editorialRank: 58,
     popularity: 5,
     cost: "Free",
     neighborhood: "Saratoga Foothills",
@@ -1200,7 +1221,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "municipal-rose-garden",
-    editorialRank: 58,
+    editorialRank: 59,
     popularity: 5,
     cost: "Free",
     neighborhood: "Rose Garden",
@@ -1221,7 +1242,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "palo-alto-baylands-nature-preserve",
-    editorialRank: 59,
+    editorialRank: 60,
     popularity: 5,
     cost: "Free",
     neighborhood: "Palo Alto Baylands",
@@ -1242,7 +1263,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "hakone-estate-and-gardens",
-    editorialRank: 60,
+    editorialRank: 61,
     popularity: 5,
     cost: "$",
     neighborhood: "Saratoga",
@@ -1263,7 +1284,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "shockley-semiconductor-site",
-    editorialRank: 61,
+    editorialRank: 62,
     popularity: 4,
     cost: "Free",
     neighborhood: "San Antonio Center",
@@ -1284,7 +1305,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "silicon-graphics-sgi-original-campus",
-    editorialRank: 62,
+    editorialRank: 63,
     popularity: 4,
     cost: "Free",
     neighborhood: "North Bayshore",
@@ -1305,7 +1326,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "nikola-tesla-statue",
-    editorialRank: 63,
+    editorialRank: 64,
     popularity: 4,
     cost: "Free",
     neighborhood: "California Avenue",
@@ -1326,7 +1347,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "nest-labs-first-office",
-    editorialRank: 64,
+    editorialRank: 65,
     popularity: 4,
     cost: "Free",
     neighborhood: "Downtown North",
@@ -1347,7 +1368,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "gopro-origin-cottage",
-    editorialRank: 65,
+    editorialRank: 66,
     popularity: 4,
     cost: "Free",
     neighborhood: "Moss Beach",
@@ -1368,7 +1389,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "dolby-labs-early-bay-area-lab",
-    editorialRank: 66,
+    editorialRank: 67,
     popularity: 4,
     cost: "Free",
     neighborhood: "Downtown North",
@@ -1389,7 +1410,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "dutch-goose",
-    editorialRank: 67,
+    editorialRank: 68,
     popularity: 4,
     cost: "$",
     neighborhood: "West Menlo Park",
@@ -1410,7 +1431,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "st-michaels-alley",
-    editorialRank: 68,
+    editorialRank: 69,
     popularity: 4,
     cost: "$$",
     neighborhood: "University South",
@@ -1431,7 +1452,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "il-fornaio-palo-alto",
-    editorialRank: 69,
+    editorialRank: 70,
     popularity: 4,
     cost: "$$",
     neighborhood: "Downtown Palo Alto",
@@ -1452,7 +1473,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "red-rock-coffee",
-    editorialRank: 70,
+    editorialRank: 71,
     popularity: 4,
     cost: "$",
     neighborhood: "Downtown Mountain View",
@@ -1472,7 +1493,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "the-village-pub",
-    editorialRank: 71,
+    editorialRank: 72,
     popularity: 4,
     cost: "$$$$",
     neighborhood: "Woodside",
@@ -1492,7 +1513,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "bird-dog",
-    editorialRank: 72,
+    editorialRank: 73,
     popularity: 4,
     cost: "$$$",
     neighborhood: "Downtown Palo Alto",
@@ -1513,7 +1534,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "calafia-cafe",
-    editorialRank: 73,
+    editorialRank: 74,
     popularity: 4,
     cost: "Free",
     neighborhood: "Town & Country Village",
@@ -1534,7 +1555,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "applied-materials-hq",
-    editorialRank: 74,
+    editorialRank: 75,
     popularity: 4,
     cost: "Free",
     neighborhood: "Santa Clara",
@@ -1555,7 +1576,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "japanese-friendship-garden",
-    editorialRank: 75,
+    editorialRank: 76,
     popularity: 4,
     cost: "Free",
     neighborhood: "Kelley Park",
@@ -1576,7 +1597,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "history-san-jose-history-park",
-    editorialRank: 76,
+    editorialRank: 77,
     popularity: 4,
     cost: "Free",
     neighborhood: "Kelley Park",
@@ -1597,7 +1618,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "guadalupe-river-park",
-    editorialRank: 77,
+    editorialRank: 78,
     popularity: 4,
     cost: "Free",
     neighborhood: "Downtown San Jose",
@@ -1618,7 +1639,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "a16z-the-quad-expansion",
-    editorialRank: 78,
+    editorialRank: 79,
     popularity: 3,
     cost: "Free",
     neighborhood: "Sand Hill Road",
@@ -1639,7 +1660,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "loudcloud-opsware-hq",
-    editorialRank: 79,
+    editorialRank: 80,
     popularity: 3,
     cost: "Free",
     neighborhood: "North Sunnyvale",
@@ -1660,7 +1681,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "emerson-channing-plaque",
-    editorialRank: 80,
+    editorialRank: 81,
     popularity: 3,
     cost: "Free",
     neighborhood: "Downtown Palo Alto",
@@ -1681,7 +1702,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "varian-associates",
-    editorialRank: 81,
+    editorialRank: 82,
     popularity: 3,
     cost: "Free",
     neighborhood: "Stanford Research Park",
@@ -1702,7 +1723,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "ibm-building-025-memorial",
-    editorialRank: 82,
+    editorialRank: 83,
     popularity: 3,
     cost: "Free",
     neighborhood: "Santa Teresa",
@@ -1723,7 +1744,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "doc-herrold-radio-broadcast-site",
-    editorialRank: 83,
+    editorialRank: 84,
     popularity: 3,
     cost: "Free",
     neighborhood: "Downtown San Jose",
@@ -1744,7 +1765,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "ideo-david-kelley-design-origin",
-    editorialRank: 84,
+    editorialRank: 85,
     popularity: 3,
     cost: "Free",
     neighborhood: "University South",
@@ -1765,7 +1786,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "zilog-federico-faggin-origin",
-    editorialRank: 85,
+    editorialRank: 86,
     popularity: 3,
     cost: "Free",
     neighborhood: "Downtown Los Altos",
@@ -1786,7 +1807,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "logitech-early-us-base",
-    editorialRank: 86,
+    editorialRank: 87,
     popularity: 3,
     cost: "Free",
     neighborhood: "Old Palo Alto",
@@ -1807,7 +1828,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "sand-hill-sundeck",
-    editorialRank: 87,
+    editorialRank: 88,
     popularity: 3,
     cost: "$$",
     neighborhood: "Sand Hill Road",
@@ -1828,7 +1849,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "rengstorff-house",
-    editorialRank: 88,
+    editorialRank: 89,
     popularity: 3,
     cost: "Free",
     neighborhood: "Shoreline Park",
@@ -1849,7 +1870,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "center-of-santa-clara-valley-plaque",
-    editorialRank: 89,
+    editorialRank: 90,
     popularity: 2,
     cost: "Free",
     neighborhood: "Coyote Valley",
@@ -1870,7 +1891,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "cromemco-origin",
-    editorialRank: 90,
+    editorialRank: 91,
     popularity: 2,
     cost: "Free",
     neighborhood: "Downtown Menlo Park",
@@ -1891,7 +1912,7 @@ export const SILICONVALLEY_LANDMARKS = [
   },
   {
     id: "vm-labs-origin",
-    editorialRank: 91,
+    editorialRank: 92,
     popularity: 1,
     cost: "Free",
     neighborhood: "Los Altos Hills",
