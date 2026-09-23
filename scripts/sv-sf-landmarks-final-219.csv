@@ -1,6 +1,6 @@
 Name,Address,City,State,Zip,Category,Status,Notes
-a16z Menlo Park Headquarters,2865 Sand Hill Road Suite 101,Menlo Park,CA,94025,a16z Company,Active,Current official HQ per a16z.com/offices
-a16z The Quad Expansion,2400-2450 Sand Hill Road,Menlo Park,CA,94025,a16z Company,Active,2024 lease ~34000 sq ft
+a16z Menlo Park Headquarters,2865 Sand Hill Road,Menlo Park,CA,94025,a16z Company,Active,Current official HQ per a16z.com/offices
+a16z The Quad Expansion,2400 Sand Hill Road,Menlo Park,CA,94025,a16z Company,Active,2024 lease ~34000 sq ft
 a16z San Francisco Office,180 Townsend Street,San Francisco,CA,94107,a16z Company,Active,Firm's SF outpost
 Netscape Communications Original HQ,501 E Middlefield Road,Mountain View,CA,94043,a16z Company Origin,Verify tenant,Marc Andreessen co-founded here 1994
 Loudcloud/Opsware HQ,599 N Mathilda Avenue,Sunnyvale,CA,94085,a16z Company Origin,Verify tenant,Founded 9/9/99 by Andreessen and Horowitz sold to HP 2007 for 1.65B
@@ -9,7 +9,7 @@ Shockley Semiconductor Site,391 San Antonio Rd,Mountain View,CA,94040,Historic O
 Fairchild Semiconductor Original Building,844 Charleston Rd,Palo Alto,CA,94303,Historic Origin,Standing,Planar process / integrated circuit
 Apple Garage,2066 Crist Drive,Los Altos,CA,94024,Historic Origin,Private residence - view from street,Steve Jobs childhood home
 Google Garage,232 Santa Margarita Ave,Menlo Park,CA,94025,Historic Origin,Private - viewable from street,Owned by Google as tribute
-Emerson/Channing Plaque,Corner of Emerson St and Channing Ave,Palo Alto,CA,94301,Historic Origin,Plaque only,Triode vacuum tube development site
+Emerson/Channing Plaque,913 Emerson St,Palo Alto,CA,94301,Historic Origin,Plaque only,Triode vacuum tube development site
 Xerox PARC,3333 Coyote Hill Rd,Palo Alto,CA,94304,Historic Origin,Exterior viewable only,Jobs saw GUI/mouse here Dec 1979
 SRI International,333 Ravenswood Ave,Menlo Park,CA,94025,Historic Origin,Exterior viewable only,Site of Doug Engelbart's 1968 Mother of All Demos - mouse hypertext video conferencing
 Varian Associates,611 Hansen Way,Palo Alto,CA,94304,Historic Origin,Verify address,Klystron tube inventors first tenant of Stanford Industrial Park
@@ -47,7 +47,7 @@ Il Fornaio Palo Alto,520 Cowper St,Palo Alto,CA,94301,Founder Hangout,Open,VC/re
 Peninsula Creamery,566 Emerson St,Palo Alto,CA,94301,Founder Hangout,Open,Classic engineer diner
 Red Rock Coffee,201 Castro St,Mountain View,CA,94041,Founder Hangout,Open,Coder night hangout
 The Battery,717 Battery St,San Francisco,CA,94111,Private Club,Members only,Est 2013 tech members club
-The Institute,415 Mission St 59th Floor (Salesforce Tower),San Francisco,CA,94105,Private Club,Members only - invite only,Founded 2024 by Hering and Tamas
+The Institute,415 Mission St,San Francisco,CA,94105,Private Club,Members only - invite only,Founded 2024 by Hering and Tamas
 Rosewood Sand Hill / Madera,2825 Sand Hill Rd,Menlo Park,CA,94025,Private Club,Open to public restaurant,VERIFIED coords 37.419764 -122.211789
 The Village Pub,2967 Woodside Rd,Woodside,CA,94062,Private Club,Open,VC second office
 Corgi Cafe,9 Claude Lane,San Francisco,CA,94108,AI-Era Hangout,Verify which locations open,Below AI-insurance startup Corgi
@@ -82,7 +82,7 @@ Pinterest HQ,505 Brannan St,San Francisco,CA,94107,Tech HQ,Active,Company headqu
 Adobe HQ,345 Park Ave,San Jose,CA,95110,Tech HQ,Active,Iconic Adobe Towers skyline
 eBay HQ,2025 Hamilton Ave,San Jose,CA,95125,Tech HQ,Active,Company headquarters
 PayPal HQ,2211 N First St,San Jose,CA,95131,Tech HQ,Active,Company headquarters
-Yahoo HQ,701 First Ave,Sunnyvale,CA,94089,Tech HQ,Active,Company headquarters
+Yahoo HQ,701 1st Ave,Sunnyvale,CA,94089,Tech HQ,Active,Company headquarters
 Netflix HQ,100 Winchester Circle,Los Gatos,CA,95032,Tech HQ,Active,Company headquarters
 Nvidia HQ,2788 San Tomas Expressway,Santa Clara,CA,95051,Tech HQ,Active,Ship-shaped Endeavor building
 Apple Original HQ,1 Infinite Loop,Cupertino,CA,95014,Tech HQ Origin,Verify current tenant,Apple's original headquarters address

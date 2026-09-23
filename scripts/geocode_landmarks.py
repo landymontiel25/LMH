@@ -112,11 +112,17 @@ def judge(result, address, city, zip_code):
         else:
             reasons.append(f"city {got_city} != {city}")
 
+    # OSM postcodes are patchy (Townsend St filed under 94017, Mission
+    # Dolores under UCSF's 94143), so a ZIP disagreement is noted for the
+    # reviewer but does not on its own flag a house-number + city match.
     got_zip = addr.get("postcode", "")
+    note = ""
     if zip_code and got_zip and got_zip[:5] != zip_code[:5]:
-        reasons.append(f"zip {got_zip} != {zip_code}")
+        note = f"(osm zip {got_zip}, csv {zip_code})"
 
-    return ("OK", "") if not reasons else ("LOW_CONFIDENCE_REVIEW", "; ".join(reasons))
+    if reasons:
+        return "LOW_CONFIDENCE_REVIEW", "; ".join(reasons + ([note] if note else []))
+    return "OK", note
 
 
 class LiveTransport:
