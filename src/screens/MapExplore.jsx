@@ -368,21 +368,28 @@ export default function MapExplore() {
     if (!term) return [];
     const landmarkMatches = ALL_LANDMARKS.filter(
       (l) => l.name.toLowerCase().includes(term) || getRegion(l.regionId)?.name.toLowerCase().includes(term)
-    ).map((l) => ({
-      // A landmark's own id is only unique within its region (two cities
-      // can both have a "the-battery"), so the region has to be part of the
-      // key too -- otherwise two different results collide on one React key
-      // and the list can visibly duplicate/misrender as you type.
-      id: `landmark-${l.regionId}-${l.id}`,
-      name: l.name,
-      sub: getRegion(l.regionId)?.name,
-      lat: l.lat,
-      lng: l.lng,
-      zoom: 17,
-    }));
+    ).map((l) => {
+      // A drag-to-fix correction (savedOverrides) has to win here too, or
+      // jumping to a landmark via search flies you back to its original,
+      // wrong spot -- right next to where the corrected pin actually sits,
+      // which reads as two of it on the map.
+      const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
+      return {
+        // A landmark's own id is only unique within its region (two cities
+        // can both have a "the-battery"), so the region has to be part of
+        // the key too -- otherwise two different results collide on one
+        // React key and the list can visibly duplicate/misrender as you type.
+        id: `landmark-${l.regionId}-${l.id}`,
+        name: l.name,
+        sub: getRegion(l.regionId)?.name,
+        lat: savedPos?.lat ?? l.lat,
+        lng: savedPos?.lng ?? l.lng,
+        zoom: 17,
+      };
+    });
     const placeMatches = SEARCHABLE_PLACES.filter((p) => p.name.toLowerCase().includes(term));
     return [...landmarkMatches, ...placeMatches].slice(0, 8);
-  }, [searchTerm]);
+  }, [searchTerm, savedOverrides]);
 
   const selectSearchResult = (result) => {
     setSearchFocus(result);
@@ -410,21 +417,24 @@ export default function MapExplore() {
   const nearbyList = useMemo(() => {
     if (!coords) return [];
     const all = [
-      ...ALL_LANDMARKS.map((l) => ({
-        id: `landmark-${l.regionId}-${l.id}`,
-        name: l.name,
-        region: l.regionId,
-        landmarkId: l.id,
-        lat: l.lat,
-        lng: l.lng,
-      })),
+      ...ALL_LANDMARKS.map((l) => {
+        const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
+        return {
+          id: `landmark-${l.regionId}-${l.id}`,
+          name: l.name,
+          region: l.regionId,
+          landmarkId: l.id,
+          lat: savedPos?.lat ?? l.lat,
+          lng: savedPos?.lng ?? l.lng,
+        };
+      }),
       ...customLandmarks.map((l) => ({ id: `custom-${l.docId}`, name: l.name, region: l.region, landmarkId: l.id, lat: l.lat, lng: l.lng })),
     ];
     return all
       .map((l) => ({ ...l, meters: distanceMeters(coords.lat, coords.lng, l.lat, l.lng) }))
       .sort((a, b) => a.meters - b.meters)
       .slice(0, 12);
-  }, [coords, customLandmarks]);
+  }, [coords, customLandmarks, savedOverrides]);
 
   // Build the markers once and reuse the same elements across re-renders. GPS
   // ticks update `coords` several times a minute; if the markers were rebuilt
