@@ -16,18 +16,18 @@ Varian Associates,611 Hansen Way,Palo Alto,CA,94304,Historic Origin,Verify addre
 Silicon Graphics (SGI) Original Campus,2011 N Shoreline Blvd,Mountain View,CA,94043,Historic Origin,Verify current tenant,Jim Clark founded SGI 1981 - campus later became Googleplex
 Computer History Museum,1401 N Shoreline Blvd,Mountain View,CA,94043,Historic Origin,Visitable museum,Holds Wagon Wheel artifacts
 Intel Museum,2200 Mission College Blvd,Santa Clara,CA,95054,Historic Origin,Visitable museum,Inside Intel HQ
-IBM Building 025 Memorial,Approx 37.2536 -121.8016 (Lowe's parking lot),San Jose,CA,,Historic Origin,Visitable marker,Memorial to 1950s IBM research campus
-Center of Santa Clara Valley Plaque,Remote bike trail approx 37.2297 -121.7567,San Jose,CA,,Historic Origin,Visitable marker,Binary code plaque
-Nikola Tesla Statue,Approx 37.4262 -122.1412,Palo Alto,CA,,Historic Origin,Visitable,Hidden time capsule opens 2043
-Doc Herrold Radio Broadcast Site,Approx 37.3338 -121.8892,San Jose,CA,,Historic Origin,Plaque only,First radio broadcast 1909
+IBM Building 025 Memorial,5550 Cottle Road,San Jose,CA,95123,Historic Origin,Visitable marker,"Memorial to 1950s IBM research campus. Lowe's, 5550 Cottle Rd, on the old IBM Cottle Road campus"
+Center of Santa Clara Valley Plaque,Approx 37.2297 -121.7567 (Coyote Creek Trail parking lot off Monterey Rd),San Jose,CA,95139,Historic Origin,Visitable marker,Binary code plaque
+Nikola Tesla Statue,260 Sheridan Ave,Palo Alto,CA,94306,Historic Origin,Visitable,Hidden time capsule opens 2043
+Doc Herrold Radio Broadcast Site,50 West San Fernando Street,San Jose,CA,95113,Historic Origin,Plaque only,First radio broadcast 1909. CA Historical Landmark 952 plaque at 1st and San Fernando
 YouTube Garage,765 Hobart St,Menlo Park,CA,94025,Historic Origin Tier3,Verify address,Chad Hurley's home garage
 Nest Labs First Office,235 Alma St,Palo Alto,CA,94301,Historic Origin Tier3,Verify address,Rented via Craigslist
 Cisco Original Site,199 Oak Grove Ave,Atherton,CA,94027,Historic Origin Tier3,Verify address,Bosack/Lerner 1984 founding house
-Electronic Arts First Base,415 Camino Al Lago,San Mateo,CA,94402,Historic Origin Tier3,Verify address,Trip Hawkins house 1982
+Electronic Arts First Base,2755 Campus Dr,San Mateo,CA,94403,Historic Origin Tier3,Verify address,Trip Hawkins house 1982. EA's first office (1982-83); the 415 Camino Al Lago house address in the source is in Atherton and could not be geocoded
 Cromemco Origin,1049 Evelyn St,Menlo Park,CA,94025,Historic Origin Tier3,Verify - weak sourcing,
 IDEO David Kelley Design Origin,715 Emerson St,Palo Alto,CA,94301,Historic Origin Tier3,Verify - weak sourcing,
 GoPro Origin Cottage,2132 Vallemar St,Moss Beach,CA,94038,Historic Origin Tier3,Verify - weak sourcing,Nick Woodman rented cottage
-Zilog Federico Faggin Origin,178 Lowell Ave,Los Altos,CA,94022,Historic Origin Tier3,Verify - weak sourcing,
+Zilog Federico Faggin Origin,170 State St,Los Altos,CA,94022,Historic Origin Tier3,Verify - weak sourcing,Address per Zilog's 1976 Z80 CPU manual (source's 178 Lowell Ave does not exist in Los Altos)
 VM Labs Origin,24790 Summerhill Ave,Los Altos Hills,CA,94022,Historic Origin Tier3,Verify - weak sourcing,
 Logitech Early US Base,1350 Bryant St,Palo Alto,CA,94301,Historic Origin Tier3,Verify - weak sourcing,
 Dolby Labs Early Bay Area Lab,222 Waverley St,Palo Alto,CA,94301,Historic Origin Tier3,Verify - weak sourcing,
@@ -59,7 +59,7 @@ OpenAI Office,1455 3rd St,San Francisco,CA,94158,AI-Era Hangout,Active - not ope
 Anthropic Office,500 Howard St,San Francisco,CA,94105,AI-Era Hangout,Active - not open to public,Foundry Square
 Waymo Depot,590 Brannan St,San Francisco,CA,94107,AI-Era Hangout,Visible exterior,Robotaxi hub
 Y Combinator Mountain View Office,335 Pioneer Way,Mountain View,CA,94041,AI-Era Hangout,Verify address,Arguably the seed of the current AI wave
-The Interval at Long Now,Fort Mason Center Landmark Building A,San Francisco,CA,94123,AI-Era Hangout,Open,Bar/cafe tied to Long Now Foundation - popular for AI-crowd talks and meetups
+The Interval at Long Now,The Interval,San Francisco,CA,94123,AI-Era Hangout,Open,"Bar/cafe tied to Long Now Foundation - popular for AI-crowd talks and meetups. Fort Mason Center, Landmark Building A (2 Marina Blvd). Geocoded to the named OSM feature (no street number)"
 Sightglass Coffee Flagship,270 7th St,San Francisco,CA,94103,Founder Cafe,Open,Top founder coffee shop per Mercury data
 Saint Frank Coffee,2340 Polk St,San Francisco,CA,94109,Founder Cafe,Open,
 Ritual Coffee Roasters,1026 Valencia St,San Francisco,CA,94110,Founder Cafe,Open,
@@ -72,7 +72,7 @@ Caffe Centro,South Park,San Francisco,CA,94107,Founder Hangout,Open,
 Sam's Grill,374 Bush St,San Francisco,CA,94104,Founder Hangout,Open,Original West Coast VC lunch club
 Bird Dog,420 Ramona St,Palo Alto,CA,94301,Founder Hangout,Open,Co-financed by VCs Palihapitiya and Lau
 Evvia Estiatorio,420 Emerson St,Palo Alto,CA,94301,Founder Hangout,Open,
-Calafia Cafe,855 El Camino Real #130,Palo Alto,CA,94301,Founder Hangout,Open,Sergey Brin regular
+Calafia Cafe,855 El Camino Real,Palo Alto,CA,94301,Founder Hangout,Open,Sergey Brin regular
 Twitter/X HQ,1355 Market St,San Francisco,CA,94103,Tech HQ,Active,Current X headquarters
 Airbnb HQ,888 Brannan St,San Francisco,CA,94103,Tech HQ,Active,Company headquarters
 Dropbox HQ,1800 Owens St,San Francisco,CA,94158,Tech HQ,Active,Company headquarters
@@ -103,14 +103,14 @@ Golden Gate Bridge,Golden Gate Bridge Toll Plaza,San Francisco,CA,94129,Iconic S
 Alcatraz Island,Pier 33,San Francisco,CA,94133,Iconic SF,Visitable - ferry departure,Former federal prison
 Fisherman's Wharf,Jefferson St,San Francisco,CA,94133,Iconic SF,Visitable,Waterfront tourist district
 Pier 39,Pier 39,San Francisco,CA,94133,Iconic SF,Visitable,Sea lions and shops
-Painted Ladies,710-720 Steiner St,San Francisco,CA,94117,Iconic SF,Visitable exterior,Postcard Row at Alamo Square
-Coit Tower,1 Telegraph Hill Blvd,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill tower and murals
-Lombard Street,Lombard St between Hyde and Leavenworth,San Francisco,CA,94109,Iconic SF,Visitable,Crookedest street
+Painted Ladies,Painted Ladies,San Francisco,CA,94117,Iconic SF,Visitable exterior,Postcard Row at Alamo Square. 710-720 Steiner St. Geocoded to the named OSM feature (no street number)
+Coit Tower,Coit Tower,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill tower and murals. 1 Telegraph Hill Blvd. Geocoded to the named OSM feature (no street number)
+Lombard Street,1001 Lombard St,San Francisco,CA,94109,Iconic SF,Visitable,Crookedest street. Top of the crooked block at Hyde St
 Golden Gate Park,John F Kennedy Dr,San Francisco,CA,94122,Iconic SF,Visitable,Large urban park
 Ferry Building,1 Ferry Building,San Francisco,CA,94111,Iconic SF,Visitable,Marketplace and clock tower
-Chinatown Gate,Grant Ave and Bush St,San Francisco,CA,94108,Iconic SF,Visitable,Dragon's Gate entrance
+Chinatown Gate,Dragon Gate,San Francisco,CA,94108,Iconic SF,Visitable,Dragon's Gate entrance. Grant Ave at Bush St. Geocoded to the named OSM feature (no street number)
 Palace of Fine Arts,3301 Lyon St,San Francisco,CA,94123,Iconic SF,Visitable,Marina District rotunda
-Twin Peaks,501 Twin Peaks Blvd,San Francisco,CA,94114,Iconic SF,Visitable overlook,City skyline view
+Twin Peaks,Christmas Tree Point,San Francisco,CA,94114,Iconic SF,Visitable overlook,City skyline view. The 501 Twin Peaks Blvd overlook. Geocoded to the named OSM feature (no street number)
 Union Square,333 Post St,San Francisco,CA,94108,Iconic SF,Visitable,Shopping and plaza
 Transamerica Pyramid,600 Montgomery St,San Francisco,CA,94111,Iconic SF,Exterior visitable,Iconic pyramid skyscraper
 Salesforce Tower,415 Mission St,San Francisco,CA,94105,Iconic SF,Exterior visitable,Tallest SF building
@@ -124,28 +124,28 @@ Legion of Honor,100 34th Ave,San Francisco,CA,94121,Iconic SF,Visitable museum,L
 Musee Mecanique,Pier 45,San Francisco,CA,94133,Iconic SF,Visitable,Antique arcade museum
 Haight-Ashbury Intersection,Haight St and Ashbury St,San Francisco,CA,94117,Iconic SF,Visitable,1960s counterculture landmark
 San Francisco City Hall,1 Dr Carlton B Goodlett Pl,San Francisco,CA,94102,Iconic SF,Visitable,Beaux-Arts dome
-Grace Cathedral,1100 California St,San Francisco,CA,94108,Iconic SF,Visitable,Nob Hill cathedral
+Grace Cathedral,Grace Cathedral,San Francisco,CA,94108,Iconic SF,Visitable,Nob Hill cathedral. 1100 California St. Geocoded to the named OSM feature (no street number)
 Crissy Field,1199 East Beach,San Francisco,CA,94129,Iconic SF,Visitable,Waterfront park near bridge
 Sutro Baths Ruins,1004 Point Lobos Ave,San Francisco,CA,94121,Iconic SF,Visitable ruins,Historic bathhouse remains
 Lands End Lookout,680 Point Lobos Ave,San Francisco,CA,94121,Iconic SF,Visitable,Coastal trail viewpoint
 Castro Theatre,429 Castro St,San Francisco,CA,94114,Iconic SF,Exterior visitable,Historic movie palace
-Vaillancourt Fountain,Justin Herman Plaza,San Francisco,CA,94111,Iconic SF,Visitable,Embarcadero plaza fountain
+Vaillancourt Fountain,Embarcadero Plaza,San Francisco,CA,94111,Iconic SF,Visitable,Embarcadero plaza fountain. Formerly Justin Herman Plaza. Geocoded to the named OSM feature (no street number)
 Oracle Park,24 Willie Mays Plaza,San Francisco,CA,94107,Iconic SF,Visitable,SF Giants stadium
 Chase Center,1 Warriors Way,San Francisco,CA,94158,Iconic SF,Visitable,Golden State Warriors arena
 Wave Organ,83 Marina Green Dr,San Francisco,CA,94123,Iconic SF,Visitable,Acoustic sculpture jetty
 Ghirardelli Square,900 North Point St,San Francisco,CA,94109,Iconic SF,Visitable,Historic chocolate factory square
 Cable Car Museum,1201 Mason St,San Francisco,CA,94108,Iconic SF,Visitable museum,Free cable car history museum
-Filbert Steps,Filbert St and Montgomery St,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill garden stairway
+Filbert Steps,Filbert Steps,San Francisco,CA,94133,Iconic SF,Visitable,Telegraph Hill garden stairway. Filbert St at Montgomery St. Geocoded to the named OSM feature (no street number)
 Bernal Heights Park,Bernal Heights Blvd,San Francisco,CA,94110,Iconic SF,Visitable overlook,Hilltop park with city views
 SFMOMA,151 3rd St,San Francisco,CA,94103,Iconic SF,Visitable museum,Modern art museum
 Yerba Buena Gardens,750 Howard St,San Francisco,CA,94103,Iconic SF,Visitable,Downtown gardens and memorials
 Palace Hotel,2 New Montgomery St,San Francisco,CA,94105,Iconic SF,Visitable exterior/lobby,Historic Garden Court hotel
 Presidio Tunnel Tops,Presidio Blvd,San Francisco,CA,94129,Iconic SF,Visitable,New park overlooking bridge
-Baker Beach,Gettysburg Dr,San Francisco,CA,94129,Iconic SF,Visitable,Beach with bridge views
+Baker Beach,Baker Beach,San Francisco,CA,94129,Iconic SF,Visitable,Beach with bridge views. Off Gettysburg Dr. Geocoded to the named OSM feature (no street number)
 Washington Square Park,Union St and Stockton St,San Francisco,CA,94133,Iconic SF,Visitable,North Beach park
 Dolores Park,Dolores St and 19th St,San Francisco,CA,94114,Iconic SF,Visitable,Popular hillside park
 Conservatory of Flowers,100 John F Kennedy Dr,San Francisco,CA,94118,Iconic SF,Visitable,Victorian greenhouse
-Aquarium of the Bay,Beach St and The Embarcadero,San Francisco,CA,94133,Iconic SF,Visitable,Pier 39 aquarium
+Aquarium of the Bay,Aquarium of the Bay,San Francisco,CA,94133,Iconic SF,Visitable,Pier 39 aquarium. Beach St at The Embarcadero. Geocoded to the named OSM feature (no street number)
 USS Pampanito,Pier 45,San Francisco,CA,94133,Iconic SF,Visitable,WWII submarine museum
 SS Jeremiah O'Brien,Pier 45,San Francisco,CA,94133,Iconic SF,Visitable,WWII Liberty ship museum
 Angel Island Immigration Station,Angel Island State Park,Tiburon,CA,94920,Iconic SF,Visitable - ferry access,Historic immigration station
@@ -172,7 +172,7 @@ Meta HQ,1 Hacker Way,Menlo Park,CA,94025,Iconic Silicon Valley,Visitable exterio
 Tesla Fremont Factory,45500 Fremont Blvd,Fremont,CA,94538,Iconic Silicon Valley,Exterior visitable,Tesla's main US assembly plant
 NASA Ames / Hangar One,Moffett Blvd,Mountain View,CA,94035,Iconic Silicon Valley,Visitable exterior,Historic airship hangar
 Stanford Main Quad / Hoover Tower,450 Serra Mall,Stanford,CA,94305,Iconic Silicon Valley,Visitable campus,Stanford's central quad and tower
-Stanford Dish Trail,1310 Junipero Serra Blvd,Stanford,CA,94305,Iconic Silicon Valley,Visitable trailhead,Popular hiking loop
+Stanford Dish Trail,Stanford Dish,Stanford,CA,94305,Iconic Silicon Valley,Visitable trailhead,Popular hiking loop. Trailhead gate at 1310 Junipero Serra Blvd; pin is the Dish itself. Geocoded to the named OSM feature (no street number)
 Winchester Mystery House,525 S Winchester Blvd,San Jose,CA,95128,Iconic Silicon Valley,Visitable museum,Famous sprawling Victorian mansion
 The Tech Interactive,201 S Market St,San Jose,CA,95113,Iconic Silicon Valley,Visitable museum,Tech Museum of Innovation
 Rosicrucian Egyptian Museum,1660 Park Ave,San Jose,CA,95191,Iconic Silicon Valley,Visitable museum,Egyptian antiquities collection
@@ -190,7 +190,7 @@ Mission Santa Clara de Asis,500 El Camino Real,Santa Clara,CA,95053,Iconic Silic
 Stanford Memorial Church,450 Jane Stanford Way,Stanford,CA,94305,Iconic Silicon Valley,Visitable,Landmark campus church
 History San Jose / History Park,1650 Senter Rd,San Jose,CA,95112,Iconic Silicon Valley,Visitable,Historic buildings collection
 Guadalupe River Park,438 Coleman Ave,San Jose,CA,95110,Iconic Silicon Valley,Visitable,Downtown San Jose riverside park
-Hakone Estate and Gardens,21000 Big Basin Way,Saratoga,CA,95070,Iconic Silicon Valley,Visitable,Japanese-style gardens
+Hakone Estate and Gardens,Hakone Gardens,Saratoga,CA,95070,Iconic Silicon Valley,Visitable,Japanese-style gardens. 21000 Big Basin Way. Geocoded to the named OSM feature (no street number)
 California's Great America,4701 Great America Pkwy,Santa Clara,CA,95054,Iconic Silicon Valley,Visitable,Theme park
 Lick Observatory,7281 Mount Hamilton Rd,Mount Hamilton,CA,95140,Iconic Silicon Valley,Visitable,Sits atop Mount Hamilton
 Santana Row,377 Santana Row,San Jose,CA,95128,Iconic Silicon Valley,Visitable,Shopping and dining district
