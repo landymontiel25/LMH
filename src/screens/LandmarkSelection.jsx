@@ -211,6 +211,14 @@ export default function LandmarkSelection() {
       return true;
     });
 
+    // Typing a name to find it is a lookup, not a browse -- alphabetical is
+    // what makes a known name fast to spot, so a search term overrides
+    // whichever Sort mode (Popularity/Top Rated/Near Me) is active. Clearing
+    // the search goes back to that sort.
+    if (term) {
+      return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
     if (sortBy === 'popularity') {
       // Curated editorial Top 10 (if a city has them) lead in rank order, then
       // everything else falls back to the data-driven popularity score.
