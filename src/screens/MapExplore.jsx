@@ -261,9 +261,10 @@ export default function MapExplore() {
     navigate('/add-landmark', { state: { lat: center.lat, lng: center.lng } });
   };
 
-  // Pin corrections saved by the old drag-to-fix mode (now removed) still
-  // apply for everyone -- this just keeps displaying them at their
-  // corrected spot rather than reverting to the source data's position.
+  // Pin corrections made in "Move pins" mode, shared for everyone via
+  // Firestore -- applied wherever a landmark's position is used below
+  // (markers, search, nearby, and the "See it on the Map" highlight pin)
+  // instead of falling back to the static source data's position.
   const [savedOverrides, setSavedOverrides] = useState({});
   useEffect(() => {
     getLandmarkOverrides().then(setSavedOverrides);
@@ -300,6 +301,17 @@ export default function MapExplore() {
     if (mapFocusPoint) setMapFocusPoint(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // LandmarkDetail snapshots the landmark's static lat/lng when it sets this
+  // up -- apply any drag-to-fix correction here too, or the highlighted
+  // "you came from here" pin sits at the OLD spot while the real marker (in
+  // `markers` below) sits at the corrected one, which looks like two pins
+  // for one landmark.
+  const focusLandmarkPos = useMemo(() => {
+    if (!focusLandmark) return null;
+    const savedPos =
+      focusLandmark.regionId && focusLandmark.id ? savedOverrides[`${focusLandmark.regionId}/${focusLandmark.id}`] : null;
+    return { ...focusLandmark, lat: savedPos?.lat ?? focusLandmark.lat, lng: savedPos?.lng ?? focusLandmark.lng };
+  }, [focusLandmark, savedOverrides]);
 
   // The city you actively opened this session (list / detail / itinerary). The
   // map frames it when present; on a cold launch it's null, so we fall back to
@@ -582,7 +594,7 @@ export default function MapExplore() {
             coords={coords}
             bounds={ALL_LANDMARKS_BOUNDS}
             regionBounds={regionBounds}
-            focusPoint={focusLandmark}
+            focusPoint={focusLandmarkPos}
             radiusMiles={radiusMiles}
           />
           {!placingPin && <LocateControl coords={coords} radiusMiles={radiusMiles} />}
@@ -611,16 +623,16 @@ export default function MapExplore() {
               same spot. interactive={false} gives them pointer-events: none, so
               a tap falls through to the real pin and opens its popup -- without
               it the highlight swallowed the tap and nothing happened. */}
-          {focusLandmark && (
+          {focusLandmarkPos && (
             <Marker
-              position={[focusLandmark.lat, focusLandmark.lng]}
+              position={[focusLandmarkPos.lat, focusLandmarkPos.lng]}
               icon={focusIcon}
               zIndexOffset={1000}
               interactive={false}
             >
-              {focusLandmark.name && (
+              {focusLandmarkPos.name && (
                 <Tooltip permanent direction="top" offset={[0, -34]} className="focus-tooltip">
-                  {focusLandmark.name}
+                  {focusLandmarkPos.name}
                 </Tooltip>
               )}
             </Marker>

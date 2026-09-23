@@ -197,7 +197,7 @@ export default function LandmarkDetail() {
   // Map tab or the "See it on the Map" button) so you can see exactly where you
   // are, then pinch out. One-shot: the map consumes and clears it.
   useEffect(() => {
-    if (landmark) setMapFocusPoint({ lat: landmark.lat, lng: landmark.lng, name: landmark.name });
+    if (landmark) setMapFocusPoint({ lat: landmark.lat, lng: landmark.lng, name: landmark.name, regionId, id });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, landmark]);
 
@@ -601,7 +601,7 @@ export default function LandmarkDetail() {
         className="btn btn-ghost btn-block"
         style={{ marginBottom: 12 }}
         onClick={() => {
-          setMapFocusPoint({ lat: landmark.lat, lng: landmark.lng, name: landmark.name });
+          setMapFocusPoint({ lat: landmark.lat, lng: landmark.lng, name: landmark.name, regionId, id });
           navigate('/');
         }}
       >
