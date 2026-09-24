@@ -19,6 +19,7 @@ import StreakWarningBanner from './components/StreakWarningBanner';
 import CheckInReview from './components/CheckInReview';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
 import CelebrationOverlay from './components/CelebrationOverlay';
+import AdminModeBadge from './components/AdminModeBadge';
 
 // Lazy so each screen (and, critically, Leaflet + its cluster plugin --
 // only pulled in by MapExplore/AddLandmark) ships as its own chunk instead
@@ -106,6 +107,7 @@ export default function App() {
           <CheckInReview />
           <AskLandmarkWidget />
           <CelebrationOverlay />
+          <AdminModeBadge />
           </HashRouter>
           </UnitsProvider>
           </MyPhotosProvider>

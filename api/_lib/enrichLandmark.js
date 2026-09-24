@@ -22,9 +22,11 @@ export const ENRICHMENT_INSTRUCTIONS =
   `Name: if the given "name" is actually an address, a generic label, or otherwise clearly not this place's real name ` +
   `(e.g. "2234 Ponce De Leon Blvd"), and your search clearly identifies the actual business/landmark at that exact ` +
   `address/location, return its real name as "resolvedName" (e.g. "Sushi Maki") so the submission can be saved under ` +
-  `its real name instead of the address. If the given name already looks like a real, correct name for the place (a ` +
-  `business name, a proper landmark name), or you can't confidently confirm a different real name at that exact spot, ` +
-  `return null for "resolvedName" -- never guess or invent one.\n\n` +
+  `its real name instead of the address. When you do this, also add the original address as one of the facts (e.g. ` +
+  `"Located at 2234 Ponce De Leon Blvd") if it isn't already covered by another fact -- someone searching by the ` +
+  `address they typed should still find it. If the given name already looks like a real, correct name for the place ` +
+  `(a business name, a proper landmark name), or you can't confidently confirm a different real name at that exact ` +
+  `spot, return null for "resolvedName" -- never guess or invent one.\n\n` +
   `Watch for name collisions with the category as your check: a place is often named after a sponsor, donor, or its ` +
   `own parent company (a company buys naming rights to a stadium, arena, hall, or building), so a name matching a ` +
   `well-known company or brand does NOT mean the place IS that company. If the category says something like a venue, ` +

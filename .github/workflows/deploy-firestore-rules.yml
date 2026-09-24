@@ -1,0 +1,42 @@
+name: Deploy Firestore Rules
+
+# Runs only when firestore.rules actually changes on main, so merging a PR
+# that touches it is the whole deploy step -- no separate manual
+# `firebase deploy --only firestore:rules` needed afterward. Needs a
+# FIREBASE_SERVICE_ACCOUNT repo secret to actually do anything (see below);
+# without it this job just fails loudly in the Actions tab rather than
+# silently no-op'ing, so a missing/expired secret is easy to notice.
+#
+# To set up the secret once:
+#   1. Firebase console -> Project Settings -> Service Accounts -> Generate
+#      new private key (downloads a JSON file).
+#   2. GitHub repo -> Settings -> Secrets and variables -> Actions -> New
+#      repository secret, name it FIREBASE_SERVICE_ACCOUNT, paste the
+#      entire JSON file's contents as the value.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+
+jobs:
+  deploy-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Write service account credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT secret is not set -- see the comment at the top of this workflow file for setup steps."
+            exit 1
+          fi
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+      - name: Deploy Firestore rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+        run: npx firebase-tools@13 deploy --only firestore:rules --non-interactive
