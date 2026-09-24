@@ -6,6 +6,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { useGeo } from '../lib/GeoContext';
 import { useBadges } from '../lib/BadgesContext';
 import { coarseLocation, localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
+import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import RateLandmarkSearch from './RateLandmarkSearch';
 
 // "Your Mapr Picks": 4 landmarks Mapr thinks you'll love next, as a
@@ -22,7 +23,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   const { user } = useAuth();
   const { ratings } = useRatings();
   const { coords } = useGeo();
-  const { reload: reloadBadges } = useBadges();
+  const { reload: reloadBadges, actionsToday } = useBadges();
   const navigate = useNavigate();
   // Picks are about where you are right now. Without a fix yet we wait a
   // beat for one rather than answer for the wrong city.
@@ -175,7 +176,16 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
 
   return (
     <div className="mapr-picks">
-      <div className="taste-card-title">{'\u{1F525}'} Your Mapr Picks</div>
+      <div className="taste-card-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span>{'\u{1F525}'} Your Mapr Picks</span>
+        <span
+          className="tag"
+          style={{ fontSize: '0.68rem' }}
+          title={`${Math.min(actionsToday, PICKS_STREAK_THRESHOLD)} of ${PICKS_STREAK_THRESHOLD} needed today to secure your streak without a check-in`}
+        >
+          {Math.min(actionsToday, PICKS_STREAK_THRESHOLD)}/{PICKS_STREAK_THRESHOLD} today
+        </span>
+      </div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>
         {picks.length > 0
           ? `${origin ? 'Near you right now. ' : ''}Tap a card to go there. ${'\u{2713}'} / ${'\u{2715}'} teach Mapr what you like.`

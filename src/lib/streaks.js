@@ -4,44 +4,87 @@
 
 const dayKey = (d) => `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
 
-/** Whether any of these check-ins happened today (UTC) -- used to warn when an active streak is about to lapse. */
-export function hasCheckedInToday(checkins, now = new Date()) {
-  const today = dayKey(now);
-  return checkins.some((c) => c.createdAt?.seconds && dayKey(new Date(c.createdAt.seconds * 1000)) === today);
+// A real, physical check-in -- worth points. Excludes only the explicit
+// 0-point claims "Rate a Landmark" makes (see CheckInContext's ratingOnly
+// flag): those are a rating, not a claim you were there, so on their own
+// they only ever feed the lighter daily-actions tally below, same as a
+// plain ✓/✗ Mapr Pick vote. A checkin with no points field at all (older
+// data, or a test fixture) is treated as real -- explicit 0 is the only
+// non-real case.
+function isRealCheckin(c) {
+  return c.points !== 0;
 }
 
-// Minimum distinct landmarks you must vote ✓/✗ on in a day (Mapr Picks) for
-// that day to count toward your streak, same as an actual check-in would --
-// lets a day with no real visit still keep the streak alive. Never earns
-// check-in points, a check-in count, or a city credit; it only feeds this
-// streak math, from pick_feedback entries (voted landmarkId + `at` epoch ms).
-export const PICKS_STREAK_THRESHOLD = 5;
+/** Whether a real (points-earning) check-in happened today (UTC) -- used to warn when an active streak is about to lapse. */
+export function hasCheckedInToday(checkins, now = new Date()) {
+  const today = dayKey(now);
+  return checkins.some((c) => isRealCheckin(c) && c.createdAt?.seconds && dayKey(new Date(c.createdAt.seconds * 1000)) === today);
+}
 
-// Day-keys (UTC) with at least `minVotes` distinct landmarks voted on.
-function pickVoteDayKeys(pickFeedback, minVotes = PICKS_STREAK_THRESHOLD) {
+// Minimum distinct landmarks you must engage with in a day -- voting ✓/✗ on
+// a Mapr Pick, or rating one via "Rate a Landmark" (a 0-point claim) -- for
+// that day to count toward your streak, same as an actual check-in would.
+// Lets a day with no real visit still keep the streak alive, but only once
+// you've actually weighed in on a few different places, not just one.
+// Never earns check-in points, a check-in count, or a city credit; it only
+// feeds this streak math.
+export const PICKS_STREAK_THRESHOLD = 3;
+
+// Day-keys (UTC) with at least `minActions` distinct landmarks engaged
+// with, combining pick_feedback votes (voted landmarkId + `at` epoch ms)
+// and 0-point "Rate a Landmark" claims (ratingOnly checkins, by their
+// createdAt).
+function dailyActionDayKeys(checkins, pickFeedback, minActions = PICKS_STREAK_THRESHOLD) {
   const idsByDay = new Map();
+  const add = (key, id) => {
+    if (!key || !id) return;
+    if (!idsByDay.has(key)) idsByDay.set(key, new Set());
+    idsByDay.get(key).add(id);
+  };
   for (const f of pickFeedback || []) {
     if (!f.at || !f.landmarkId) continue;
-    const key = dayKey(new Date(f.at));
-    if (!idsByDay.has(key)) idsByDay.set(key, new Set());
-    idsByDay.get(key).add(f.landmarkId);
+    add(dayKey(new Date(f.at)), f.landmarkId);
+  }
+  for (const c of checkins || []) {
+    if (isRealCheckin(c) || !c.createdAt?.seconds || !c.landmarkId) continue;
+    add(dayKey(new Date(c.createdAt.seconds * 1000)), c.landmarkId);
   }
   const days = new Set();
   for (const [key, ids] of idsByDay) {
-    if (ids.size >= minVotes) days.add(key);
+    if (ids.size >= minActions) days.add(key);
   }
   return days;
 }
 
 /**
- * Whether today's streak is already secured -- a real check-in, or voting
- * ✓/✗ on PICKS_STREAK_THRESHOLD distinct Mapr Picks. Supersedes
+ * Distinct landmarks engaged with today (UTC) toward the PICKS_STREAK_THRESHOLD
+ * goal -- votes and 0-point ratings combined, capped display-wise by nothing
+ * (it can exceed the threshold). For a "2/3 rated today" style counter.
+ */
+export function todaysActionCount(checkins, pickFeedback = [], now = new Date()) {
+  const today = dayKey(now);
+  const ids = new Set();
+  for (const f of pickFeedback || []) {
+    if (!f.at || !f.landmarkId || dayKey(new Date(f.at)) !== today) continue;
+    ids.add(f.landmarkId);
+  }
+  for (const c of checkins || []) {
+    if (isRealCheckin(c) || !c.createdAt?.seconds || !c.landmarkId) continue;
+    if (dayKey(new Date(c.createdAt.seconds * 1000)) !== today) continue;
+    ids.add(c.landmarkId);
+  }
+  return ids.size;
+}
+
+/**
+ * Whether today's streak is already secured -- a real check-in, or
+ * PICKS_STREAK_THRESHOLD distinct landmarks voted/rated. Supersedes
  * hasCheckedInToday wherever "is the streak safe today" (not "did you
  * literally check in") is the actual question -- the streak-risk banner
  * and Profile's streak messaging both want this one.
  */
 export function hasSecuredStreakToday(checkins, pickFeedback = [], now = new Date()) {
-  return hasCheckedInToday(checkins, now) || pickVoteDayKeys(pickFeedback).has(dayKey(now));
+  return hasCheckedInToday(checkins, now) || dailyActionDayKeys(checkins, pickFeedback).has(dayKey(now));
 }
 
 /**
@@ -56,19 +99,20 @@ export function msUntilStreakLapse(now = new Date()) {
 }
 
 /**
- * Consecutive days (UTC) with at least one check-in -- or a qualifying
- * Mapr Picks voting day, see hasSecuredStreakToday -- counting back from
- * today. A day with neither yet doesn't break the streak until tomorrow --
- * so "yesterday, but not yet today" still counts.
+ * Consecutive days (UTC) with at least one real check-in -- or a qualifying
+ * votes/ratings day, see hasSecuredStreakToday -- counting back from today.
+ * A day with neither yet doesn't break the streak until tomorrow -- so
+ * "yesterday, but not yet today" still counts.
  */
 export function computeStreakDays(checkins, now = new Date(), pickFeedback = []) {
   const days = new Set();
   for (const c of checkins) {
+    if (!isRealCheckin(c)) continue;
     const sec = c.createdAt?.seconds;
     if (!sec) continue;
     days.add(dayKey(new Date(sec * 1000)));
   }
-  for (const key of pickVoteDayKeys(pickFeedback)) days.add(key);
+  for (const key of dailyActionDayKeys(checkins, pickFeedback)) days.add(key);
   if (days.size === 0) return 0;
 
   const cursor = new Date(now);

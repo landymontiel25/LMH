@@ -6,66 +6,30 @@ import {
   deleteDoc,
   getDocs,
   collection,
-  query,
-  where,
-  onSnapshot,
-  serverTimestamp,
   arrayUnion,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
-import { notifyUser } from './notifications';
-
-// Turned off by request -- approval was too much friction for now. Left in
-// place (not deleted): the Firestore write still always starts a submission
-// as "pending" (enforced server-side by the rules, unchanged), the
-// Approve/Reject queue on Profile still works exactly as before, and
-// flipping this back to true is the one change needed to require approval
-// again -- nothing else to undo.
-const LANDMARK_APPROVAL_ENABLED = false;
 
 // User-created landmarks (e.g. a dorm hall not yet in the built-in catalog)
 // live in their own Firestore collection and get merged onto the map
 // alongside the static ones. Check-ins on them reuse the same claimCheckIn
-// flow as any other landmark -- it only ever needs id/name/region.
-//
-// Every submission starts life as status: "pending" (enforced by the
-// Firestore rules, not just this client code). With approval OFF, that's
-// cosmetic -- this returns pending submissions too, so anyone's landmark
-// goes live immediately; the admin queue below still lets you pull a bad
-// one after the fact. With approval ON, a submission only shows up here --
-// i.e. on the map, in search, at its own URL to a random visitor -- once an
-// admin approves it via approveCustomLandmark. The submitter can always
-// open their own pending landmark's detail page directly either way.
+// flow as any other landmark -- it only ever needs id/name/region. No
+// approval queue -- by request, every submission is live immediately, for
+// everyone. (The Firestore rules still require a fresh submission's write
+// to include status: "pending" and nothing here ever changes it -- that's
+// just the rules' own internal enforcement token, not a real approval
+// gate. Nothing in the app reads or shows that value anymore.)
 export async function getCustomLandmarks() {
   if (!db) return [];
   const snap = await getDocs(collection(db, 'custom_landmarks'));
-  const all = snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
-  return LANDMARK_APPROVAL_ENABLED ? all.filter((l) => l.status === 'approved') : all;
-}
-
-export async function getPendingLandmarks() {
-  if (!db) return [];
-  const snap = await getDocs(collection(db, 'custom_landmarks'));
-  return snap.docs.map((d) => ({ docId: d.id, ...d.data() })).filter((l) => l.status === 'pending');
-}
-
-// Live pending count for the admin nav badge (item f4) -- no email/push
-// setup needed, so nothing new to configure. Returns an unsubscribe fn.
-export function subscribePendingCount(callback) {
-  if (!db) return () => {};
-  return onSnapshot(
-    query(collection(db, 'custom_landmarks'), where('status', '==', 'pending')),
-    (snap) => callback(snap.size),
-    () => callback(0)
-  );
+  return snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
 }
 
 // Direct lookup by id -- the doc id and the `id` field are always the same
 // value (set at creation below), so LandmarkDetail can fetch a single custom
-// landmark the same way it'd look one up in the static catalog. Deliberately
-// NOT status-filtered, so a submitter (or an admin reviewing) can open a
-// pending landmark's own page directly even though it's hidden everywhere else.
+// landmark the same way it'd look one up in the static catalog.
 export async function getCustomLandmark(id) {
   if (!db || !id) return null;
   const snap = await getDoc(doc(db, 'custom_landmarks', id));
@@ -88,9 +52,9 @@ export async function uploadLandmarkPhoto(landmarkId, userId, file) {
 // `categories`/`images`/`summary`/`facts`/`free`/`typicalMinutes` make this
 // render as a full landmark (LandmarkDetail, LandmarkThumb, the map popup)
 // instead of a bare pin -- filled in by the AI verification step before this
-// is ever called. Always saved as "pending" -- the Firestore rules reject a
-// create that tries to set any other status, so this can't be bypassed by
-// calling the database directly instead of going through the app.
+// is ever called. status: "pending" is required by the Firestore rules'
+// create check (see firestore.rules) but otherwise unused -- getCustomLandmarks
+// returns every submission immediately, no approval step.
 export async function addCustomLandmark({
   region,
   name,
@@ -125,20 +89,9 @@ export async function addCustomLandmark({
   return { docId: id, ...data };
 }
 
-// Only an admin account can call these -- the Firestore rules enforce that
-// independently of this client code.
-export async function approveCustomLandmark(docId, landmark) {
-  await updateDoc(doc(db, 'custom_landmarks', docId), { status: 'approved' });
-  // Best-effort -- an approval that succeeds shouldn't fail just because
-  // the notification couldn't be created.
-  if (landmark?.createdBy) {
-    notifyUser(landmark.createdBy, {
-      type: 'submission_approved',
-      message: `\u{1F389} Your landmark "${landmark.name}" was approved and is now live!`,
-    }).catch(() => {});
-  }
-}
-
+// Only the submitter or an admin can call this -- the Firestore rules
+// enforce that independently of this client code (used by "Remove Pin" on
+// the map).
 export async function deleteCustomLandmark(docId) {
   await deleteDoc(doc(db, 'custom_landmarks', docId));
 }

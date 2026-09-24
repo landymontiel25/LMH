@@ -88,11 +88,13 @@ export function CheckInProvider({ children }) {
   // The actual check-in: called from the Post button, this is the moment
   // points are awarded and the landmark is marked claimed. ratingOnly (set
   // by Profile's "Rate a Landmark" search) still claims the check-in --
-  // securing the streak and unlocking the review -- but for 0 points: that
-  // flow is rating something, not claiming you physically visited it, and
-  // shouldn't pay out like a real check-in does. Every other check-in path
-  // in the app (map pin, itinerary, landmark list, detail page) never sets
-  // this flag, so they keep awarding points exactly as before.
+  // unlocking the review, and (see src/lib/streaks.js) feeding the daily
+  // votes/ratings tally toward the streak -- but for 0 points: that flow is
+  // rating something, not claiming you physically visited it, and shouldn't
+  // pay out or secure the day's streak the way a real check-in does on its
+  // own. Every other check-in path in the app (map pin, itinerary, landmark
+  // list, detail page) never sets this flag, so they keep awarding points
+  // and instantly securing the streak exactly as before.
   const commitCheckIn = async () => {
     const landmark = justCheckedIn;
     if (!user || !landmark) return null;

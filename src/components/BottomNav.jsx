@@ -1,8 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAuth } from '../lib/AuthContext';
-import { isAdmin } from '../lib/admins';
-import { subscribePendingCount } from '../lib/customLandmarks';
 
 const items = [
   { to: '/', label: 'Map', icon: '\u{1F310}', end: true },
@@ -14,9 +11,6 @@ const items = [
 ];
 
 export default function BottomNav() {
-  const { user, firebaseEnabled } = useAuth();
-  const admin = firebaseEnabled && isAdmin(user?.email);
-  const [pendingCount, setPendingCount] = useState(0);
   const navRef = useRef(null);
 
   // If the page is zoomed anyway (pinch), position: fixed sticks to the
@@ -48,47 +42,11 @@ export default function BottomNav() {
     };
   }, []);
 
-  // Live count, not a one-time fetch -- a new submission (or one someone
-  // else just approved) updates the badge without needing to open Profile.
-  useEffect(() => {
-    if (!admin) {
-      setPendingCount(0);
-      return;
-    }
-    return subscribePendingCount(setPendingCount);
-  }, [admin]);
-
   return (
     <nav className="bottom-nav" ref={navRef}>
       {items.map((item) => (
         <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'active' : '')}>
-          <span className="nav-icon" style={{ position: 'relative' }}>
-            {item.icon}
-            {item.to === '/profile' && admin && pendingCount > 0 && (
-              <span
-                aria-label={`${pendingCount} pending submissions`}
-                style={{
-                  position: 'absolute',
-                  top: -4,
-                  right: -8,
-                  minWidth: 15,
-                  height: 15,
-                  borderRadius: 8,
-                  background: 'var(--color-error, #b3503f)',
-                  color: '#fff',
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 3px',
-                  lineHeight: 1,
-                }}
-              >
-                {pendingCount > 9 ? '9+' : pendingCount}
-              </span>
-            )}
-          </span>
+          <span className="nav-icon">{item.icon}</span>
           <span>{item.label}</span>
         </NavLink>
       ))}
