@@ -17,6 +17,11 @@ export function CheckInProvider({ children }) {
   // this immediately, but nothing is claimed/awarded yet — that only happens
   // once the user taps Post (see commitCheckIn below).
   const [justCheckedIn, setJustCheckedIn] = useState(null);
+  // Per-call flags for the rate + post prompt that follows -- e.g. Rate a
+  // Landmark (search-first, no physical visit) requires a comment; a normal
+  // Check In tap doesn't. Reset alongside justCheckedIn so a stale flag
+  // never leaks into the next check-in.
+  const [checkInOptions, setCheckInOptions] = useState({});
   // The "+100! You passed Eduardo — now #1 👑" payoff shown after posting.
   const [celebration, setCelebration] = useState(null);
 
@@ -74,9 +79,10 @@ export function CheckInProvider({ children }) {
   };
 
   // Opens the rate + post prompt for this landmark. No Firestore write here.
-  const checkIn = (landmark) => {
+  const checkIn = (landmark, options = {}) => {
     if (!user) return;
     setJustCheckedIn(landmark);
+    setCheckInOptions(options);
   };
 
   // The actual check-in: called from the Post button, this is the moment
@@ -113,11 +119,23 @@ export function CheckInProvider({ children }) {
   const clearJustCheckedIn = () => {
     setJustCheckedIn(null);
     setCelebration(null);
+    setCheckInOptions({});
   };
 
   return (
     <CheckInContext.Provider
-      value={{ user, firebaseEnabled, claimedMap, checkingIn, checkIn, commitCheckIn, justCheckedIn, celebration, clearJustCheckedIn }}
+      value={{
+        user,
+        firebaseEnabled,
+        claimedMap,
+        checkingIn,
+        checkIn,
+        commitCheckIn,
+        justCheckedIn,
+        checkInOptions,
+        celebration,
+        clearJustCheckedIn,
+      }}
     >
       {children}
     </CheckInContext.Provider>
