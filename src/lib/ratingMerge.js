@@ -4,6 +4,7 @@ import { ALL_LANDMARKS, getLandmark } from '../data/regions';
 import { getCustomLandmark, deleteCustomLandmark } from './customLandmarks';
 import { getUserCheckins } from './leaderboard';
 import { getMyReview, deleteMyReview } from './reviews';
+import { clearPicksCache } from './maprPicks';
 
 // Admin Mode's "Fix Duplicate Ratings" (Settings). A real check-in/rating
 // made before a place had a proper catalog entry gets saved against a
@@ -122,4 +123,10 @@ export async function mergeOrphanedRating({ oldCheckin, oldCustomLandmark, oldRe
   // Admin Mode action.
   await deleteDoc(doc(db, 'checkins', oldCheckin.id));
   await deleteCustomLandmark(oldCustomLandmark.docId);
+
+  // A merge moves a rating between landmark ids without changing the
+  // user's total rating count, so a cached Mapr Picks list (keyed partly
+  // on that count) wouldn't otherwise notice anything changed and could
+  // keep recommending the now-deleted duplicate.
+  clearPicksCache(userId);
 }
