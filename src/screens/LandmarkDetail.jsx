@@ -17,6 +17,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
 import { isRateable, tierById } from '../lib/ratingFlow';
 import { getMyCheckin, addCheckinPhoto, removeCheckinPhoto, updateCheckinTimestamp, MAX_CHECKIN_PHOTOS } from '../lib/leaderboard';
+import { regionTimezone, tzAbbrev, toZonedInputValue, fromZonedInputValue } from '../lib/timezones';
 import RatingFlow from '../components/RatingFlow';
 import StarRatingFlow from '../components/StarRatingFlow';
 import LandmarkPostcard from '../components/LandmarkPostcard';
@@ -48,14 +49,6 @@ function fmtCheckinTime(seconds) {
   return `${day} at ${time}`;
 }
 
-// <input type="datetime-local"> wants "YYYY-MM-DDTHH:mm" in LOCAL time, with
-// no timezone suffix -- toISOString gives UTC, so this builds it by hand.
-function toLocalInputValue(seconds) {
-  if (!seconds) return '';
-  const d = new Date(seconds * 1000);
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
 const FACTS_PREVIEW = 5;
 
 export default function LandmarkDetail() {
@@ -376,7 +369,7 @@ export default function LandmarkDetail() {
   };
 
   const startEditCheckinDate = () => {
-    setCheckinDateValue(toLocalInputValue(myCheckin?.createdAt?.seconds));
+    setCheckinDateValue(toZonedInputValue(myCheckin?.createdAt?.seconds, regionTimezone(regionId)));
     setCheckinDateError('');
     setEditingCheckinDate(true);
   };
@@ -386,7 +379,9 @@ export default function LandmarkDetail() {
   };
   const saveCheckinDate = async () => {
     if (!checkinDateValue) return;
-    const date = new Date(checkinDateValue);
+    // The picker holds the landmark's OWN local wall-clock time, not the
+    // admin's device time.
+    const date = fromZonedInputValue(checkinDateValue, regionTimezone(regionId));
     if (Number.isNaN(date.getTime())) {
       setCheckinDateError('Invalid date/time.');
       return;
@@ -647,6 +642,9 @@ export default function LandmarkDetail() {
                       disabled={checkinDateSaving}
                       style={{ fontSize: '0.78rem', padding: '4px 6px' }}
                     />
+                    <span className="tag" style={{ fontSize: '0.68rem' }}>
+                      {tzAbbrev(regionTimezone(regionId))} — {getRegion(regionId)?.name || regionId}
+                    </span>
                     <button
                       type="button"
                       className="btn btn-primary btn-sm"
