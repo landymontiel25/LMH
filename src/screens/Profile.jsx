@@ -19,7 +19,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { RATING_GOAL } from '../lib/ratingFlow';
 import { getRegion, REGIONS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
-import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
+import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark, getCustomLandmarks, needsFactsBackfill } from '../lib/customLandmarks';
 import { useBadges } from '../lib/BadgesContext';
 import { closestUnearnedBadge, PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
@@ -338,6 +338,72 @@ function PendingLandmarksPanel({ email }) {
   );
 }
 
+// Admin-only, one-off tool: re-runs AI research on custom landmarks that
+// still carry the generic "A community-submitted spot" filler text --
+// submissions added before AI_ENRICHMENT_ENABLED shipped (api/verify-
+// landmark.js), which never got real facts written for them. Renders
+// nothing for a non-admin account or once nothing needs it.
+function BackfillFactsPanel({ email, user }) {
+  const [candidates, setCandidates] = useState(null); // null = still loading
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const refresh = () => {
+    getCustomLandmarks().then((all) => setCandidates(all.filter(needsFactsBackfill)));
+  };
+
+  useEffect(() => {
+    if (!isAdmin(email)) return;
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email]);
+
+  if (!isAdmin(email) || candidates === null || candidates.length === 0) return null;
+
+  const run = async () => {
+    setBusy(true);
+    setResult(null);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/backfill-landmark-facts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Backfill failed.');
+      setResult(data);
+      refresh();
+    } catch (e) {
+      setResult({ error: e.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card section">
+      <h3 style={{ marginTop: 0 }}>{'\u{2728}'} Backfill AI Facts ({candidates.length})</h3>
+      <p className="screen-subtitle" style={{ marginTop: -6 }}>
+        Landmarks added before AI research existed still show generic filler text — research and fill them in for real.
+      </p>
+      <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={run}>
+        {busy ? 'Researching…' : `Backfill ${candidates.length} Landmark${candidates.length === 1 ? '' : 's'}`}
+      </button>
+      {result && (
+        <p
+          style={{
+            marginTop: 10,
+            fontSize: '0.85rem',
+            color: result.error ? 'var(--color-rust)' : 'var(--color-parchment-dim)',
+          }}
+        >
+          {result.error || `Updated ${result.updated} of ${result.total}${result.remaining ? ` — ${result.remaining} left, run again to continue` : ''}.`}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Profile() {
   const { user, firebaseEnabled, signOutUser, deleteAccount, resendVerification, refreshUser } = useAuth();
   const [verifyMsg, setVerifyMsg] = useState(null);
@@ -575,6 +641,7 @@ export default function Profile() {
   return (
     <div>
       <PendingLandmarksPanel email={user.email} />
+      <BackfillFactsPanel email={user.email} user={user} />
 
       {/* 0.5 — At a glance: closest badge + closest rival, above everything
           else so it's the first thing visible on the Profile screen. */}
