@@ -20,7 +20,8 @@ import CheckInBlast from './CheckInBlast';
 // check-in, since there's nothing useful Mapr could learn from ranking a
 // dorm on Food/Service.
 export default function CheckInReview() {
-  const { justCheckedIn, celebration, commitCheckIn, clearJustCheckedIn } = useCheckIn();
+  const { justCheckedIn, checkInOptions, celebration, commitCheckIn, clearJustCheckedIn } = useCheckIn();
+  const requireComment = !!checkInOptions?.requireComment;
   const { user } = useAuth();
   const { myUsername } = useFriends();
   const { reload: reloadRatings } = useRatings();
@@ -66,6 +67,10 @@ export default function CheckInReview() {
   const submit = async () => {
     if (rateable && !rating) {
       setMsg('Pick one of the three first.');
+      return;
+    }
+    if (rateable && requireComment && !rating?.comment?.trim()) {
+      setMsg('Add a quick comment — Mapr needs to know why, not just yes or no.');
       return;
     }
     setSaving(true);
@@ -146,13 +151,22 @@ export default function CheckInReview() {
           </>
         ) : (
           <>
-            <h3 style={{ marginTop: 0 }}>{'\u{1F4CD}'} Check in to {justCheckedIn.name}?</h3>
+            <h3 style={{ marginTop: 0 }}>
+              {'\u{1F4CD}'} {requireComment ? `Rate ${justCheckedIn.name}` : `Check in to ${justCheckedIn.name}?`}
+            </h3>
             {rateable ? (
               <>
                 <p className="screen-subtitle" style={{ marginTop: 0 }}>
-                  How was it? One tap is enough — the rest is optional.
+                  {requireComment
+                    ? 'This also claims a check-in — a comment is required so Mapr knows why.'
+                    : 'How was it? One tap is enough — the rest is optional.'}
                 </p>
-                <RatingFlow key={justCheckedIn.id} landmark={justCheckedIn} onChange={setRating} />
+                <RatingFlow
+                  key={justCheckedIn.id}
+                  landmark={justCheckedIn}
+                  onChange={setRating}
+                  requireComment={requireComment}
+                />
               </>
             ) : (
               <p className="screen-subtitle" style={{ marginTop: 0 }}>
@@ -199,7 +213,11 @@ export default function CheckInReview() {
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button className="btn btn-primary btn-block" disabled={saving || (rateable && !rating)} onClick={submit}>
+              <button
+                className="btn btn-primary btn-block"
+                disabled={saving || (rateable && !rating) || (rateable && requireComment && !rating?.comment?.trim())}
+                onClick={submit}
+              >
                 {saving ? 'Posting…' : rateable ? 'Post' : 'Confirm check-in \u{2713}'}
               </button>
               <button className="btn btn-ghost" onClick={close} disabled={saving}>

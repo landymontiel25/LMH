@@ -14,7 +14,7 @@ import { TIERS, MAX_CHIPS, MAX_ASPECTS, chipsFor, aspectsFor, aspectLabel } from
 // #2, and so on, with the number shown on the button; tapping a ranked one
 // removes it and the rest close up. Same ordered list as a drag handle would
 // give, without a drag gesture that's fiddly on a phone inside a modal.
-export default function RatingFlow({ landmark, onChange, initial = null }) {
+export default function RatingFlow({ landmark, onChange, initial = null, requireComment = false }) {
   const [tier, setTier] = useState(initial?.tier || null);
   const [highlights, setHighlights] = useState(initial?.highlights || []);
   const [lovedOrder, setLovedOrder] = useState(initial?.lovedOrder || []);
@@ -139,13 +139,17 @@ export default function RatingFlow({ landmark, onChange, initial = null }) {
       {tier && (
         <div style={{ marginTop: 14 }}>
           <p className="rating-flow-label">
-            Anything else? <span>optional</span>
+            {requireComment ? 'Why?' : 'Anything else?'} <span>{requireComment ? 'required' : 'optional'}</span>
           </p>
           <textarea
             className="rating-comment"
             rows={2}
             maxLength={280}
-            placeholder="What you liked or didn't — Mapr uses this to learn your taste"
+            placeholder={
+              requireComment
+                ? "Why did you love it — or not? Mapr reads this to learn your taste"
+                : "What you liked or didn't — Mapr uses this to learn your taste"
+            }
             value={comment}
             onChange={(e) => setComment(e.target.value)}
           />
