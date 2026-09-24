@@ -22,8 +22,20 @@ const REGION_TIMEZONES = {
   switzerland: 'Europe/Zurich',
 };
 
-export function regionTimezone(regionId) {
-  return REGION_TIMEZONES[regionId] || Intl.DateTimeFormat().resolvedOptions().timeZone;
+// Every real, single-place region above has an exact IANA match. The one
+// exception is the Formula 1 catalog ('f1-circuits'), which is worldwide by
+// design -- no single zone covers it. For that (or any future region we
+// haven't mapped yet), fall back to a rough fixed-offset zone from the
+// landmark's own longitude (15deg per hour) rather than silently defaulting
+// to the admin's own timezone. Etc/GMT's sign is inverted from normal
+// convention (Etc/GMT-5 is UTC+5), which this accounts for.
+export function regionTimezone(regionId, lng) {
+  if (REGION_TIMEZONES[regionId]) return REGION_TIMEZONES[regionId];
+  if (typeof lng === 'number' && Number.isFinite(lng)) {
+    const offset = Math.max(-12, Math.min(14, Math.round(lng / 15)));
+    return offset === 0 ? 'Etc/UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
+  }
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 // Short zone label at a given instant -- "EST"/"EDT", "CET"/"CEST", etc.

@@ -43,7 +43,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
     // to List view (where it lives) already opened to this check-in.
     setLayout('list');
     setEditingId(it.id);
-    setEditValue(toZonedInputValue(it.createdAt, regionTimezone(it.regionId)));
+    setEditValue(toZonedInputValue(it.createdAt, regionTimezone(it.regionId, it.lng)));
     setEditError('');
   };
   const cancelEdit = () => {
@@ -55,7 +55,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
     // The picker holds the landmark's OWN local wall-clock time, not the
     // admin's device time -- fromZonedInputValue does the timezone math to
     // get back to the real instant.
-    const date = fromZonedInputValue(editValue, regionTimezone(it.regionId));
+    const date = fromZonedInputValue(editValue, regionTimezone(it.regionId, it.lng));
     if (Number.isNaN(date.getTime())) {
       setEditError('Invalid date/time.');
       return;
@@ -116,6 +116,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         id: c.id,
         landmarkId: c.landmarkId,
         regionId: c.region,
+        lng: lm?.lng ?? null,
         name: c.landmarkName || lm?.name || c.landmarkId,
         photo: mine || lm?.images?.[0] || null,
         isMine: !!mine,
@@ -271,7 +272,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
                       style={{ fontSize: '0.78rem', padding: '4px 6px' }}
                     />
                     <span className="tag" style={{ fontSize: '0.68rem' }}>
-                      {tzAbbrev(regionTimezone(it.regionId))} — {it.city}
+                      {tzAbbrev(regionTimezone(it.regionId, it.lng))} — {it.city}
                     </span>
                     <button
                       type="button"

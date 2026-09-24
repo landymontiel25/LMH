@@ -9,8 +9,21 @@ describe('regionTimezone', () => {
     expect(regionTimezone('frankfurt')).toBe('Europe/Berlin');
   });
 
-  it('falls back to the browser timezone for an unknown region', () => {
+  it('falls back to the browser timezone for an unknown region with no longitude', () => {
     expect(regionTimezone('nowhere')).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  });
+
+  it('estimates a fixed-offset zone from longitude for a worldwide region (F1 circuits)', () => {
+    // Suzuka, Japan -- ~136.5E -> UTC+9.
+    expect(regionTimezone('f1-circuits', 136.5)).toBe('Etc/GMT-9');
+    // Silverstone, UK -- ~-1W, close enough to round to UTC.
+    expect(regionTimezone('f1-circuits', -1)).toBe('Etc/UTC');
+    // Circuit of the Americas, Austin -- ~-97.6W -> UTC-6ish.
+    expect(regionTimezone('f1-circuits', -97.6)).toBe('Etc/GMT+7');
+  });
+
+  it('prefers the exact region mapping over longitude when both are given', () => {
+    expect(regionTimezone('miami', 136.5)).toBe('America/New_York');
   });
 });
 

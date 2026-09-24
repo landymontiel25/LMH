@@ -369,7 +369,7 @@ export default function LandmarkDetail() {
   };
 
   const startEditCheckinDate = () => {
-    setCheckinDateValue(toZonedInputValue(myCheckin?.createdAt?.seconds, regionTimezone(regionId)));
+    setCheckinDateValue(toZonedInputValue(myCheckin?.createdAt?.seconds, regionTimezone(regionId, landmark?.lng)));
     setCheckinDateError('');
     setEditingCheckinDate(true);
   };
@@ -381,7 +381,7 @@ export default function LandmarkDetail() {
     if (!checkinDateValue) return;
     // The picker holds the landmark's OWN local wall-clock time, not the
     // admin's device time.
-    const date = fromZonedInputValue(checkinDateValue, regionTimezone(regionId));
+    const date = fromZonedInputValue(checkinDateValue, regionTimezone(regionId, landmark?.lng));
     if (Number.isNaN(date.getTime())) {
       setCheckinDateError('Invalid date/time.');
       return;
@@ -643,7 +643,7 @@ export default function LandmarkDetail() {
                       style={{ fontSize: '0.78rem', padding: '4px 6px' }}
                     />
                     <span className="tag" style={{ fontSize: '0.68rem' }}>
-                      {tzAbbrev(regionTimezone(regionId))} — {getRegion(regionId)?.name || regionId}
+                      {tzAbbrev(regionTimezone(regionId, landmark?.lng))} — {getRegion(regionId)?.name || regionId}
                     </span>
                     <button
                       type="button"
