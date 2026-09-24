@@ -363,9 +363,24 @@ export default function MapExplore() {
         zoom: 17,
       };
     });
+    // User-submitted landmarks were never searchable here -- only via the
+    // map pins themselves or the Landmarks tab. Same id/key pattern as the
+    // static matches above, just namespaced with "custom-" since a custom
+    // landmark's own id (from customLandmarks.js) is already globally
+    // unique on its own.
+    const customMatches = customLandmarks
+      .filter((l) => l.name.toLowerCase().includes(term))
+      .map((l) => ({
+        id: `custom-${l.docId}`,
+        name: l.name,
+        sub: getRegion(l.region)?.name,
+        lat: l.lat,
+        lng: l.lng,
+        zoom: 17,
+      }));
     const placeMatches = SEARCHABLE_PLACES.filter((p) => p.name.toLowerCase().includes(term));
-    return [...landmarkMatches, ...placeMatches].slice(0, 8);
-  }, [searchTerm, savedOverrides]);
+    return [...landmarkMatches, ...customMatches, ...placeMatches].slice(0, 8);
+  }, [searchTerm, savedOverrides, customLandmarks]);
 
   const selectSearchResult = (result) => {
     setSearchFocus(result);
