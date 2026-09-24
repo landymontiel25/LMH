@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ALL_LANDMARKS, getRegion } from '../data/regions';
 import { addCustomLandmark, getCustomLandmarks } from '../lib/customLandmarks';
-import { nearestRegionId } from '../lib/geo';
+import { nearestAttributableRegionId } from '../lib/geo';
 import { searchPlaces, getPlaceDetails, makeSessionToken } from '../lib/places';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
@@ -178,7 +178,9 @@ export default function RateLandmarkSearch() {
       if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this place — try again.');
       if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different search.");
 
-      const region = nearestRegionId(details.lat, details.lng);
+      // Leave it unattributed (shows as "Custom pin") rather than filing it
+      // under the nearest curated city when nothing is actually nearby.
+      const region = nearestAttributableRegionId(details.lat, details.lng);
       // Google's address result is often just the street address, not the
       // business name -- if the AI's research identifies the real place
       // there, save it under that real name instead.
