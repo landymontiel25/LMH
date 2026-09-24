@@ -10,6 +10,8 @@ export const ENRICHMENT_INSTRUCTIONS =
   `address, since that's what the location box auto-fills with when left blank). Use web search to find out what this ` +
   `specific place actually is, and write REAL, SPECIFIC facts about it from what you find -- never invent a fact you ` +
   `can't source. Search using the name and location together.\n\n` +
+  `Write every field as plain prose only -- no citation markers, no <cite> tags, no footnote numbers, no source names ` +
+  `or brackets of any kind. This text is shown directly to app users, not as a research report.\n\n` +
   `If the submitter already gave their own facts, trust them (they're on the ground, you're not) -- keep those exactly ` +
   `as given (only clean up grammar), and add your own researched facts only to fill the list up to 5 total, never ` +
   `replacing or contradicting what they wrote. If they gave 5 or more already, don't add any.\n\n` +
@@ -43,6 +45,14 @@ export async function reverseGeocode(lat, lng) {
   return placeContext;
 }
 
+// The web search tool's citations sometimes leak into the model's own text
+// as literal `<cite index="...">...</cite>` markup even when told not to --
+// never trust the prompt alone for user-facing text. Strips the tags but
+// keeps the cited text itself.
+function stripCitationTags(text) {
+  return typeof text === 'string' ? text.replace(/<\/?cite\b[^>]*>/gi, '').trim() : text;
+}
+
 // Throws on any failure (bad response, unparseable JSON) -- callers decide
 // what "couldn't enrich this one" should fall back to.
 export async function enrichLandmark({ name, lat, lng, userFacts = [], placeContext = '' }) {
@@ -73,9 +83,9 @@ export async function enrichLandmark({ name, lat, lng, userFacts = [], placeCont
   const parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
 
   return {
-    summary: String(parsed.summary || '').slice(0, 300),
+    summary: stripCitationTags(String(parsed.summary || '')).slice(0, 300),
     facts: (Array.isArray(parsed.facts) && parsed.facts.length ? parsed.facts : userFacts)
-      .map((f) => String(f).slice(0, 160))
+      .map((f) => stripCitationTags(String(f)).slice(0, 160))
       .slice(0, 5),
     free: parsed.free !== false,
   };
