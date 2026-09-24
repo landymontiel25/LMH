@@ -216,6 +216,15 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null;
     }
+    // Admin Mode's live corrections to a built-in (static catalog)
+    // landmark -- name/category/summary/facts/free/typicalMinutes/images,
+    // merged over the static src/data/landmarks.*.js data at render time.
+    // Unlike landmark_overrides just above (open to any signed-in user,
+    // position-only), this can touch any of those fields, so it's admin-only.
+    match /landmark_edits/{id} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email in ['landymontiel25@gmail.com'];
+    }
     match /custom_landmarks/{id} {
       // Same reportedBy hide-past-threshold rule as reviews, unless you're
       // the submitter or an admin.

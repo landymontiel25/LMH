@@ -18,6 +18,7 @@ import { getLandmarkOverrides, saveLandmarkPosition } from '../lib/landmarkOverr
 import { getCustomLandmarks, deleteCustomLandmark, updateCustomLandmark } from '../lib/customLandmarks';
 import { isAdmin } from '../lib/admins';
 import { useAdminMode } from '../lib/AdminModeContext';
+import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
 import CheckInButton from '../components/CheckInButton';
 import DirectionsButton from '../components/DirectionsButton';
 import LandmarkThumb from '../components/LandmarkThumb';
@@ -184,6 +185,7 @@ export default function MapExplore() {
   const { toggleLandmark, getRegionSelection, trip, mapFocus, mapFocusPoint, setMapFocusPoint } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { adminMode } = useAdminMode();
+  const { applyEdit } = useLandmarkEdits();
   const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
   const { coords, error: geoError, loading: geoLoading } = useGeo();
@@ -443,6 +445,10 @@ export default function MapExplore() {
   const markers = useMemo(
     () =>
       ALL_LANDMARKS.filter(passesFilter).map((l) => {
+        // Admin Mode's live edit, if any -- id/regionId/lat/lng never
+        // change this way (position is savedOverrides' job, just below),
+        // only the display fields (name/category/summary/etc).
+        const landmark = applyEdit(l);
         const isSelected = getRegionSelection(l.regionId).includes(l.id);
         const region = getRegion(l.regionId);
         const isClaimed = !!claimedMap[l.id];
@@ -472,32 +478,32 @@ export default function MapExplore() {
                   style={{ cursor: 'pointer' }}
                   title="Tap for details"
                 >
-                  <LandmarkThumb landmark={l} width={228} height={110} myPhoto={myPhotos[l.id]?.[0]} />
+                  <LandmarkThumb landmark={landmark} width={228} height={110} myPhoto={myPhotos[l.id]?.[0]} />
                 </div>
                 <div className="quick-rate-row" style={{ marginTop: 8 }}>
-                  <h4 style={{ margin: 0 }}>{l.name}</h4>
-                  <QuickRateButton landmark={l} />
+                  <h4 style={{ margin: 0 }}>{landmark.name}</h4>
+                  <QuickRateButton landmark={landmark} />
                 </div>
                 <p style={{ margin: '2px 0 8px', fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
                   {region?.name}
                 </p>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 8px' }}>
-                  {l.categories.map((c) => (
+                  {landmark.categories.map((c) => (
                     <span key={c} className="tag">
                       {CATEGORY_LABEL[c]}
                     </span>
                   ))}
-                  <span className={`tag ${l.free ? 'tag-free' : ''}`}>{l.free ? 'Free' : 'Ticketed'}</span>
+                  <span className={`tag ${landmark.free ? 'tag-free' : ''}`}>{landmark.free ? 'Free' : 'Ticketed'}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     className={`btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'}`}
-                    onClick={() => handleAdd(l)}
+                    onClick={() => handleAdd(landmark)}
                   >
                     {isSelected ? '✓ Added to Itinerary' : 'Add to Itinerary'}
                   </button>
-                  <DirectionsButton name={l.name} lat={position[0]} lng={position[1]} className="btn btn-ghost btn-sm">
+                  <DirectionsButton name={landmark.name} lat={position[0]} lng={position[1]} className="btn btn-ghost btn-sm">
                     {'\u{1F9ED}'} Directions
                   </DirectionsButton>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={goToDetails}>
@@ -506,7 +512,7 @@ export default function MapExplore() {
                 </div>
                 <div style={{ marginTop: 8 }}>
                   <CheckInButton
-                    landmark={l}
+                    landmark={landmark}
                     user={user}
                     firebaseEnabled={firebaseEnabled}
                     claimedMap={claimedMap}
@@ -522,7 +528,7 @@ export default function MapExplore() {
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps -- passesFilter only reads filterCats
-    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides, filterCats, editMode]
+    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides, filterCats, editMode, applyEdit]
   );
 
   // Admin Mode's pin-move for a custom landmark -- separate from the

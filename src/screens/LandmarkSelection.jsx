@@ -15,6 +15,7 @@ import Lightbox from '../components/Lightbox';
 import QuickRateButton from '../components/QuickRateButton';
 import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
 import { getCustomLandmarks } from '../lib/customLandmarks';
+import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
 
@@ -109,6 +110,7 @@ export default function LandmarkSelection() {
   const { coords } = useGeo();
   const { units } = useUnits();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { applyEdit } = useLandmarkEdits();
   const { myPhotos } = useMyPhotos();
   const { ratings } = useRatings();
   const navigate = useNavigate();
@@ -230,9 +232,14 @@ export default function LandmarkSelection() {
     [customLandmarks]
   );
 
+  // Admin Mode's live edits (name/category/etc) merged on top of the static
+  // catalog -- same source of truth every other screen (map, detail page)
+  // applies, so a correction shows up here too without a code deploy.
+  const editedLandmarks = useMemo(() => ALL_LANDMARKS.map(applyEdit), [applyEdit]);
+
   const landmarks = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = [...ALL_LANDMARKS, ...normalizedCustomLandmarks].filter((l) => {
+    const filtered = [...editedLandmarks, ...normalizedCustomLandmarks].filter((l) => {
       if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
       if (activeCategories.length && !activeCategories.some((key) => landmarkMatchesCategory(l, key))) return false;
       if (term) {
@@ -290,6 +297,7 @@ export default function LandmarkSelection() {
     visitFilter,
     claimedMap,
     normalizedCustomLandmarks,
+    editedLandmarks,
   ]);
 
   const handleToggle = (landmark) => {
