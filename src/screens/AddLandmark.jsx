@@ -175,11 +175,15 @@ export default function AddLandmark() {
         lat: position.lat,
         lng: position.lng,
         userId: user.uid,
-        categories,
-        images: imageUrl ? [imageUrl] : [],
+        // Category and photo are yours if you picked one -- the AI only
+        // fills the gap when you left it blank, the same way it already
+        // does for facts/summary.
+        categories: categories.length ? categories : verified.category ? [verified.category] : [],
+        images: imageUrl ? [imageUrl] : verified.imageUrl ? [verified.imageUrl] : [],
         summary: verified.summary,
         facts: verified.facts,
         free: verified.free,
+        typicalMinutes: verified.typicalMinutes || undefined,
       });
       navigate(`/landmarks/${created.region}/${created.id}`);
     } catch (err) {
@@ -198,7 +202,8 @@ export default function AddLandmark() {
         <span>{'\u{2795}'}</span> Add Landmark
       </h1>
       <p className="screen-subtitle">
-        Add a real place that's missing from the map. We'll AI-check it, then a moderator reviews it before it goes live.
+        Add a real place that's missing from the map. It goes live right away — we'll research it and fill in whatever
+        you leave blank (category, photo, facts, and more).
       </p>
 
       <div className="field">
@@ -264,6 +269,9 @@ export default function AddLandmark() {
 
       <div className="field">
         <FieldLabel>Category</FieldLabel>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
+          Leave blank and we'll research it and pick one.
+        </p>
         <CategorySelect value={categories[0] || ''} onSelect={(id) => setCategories([id])} />
       </div>
 
@@ -310,7 +318,8 @@ export default function AddLandmark() {
       <div className="field">
         <FieldLabel>Photo</FieldLabel>
         <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
-          Helps others recognize it and speeds up moderation, but isn't required.
+          Helps others recognize it. Skip it and we'll try to find a real photo of the place ourselves — never a stock
+          photo or a guess.
         </p>
         {photoPreview ? (
           <div style={{ position: 'relative', width: 120 }}>

@@ -130,7 +130,7 @@ export default async function handler(req, res) {
       }
 
       try {
-        const enriched = await enrichLandmark({ name, lat, lng, userFacts, placeContext, categories });
+        const enriched = await enrichLandmark({ name, lat, lng, userFacts, placeContext, categories, hasPhoto });
         res.status(200).json({ ok: true, reason: '', ...enriched });
       } catch {
         // Search failed, timed out, or the AI's answer didn't parse --

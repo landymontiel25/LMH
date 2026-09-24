@@ -131,22 +131,49 @@ export default async function handler(req, res) {
       const data = decodeFields(doc.fields);
       const userFacts = Array.isArray(data.facts) ? data.facts : [];
       const categories = Array.isArray(data.categories) ? data.categories : [];
+      const hasPhoto = Array.isArray(data.images) && data.images.length > 0;
       try {
         const placeContext = await reverseGeocode(data.lat, data.lng);
-        const enriched = await enrichLandmark({ name: data.name, lat: data.lat, lng: data.lng, userFacts, placeContext, categories });
+        const enriched = await enrichLandmark({
+          name: data.name,
+          lat: data.lat,
+          lng: data.lng,
+          userFacts,
+          placeContext,
+          categories,
+          hasPhoto,
+        });
+
+        // Category and photo are real submitter choices -- only fill them
+        // in when genuinely empty, never overwrite one that's already set.
+        // typicalMinutes is never actually submitter-chosen (Add Landmark
+        // has no UI for it; every doc just carries the hardcoded 15
+        // default), so a better AI estimate always replaces it.
+        const fields = {
+          summary: encodeValue(enriched.summary),
+          facts: encodeValue(enriched.facts),
+          free: encodeValue(enriched.free),
+        };
+        const maskFields = ['summary', 'facts', 'free'];
+        if (categories.length === 0 && enriched.category) {
+          fields.categories = encodeValue([enriched.category]);
+          maskFields.push('categories');
+        }
+        if (!hasPhoto && enriched.imageUrl) {
+          fields.images = encodeValue([enriched.imageUrl]);
+          maskFields.push('images');
+        }
+        if (enriched.typicalMinutes) {
+          fields.typicalMinutes = encodeValue(enriched.typicalMinutes);
+          maskFields.push('typicalMinutes');
+        }
 
         const patchRes = await fetch(
-          `https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=summary&updateMask.fieldPaths=facts&updateMask.fieldPaths=free`,
+          `https://firestore.googleapis.com/v1/${doc.name}?${maskFields.map((f) => `updateMask.fieldPaths=${f}`).join('&')}`,
           {
             method: 'PATCH',
             headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fields: {
-                summary: encodeValue(enriched.summary),
-                facts: encodeValue(enriched.facts),
-                free: encodeValue(enriched.free),
-              },
-            }),
+            body: JSON.stringify({ fields }),
           }
         );
         if (!patchRes.ok) throw new Error(`Firestore write failed (${patchRes.status})`);
