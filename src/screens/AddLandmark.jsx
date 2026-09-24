@@ -169,9 +169,14 @@ export default function AddLandmark() {
       const region = nearestRegionId(position.lat, position.lng);
       const tempId = `pending-${Date.now()}`;
       const imageUrl = photo ? await uploadLandmarkPhoto(tempId, user.uid, photo) : null;
+      // If no name was typed (finalName is just the address text) and the
+      // AI's research clearly identified the real place there, save it
+      // under that real name instead of the address -- but never override
+      // a name the submitter actually typed themselves.
+      const savedName = !name.trim() && verified.resolvedName ? verified.resolvedName : finalName;
       const created = await addCustomLandmark({
         region,
-        name: finalName,
+        name: savedName,
         lat: position.lat,
         lng: position.lng,
         userId: user.uid,

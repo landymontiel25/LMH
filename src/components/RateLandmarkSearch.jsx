@@ -75,6 +75,13 @@ export default function RateLandmarkSearch() {
   const close = () => setOpen(false);
 
   const pick = (landmark) => {
+    // Only this search (Mapr Picks) blocks a repeat rating -- rating the
+    // same place twice from an actual visit still works fine from the
+    // landmark's own page, where it's an edit, not a duplicate.
+    if (myReviews[landmark.id]) {
+      setCreateError('Hey, you already rated this. Try rating something else.');
+      return;
+    }
     // Mandatory comment here, only here -- a plain "Check In" doesn't
     // require one. Mapr needs to know *why* when there's no visit context
     // to lean on. ratingOnly keeps this from paying out check-in points.
@@ -177,9 +184,13 @@ export default function RateLandmarkSearch() {
       if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different search.");
 
       const region = nearestRegionId(details.lat, details.lng);
+      // Google's address result is often just the street address, not the
+      // business name -- if the AI's research identifies the real place
+      // there, save it under that real name instead.
+      const savedName = verified.resolvedName || finalName;
       const created = await addCustomLandmark({
         region,
-        name: finalName,
+        name: savedName,
         lat: details.lat,
         lng: details.lng,
         userId: user.uid,
@@ -236,7 +247,7 @@ export default function RateLandmarkSearch() {
                         key={`${l.regionId}-${l.id}`}
                         className="autocomplete-item"
                         onClick={() => pick(l)}
-                        disabled={creating || alreadyRated}
+                        disabled={creating}
                       >
                         <span className="autocomplete-primary">{l.name}</span>
                         <span className="autocomplete-secondary">
