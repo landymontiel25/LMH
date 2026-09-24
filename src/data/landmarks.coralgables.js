@@ -123,5 +123,26 @@ export const CORALGABLES_LANDMARKS = [
     free: false,
     bookingUrl: null,
     typicalMinutes: 60
+  },
+  {
+    id: "watsco-center",
+    editorialRank: 7,
+    popularity: 7,
+    cost: "Free",
+    neighborhood: "University of Miami Campus",
+    firstTimerPriority: "Medium",
+    images: ["https://commons.wikimedia.org/wiki/Special:FilePath/Watsco_center_2009_cropped.jpg?width=1200"],
+    name: "Watsco Center",
+    region: 'coral-gables',
+    lat: 25.71500,
+    lng: -80.27917,
+    checkInRadiusMeters: 150,
+    categories: ["stadiums"],
+    summary: "An 8,000-seat multi-purpose arena on the University of Miami campus, home to Hurricanes basketball since it opened in 2003.",
+    tip: "Home to Miami Hurricanes basketball — check the schedule before visiting if you want to catch a game.",
+    facts: ["Opened in January 2003 as the University of Miami Convocation Center","Renamed the BankUnited Center in 2005","Took its current name in 2016 when Miami-based HVAC distributor Watsco acquired the naming rights","An 8,000-seat multi-purpose arena spanning more than 200,000 square feet","Home court for the Miami Hurricanes' men's and women's basketball teams","Seats 7,972 for basketball and 5,990 configured for ice hockey","Cost roughly $48 million to build","The largest multi-purpose entertainment facility of its kind south of downtown Miami","Also hosts concerts, trade shows, lectures and university commencement ceremonies","Served by the Miami Metrorail's University station"],
+    free: true,
+    bookingUrl: null,
+    typicalMinutes: 60
   }
 ];
