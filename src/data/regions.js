@@ -15,6 +15,7 @@ import { F1_LANDMARKS } from './landmarks.f1.js';
 import { SANFRANCISCO_LANDMARKS } from './landmarks.sanfrancisco.js';
 import { SILICONVALLEY_LANDMARKS } from './landmarks.siliconvalley.js';
 import { SWITZERLAND_LANDMARKS } from './landmarks.switzerland.js';
+import { PARIS_LANDMARKS } from './landmarks.paris.js';
 
 export const REGIONS = [
   {
@@ -185,6 +186,17 @@ export const REGIONS = [
     center: { lat: 50.0379, lng: 8.5622 },
     viewbox: { minLat: 49.95, minLng: 8.45, maxLat: 50.12, maxLng: 8.72 },
     landmarks: FRANKFURT_LANDMARKS,
+  },
+  {
+    id: 'paris',
+    name: 'Paris',
+    tagline: 'Icons, romance & the City of Light',
+    city: 'Paris',
+    state: 'Île-de-France',
+    country: 'France',
+    center: { lat: 48.8566, lng: 2.3522 },
+    viewbox: { minLat: 48.81, minLng: 2.22, maxLat: 48.91, maxLng: 2.42 },
+    landmarks: PARIS_LANDMARKS,
   },
   {
     id: 'switzerland',
