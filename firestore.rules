@@ -36,11 +36,7 @@ service cloud.firestore {
           || (request.auth.token.email in ['landymontiel25@gmail.com']
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdAt']))
         );
-      // Same admin-only carve-out as the createdAt update above: cleaning up
-      // a duplicate check-in left behind when a user-submitted landmark gets
-      // superseded by a proper catalog entry (mergeOrphanedRating in
-      // ratingMerge.js). Nobody else can ever delete a check-in.
-      allow delete: if request.auth != null && request.auth.token.email in ['landymontiel25@gmail.com'];
+      allow delete: if false;
     }
     match /leaderboard_entries/{entryId} {
       allow read: if true;

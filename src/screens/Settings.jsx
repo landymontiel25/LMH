@@ -6,7 +6,6 @@ import { useTheme } from '../lib/useTheme';
 import { useUnits, countryName } from '../lib/UnitsContext';
 import { setProfileVisibility, getUserProfile } from '../lib/friends';
 import { useAdminMode } from '../lib/AdminModeContext';
-import { findOrphanedRatings, mergeOrphanedRating } from '../lib/ratingMerge';
 import PreferenceChips from '../components/PreferenceChips';
 
 export default function Settings() {
@@ -18,38 +17,6 @@ export default function Settings() {
   const { adminMode, canUseAdminMode, setAdminMode } = useAdminMode();
   const [visBusy, setVisBusy] = useState(false);
   const [visMsg, setVisMsg] = useState(null);
-  // Admin Mode -- "Fix Duplicate Ratings": a real check-in made before a
-  // place had its own catalog entry (rated against a user-submitted
-  // duplicate) gets re-filed under the real landmark once one exists.
-  const [dupScanning, setDupScanning] = useState(false);
-  const [dupCandidates, setDupCandidates] = useState(null);
-  const [dupMerging, setDupMerging] = useState(null);
-  const [dupError, setDupError] = useState('');
-
-  const scanForDuplicates = async () => {
-    setDupScanning(true);
-    setDupError('');
-    try {
-      setDupCandidates(await findOrphanedRatings(user.uid));
-    } catch (e) {
-      setDupError(e.message || 'Could not scan — try again.');
-    } finally {
-      setDupScanning(false);
-    }
-  };
-
-  const mergeDuplicate = async (candidate) => {
-    setDupMerging(candidate.oldCheckin.id);
-    setDupError('');
-    try {
-      await mergeOrphanedRating(candidate);
-      setDupCandidates((cur) => cur?.filter((c) => c.oldCheckin.id !== candidate.oldCheckin.id) ?? null);
-    } catch (e) {
-      setDupError(e.message || 'Could not merge — try again.');
-    } finally {
-      setDupMerging(null);
-    }
-  };
 
   const toggleVisibility = async () => {
     setVisBusy(true);
@@ -176,51 +143,6 @@ export default function Settings() {
           >
             {adminMode ? `${'\u{2715}'} Turn Off Admin Mode` : `${'\u{1F6E0}\u{FE0F}'} Turn On Admin Mode`}
           </button>
-        </div>
-      )}
-
-      {canUseAdminMode && adminMode && (
-        <div className="card section">
-          <h3 style={{ marginTop: 0 }}>{'\u{1F517}'} Fix Duplicate Ratings</h3>
-          <p className="screen-subtitle" style={{ marginTop: 0 }}>
-            Finds a real check-in you made against a place before it had its own catalog
-            entry (a user-submitted duplicate pin) and re-files it under the real landmark
-            — same rating, same photos, same checked-in date, just attached correctly.
-          </p>
-          <button type="button" className="btn btn-block btn-ghost" disabled={dupScanning} onClick={scanForDuplicates}>
-            {dupScanning ? 'Scanning…' : dupCandidates ? 'Scan again' : `${'\u{1F50D}'} Scan for duplicate ratings`}
-          </button>
-          {dupError && (
-            <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
-              {dupError}
-            </p>
-          )}
-          {dupCandidates && dupCandidates.length === 0 && (
-            <p className="screen-subtitle" style={{ marginTop: 10, marginBottom: 0 }}>
-              Nothing to fix — every check-in already points at a real landmark.
-            </p>
-          )}
-          {dupCandidates && dupCandidates.length > 0 && (
-            <ul className="checkin-stats" style={{ marginTop: 10 }}>
-              {dupCandidates.map((c) => (
-                <li key={c.oldCheckin.id} style={{ display: 'block' }}>
-                  <div>
-                    <strong>{c.oldCustomLandmark.name || c.oldCheckin.landmarkName}</strong> {'\u{2192}'}{' '}
-                    {c.newLandmark.name}
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    style={{ marginTop: 6 }}
-                    disabled={dupMerging === c.oldCheckin.id}
-                    onClick={() => mergeDuplicate(c)}
-                  >
-                    {dupMerging === c.oldCheckin.id ? 'Merging…' : 'Merge into real landmark'}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       )}
     </div>

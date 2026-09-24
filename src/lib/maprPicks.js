@@ -106,21 +106,3 @@ export function writePicksCache(key, picks) {
     /* private mode */
   }
 }
-
-// Wipes every cached pick list for this user, regardless of the
-// ratingsCount/location it was keyed on. Used after mergeOrphanedRating
-// (ratingMerge.js): a merge moves a rating from an old landmark id to a
-// new one without changing the total rating count, so the cache key alone
-// wouldn't naturally invalidate and could keep serving a stale pick built
-// around the old id.
-export function clearPicksCache(uid) {
-  try {
-    const prefix = `lh-mapr-picks:${uid}:`;
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(prefix)) localStorage.removeItem(key);
-    }
-  } catch {
-    /* private mode */
-  }
-}
