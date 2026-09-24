@@ -1522,6 +1522,14 @@ textarea {
   background: rgba(201, 161, 90, 0.14);
 }
 
+.autocomplete-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.autocomplete-item:disabled:hover {
+  background: transparent;
+}
+
 .autocomplete-primary {
   font-size: 0.9rem;
   color: var(--color-parchment);

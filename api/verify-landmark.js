@@ -40,9 +40,9 @@ const INSTRUCTIONS =
 // it was making Add Landmark feel broken. Left in place (not deleted) so
 // it's a one-line flip to turn back on once that's tuned or wanted again.
 // While off, every submission is accepted outright with no accept/reject AI
-// call at all (no plausibility screening, no photo check) -- the
-// pending-approval queue is the only remaining filter (also off, see
-// LANDMARK_APPROVAL_ENABLED in src/lib/customLandmarks.js).
+// call at all (no plausibility screening, no photo check) -- there's no
+// approval queue either (removed by request, see src/lib/customLandmarks.js),
+// so this is the only remaining filter on what gets submitted.
 const AI_MODERATION_ENABLED = false;
 
 // Separate from moderation: this only researches and WRITES the summary/

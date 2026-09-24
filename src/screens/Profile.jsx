@@ -19,12 +19,10 @@ import { useRatings } from '../lib/RatingsContext';
 import { RATING_GOAL } from '../lib/ratingFlow';
 import { getRegion, REGIONS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
-import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
 import { useBadges } from '../lib/BadgesContext';
 import { closestUnearnedBadge, PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
 import { completeOnboarding, hasCompletedOnboardingLocally, markOnboardingCompletedLocally } from '../lib/onboarding';
-import { isAdmin } from '../lib/admins';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
 import PreferenceChips from '../components/PreferenceChips';
@@ -254,90 +252,6 @@ function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding 
   );
 }
 
-// Admin-only review queue for landmarks submitted via "Add Landmark" -- they
-// sit invisible to everyone else until approved or rejected here. Renders
-// nothing at all for a non-admin account, and nothing once the queue is
-// empty, so it never clutters Profile for anyone but the person doing the
-// reviewing, and only when there's actually something to review.
-function PendingLandmarksPanel({ email }) {
-  const [pending, setPending] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState(null);
-
-  useEffect(() => {
-    if (!isAdmin(email)) return;
-    getPendingLandmarks().then((l) => {
-      setPending(l);
-      setLoading(false);
-    });
-  }, [email]);
-
-  if (!isAdmin(email) || loading || pending.length === 0) return null;
-
-  const approve = async (docId) => {
-    setBusyId(docId);
-    try {
-      const landmark = pending.find((l) => l.docId === docId);
-      await approveCustomLandmark(docId, landmark);
-      setPending((cur) => cur.filter((l) => l.docId !== docId));
-    } catch {
-      // leave it in the queue -- the admin can just try again
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const reject = async (docId) => {
-    setBusyId(docId);
-    try {
-      await deleteCustomLandmark(docId);
-      setPending((cur) => cur.filter((l) => l.docId !== docId));
-    } catch {
-      // leave it in the queue -- the admin can just try again
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  return (
-    <div className="card section">
-      <h3 style={{ marginTop: 0 }}>{'\u{1F6E0}\u{FE0F}'} Pending Landmarks ({pending.length})</h3>
-      <p className="screen-subtitle" style={{ marginTop: -6 }}>
-        Submitted via "Add Landmark" — invisible to everyone until you approve one.
-      </p>
-      {pending.map((l) => (
-        <div key={l.docId} className="checkin-row" style={{ alignItems: 'flex-start', cursor: 'default' }}>
-          <LandmarkThumb landmark={l} size={56} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="checkin-name">{l.name}</div>
-            <div className="checkin-sub" style={{ whiteSpace: 'normal' }}>
-              {l.summary}
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button
-                type="button"
-                className="btn btn-success btn-tight"
-                disabled={busyId === l.docId}
-                onClick={() => approve(l.docId)}
-              >
-                {'\u{2713}'} Approve
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger btn-tight"
-                disabled={busyId === l.docId}
-                onClick={() => reject(l.docId)}
-              >
-                {'\u{2715}'} Reject
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function Profile() {
   const { user, firebaseEnabled, signOutUser, deleteAccount, resendVerification, refreshUser } = useAuth();
   const [verifyMsg, setVerifyMsg] = useState(null);
@@ -352,7 +266,7 @@ export default function Profile() {
   const { myUsername, friendUids, myProfile } = useFriends();
   const { trip } = useTrip();
   const navigate = useNavigate();
-  const { stats, streakDays, checkedInToday, badges, badgeCounts: liveBadgeCounts } = useBadges();
+  const { stats, streakDays, checkedInToday, actionsToday, badges, badgeCounts: liveBadgeCounts } = useBadges();
   const { claimedMap } = useCheckIn();
 
   // Your own reviews come from RatingsContext (refreshed after every save),
@@ -574,8 +488,6 @@ export default function Profile() {
 
   return (
     <div>
-      <PendingLandmarksPanel email={user.email} />
-
       {/* 0.5 — At a glance: closest badge + closest rival, above everything
           else so it's the first thing visible on the Profile screen. */}
       <ClosestBadgeCard
@@ -773,7 +685,8 @@ export default function Profile() {
                 <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
                   <li>Check in at any landmark, or</li>
                   <li>
-                    {'\u{2713}'}/{'\u{2715}'} on {PICKS_STREAK_THRESHOLD} of your Mapr Picks below — even without checking in anywhere
+                    Vote {'\u{2713}'}/{'\u{2715}'} or rate {Math.min(actionsToday, PICKS_STREAK_THRESHOLD)}/{PICKS_STREAK_THRESHOLD} landmarks
+                    below — even without checking in anywhere
                   </li>
                 </ul>
               </div>
@@ -811,7 +724,8 @@ export default function Profile() {
 
         {streakAtRisk && (
           <p className="tag tag-error" style={{ display: 'block', marginTop: 14 }}>
-            {'\u{26A0}\u{FE0F}'} Check in, or vote on {PICKS_STREAK_THRESHOLD} Mapr Picks, today — or your {streakDays}-day streak breaks!
+            {'\u{26A0}\u{FE0F}'} Check in, or vote/rate {Math.min(actionsToday, PICKS_STREAK_THRESHOLD)}/{PICKS_STREAK_THRESHOLD} landmarks
+            today — or your {streakDays}-day streak breaks!
           </p>
         )}
         {streakDays > 0 && checkedInToday && (

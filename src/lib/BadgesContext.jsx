@@ -8,9 +8,9 @@ import { useTrip } from './TripContext';
 import { getUserStats, getUserCheckins, isInTopLeaderboard, hasFriendTagTeam } from './leaderboard';
 import { getPickFeedback } from './pickFeedback';
 import { getUserReviews } from './reviews';
-import { getCustomLandmarks, getPendingLandmarks } from './customLandmarks';
+import { getCustomLandmarks } from './customLandmarks';
 import { getRegion, getLandmark } from '../data/regions';
-import { computeStreakDays, computeBadges, hasSecuredStreakToday } from './streaks';
+import { computeStreakDays, computeBadges, hasSecuredStreakToday, todaysActionCount } from './streaks';
 import {
   countPhotoCheckins,
   maxRegionCheckins,
@@ -85,6 +85,9 @@ export function BadgesProvider({ children }) {
   // safe today", which is the only thing either caller of this actually
   // wants to know.
   const [checkedInToday, setCheckedInToday] = useState(false);
+  // Distinct landmarks voted/rated today, toward PICKS_STREAK_THRESHOLD --
+  // for the "X/3 today" counter near Mapr Picks.
+  const [actionsToday, setActionsToday] = useState(0);
   // Everything past the original 4 (checkins/cities/streak/milestone) that
   // ALL_BADGES' newer entries check against -- see badgeStats.js and the
   // leaderboard.js helpers for how each one is actually derived. Best-effort
@@ -104,6 +107,7 @@ export function BadgesProvider({ children }) {
       setStats(null);
       setStreakDays(0);
       setCheckedInToday(false);
+      setActionsToday(0);
       setExtra({});
       return;
     }
@@ -121,18 +125,18 @@ export function BadgesProvider({ children }) {
       const fbList = Object.values(feedback || {});
       setStreakDays(computeStreakDays(rows, new Date(), fbList));
       setCheckedInToday(hasSecuredStreakToday(rows, fbList));
+      setActionsToday(todaysActionCount(rows, fbList));
     } catch {
       setStreakDays(0);
       setCheckedInToday(false);
+      setActionsToday(0);
     }
 
     try {
-      const [reviews, approved, pending] = await Promise.all([
+      const [reviews, allCustom] = await Promise.all([
         getUserReviews(user.uid).catch(() => []),
         getCustomLandmarks().catch(() => []),
-        getPendingLandmarks().catch(() => []),
       ]);
-      const allCustom = [...approved, ...pending];
       const customLandmarksById = new Map(allCustom.map((l) => [l.id, l]));
       const factLandmarks = allCustom.filter((l) => l.createdBy === user.uid && (l.facts || []).length > 0).length;
       const annotated = rows.map((c) => annotateCheckin(c, customLandmarksById));
@@ -242,6 +246,7 @@ export function BadgesProvider({ children }) {
       stats,
       streakDays,
       checkedInToday,
+      actionsToday,
       badges,
       badgeCounts,
       badgeEarnedAt: myProfile?.badgeEarnedAt || {},
@@ -249,7 +254,7 @@ export function BadgesProvider({ children }) {
       dismissJustEarned,
       reload: load,
     }),
-    [stats, streakDays, checkedInToday, badges, badgeCounts, myProfile?.badgeEarnedAt, justEarned, load]
+    [stats, streakDays, checkedInToday, actionsToday, badges, badgeCounts, myProfile?.badgeEarnedAt, justEarned, load]
   );
 
   return <BadgesContext.Provider value={value}>{children}</BadgesContext.Provider>;

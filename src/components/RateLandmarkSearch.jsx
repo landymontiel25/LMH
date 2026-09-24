@@ -6,6 +6,7 @@ import { nearestRegionId } from '../lib/geo';
 import { searchPlaces, getPlaceDetails, makeSessionToken } from '../lib/places';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
+import { useRatings } from '../lib/RatingsContext';
 import { authErrorMessage } from '../lib/authErrors';
 import { isRateable } from '../lib/ratingFlow';
 
@@ -28,20 +29,25 @@ import { isRateable } from '../lib/ratingFlow';
 // (CheckInReview), which is what actually claims the check-in and saves the
 // rating. ratingOnly tells commitCheckIn (CheckInContext) to claim the visit
 // for 0 points instead of the usual +100 -- this is a rating, not a claim
-// you were there, so it shouldn't pay out like one. It's still the same one
-// real check-in for every other purpose: it counts toward the daily streak
-// exactly like a real visit (computeStreakDays only needs one check-in that
-// day, see src/lib/streaks.js), so if you show up later and tap Check In for
-// real, it's already claimed (no double points either way) and reopens the
-// same prompt to edit your rating -- "rate again" always means editing,
-// never a duplicate. The review this writes feeds Mapr Picks' matching the
-// same way every other review does (src/lib/maprPicks.js / api/mapr-picks.js
-// read categories/tier/highlights/comment from reviews), so the mandatory
-// comment here is exactly what a plain yes/no vote can't give Mapr to learn
-// from.
+// you were there, so it shouldn't pay out like one. It's still a real claim
+// for every other purpose: if you show up later and tap Check In for real,
+// it's already claimed (no double points either way) and reopens the same
+// prompt to edit your rating -- "rate again" always means editing, never a
+// duplicate. On its own, one rating doesn't secure the day's streak the way
+// a real check-in does -- it takes PICKS_STREAK_THRESHOLD distinct
+// landmarks voted or rated in a day (see src/lib/streaks.js) to do that
+// without a real visit. The review this writes feeds Mapr Picks' matching
+// the same way every other review does (src/lib/maprPicks.js /
+// api/mapr-picks.js read categories/tier/highlights/comment from reviews),
+// so the mandatory comment here is exactly what a plain yes/no vote can't
+// give Mapr to learn from.
 export default function RateLandmarkSearch() {
   const { checkIn, user } = useCheckIn();
   const { resendVerification } = useAuth();
+  // Landmarks you've already left a full rating for -- shown but disabled
+  // in the results, so this never turns into a duplicate/edit-by-accident.
+  // Editing an existing rating still works from the landmark's own page.
+  const { myReviews } = useRatings();
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState('');
   const [customLandmarks, setCustomLandmarks] = useState([]);
@@ -222,18 +228,23 @@ export default function RateLandmarkSearch() {
               </div>
               {q && (
                 <div className="autocomplete-list" style={{ position: 'static', marginTop: 8, boxShadow: 'none' }}>
-                  {results.map((l) => (
-                    <button
-                      type="button"
-                      key={`${l.regionId}-${l.id}`}
-                      className="autocomplete-item"
-                      onClick={() => pick(l)}
-                      disabled={creating}
-                    >
-                      <span className="autocomplete-primary">{l.name}</span>
-                      <span className="autocomplete-secondary">{getRegion(l.regionId)?.name}</span>
-                    </button>
-                  ))}
+                  {results.map((l) => {
+                    const alreadyRated = !!myReviews[l.id];
+                    return (
+                      <button
+                        type="button"
+                        key={`${l.regionId}-${l.id}`}
+                        className="autocomplete-item"
+                        onClick={() => pick(l)}
+                        disabled={creating || alreadyRated}
+                      >
+                        <span className="autocomplete-primary">{l.name}</span>
+                        <span className="autocomplete-secondary">
+                          {alreadyRated ? `${'\u{2713}'} Already rated` : getRegion(l.regionId)?.name}
+                        </span>
+                      </button>
+                    );
+                  })}
                   {results.length === 0 && remoteLoading && (
                     <div className="autocomplete-loading">Searching…</div>
                   )}
