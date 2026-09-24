@@ -18,6 +18,11 @@ on:
     branches: [main]
     paths:
       - 'firestore.rules'
+  # Lets you re-deploy on demand from the Actions tab (Run workflow) without
+  # needing a new firestore.rules change to push -- e.g. right after adding
+  # the FIREBASE_SERVICE_ACCOUNT secret for the first time, to deploy
+  # whatever's already on main instead of waiting for the next rules edit.
+  workflow_dispatch: {}
 
 jobs:
   deploy-rules:
