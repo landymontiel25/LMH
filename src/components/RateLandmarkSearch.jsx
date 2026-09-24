@@ -8,7 +8,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { useRatings } from '../lib/RatingsContext';
 import { authErrorMessage } from '../lib/authErrors';
-import { isRateable } from '../lib/ratingFlow';
+import { isRateable, diversityHint } from '../lib/ratingFlow';
 
 // The first card in "Your Mapr Picks" -- a big "+" tile the same size and
 // shape as a real pick card, so rating something isn't a separate feature
@@ -81,6 +81,8 @@ export default function RateLandmarkSearch() {
     checkIn(landmark, { requireComment: true, ratingOnly: true });
     close();
   };
+
+  const diversityTip = diversityHint(Object.values(myReviews));
 
   const q = term.trim().toLowerCase();
   const pool = [
@@ -217,6 +219,11 @@ export default function RateLandmarkSearch() {
               <p className="screen-subtitle" style={{ marginTop: 0 }}>
                 Search for a place you've been and rate it directly — no need to wait for it to show up as a pick.
               </p>
+              {diversityTip && (
+                <p className="screen-subtitle" style={{ marginTop: -10, fontSize: '0.78rem' }}>
+                  {'\u{1F4A1}'} {diversityTip}
+                </p>
+              )}
               <div className="field" style={{ marginBottom: 0 }}>
                 <input
                   type="text"

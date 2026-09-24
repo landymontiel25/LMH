@@ -7,7 +7,7 @@ import { useMyPhotos } from '../lib/MyPhotosContext';
 import { submitReview } from '../lib/reviews';
 import { attachCheckinPhoto } from '../lib/leaderboard';
 import { pickPhoto } from '../lib/imageUtils';
-import { isRateable } from '../lib/ratingFlow';
+import { isRateable, diversityHint } from '../lib/ratingFlow';
 import RatingFlow from './RatingFlow';
 import CheckInBlast from './CheckInBlast';
 
@@ -28,7 +28,7 @@ export default function CheckInReview() {
   const ratingOnly = !!checkInOptions?.ratingOnly;
   const { user } = useAuth();
   const { myUsername } = useFriends();
-  const { reload: reloadRatings } = useRatings();
+  const { myReviews, reload: reloadRatings } = useRatings();
   const { reload: reloadMyPhotos } = useMyPhotos();
   const [rating, setRating] = useState(null);
   const [photoFiles, setPhotoFiles] = useState([]);
@@ -165,6 +165,14 @@ export default function CheckInReview() {
                     ? 'This also claims a check-in — a comment is required so Mapr knows why.'
                     : 'How was it? One tap is enough — the rest is optional.'}
                 </p>
+                {(() => {
+                  const hint = diversityHint(Object.values(myReviews));
+                  return hint ? (
+                    <p className="screen-subtitle" style={{ marginTop: -10, fontSize: '0.78rem' }}>
+                      {'\u{1F4A1}'} {hint}
+                    </p>
+                  ) : null;
+                })()}
                 <RatingFlow
                   key={justCheckedIn.id}
                   landmark={justCheckedIn}

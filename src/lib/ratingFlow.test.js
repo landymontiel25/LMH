@@ -13,6 +13,7 @@ import {
   aspectsFor,
   aspectLabel,
   RATING_GOAL,
+  diversityHint,
 } from './ratingFlow';
 import { INTERESTS, migrateInterests } from '../data/regions';
 
@@ -209,5 +210,45 @@ describe('limits and aspects', () => {
 
   it('sets the marketing goal at 10 ratings', () => {
     expect(RATING_GOAL).toBe(10);
+  });
+});
+
+describe('diversityHint', () => {
+  const rating = (tier, categories) => ({ ratingTier: tier, categories });
+
+  it('says nothing with fewer than two ratings', () => {
+    expect(diversityHint([])).toBeNull();
+    expect(diversityHint([rating('highly-recommend', ['food'])])).toBeNull();
+  });
+
+  it('says nothing once already spread across categories', () => {
+    const reviews = [
+      rating('highly-recommend', ['food']),
+      rating('probably-skip', ['history-culture']),
+      rating('worth-trying', ['parks-nature']),
+    ];
+    expect(diversityHint(reviews)).toBeNull();
+  });
+
+  it('flags a lopsided history toward one category and suggests an unrated one', () => {
+    const reviews = [
+      rating('highly-recommend', ['food']),
+      rating('highly-recommend', ['food']),
+      rating('probably-skip', ['food']),
+      rating('worth-trying', ['history-culture']),
+    ];
+    const hint = diversityHint(reviews);
+    expect(hint).toContain('Food');
+    expect(hint).not.toContain('undefined');
+  });
+
+  it('goes quiet once RATING_GOAL is reached, however lopsided', () => {
+    const reviews = Array.from({ length: RATING_GOAL }, () => rating('highly-recommend', ['food']));
+    expect(diversityHint(reviews)).toBeNull();
+  });
+
+  it('ignores reviews with no tier (not a real rating)', () => {
+    const reviews = [{ categories: ['food'] }, { categories: ['food'] }, { categories: ['food'] }];
+    expect(diversityHint(reviews)).toBeNull();
   });
 });
