@@ -86,12 +86,19 @@ export function CheckInProvider({ children }) {
   };
 
   // The actual check-in: called from the Post button, this is the moment
-  // points are awarded and the landmark is marked claimed.
+  // points are awarded and the landmark is marked claimed. ratingOnly (set
+  // by Profile's "Rate a Landmark" search) still claims the check-in --
+  // securing the streak and unlocking the review -- but for 0 points: that
+  // flow is rating something, not claiming you physically visited it, and
+  // shouldn't pay out like a real check-in does. Every other check-in path
+  // in the app (map pin, itinerary, landmark list, detail page) never sets
+  // this flag, so they keep awarding points exactly as before.
   const commitCheckIn = async () => {
     const landmark = justCheckedIn;
     if (!user || !landmark) return null;
     setCheckingIn(landmark.id);
     try {
+      const points = checkInOptions?.ratingOnly ? 0 : landmark.points ?? POINTS_PER_CHECKIN;
       const result = await claimCheckIn({
         userId: user.uid,
         // Never store the email on public leaderboards — prefer the username.
@@ -99,14 +106,13 @@ export function CheckInProvider({ children }) {
         landmarkId: landmark.id,
         landmarkName: landmark.name,
         region: landmark.regionId ?? landmark.region,
-        points: landmark.points ?? POINTS_PER_CHECKIN,
+        points,
       });
       if (result.claimed || result.alreadyClaimed) {
         setClaimedMap((m) => ({ ...m, [landmark.id]: true }));
       }
-      if (result.claimed) {
-        const pts = landmark.points ?? POINTS_PER_CHECKIN;
-        setCelebration(buildCelebration(pts));
+      if (result.claimed && points > 0) {
+        setCelebration(buildCelebration(points));
       }
       return result;
     } finally {

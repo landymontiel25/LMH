@@ -22,6 +22,10 @@ import CheckInBlast from './CheckInBlast';
 export default function CheckInReview() {
   const { justCheckedIn, checkInOptions, celebration, commitCheckIn, clearJustCheckedIn } = useCheckIn();
   const requireComment = !!checkInOptions?.requireComment;
+  // Rate a Landmark (Profile) claims the check-in for 0 points -- see
+  // commitCheckIn in CheckInContext. No points were awarded, so this skips
+  // the confetti blast and the "+N pts" copy entirely rather than show "+0".
+  const ratingOnly = !!checkInOptions?.ratingOnly;
   const { user } = useAuth();
   const { myUsername } = useFriends();
   const { reload: reloadRatings } = useRatings();
@@ -114,7 +118,7 @@ export default function CheckInReview() {
       }
     }
     setPosted(true);
-    setBlast(true);
+    setBlast(!ratingOnly);
     setSaving(false);
   };
 
@@ -137,9 +141,9 @@ export default function CheckInReview() {
         {posted ? (
           <>
             <h3 style={{ marginTop: 0 }}>
-              {'\u{1F3AF}'} Checked in! +{celebration?.points ?? justCheckedIn.points ?? 100} pts
+              {ratingOnly ? `${'\u{2B50}'} Rated!` : `${'\u{1F3AF}'} Checked in! +${celebration?.points ?? justCheckedIn.points ?? 100} pts`}
             </h3>
-            {celebration?.message && <div className="celebration-banner">{celebration.message}</div>}
+            {!ratingOnly && celebration?.message && <div className="celebration-banner">{celebration.message}</div>}
             {msg && (
               <p className="screen-subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
                 {msg}
