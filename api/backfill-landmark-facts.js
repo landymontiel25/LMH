@@ -86,19 +86,42 @@ export default async function handler(req, res) {
     return;
   }
 
-  try {
-    const listRes = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/custom_landmarks?pageSize=300`,
-      { headers: { Authorization: `Bearer ${idToken}` } }
-    );
-    if (!listRes.ok) {
-      res.status(502).json({ error: 'Could not list submitted landmarks.' });
-      return;
-    }
-    const listData = await listRes.json();
-    const docs = listData.documents || [];
+  // Optional: force a specific doc through enrichment regardless of whether
+  // it currently looks like it needs it -- for cases the automatic filler-
+  // text/cite-tag detector can't catch, like facts that came back
+  // well-formed but about the wrong real-world place entirely (a name
+  // collision the AI got wrong). Bypasses needsFactsBackfill and MAX_PER_RUN.
+  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+  const forceDocId = typeof body.landmarkId === 'string' ? body.landmarkId.trim().slice(0, 200) : '';
 
-    const candidates = docs.filter((doc) => needsFactsBackfill(decodeFields(doc.fields))).slice(0, MAX_PER_RUN);
+  try {
+    let docs;
+    if (forceDocId) {
+      const docRes = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/custom_landmarks/${encodeURIComponent(forceDocId)}`,
+        { headers: { Authorization: `Bearer ${idToken}` } }
+      );
+      if (!docRes.ok) {
+        res.status(docRes.status === 404 ? 404 : 502).json({ error: 'Could not find that landmark.' });
+        return;
+      }
+      docs = [await docRes.json()];
+    } else {
+      const listRes = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/custom_landmarks?pageSize=300`,
+        { headers: { Authorization: `Bearer ${idToken}` } }
+      );
+      if (!listRes.ok) {
+        res.status(502).json({ error: 'Could not list submitted landmarks.' });
+        return;
+      }
+      const listData = await listRes.json();
+      docs = listData.documents || [];
+    }
+
+    const candidates = forceDocId
+      ? docs
+      : docs.filter((doc) => needsFactsBackfill(decodeFields(doc.fields))).slice(0, MAX_PER_RUN);
 
     let updated = 0;
     const updatedNames = [];
@@ -107,9 +130,10 @@ export default async function handler(req, res) {
     for (const doc of candidates) {
       const data = decodeFields(doc.fields);
       const userFacts = Array.isArray(data.facts) ? data.facts : [];
+      const categories = Array.isArray(data.categories) ? data.categories : [];
       try {
         const placeContext = await reverseGeocode(data.lat, data.lng);
-        const enriched = await enrichLandmark({ name: data.name, lat: data.lat, lng: data.lng, userFacts, placeContext });
+        const enriched = await enrichLandmark({ name: data.name, lat: data.lat, lng: data.lng, userFacts, placeContext, categories });
 
         const patchRes = await fetch(
           `https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=summary&updateMask.fieldPaths=facts&updateMask.fieldPaths=free`,
@@ -133,7 +157,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const totalCandidates = docs.filter((doc) => needsFactsBackfill(decodeFields(doc.fields))).length;
+    const totalCandidates = forceDocId ? candidates.length : docs.filter((doc) => needsFactsBackfill(decodeFields(doc.fields))).length;
     res.status(200).json({
       total: totalCandidates,
       updated,

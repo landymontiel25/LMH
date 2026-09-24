@@ -1,15 +1,25 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { INTERESTS } from '../../src/data/regions.js';
 
 // Shared by /api/verify-landmark (new submissions) and
 // /api/backfill-landmark-facts (existing submissions that predate this
 // feature) -- one place for the AI research call so both stay in sync.
 
+const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
+
 export const ENRICHMENT_INSTRUCTIONS =
   `You help fill in details for a new landmark submitted to "Landmark Hunters", an app where people visit real places ` +
-  `and check in. A user gave a name and an approximate location for a real physical place (the name may actually be an ` +
-  `address, since that's what the location box auto-fills with when left blank). Use web search to find out what this ` +
-  `specific place actually is, and write REAL, SPECIFIC facts about it from what you find -- never invent a fact you ` +
-  `can't source. Search using the name and location together.\n\n` +
+  `and check in. A user gave a name, a category, and an approximate location for a real physical place (the name may ` +
+  `actually be an address, since that's what the location box auto-fills with when left blank). Use web search to find ` +
+  `out what this specific place actually is, and write REAL, SPECIFIC facts about it from what you find -- never invent ` +
+  `a fact you can't source. Search using the name, category, and location together.\n\n` +
+  `Watch for name collisions with the category as your check: a place is often named after a sponsor, donor, or its ` +
+  `own parent company (a company buys naming rights to a stadium, arena, hall, or building), so a name matching a ` +
+  `well-known company or brand does NOT mean the place IS that company. If the category says something like a venue, ` +
+  `stadium, arena, or building, and your first search results are about a business/company instead of an actual place ` +
+  `matching that category, you have the wrong entity -- search again adding the category or words like "arena", ` +
+  `"center", "stadium", or "hall" to the query (e.g. university/company name + category), and use facts about the ` +
+  `real place, not the similarly-named company, even if the company is more prominent in search results.\n\n` +
   `Write every field as plain prose only -- no citation markers, no <cite> tags, no footnote numbers, no source names ` +
   `or brackets of any kind. This text is shown directly to app users, not as a research report.\n\n` +
   `If the submitter already gave their own facts, trust them (they're on the ground, you're not) -- keep those exactly ` +
@@ -55,18 +65,21 @@ function stripCitationTags(text) {
 
 // Throws on any failure (bad response, unparseable JSON) -- callers decide
 // what "couldn't enrich this one" should fall back to.
-export async function enrichLandmark({ name, lat, lng, userFacts = [], placeContext = '' }) {
+export async function enrichLandmark({ name, lat, lng, userFacts = [], placeContext = '', categories = [] }) {
+  const categoryLabel = categories.map((c) => CATEGORY_LABEL[c] || c).join(', ');
+
   const client = new Anthropic();
   const msg = await client.messages.create({
     model: 'claude-haiku-4-5',
     max_tokens: 1500,
     system: ENRICHMENT_INSTRUCTIONS,
-    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }],
     messages: [
       {
         role: 'user',
         content:
           `Name: ${name}\n` +
+          (categoryLabel ? `Category: ${categoryLabel}\n` : '') +
           `Approximate location: ${placeContext || `${lat}, ${lng}`}\n` +
           (userFacts.length
             ? `Facts the submitter already gave (keep these, only add more to reach 5):\n${userFacts.map((f) => `- ${f}`).join('\n')}\n`
