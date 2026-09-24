@@ -110,7 +110,14 @@ export function CheckInProvider({ children }) {
         region: landmark.regionId ?? landmark.region,
         points,
       });
-      if (result.claimed || result.alreadyClaimed) {
+      // Only a real (points > 0) attempt marks the map/UI as "checked in"
+      // here -- a ratingOnly claim never should, even if it's the one that
+      // just created the underlying checkins doc (Firestore rules require
+      // one to exist before a review can be written -- see firestore.rules
+      // -- so the doc itself is unavoidable, but the visual "you've been
+      // here" state is not). If you rate first and physically check in
+      // later, that later real attempt is what finally marks it claimed.
+      if (points > 0 && (result.claimed || result.alreadyClaimed)) {
         setClaimedMap((m) => ({ ...m, [landmark.id]: true }));
       }
       if (result.claimed && points > 0) {

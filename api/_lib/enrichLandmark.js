@@ -19,6 +19,12 @@ export const ENRICHMENT_INSTRUCTIONS =
   `location box auto-fills with when left blank). Use web search to find out what this specific place actually is, ` +
   `and write REAL, SPECIFIC facts about it from what you find -- never invent a fact you can't source. Search using ` +
   `the name, category (if given), and location together.\n\n` +
+  `Name: if the given "name" is actually an address, a generic label, or otherwise clearly not this place's real name ` +
+  `(e.g. "2234 Ponce De Leon Blvd"), and your search clearly identifies the actual business/landmark at that exact ` +
+  `address/location, return its real name as "resolvedName" (e.g. "Sushi Maki") so the submission can be saved under ` +
+  `its real name instead of the address. If the given name already looks like a real, correct name for the place (a ` +
+  `business name, a proper landmark name), or you can't confidently confirm a different real name at that exact spot, ` +
+  `return null for "resolvedName" -- never guess or invent one.\n\n` +
   `Watch for name collisions with the category as your check: a place is often named after a sponsor, donor, or its ` +
   `own parent company (a company buys naming rights to a stadium, arena, hall, or building), so a name matching a ` +
   `well-known company or brand does NOT mean the place IS that company. If the category says something like a venue, ` +
@@ -52,7 +58,7 @@ export const ENRICHMENT_INSTRUCTIONS =
   `submitter already has a photo, return null -- never guess or invent a file name; a missing photo is fine, a wrong ` +
   `one is not.\n\n` +
   `Reply with ONLY a JSON object, no other text:\n` +
-  `{"summary": "<1-2 sentence summary>", "facts": ["<fact>", ...], "free": true|false, "category": "<id from the list, or null>", "typicalMinutes": <number, or null>, "imageFileName": "<exact Wikimedia Commons file name, or null>"}`;
+  `{"resolvedName": "<the place's real name, or null>", "summary": "<1-2 sentence summary>", "facts": ["<fact>", ...], "free": true|false, "category": "<id from the list, or null>", "typicalMinutes": <number, or null>, "imageFileName": "<exact Wikimedia Commons file name, or null>"}`;
 
 // Best-effort reverse geocode for real-world grounding -- never throws.
 export async function reverseGeocode(lat, lng) {
@@ -150,7 +156,17 @@ export async function enrichLandmark({ name, lat, lng, userFacts = [], placeCont
 
   const imageUrl = !hasPhoto && parsed.imageFileName ? await verifyCommonsImage(parsed.imageFileName) : null;
 
+  const resolvedNameRaw = typeof parsed.resolvedName === 'string' ? stripCitationTags(parsed.resolvedName).trim() : '';
+  // Only worth it if it's an actual, different, plausible name -- not the
+  // same name back, not empty, not absurdly long (a real name, not a
+  // sentence the model wrote instead of following the schema).
+  const resolvedName =
+    resolvedNameRaw && resolvedNameRaw.length <= 80 && resolvedNameRaw.toLowerCase() !== String(name).trim().toLowerCase()
+      ? resolvedNameRaw
+      : null;
+
   return {
+    resolvedName,
     summary: stripCitationTags(String(parsed.summary || '')).slice(0, 300),
     facts: (Array.isArray(parsed.facts) && parsed.facts.length ? parsed.facts : userFacts)
       .map((f) => stripCitationTags(String(f)).slice(0, 160))

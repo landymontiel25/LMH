@@ -181,9 +181,9 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         <span
           className="tag"
           style={{ fontSize: '0.68rem' }}
-          title={`${Math.min(actionsToday, PICKS_STREAK_THRESHOLD)} of ${PICKS_STREAK_THRESHOLD} needed today to secure your streak without a check-in`}
+          title={`${actionsToday} of ${PICKS_STREAK_THRESHOLD} needed today to secure your streak without a check-in -- more is fine, ${PICKS_STREAK_THRESHOLD} is just the minimum`}
         >
-          {Math.min(actionsToday, PICKS_STREAK_THRESHOLD)}/{PICKS_STREAK_THRESHOLD} today
+          {actionsToday}/{PICKS_STREAK_THRESHOLD} today
         </span>
       </div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>

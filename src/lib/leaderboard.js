@@ -218,6 +218,17 @@ export async function getUserTotalPoints(userId) {
  * One-query rollup of a user's all-time stats: total points, number of
  * check-ins, and how many distinct cities/regions they've visited.
  */
+// A real, physical check-in -- excludes the 0-point claims "Rate a
+// Landmark" makes (see CheckInContext's ratingOnly flag). Its checkins doc
+// is real (Firestore rules require one to exist before its review can be
+// written), but it isn't a visit, so it shouldn't count toward check-in/city
+// stats, badges, or "already been here" map state. A doc with no points
+// field at all (older data) is treated as real -- explicit 0 is the only
+// non-real case. Same rule as streaks.js' isRealCheckin.
+function isRealCheckin(x) {
+  return x.points !== 0;
+}
+
 export async function getUserStats(userId) {
   const [snap, profile] = await Promise.all([
     getDocs(query(collection(db, 'checkins'), where('userId', '==', userId))),
@@ -227,9 +238,12 @@ export async function getUserStats(userId) {
   const regions = new Set();
   const cityLastVisit = {}; // regionId -> most recent check-in, in epoch seconds
   const cityPoints = {}; // regionId -> points earned there
+  let checkinsCount = 0;
   snap.docs.forEach((d) => {
     const x = d.data();
     totalPoints += x.points || 0;
+    if (!isRealCheckin(x)) return;
+    checkinsCount += 1;
     if (x.region) {
       regions.add(x.region);
       const sec = x.createdAt?.seconds || 0;
@@ -239,12 +253,15 @@ export async function getUserStats(userId) {
   });
   // Most-recently-visited city first, same ordering as the check-ins list.
   const cityIds = [...regions].sort((a, b) => (cityLastVisit[b] || 0) - (cityLastVisit[a] || 0));
-  return { totalPoints, checkins: snap.size, cities: regions.size, cityIds, cityLastVisit, cityPoints };
+  return { totalPoints, checkins: checkinsCount, cities: regions.size, cityIds, cityLastVisit, cityPoints };
 }
 
 /**
  * Full check-in history for a user (newest first) — id, landmark, region,
- * points, timestamp. Single-field query; sorted client-side.
+ * points, timestamp. Single-field query; sorted client-side. Includes
+ * 0-point ratingOnly claims (streaks.js needs those for the daily
+ * votes/ratings tally) -- callers that mean "real visits" should filter by
+ * points, same as getUserStats/getUserCheckedInLandmarkIds do.
  */
 export async function getUserCheckins(userId) {
   if (!db || !userId) return [];
@@ -255,12 +272,14 @@ export async function getUserCheckins(userId) {
 }
 
 /**
- * Returns the set of landmark IDs a user has already checked into.
- * A single-field equality query, so no composite index is needed.
+ * Returns the set of landmark IDs a user has really (physically) checked
+ * into -- excludes 0-point ratingOnly claims, so a landmark you've only
+ * rated via "Rate a Landmark" doesn't show as already-visited on the map
+ * or block the real "Check In" button/points once you actually go.
  */
 export async function getUserCheckedInLandmarkIds(userId) {
   const snap = await getDocs(query(collection(db, 'checkins'), where('userId', '==', userId)));
-  return snap.docs.map((d) => d.data().landmarkId);
+  return snap.docs.map((d) => d.data()).filter(isRealCheckin).map((x) => x.landmarkId);
 }
 
 /**

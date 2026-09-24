@@ -685,7 +685,7 @@ export default function Profile() {
                 <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
                   <li>Check in at any landmark, or</li>
                   <li>
-                    Vote {'\u{2713}'}/{'\u{2715}'} or rate {Math.min(actionsToday, PICKS_STREAK_THRESHOLD)}/{PICKS_STREAK_THRESHOLD} landmarks
+                    Vote {'\u{2713}'}/{'\u{2715}'} or rate {actionsToday}/{PICKS_STREAK_THRESHOLD} landmarks
                     below — even without checking in anywhere
                   </li>
                 </ul>
@@ -724,7 +724,7 @@ export default function Profile() {
 
         {streakAtRisk && (
           <p className="tag tag-error" style={{ display: 'block', marginTop: 14 }}>
-            {'\u{26A0}\u{FE0F}'} Check in, or vote/rate {Math.min(actionsToday, PICKS_STREAK_THRESHOLD)}/{PICKS_STREAK_THRESHOLD} landmarks
+            {'\u{26A0}\u{FE0F}'} Check in, or vote/rate {actionsToday}/{PICKS_STREAK_THRESHOLD} landmarks
             today — or your {streakDays}-day streak breaks!
           </p>
         )}
