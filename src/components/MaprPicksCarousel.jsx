@@ -38,6 +38,11 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   const fbListRef = useRef([]);
   const trackRef = useRef(null);
   const ratingsCount = reviews?.length || 0;
+  // A landmark you've already left a rating for should never come back as
+  // a "pick" -- checkedInIds alone misses this, since "Rate a Landmark"
+  // deliberately claims its check-in for 0 points (not a real visit), so
+  // it never shows up there even though you've clearly already weighed in.
+  const excludeIds = [...new Set([...checkedInIds, ...reviews.map((r) => r.landmarkId).filter(Boolean)])];
 
   useEffect(() => {
     if (!user) {
@@ -55,14 +60,14 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       fbListRef.current = fbList;
       const cached = readPicksCache(key);
       if (cached) {
-        setQueue(cached.filter((p) => !passedIds.includes(p.id)));
+        setQueue(cached.filter((p) => !passedIds.includes(p.id) && !excludeIds.includes(p.id)));
         return;
       }
       const fallback = () =>
         localMaprPicks({
           reviews: reviews.map((r) => ({ tier: r.ratingTier, categories: r.categories || [] })),
           interests,
-          checkedInIds,
+          checkedInIds: excludeIds,
           regionIds,
           origin,
           ratings,
@@ -84,7 +89,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
               comment: r.comment || '',
             })),
             interests,
-            checkedInIds,
+            checkedInIds: excludeIds,
             regionIds,
             origin,
             feedback: fbList,
@@ -105,7 +110,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       // that visit with no retry. Fail to an empty queue instead.
       let list = [];
       try {
-        const visited = new Set(checkedInIds);
+        const visited = new Set(excludeIds);
         list = (next || fallback()).filter((p) => !visited.has(p.id)).slice(0, RESERVE);
       } catch {
         /* leave list empty rather than leaving the queue stuck at null */
@@ -149,7 +154,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     setQueue((cur) => {
       let next = (cur || []).filter((x) => x.id !== p.id);
       if (next.length < SHOWN) {
-        const seen = new Set([...next.map((x) => x.id), ...Object.keys(nextFeedback), ...checkedInIds]);
+        const seen = new Set([...next.map((x) => x.id), ...Object.keys(nextFeedback), ...excludeIds]);
         const extra = localMaprPicks({
           reviews: reviews.map((r) => ({ tier: r.ratingTier, categories: r.categories || [] })),
           interests,
