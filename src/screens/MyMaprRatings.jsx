@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useRatings } from '../lib/RatingsContext';
 import { getUserCheckins } from '../lib/leaderboard';
+import { deleteMyReview } from '../lib/reviews';
 import { getRegion } from '../data/regions';
 import { TIERS, chipLabel } from '../lib/ratingFlow';
 
@@ -16,9 +17,20 @@ const TABS = TIERS.map((t) => ({ id: t.id, label: t.label, emoji: t.emoji }));
 export default function MyMaprRatings() {
   const navigate = useNavigate();
   const { user, firebaseEnabled } = useAuth();
-  const { myReviews } = useRatings();
+  const { myReviews, reload: reloadRatings } = useRatings();
   const [ratingOnlyIds, setRatingOnlyIds] = useState(null); // null = still loading
   const [tab, setTab] = useState(TABS[0].id);
+  const [removingId, setRemovingId] = useState(null);
+
+  const removeRating = async (r) => {
+    setRemovingId(r.landmarkId);
+    try {
+      await deleteMyReview(user.uid, r.landmarkId);
+      await reloadRatings();
+    } finally {
+      setRemovingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!firebaseEnabled || !user) {
@@ -119,6 +131,18 @@ export default function MyMaprRatings() {
               </p>
             )}
           </div>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            style={{ flexShrink: 0 }}
+            disabled={removingId === r.landmarkId}
+            onClick={(e) => {
+              e.stopPropagation();
+              removeRating(r);
+            }}
+          >
+            {removingId === r.landmarkId ? '…' : `${'\u{1F5D1}\u{FE0F}'} Remove`}
+          </button>
         </div>
       ))}
     </div>
