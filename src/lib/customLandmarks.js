@@ -61,6 +61,14 @@ export function subscribePendingCount(callback) {
   );
 }
 
+// The exact filler text written when AI enrichment is off/unavailable (see
+// AI_ENRICHMENT_ENABLED in api/verify-landmark.js) -- a submission still
+// carrying it either predates that feature or hit its fallback path, and
+// is a candidate for the Profile "Backfill AI Facts" admin action.
+export function needsFactsBackfill(landmark) {
+  return typeof landmark?.summary === 'string' && landmark.summary.startsWith('A community-submitted spot');
+}
+
 // Direct lookup by id -- the doc id and the `id` field are always the same
 // value (set at creation below), so LandmarkDetail can fetch a single custom
 // landmark the same way it'd look one up in the static catalog. Deliberately
