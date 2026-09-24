@@ -6,6 +6,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { useGeo } from '../lib/GeoContext';
 import { useBadges } from '../lib/BadgesContext';
 import { coarseLocation, localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
+import RateLandmarkSearch from './RateLandmarkSearch';
 
 // "Your Mapr Picks": 4 landmarks Mapr thinks you'll love next, as a
 // swipeable card row under the taste card. Asks /api/mapr-picks (Claude,
@@ -119,12 +120,15 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, ratingsCount, locKey]);
 
-  // Which card is in view, for the dots.
+  // Which card is in view, for the dots. The dots below only represent the
+  // actual picks, but the "+ Rate a Landmark" card sits before them in the
+  // track -- offset by one slot so the active dot still matches what's
+  // actually in view.
   const onScroll = () => {
     const el = trackRef.current;
     if (!el || !el.firstElementChild) return;
     const w = el.firstElementChild.getBoundingClientRect().width + 10;
-    setActive(Math.round(el.scrollLeft / w));
+    setActive(Math.max(0, Math.round(el.scrollLeft / w) - 1));
   };
 
   // Either vote records your taste and swaps the card for the next pick
@@ -162,16 +166,23 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     });
   };
 
-  if (!user || !queue || queue.length === 0) return null;
-  const picks = queue.slice(0, SHOWN);
+  // The "+ Rate a Landmark" card is always worth showing once signed in --
+  // it doesn't depend on Mapr having picks ready yet. Everything else here
+  // (the picks themselves, their note, the dots) only makes sense once the
+  // queue has something in it.
+  if (!user) return null;
+  const picks = queue ? queue.slice(0, SHOWN) : [];
 
   return (
     <div className="mapr-picks">
       <div className="taste-card-title">{'\u{1F525}'} Your Mapr Picks</div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>
-        {origin ? 'Near you right now. ' : ''}Tap a card to go there. {'\u{2713}'} / {'\u{2715}'} teach Mapr what you like.
+        {picks.length > 0
+          ? `${origin ? 'Near you right now. ' : ''}Tap a card to go there. ${'\u{2713}'} / ${'\u{2715}'} teach Mapr what you like.`
+          : "Rate a place directly, or check in somewhere to start getting picks."}
       </p>
       <div className="mapr-picks-track" ref={trackRef} onScroll={onScroll}>
+        <RateLandmarkSearch />
         {picks.map((p) => {
           return (
             <div key={`${p.region}/${p.id}`} className="mapr-pick">
