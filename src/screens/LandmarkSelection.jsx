@@ -14,6 +14,7 @@ import LandmarkThumb from '../components/LandmarkThumb';
 import Lightbox from '../components/Lightbox';
 import QuickRateButton from '../components/QuickRateButton';
 import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
+import { getCustomLandmarks } from '../lib/customLandmarks';
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
 
@@ -111,6 +112,13 @@ export default function LandmarkSelection() {
   const { myPhotos } = useMyPhotos();
   const { ratings } = useRatings();
   const navigate = useNavigate();
+
+  // User-submitted landmarks (via "Add a Landmark") -- merged in below so
+  // they're searchable/browsable here too, not just visible on the map.
+  const [customLandmarks, setCustomLandmarks] = useState([]);
+  useEffect(() => {
+    getCustomLandmarks().then(setCustomLandmarks);
+  }, []);
   // Default to the trip's already-chosen region (from Setup) so picking up where you
   // left off doesn't require re-filtering to something you already told the app.
   // Arriving with no trip region yet (e.g. straight from the bottom-nav tab) still
@@ -199,9 +207,17 @@ export default function LandmarkSelection() {
     [trip.customInterests, trip.customInterestMatches]
   );
 
+  // Same shape as ALL_LANDMARKS entries (regionId set from the doc's
+  // `region` field) so the filter/sort/render logic below doesn't need to
+  // know which source a landmark came from.
+  const normalizedCustomLandmarks = useMemo(
+    () => customLandmarks.map((l) => ({ ...l, regionId: l.region })),
+    [customLandmarks]
+  );
+
   const landmarks = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = ALL_LANDMARKS.filter((l) => {
+    const filtered = [...ALL_LANDMARKS, ...normalizedCustomLandmarks].filter((l) => {
       if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
       if (activeCategories.length && !activeCategories.some((key) => landmarkMatchesCategory(l, key))) return false;
       if (term) {
@@ -248,7 +264,18 @@ export default function LandmarkSelection() {
       );
     }
     return filtered;
-  }, [cityFilter, activeCategories, landmarkMatchesCategory, search, sortBy, coords, ratings, visitFilter, claimedMap]);
+  }, [
+    cityFilter,
+    activeCategories,
+    landmarkMatchesCategory,
+    search,
+    sortBy,
+    coords,
+    ratings,
+    visitFilter,
+    claimedMap,
+    normalizedCustomLandmarks,
+  ]);
 
   const handleToggle = (landmark) => {
     toggleLandmark(landmark.id, landmark.regionId);
