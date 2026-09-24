@@ -1,6 +1,9 @@
 /**
  * Free-tier geocoding via OpenStreetMap Nominatim (no API key required).
  * Biases results to the trip's region using a viewbox for accuracy.
+ * (Live address-search-as-you-type has since moved to Google Places API --
+ * see src/lib/places.js -- this file still backs reverse country lookup and
+ * the Itinerary starting-location geocode.)
  */
 /**
  * Which country a GPS fix is in, as an ISO 3166-1 alpha-2 code ("US", "IT").
@@ -53,50 +56,4 @@ export async function geocodeLocation(text, region) {
   } catch {
     return region?.center ?? null;
   }
-}
-
-/**
- * Live-typing address/place suggestions via Nominatim, biased to the trip's region.
- * Returns [{ primary, secondary, lat, lng }] — primary is the place/street name,
- * secondary is the rest of the formatted address.
- */
-export async function searchLocations(text, region, limit = 5) {
-  if (!text || text.trim().length < 2) return [];
-
-  const params = new URLSearchParams({
-    q: text,
-    format: 'json',
-    limit: String(limit),
-    addressdetails: '0',
-  });
-
-  // viewbox alone (no bounded=1) is a ranking preference, not a hard filter --
-  // it nudges same-name matches near the current pin ahead of unrelated ones
-  // elsewhere (e.g. a same-named place on another continent) without hiding
-  // a real match just because the pin defaulted to the wrong region when the
-  // whole point of this search is often to move it somewhere else entirely.
-  if (region?.viewbox) {
-    const { minLat, minLng, maxLat, maxLng } = region.viewbox;
-    params.set('viewbox', `${minLng},${maxLat},${maxLng},${minLat}`);
-  }
-
-  // No catch here -- a genuinely failed search (network error, Nominatim
-  // rate-limiting, a non-2xx response) needs to reach the caller as an
-  // error, not come back silently as "zero matches." Those look identical
-  // in the UI otherwise, which makes a real outage undiagnosable from a
-  // screen that's just quietly showing nothing.
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-    headers: { Accept: 'application/json' },
-  });
-  if (!res.ok) throw new Error(`Nominatim search failed: HTTP ${res.status}`);
-  const results = await res.json();
-  return results.map((r) => {
-    const parts = String(r.display_name).split(',');
-    return {
-      primary: parts[0].trim(),
-      secondary: parts.slice(1).join(',').trim(),
-      lat: parseFloat(r.lat),
-      lng: parseFloat(r.lon),
-    };
-  });
 }
