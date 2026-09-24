@@ -19,6 +19,8 @@ const INSTRUCTIONS =
   `- Go past the broad category label to the SPECIFIC kind of place, using each place's own description. A broad category can hide very different experiences: a zoo and a hiking trail both file under parks/nature; a cemetery, a private cricket club, and a historic mansion all file under history/culture or sports right alongside a beloved public museum or stadium. If the traveler rated or clearly said they'd skip a specific kind of place -- a zoo, a cemetery, an amusement park, a private/members-only club, a house of worship, whatever it specifically is -- don't recommend another one of that same specific kind even when the broad category is otherwise something they like, and even when a place they DID love (a public ballpark, say) happens to share that same broad category. One clear "probably skip" on that specific kind is enough on its own; don't wait for a pattern to repeat before acting on it.\n` +
   `- Recent signal matters more than old signal. If their most recent few ratings or votes point a different direction than their older history, trust the recent ones -- taste can change, and this app should notice fast, not average everything together as if it were said at once.\n` +
   `- PICK FEEDBACK (✓ "I'd go" / ✗ "not for me" on earlier picks) is a light signal about general taste -- lighter than a rating, and context-dependent: someone may ✗ a cathedral at night in Miami and still love cathedrals in Italy, or ✓ Yankee Stadium in New York but never a ballpark in Colorado. Use it to nudge category preferences, not to rule categories out entirely on its own -- but several ✗'s on the same category, or even a single ✗ that clearly names a specific kind of place (see above), is a real signal, not noise.\n` +
+  `- WEAK SIGNAL (checked in, never rated) means they went and never bothered leaving a verdict -- worth a small nudge toward that category (they didn't hate it enough to say so), but far lighter than an actual "worth trying", let alone a "probably skip". Don't treat silence as either love or dislike.\n` +
+  `- With little or no rating history yet, don't guess at taste from nothing -- lean on proximity and general popularity instead, and let matchPercentage reflect that real uncertainty (modest, not falsely confident) rather than inventing a strong personal fit this early.\n` +
   `- Prefer variety across the 8 picks unless the history is clearly single-minded.\n` +
   `- matchPercentage is your honest confidence this SPECIFIC traveler will love this SPECIFIC place, 60-99 -- never inflate it just because a pick is the best of a mediocre nearby pool. If nothing nearby is a strong match for their taste, say so with a modest score (60s) rather than dressing up a weak fit as 90+, and it's fine to return fewer than 8 picks. Don't give everything 97.\n` +
   `- oneLineSummary: under 12 words, concrete, about the place itself (not "you'll love it").\n` +
@@ -71,6 +73,9 @@ export default async function handler(req, res) {
       verdict: f.verdict === 'yes' ? 'yes' : 'no',
     }));
     const passedIds = new Set((Array.isArray(body.passedIds) ? body.passedIds : []).map((id) => str(id, 80)));
+    const weakCheckedInIds = new Set(
+      (Array.isArray(body.weakCheckedInIds) ? body.weakCheckedInIds : []).map((id) => str(id, 80))
+    );
     const origin =
       body.origin && Number.isFinite(Number(body.origin.lat)) && Number.isFinite(Number(body.origin.lng))
         ? { lat: Number(body.origin.lat), lng: Number(body.origin.lng) }
@@ -99,6 +104,7 @@ export default async function handler(req, res) {
       if (inCities.length >= 8) pool = inCities;
     }
     const validIds = new Map(pool.map((l) => [`${l.regionId}/${l.id}`, l]));
+    const weakCheckins = ALL_LANDMARKS.filter((l) => weakCheckedInIds.has(l.id)).slice(0, 30);
 
     const history =
       (reviews.length
@@ -118,6 +124,10 @@ export default async function handler(req, res) {
           feedback
             .map((f) => `- ${f.verdict === 'yes' ? '✓ would go' : '✗ not for me'}: ${f.name} [${f.categories.join(', ') || '?'}]${f.region ? ` (${f.region})` : ''}`)
             .join('\n')
+        : '') +
+      (weakCheckins.length
+        ? '\n\nWEAK SIGNAL (checked in, never rated -- see rules):\n' +
+          weakCheckins.map((l) => `- ${l.name} [${l.categories?.[0] || '?'}]`).join('\n')
         : '') +
       (origin ? '\n\nThe traveler is here right now; every catalog place is nearby.' : '') +
       '\n\nCATALOG (region/id | name | category | description | distance):\n' +

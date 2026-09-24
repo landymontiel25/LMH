@@ -42,11 +42,27 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // a "pick" -- checkedInIds alone misses this, since "Rate a Landmark"
   // deliberately claims its check-in for 0 points (not a real visit), so
   // it never shows up there even though you've clearly already weighed in.
-  const excludeIds = [...new Set([...checkedInIds, ...reviews.map((r) => r.landmarkId).filter(Boolean)])];
+  const reviewedIds = new Set(reviews.map((r) => r.landmarkId).filter(Boolean));
+  const excludeIds = [...new Set([...checkedInIds, ...reviewedIds])];
+  // Checked in for real but never rated -- a weak positive signal for the
+  // local scorer (see maprPicks.js), distinct from a real "worth trying".
+  const weakCheckedInIds = checkedInIds.filter((id) => !reviewedIds.has(id));
   // Oldest -> newest, so the server prompt (which is told this ordering) can
   // actually weigh a recent change of taste over a large pile of older
   // ratings, instead of averaging everything together as if said at once.
   const orderedReviews = [...reviews].sort((a, b) => (a.updatedAt?.seconds || 0) - (b.updatedAt?.seconds || 0));
+  // Same fields the local scorer (maprPicks.js) actually reads: tier/
+  // category for the base affinity math, name/comment/highlights so it can
+  // parse out the traveler's stated REASON, updatedAt so a recent rating
+  // outweighs an old one instead of everything counting equally forever.
+  const localReviews = orderedReviews.map((r) => ({
+    tier: r.ratingTier,
+    categories: r.categories || [],
+    name: r.landmarkName,
+    comment: r.comment || '',
+    highlights: r.highlights || [],
+    updatedAt: r.updatedAt,
+  }));
 
   useEffect(() => {
     if (!user) {
@@ -60,7 +76,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       if (cancelled) return;
       setFeedback(Object.fromEntries(Object.values(fb).map((f) => [f.landmarkId, f.verdict])));
       const passedIds = votedIds(fb);
-      const fbList = Object.values(fb).map((f) => ({ name: f.name, region: f.region, categories: f.categories, verdict: f.verdict }));
+      const fbList = Object.values(fb).map((f) => ({ name: f.name, region: f.region, categories: f.categories, verdict: f.verdict, at: f.at }));
       fbListRef.current = fbList;
       const cached = readPicksCache(key);
       if (cached) {
@@ -69,9 +85,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       }
       const fallback = () =>
         localMaprPicks({
-          reviews: orderedReviews.map((r) => ({ tier: r.ratingTier, categories: r.categories || [], name: r.landmarkName })),
+          reviews: localReviews,
           interests,
           checkedInIds: excludeIds,
+          weakCheckedInIds,
           regionIds,
           origin,
           ratings,
@@ -94,6 +111,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
             })),
             interests,
             checkedInIds: excludeIds,
+            weakCheckedInIds,
             regionIds,
             origin,
             feedback: fbList,
@@ -148,7 +166,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   const vote = (p, verdict) => {
     const nextFeedback = { ...feedback, [p.id]: verdict };
     setFeedback(nextFeedback);
-    fbListRef.current = [...fbListRef.current, { name: p.name, region: p.region, categories: p.categories || [], verdict }];
+    fbListRef.current = [...fbListRef.current, { name: p.name, region: p.region, categories: p.categories || [], verdict, at: Date.now() }];
     setPickFeedback({ uid: user.uid, landmark: { id: p.id, region: p.region, name: p.name, categories: p.categories || [] }, verdict, origin });
     // setPickFeedback writes localStorage synchronously before its own first
     // await, so this always sees today's just-added vote -- refreshes the
@@ -160,9 +178,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       if (next.length < SHOWN) {
         const seen = new Set([...next.map((x) => x.id), ...Object.keys(nextFeedback), ...excludeIds]);
         const extra = localMaprPicks({
-          reviews: orderedReviews.map((r) => ({ tier: r.ratingTier, categories: r.categories || [], name: r.landmarkName })),
+          reviews: localReviews,
           interests,
           checkedInIds: [...seen],
+          weakCheckedInIds,
           regionIds,
           origin,
           ratings,
