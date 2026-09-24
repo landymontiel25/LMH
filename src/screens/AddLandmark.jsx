@@ -5,7 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { REGIONS, getRegion } from '../data/regions';
 import CategorySelect from '../components/CategorySelect';
-import { nearestRegionId } from '../lib/geo';
+import { nearestRegionId, nearestAttributableRegionId } from '../lib/geo';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
@@ -166,7 +166,10 @@ export default function AddLandmark() {
       if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different name or add a photo.");
 
       setStage('saving');
-      const region = nearestRegionId(position.lat, position.lng);
+      // Unlike the search-biasing regionId above, this is permanent -- if
+      // nothing curated is actually nearby, leave it unattributed (shows as
+      // "Custom pin") rather than filing it under the wrong city/country.
+      const region = nearestAttributableRegionId(position.lat, position.lng);
       const tempId = `pending-${Date.now()}`;
       const imageUrl = photo ? await uploadLandmarkPhoto(tempId, user.uid, photo) : null;
       // If no name was typed (finalName is just the address text) and the

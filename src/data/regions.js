@@ -14,6 +14,7 @@ import { CORALGABLES_LANDMARKS } from './landmarks.coralgables.js';
 import { F1_LANDMARKS } from './landmarks.f1.js';
 import { SANFRANCISCO_LANDMARKS } from './landmarks.sanfrancisco.js';
 import { SILICONVALLEY_LANDMARKS } from './landmarks.siliconvalley.js';
+import { SWITZERLAND_LANDMARKS } from './landmarks.switzerland.js';
 
 export const REGIONS = [
   {
@@ -184,6 +185,17 @@ export const REGIONS = [
     center: { lat: 50.0379, lng: 8.5622 },
     viewbox: { minLat: 49.95, minLng: 8.45, maxLat: 50.12, maxLng: 8.72 },
     landmarks: FRANKFURT_LANDMARKS,
+  },
+  {
+    id: 'switzerland',
+    name: 'Switzerland',
+    tagline: 'Alpine lakes, mountain villages & Bernese Oberland views',
+    city: 'Kandersteg',
+    state: 'Bern',
+    country: 'Switzerland',
+    center: { lat: 46.4998, lng: 7.7275 },
+    viewbox: { minLat: 46.45, minLng: 7.65, maxLat: 46.55, maxLng: 7.8 },
+    landmarks: SWITZERLAND_LANDMARKS,
   },
   {
     // Not a city: every Formula 1 circuit outside the cities above, spread
