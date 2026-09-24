@@ -380,3 +380,37 @@ export function categoryLabel(id) {
 // doc. Swap this once real retention-by-ratings-count data is in.
 export const RATING_GOAL = 10;
 export const TASTE_CARD_MIN_RATINGS = 5;
+
+// A handful of ratings all in the same category teaches Mapr almost
+// nothing about how you feel about the other dozen-plus categories it
+// picks from -- category SPREAD, not raw count, is what actually gets you
+// to "Mapr gets me" fast. Nudges toward that spread while you're still
+// building up your first RATING_GOAL ratings; goes quiet once you have
+// enough of them, or once your ratings are reasonably spread already.
+export function diversityHint(reviews) {
+  const rated = (reviews || []).filter((r) => r.ratingTier);
+  if (rated.length < 2 || rated.length >= RATING_GOAL) return null;
+
+  const counts = {};
+  const ratedCats = new Set();
+  for (const r of rated) {
+    for (const c of r.categories || []) {
+      if (!RATEABLE_CATEGORIES.includes(c)) continue;
+      counts[c] = (counts[c] || 0) + 1;
+      ratedCats.add(c);
+    }
+  }
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  if (!top) return null;
+  const [topCat, topCount] = top;
+  // Lopsided only once a category clearly dominates -- one loved museum
+  // among five different-category ratings isn't a pattern worth flagging.
+  if (topCount / rated.length < 0.6) return null;
+
+  const unrated = RATEABLE_CATEGORIES.filter((c) => !ratedCats.has(c)).slice(0, 2);
+  if (!unrated.length) return null;
+
+  return `You've mostly rated ${categoryLabel(topCat)} so far — try a ${unrated
+    .map(categoryLabel)
+    .join(' or ')} spot next. Mapr learns faster from variety than from more of the same.`;
+}
