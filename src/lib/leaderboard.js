@@ -14,6 +14,7 @@ import {
   writeBatch,
   arrayUnion,
   arrayRemove,
+  Timestamp,
 } from 'firebase/firestore';
 import { updateDoc as _updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -154,6 +155,18 @@ export async function attachCheckinPhoto(userId, landmarkId, file) {
   const photoURL = await getDownloadURL(storageRef);
   await _updateDoc(doc(db, 'checkins', `${userId}_${landmarkId}`), { photoURL });
   return photoURL;
+}
+
+/**
+ * Admin Mode only -- corrects when a check-in happened (checkins/{checkinId}
+ * .createdAt), on ANY check-in, not just the admin's own. Firestore rules
+ * enforce this server-side against the same allow-listed admin email
+ * (src/lib/admins.js); a non-admin write attempt is rejected there
+ * regardless of what the client sends.
+ */
+export async function updateCheckinTimestamp(checkinId, date) {
+  if (!db || !checkinId || !date) return;
+  await _updateDoc(doc(db, 'checkins', checkinId), { createdAt: Timestamp.fromDate(date) });
 }
 
 // How many personal photos a check-in's own gallery can hold, independent of

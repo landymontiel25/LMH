@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getLandmark, getRegion } from '../data/regions';
-import { getUserCheckins } from '../lib/leaderboard';
+import { getUserCheckins, updateCheckinTimestamp } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
 import { isRateable, tierById, tierStars } from '../lib/ratingFlow';
 import { CHECKIN_SORTS, sortCheckins } from '../lib/checkinSort';
+import { useAdminMode } from '../lib/AdminModeContext';
+import { isAdmin } from '../lib/admins';
+import { useAuth } from '../lib/AuthContext';
 
 
 // Shared "Sep 7, 2026, 10:04 AM" formatting for check-in timestamps.
@@ -19,12 +22,61 @@ function fmtDateTime(seconds) {
   });
 }
 
+// <input type="datetime-local"> wants "YYYY-MM-DDTHH:mm" in LOCAL time, with
+// no timezone suffix -- toISOString gives UTC, so this builds it by hand.
+function toLocalInputValue(seconds) {
+  if (!seconds) return '';
+  const d = new Date(seconds * 1000);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 // The full photo gallery of everywhere you've checked in -- lives on the
 // Full Stats page (moved out of the Ranks tab strip, which is now just
 // This Week / This Month / This Year).
 export default function CheckinsGallery({ user, claimedMap, navigate, totalPoints, title = 'My Check-ins' }) {
+  const { user: viewer } = useAuth();
+  const { adminMode } = useAdminMode();
+  const canEditDates = adminMode && isAdmin(viewer?.email);
   const [checkins, setCheckins] = useState(null);
   const [layout, setLayout] = useState('list'); // 'list' | 'grid'
+  // Admin Mode: which row's "when I checked in" is being edited, if any.
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const startEdit = (it) => {
+    setEditingId(it.id);
+    setEditValue(toLocalInputValue(it.createdAt));
+    setEditError('');
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditError('');
+  };
+  const saveEdit = async (it) => {
+    if (!editValue) return;
+    const date = new Date(editValue);
+    if (Number.isNaN(date.getTime())) {
+      setEditError('Invalid date/time.');
+      return;
+    }
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await updateCheckinTimestamp(it.id, date);
+      const seconds = Math.floor(date.getTime() / 1000);
+      setCheckins((prev) =>
+        prev.map((c) => (c.id === it.id ? { ...c, createdAt: seconds, date: fmtDateTime(seconds) } : c))
+      );
+      setEditingId(null);
+    } catch (e) {
+      setEditError(e.message || 'Could not save — try again.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
   const [sort, setSort] = useState(() => {
     try {
       const saved = localStorage.getItem('lh-checkins-sort');
@@ -208,6 +260,53 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="checkin-name">{it.name}</div>
                 <div className="checkin-sub">{it.tierEmoji ? `${it.tierEmoji} ${it.tierLabel}` : 'Not rated yet'}</div>
+                {canEditDates && editingId === it.id ? (
+                  <div
+                    style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, alignItems: 'center' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="datetime-local"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      disabled={editSaving}
+                      style={{ fontSize: '0.78rem', padding: '4px 6px' }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      disabled={editSaving}
+                      onClick={() => saveEdit(it)}
+                    >
+                      {editSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" disabled={editSaving} onClick={cancelEdit}>
+                      Cancel
+                    </button>
+                    {editError && (
+                      <span className="tag tag-error" style={{ fontSize: '0.7rem' }}>
+                        {editError}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="checkin-sub" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {it.date}
+                    {canEditDates && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ padding: '1px 6px', fontSize: '0.7rem' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEdit(it);
+                        }}
+                      >
+                        {'\u{270F}\u{FE0F}'} Edit date
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}

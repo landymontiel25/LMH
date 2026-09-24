@@ -26,10 +26,16 @@ service cloud.firestore {
       // photos via addCheckinPhoto/removeCheckinPhoto, the legacy single
       // attachCheckinPhoto, email->username backfill via backfillUserName).
       // Points, landmarkId, userId, etc. stay immutable so scores can't be
-      // tampered with.
+      // tampered with. The admin account gets one extra allowance -- fixing
+      // createdAt on ANY check-in (Admin Mode's "change when I checked in"),
+      // still nothing else, on anyone's check-in, not just their own.
       allow update: if request.auth != null
-        && checkinId.split('_')[0] == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'photoURLs', 'userName']);
+        && (
+          (checkinId.split('_')[0] == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'photoURLs', 'userName']))
+          || (request.auth.token.email in ['landymontiel25@gmail.com']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdAt']))
+        );
       allow delete: if false;
     }
     match /leaderboard_entries/{entryId} {
