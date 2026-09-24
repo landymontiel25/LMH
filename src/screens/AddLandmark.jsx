@@ -12,7 +12,6 @@ import { useAuth } from '../lib/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
 import { useTrip } from '../lib/TripContext';
 import { addCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
-import { findPossibleDuplicate } from '../lib/duplicateLandmarkCheck';
 import { fileToSmallDataUrl, pickPhoto } from '../lib/imageUtils';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
@@ -94,39 +93,7 @@ export default function AddLandmark() {
   const [error, setError] = useState('');
   const busy = stage !== 'idle';
 
-  // Catches "I'm re-adding something that's already on the map" before the
-  // AI/moderation round trip, not after -- checked against both the
-  // built-in catalog and anyone else's submissions (approved or still
-  // pending review) in the same region as the current pin. Runs off
-  // whatever's typed in either Name or the address search (people often
-  // type a business name into the address box, same as searching for
-  // Taipa did) -- whichever one currently has text.
   const regionId = nearestRegionId(position.lat, position.lng);
-  const [duplicateMatch, setDuplicateMatch] = useState(null);
-  const [duplicateChecking, setDuplicateChecking] = useState(false);
-  const [duplicateOverridden, setDuplicateOverridden] = useState(false);
-  useEffect(() => {
-    setDuplicateOverridden(false);
-    const query = name.trim() || addressText.trim();
-    if (query.length < 2) {
-      setDuplicateMatch(null);
-      setDuplicateChecking(false);
-      return;
-    }
-    let cancelled = false;
-    setDuplicateChecking(true);
-    const handle = setTimeout(async () => {
-      const match = await findPossibleDuplicate({ name: query, regionId }).catch(() => null);
-      if (!cancelled) {
-        setDuplicateMatch(match);
-        setDuplicateChecking(false);
-      }
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [name, addressText, regionId]);
 
   const removeFact = (i) => setFacts((cur) => cur.filter((_, idx) => idx !== i));
 
@@ -145,9 +112,8 @@ export default function AddLandmark() {
   };
 
   // Address (the pin) is the only real requirement -- Name and Category are
-  // now optional (auto-filled below if left blank), and the duplicate check
-  // is informational only, never blocking. It still always has SOME value
-  // since the map defaults to your current location or the trip's region.
+  // optional (auto-filled below if left blank). It still always has SOME
+  // value since the map defaults to your current location or the trip's region.
   const canSubmit = position && user;
 
   const submit = async () => {
@@ -285,39 +251,6 @@ export default function AddLandmark() {
               setPosition({ lat: s.lat, lng: s.lng });
             }}
           />
-          {/* Checked off whichever of Name/address currently has text --
-              typing a business name here (like searching "Taipa" does) is
-              common enough that the duplicate check needs to catch it here
-              too, not just in the Name field below. */}
-          {duplicateChecking && (
-            <p className="screen-subtitle" style={{ marginTop: 6, marginBottom: 0, fontSize: '0.78rem' }}>
-              Checking if this is already a landmark…
-            </p>
-          )}
-          {!duplicateChecking && duplicateMatch && !duplicateOverridden && (
-            <div className="card" style={{ marginTop: 8, padding: '10px 12px' }}>
-              <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>
-                {'\u{2B50}'} This is already a landmark: {duplicateMatch.name}
-              </p>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => navigate(`/landmarks/${duplicateMatch.region}/${duplicateMatch.id}`)}
-                >
-                  View it
-                </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDuplicateOverridden(true)}>
-                  This is a different place — continue
-                </button>
-              </div>
-            </div>
-          )}
-          {!duplicateChecking && !duplicateMatch && (name.trim() || addressText.trim()).length >= 2 && (
-            <p className="tag tag-free" style={{ display: 'block', marginTop: 6 }}>
-              {'\u{2705}'} Doesn't look like an existing landmark — but double check if you're not sure.
-            </p>
-          )}
         </div>
       </div>
 
