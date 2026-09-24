@@ -31,14 +31,17 @@ export function namesMatch(a, b) {
   return na === nb || na.includes(nb) || nb.includes(na);
 }
 
-// Only a real, points-earning check-in counts as "I actually went there" --
-// a 0-point Mapr-only rating has nothing to physically merge.
 export async function findOrphanedRatings(userId) {
   if (!db || !userId) return [];
   const rows = await getUserCheckins(userId);
   const candidates = [];
   for (const c of rows) {
-    if (!c.points || !c.landmarkId || !c.region) continue;
+    // Includes 0-point "Rate a Landmark" claims -- that flow is the ONLY
+    // way a brand-new landmark (like Le Duplex or Oeschinensee, before
+    // either had a real region) ever gets auto-created from an address
+    // search in the first place, so most orphaned duplicates are exactly
+    // this: a ratingOnly check-in, not a points-earning one.
+    if (!c.landmarkId || !c.region) continue;
     if (getLandmark(c.region, c.landmarkId)) continue; // already a real catalog landmark
     const custom = await getCustomLandmark(c.landmarkId);
     if (!custom) continue; // gone entirely, nothing to merge into
