@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ALL_LANDMARKS, getRegion } from '../data/regions';
-import { searchLocations } from '../lib/geocode';
+import { searchPlaces, getPlaceDetails, makeSessionToken } from '../lib/places';
 
 export default function LocationAutocomplete({ id, value, regionId, onChange, onSelect, placeholder }) {
   const [suggestions, setSuggestions] = useState([]);
@@ -8,6 +8,9 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
   const [loading, setLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
   const boxRef = useRef(null);
+  // One id per Autocomplete+Details "session" (Google's billing unit) --
+  // reused across keystrokes, then replaced once a suggestion is resolved.
+  const sessionTokenRef = useRef(makeSessionToken());
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -39,17 +42,19 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
         }));
 
       const region = regionId ? getRegion(regionId) : null;
-      // A failed remote search (network error, Nominatim rate-limiting, a
-      // non-2xx response) shouldn't look identical to "no matches" -- that
-      // makes a real outage undiagnosable from a box that's just quietly
-      // empty. Local landmark matches still show even if this fails.
+      // A failed remote search (network error, Places API quota, a non-2xx
+      // response) shouldn't look identical to "no matches" -- that makes a
+      // real outage undiagnosable from a box that's just quietly empty.
+      // Local landmark matches still show even if this fails. These
+      // suggestions don't carry lat/lng yet -- resolveSuggestion() looks
+      // that up via Place Details only once one is actually picked.
       let remoteMatches = [];
       try {
-        const remote = await searchLocations(value, region, 5);
+        const remote = await searchPlaces(value, region, sessionTokenRef.current);
         remoteMatches = remote
           .filter((r) => !localMatches.some((lm) => lm.primary.toLowerCase() === r.primary.toLowerCase()))
           .slice(0, 5)
-          .map((r, i) => ({ key: `r-${i}-${r.lat}`, ...r }));
+          .map((r) => ({ key: `r-${r.placeId}`, ...r }));
       } catch (e) {
         setSearchError(e.message || 'Address search failed.');
       }
@@ -59,6 +64,25 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
     }, 300);
     return () => clearTimeout(handle);
   }, [value, regionId]);
+
+  // Local landmark matches already carry lat/lng; a Places suggestion only
+  // has a placeId until now -- this is the one Place Details round trip per
+  // pick, right when the user actually commits to a suggestion.
+  const resolveSuggestion = async (s) => {
+    if (!s.placeId) {
+      onSelect(s);
+      setOpen(false);
+      return;
+    }
+    try {
+      const details = await getPlaceDetails(s.placeId, sessionTokenRef.current);
+      sessionTokenRef.current = makeSessionToken();
+      onSelect({ primary: details.primary || s.primary, secondary: details.secondary || s.secondary, lat: details.lat, lng: details.lng });
+      setOpen(false);
+    } catch (e) {
+      setSearchError(e.message || 'Could not look up that address.');
+    }
+  };
 
   return (
     <div className="autocomplete" ref={boxRef}>
@@ -78,12 +102,11 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
           // dropdown item was previously the only way the pin ever moved.
           if (e.key === 'Enter' && suggestions.length > 0) {
             e.preventDefault();
-            onSelect(suggestions[0]);
-            setOpen(false);
+            resolveSuggestion(suggestions[0]);
           }
         }}
         onBlur={() => {
-          if (suggestions.length > 0) onSelect(suggestions[0]);
+          if (suggestions.length > 0) resolveSuggestion(suggestions[0]);
         }}
         autoComplete="off"
       />
@@ -99,10 +122,7 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
                 type="button"
                 key={s.key}
                 className="autocomplete-item"
-                onClick={() => {
-                  onSelect(s);
-                  setOpen(false);
-                }}
+                onClick={() => resolveSuggestion(s)}
               >
                 <span className="autocomplete-primary">{s.primary}</span>
                 {s.secondary && <span className="autocomplete-secondary">{s.secondary}</span>}
