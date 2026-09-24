@@ -20,7 +20,8 @@ export default function RegionSearch({ region, onSelect, includeAny = false, pla
   }, []);
 
   const q = query.trim().toLowerCase();
-  const options = includeAny ? [ANY_REGION, ...PICKABLE_REGIONS] : PICKABLE_REGIONS;
+  const sortedRegions = [...PICKABLE_REGIONS].sort((a, b) => a.name.localeCompare(b.name));
+  const options = includeAny ? [ANY_REGION, ...sortedRegions] : sortedRegions;
   const matches = q
     ? options.filter((r) => r.name.toLowerCase().includes(q) || r.city?.toLowerCase().includes(q) || r.country?.toLowerCase().includes(q))
     : options;

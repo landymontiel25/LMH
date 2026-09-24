@@ -61,6 +61,20 @@ export function subscribePendingCount(callback) {
   );
 }
 
+// Two things flag a submission as a "Backfill AI Facts" candidate: the
+// exact filler text written when AI enrichment is off/unavailable (see
+// AI_ENRICHMENT_ENABLED in api/verify-landmark.js) -- a submission still
+// carrying it either predates that feature or hit its fallback path -- or
+// leftover <cite> markup from a research pass that ran before the citation
+// tags were stripped server-side (api/_lib/enrichLandmark.js). Either way
+// it's real content that needs (re)running through enrichment.
+export function needsFactsBackfill(landmark) {
+  const summary = typeof landmark?.summary === 'string' ? landmark.summary : '';
+  const facts = Array.isArray(landmark?.facts) ? landmark.facts : [];
+  const hasCiteTags = /<\/?cite\b/i.test(summary) || facts.some((f) => typeof f === 'string' && /<\/?cite\b/i.test(f));
+  return summary.startsWith('A community-submitted spot') || hasCiteTags;
+}
+
 // Direct lookup by id -- the doc id and the `id` field are always the same
 // value (set at creation below), so LandmarkDetail can fetch a single custom
 // landmark the same way it'd look one up in the static catalog. Deliberately

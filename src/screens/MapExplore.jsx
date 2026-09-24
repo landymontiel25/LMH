@@ -14,7 +14,7 @@ import { distanceMeters } from '../lib/geo';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useMyPhotos } from '../lib/MyPhotosContext';
-import { getLandmarkOverrides } from '../lib/landmarkOverrides';
+import { getLandmarkOverrides, saveLandmarkPosition } from '../lib/landmarkOverrides';
 import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks';
 import { isAdmin } from '../lib/admins';
 import CheckInButton from '../components/CheckInButton';
@@ -205,6 +205,31 @@ export default function MapExplore() {
     });
   const passesFilter = (l) => filterCats.size === 0 || (l.categories || []).some((c) => filterCats.has(c));
 
+  // "Move pins" mode: built-in landmark markers become draggable and a
+  // drop saves the corrected spot to the shared landmark_overrides
+  // collection (landmarkOverrides.js) -- the same mechanism the old,
+  // always-on drag-to-fix behavior wrote to, brought back as an explicit,
+  // discoverable toggle instead. Requires being signed in (Firestore's own
+  // rule for the collection does too); doesn't cover custom/user-submitted
+  // landmarks, which already store their own exact position.
+  const [editMode, setEditMode] = useState(false);
+  const [pinSavedNote, setPinSavedNote] = useState(null);
+  useEffect(() => {
+    if (!pinSavedNote) return;
+    const t = setTimeout(() => setPinSavedNote(null), 2500);
+    return () => clearTimeout(t);
+  }, [pinSavedNote]);
+  const handlePinDragEnd = (l, e) => {
+    const { lat, lng } = e.target.getLatLng();
+    setSavedOverrides((prev) => ({ ...prev, [`${l.regionId}/${l.id}`]: { lat, lng } }));
+    setPinSavedNote(l.name);
+    saveLandmarkPosition({ region: l.regionId, id: l.id, name: l.name, lat, lng, userId: user?.uid }).catch(() => {
+      // Firestore write failed -- the corrected pin still shows in the
+      // right spot for this session, it just won't persist for everyone
+      // until it's dragged again with a working connection.
+    });
+  };
+
   // A pin dropped by long-pressing an exact spot on the map -- lets you
   // pinpoint somewhere that isn't one of the built-in landmarks (e.g. a
   // specific building on a campus) and carry that exact location straight
@@ -225,6 +250,7 @@ export default function MapExplore() {
   const startPlacingPin = () => {
     setPinDrop(null);
     setSearchOpen(false);
+    setEditMode(false);
     setPlacingPin(true);
   };
 
@@ -235,9 +261,10 @@ export default function MapExplore() {
     navigate('/add-landmark', { state: { lat: center.lat, lng: center.lng } });
   };
 
-  // Pin corrections saved by the old drag-to-fix mode (now removed) still
-  // apply for everyone -- this just keeps displaying them at their
-  // corrected spot rather than reverting to the source data's position.
+  // Pin corrections made in "Move pins" mode, shared for everyone via
+  // Firestore -- applied wherever a landmark's position is used below
+  // (markers, search, nearby, and the "See it on the Map" highlight pin)
+  // instead of falling back to the static source data's position.
   const [savedOverrides, setSavedOverrides] = useState({});
   useEffect(() => {
     getLandmarkOverrides().then(setSavedOverrides);
@@ -274,6 +301,17 @@ export default function MapExplore() {
     if (mapFocusPoint) setMapFocusPoint(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // LandmarkDetail snapshots the landmark's static lat/lng when it sets this
+  // up -- apply any drag-to-fix correction here too, or the highlighted
+  // "you came from here" pin sits at the OLD spot while the real marker (in
+  // `markers` below) sits at the corrected one, which looks like two pins
+  // for one landmark.
+  const focusLandmarkPos = useMemo(() => {
+    if (!focusLandmark) return null;
+    const savedPos =
+      focusLandmark.regionId && focusLandmark.id ? savedOverrides[`${focusLandmark.regionId}/${focusLandmark.id}`] : null;
+    return { ...focusLandmark, lat: savedPos?.lat ?? focusLandmark.lat, lng: savedPos?.lng ?? focusLandmark.lng };
+  }, [focusLandmark, savedOverrides]);
 
   // The city you actively opened this session (list / detail / itinerary). The
   // map frames it when present; on a cold launch it's null, so we fall back to
@@ -306,10 +344,43 @@ export default function MapExplore() {
     if (!term) return [];
     const landmarkMatches = ALL_LANDMARKS.filter(
       (l) => l.name.toLowerCase().includes(term) || getRegion(l.regionId)?.name.toLowerCase().includes(term)
-    ).map((l) => ({ id: `landmark-${l.id}`, name: l.name, sub: getRegion(l.regionId)?.name, lat: l.lat, lng: l.lng, zoom: 17 }));
+    ).map((l) => {
+      // A drag-to-fix correction (savedOverrides) has to win here too, or
+      // jumping to a landmark via search flies you back to its original,
+      // wrong spot -- right next to where the corrected pin actually sits,
+      // which reads as two of it on the map.
+      const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
+      return {
+        // A landmark's own id is only unique within its region (two cities
+        // can both have a "the-battery"), so the region has to be part of
+        // the key too -- otherwise two different results collide on one
+        // React key and the list can visibly duplicate/misrender as you type.
+        id: `landmark-${l.regionId}-${l.id}`,
+        name: l.name,
+        sub: getRegion(l.regionId)?.name,
+        lat: savedPos?.lat ?? l.lat,
+        lng: savedPos?.lng ?? l.lng,
+        zoom: 17,
+      };
+    });
+    // User-submitted landmarks were never searchable here -- only via the
+    // map pins themselves or the Landmarks tab. Same id/key pattern as the
+    // static matches above, just namespaced with "custom-" since a custom
+    // landmark's own id (from customLandmarks.js) is already globally
+    // unique on its own.
+    const customMatches = customLandmarks
+      .filter((l) => l.name.toLowerCase().includes(term))
+      .map((l) => ({
+        id: `custom-${l.docId}`,
+        name: l.name,
+        sub: getRegion(l.region)?.name,
+        lat: l.lat,
+        lng: l.lng,
+        zoom: 17,
+      }));
     const placeMatches = SEARCHABLE_PLACES.filter((p) => p.name.toLowerCase().includes(term));
-    return [...landmarkMatches, ...placeMatches].slice(0, 8);
-  }, [searchTerm]);
+    return [...landmarkMatches, ...customMatches, ...placeMatches].slice(0, 8);
+  }, [searchTerm, savedOverrides, customLandmarks]);
 
   const selectSearchResult = (result) => {
     setSearchFocus(result);
@@ -322,6 +393,13 @@ export default function MapExplore() {
     setSearchOpen((open) => !open);
     setSearchTerm('');
     setFilterOpen(false);
+    setEditMode(false);
+  };
+
+  const toggleEditMode = () => {
+    setEditMode((on) => !on);
+    setSearchOpen(false);
+    setFilterOpen(false);
   };
 
   // A live, distance-sorted view of what's closest right now, shown in the
@@ -330,14 +408,24 @@ export default function MapExplore() {
   const nearbyList = useMemo(() => {
     if (!coords) return [];
     const all = [
-      ...ALL_LANDMARKS.map((l) => ({ id: `landmark-${l.id}`, name: l.name, region: l.regionId, landmarkId: l.id, lat: l.lat, lng: l.lng })),
+      ...ALL_LANDMARKS.map((l) => {
+        const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
+        return {
+          id: `landmark-${l.regionId}-${l.id}`,
+          name: l.name,
+          region: l.regionId,
+          landmarkId: l.id,
+          lat: savedPos?.lat ?? l.lat,
+          lng: savedPos?.lng ?? l.lng,
+        };
+      }),
       ...customLandmarks.map((l) => ({ id: `custom-${l.docId}`, name: l.name, region: l.region, landmarkId: l.id, lat: l.lat, lng: l.lng })),
     ];
     return all
       .map((l) => ({ ...l, meters: distanceMeters(coords.lat, coords.lng, l.lat, l.lng) }))
       .sort((a, b) => a.meters - b.meters)
       .slice(0, 12);
-  }, [coords, customLandmarks]);
+  }, [coords, customLandmarks, savedOverrides]);
 
   // Build the markers once and reuse the same elements across re-renders. GPS
   // ticks update `coords` several times a minute; if the markers were rebuilt
@@ -360,7 +448,13 @@ export default function MapExplore() {
         const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
         const position = savedPos ? [savedPos.lat, savedPos.lng] : [l.lat, l.lng];
         return (
-          <Marker key={`${l.regionId}/${l.id}`} position={position} icon={pinIcon(isClaimed, isSelected)}>
+          <Marker
+            key={`${l.regionId}/${l.id}`}
+            position={position}
+            icon={pinIcon(isClaimed, isSelected)}
+            draggable={editMode}
+            eventHandlers={editMode ? { dragend: (e) => handlePinDragEnd(l, e) } : undefined}
+          >
             <Popup>
               <div className="map-popup">
                 <div
@@ -426,7 +520,7 @@ export default function MapExplore() {
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps -- passesFilter only reads filterCats
-    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides, filterCats]
+    [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides, filterCats, editMode]
   );
 
   const customMarkers = useMemo(
@@ -515,7 +609,7 @@ export default function MapExplore() {
             coords={coords}
             bounds={ALL_LANDMARKS_BOUNDS}
             regionBounds={regionBounds}
-            focusPoint={focusLandmark}
+            focusPoint={focusLandmarkPos}
             radiusMiles={radiusMiles}
           />
           {!placingPin && <LocateControl coords={coords} radiusMiles={radiusMiles} />}
@@ -544,16 +638,16 @@ export default function MapExplore() {
               same spot. interactive={false} gives them pointer-events: none, so
               a tap falls through to the real pin and opens its popup -- without
               it the highlight swallowed the tap and nothing happened. */}
-          {focusLandmark && (
+          {focusLandmarkPos && (
             <Marker
-              position={[focusLandmark.lat, focusLandmark.lng]}
+              position={[focusLandmarkPos.lat, focusLandmarkPos.lng]}
               icon={focusIcon}
               zIndexOffset={1000}
               interactive={false}
             >
-              {focusLandmark.name && (
+              {focusLandmarkPos.name && (
                 <Tooltip permanent direction="top" offset={[0, -34]} className="focus-tooltip">
-                  {focusLandmark.name}
+                  {focusLandmarkPos.name}
                 </Tooltip>
               )}
             </Marker>
@@ -632,6 +726,7 @@ export default function MapExplore() {
             onClick={() => {
               setFilterOpen((o) => !o);
               setSearchOpen(false);
+              setEditMode(false);
             }}
           >
             {filterOpen ? '\u{2715}' : '\u{1F5C2}\u{FE0F}'}
@@ -661,6 +756,31 @@ export default function MapExplore() {
                 ))}
               </div>
             </div>
+          )}
+          {(!searchOpen && !filterOpen) || editMode ? (
+            <button
+              type="button"
+              className={`map-edit-btn ${editMode ? 'active' : ''}`}
+              disabled={!user}
+              title={user ? 'Move pins to fix their spot' : 'Sign in to move pins'}
+              onClick={toggleEditMode}
+            >
+              {editMode ? (
+                '\u{2715}'
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                  <line x1="5" y1="6.5" x2="19" y2="6.5" />
+                  <line x1="5" y1="11.5" x2="19" y2="11.5" />
+                  <line x1="5" y1="16.5" x2="19" y2="16.5" />
+                  <line x1="5" y1="21.5" x2="13" y2="21.5" />
+                </svg>
+              )}
+            </button>
+          ) : null}
+          {pinSavedNote ? (
+            <p className="tag tag-free map-edit-hint">Saved: {pinSavedNote}</p>
+          ) : (
+            editMode && <p className="tag map-edit-hint">Drag a pin to fix its spot — saves for everyone</p>
           )}
           {searchOpen && (
             <div className="map-search-panel">

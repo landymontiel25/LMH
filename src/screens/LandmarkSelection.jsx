@@ -14,6 +14,7 @@ import LandmarkThumb from '../components/LandmarkThumb';
 import Lightbox from '../components/Lightbox';
 import QuickRateButton from '../components/QuickRateButton';
 import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
+import { getCustomLandmarks } from '../lib/customLandmarks';
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
 
@@ -43,7 +44,9 @@ function CityDropdown({ value, onChange }) {
   }, []);
 
   const term = search.trim().toLowerCase();
-  const filtered = PICKABLE_REGIONS.filter((r) => r.city.toLowerCase().includes(term));
+  const filtered = PICKABLE_REGIONS.filter((r) => r.city.toLowerCase().includes(term)).sort((a, b) =>
+    a.city.localeCompare(b.city)
+  );
   const selectedLabel = value === 'all' ? 'All Cities' : getRegion(value)?.city ?? 'All Cities';
 
   const choose = (id) => {
@@ -109,13 +112,24 @@ export default function LandmarkSelection() {
   const { myPhotos } = useMyPhotos();
   const { ratings } = useRatings();
   const navigate = useNavigate();
+
+  // User-submitted landmarks (via "Add a Landmark") -- merged in below so
+  // they're searchable/browsable here too, not just visible on the map.
+  const [customLandmarks, setCustomLandmarks] = useState([]);
+  useEffect(() => {
+    getCustomLandmarks().then(setCustomLandmarks);
+  }, []);
   // Default to the trip's already-chosen region (from Setup) so picking up where you
   // left off doesn't require re-filtering to something you already told the app.
   // Arriving with no trip region yet (e.g. straight from the bottom-nav tab) still
   // shows everything.
   const [cityFilter, setCityFilter] = useState(() => trip.activeRegion ?? 'all');
   // Default to the city you're standing in (nearest city center within
-  // NEAR_CITY_KM of your GPS fix). Picking a city yourself wins after that.
+  // NEAR_CITY_KM of your GPS fix). Picking a city yourself wins for the
+  // rest of this visit, but leaving this screen (switching tabs remounts
+  // it) and coming back re-applies your current GPS location -- simple and
+  // predictable beats "remembers where you last browsed" flakiness (e.g.
+  // depending on the map having registered a clean drag gesture).
   const cityPickedRef = useRef(false);
   useEffect(() => {
     if (!coords || cityPickedRef.current) return;
@@ -193,9 +207,32 @@ export default function LandmarkSelection() {
     [trip.customInterests, trip.customInterestMatches]
   );
 
+  // Same shape as ALL_LANDMARKS entries (regionId set from the doc's
+  // `region` field) so the filter/sort/render logic below doesn't need to
+  // know which source a landmark came from -- including defaults for
+  // fields a custom doc might not have (an older submission, or one still
+  // missing a field a newer feature added later). Without these, a single
+  // malformed custom landmark crashes this whole screen the moment its
+  // row tries to render (e.g. `l.categories.map(...)` on an undefined
+  // categories) -- same defensive defaults LandmarkDetail.jsx already
+  // applies for the same reason.
+  const normalizedCustomLandmarks = useMemo(
+    () =>
+      customLandmarks.map((l) => ({
+        ...l,
+        regionId: l.region,
+        categories: l.categories || [],
+        images: l.images || [],
+        facts: l.facts || [],
+        free: l.free ?? true,
+        typicalMinutes: l.typicalMinutes ?? 15,
+      })),
+    [customLandmarks]
+  );
+
   const landmarks = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = ALL_LANDMARKS.filter((l) => {
+    const filtered = [...ALL_LANDMARKS, ...normalizedCustomLandmarks].filter((l) => {
       if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
       if (activeCategories.length && !activeCategories.some((key) => landmarkMatchesCategory(l, key))) return false;
       if (term) {
@@ -208,6 +245,14 @@ export default function LandmarkSelection() {
       }
       return true;
     });
+
+    // Typing a name to find it is a lookup, not a browse -- alphabetical is
+    // what makes a known name fast to spot, so a search term overrides
+    // whichever Sort mode (Popularity/Top Rated/Near Me) is active. Clearing
+    // the search goes back to that sort.
+    if (term) {
+      return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    }
 
     if (sortBy === 'popularity') {
       // Curated editorial Top 10 (if a city has them) lead in rank order, then
@@ -234,7 +279,18 @@ export default function LandmarkSelection() {
       );
     }
     return filtered;
-  }, [cityFilter, activeCategories, landmarkMatchesCategory, search, sortBy, coords, ratings, visitFilter, claimedMap]);
+  }, [
+    cityFilter,
+    activeCategories,
+    landmarkMatchesCategory,
+    search,
+    sortBy,
+    coords,
+    ratings,
+    visitFilter,
+    claimedMap,
+    normalizedCustomLandmarks,
+  ]);
 
   const handleToggle = (landmark) => {
     toggleLandmark(landmark.id, landmark.regionId);
@@ -402,7 +458,10 @@ export default function LandmarkSelection() {
         {landmarks.map((l) => {
           const isSelected = getRegionSelection(l.regionId).includes(l.id);
           return (
-            <div key={l.id} className={`landmark-row ${isSelected ? 'selected' : ''} ${claimedMap[l.id] ? 'visited' : ''}`}>
+            <div
+              key={`${l.regionId}-${l.id}`}
+              className={`landmark-row ${isSelected ? 'selected' : ''} ${claimedMap[l.id] ? 'visited' : ''}`}
+            >
               <div className="lr-top">
                 <div
                   className="check-circle"

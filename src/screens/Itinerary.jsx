@@ -31,6 +31,11 @@ const SAT_TILE = {
   attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
 };
 
+const LABELS_TILE = {
+  url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+  attribution: 'Place labels &copy; Esri',
+};
+
 const startIcon = L.divIcon({
   className: '',
   html: '<div class="route-map-start">START</div>',
@@ -86,6 +91,9 @@ function ItineraryMap({ origin, stops, onDetails }) {
       <MapContainer center={linePoints[0] || [25.77, -80.19]} zoom={12} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
         <FitRoute points={linePoints} />
         <TileLayer url={SAT_TILE.url} attribution={SAT_TILE.attribution} />
+        {/* Transparent labels overlay, same as the Explore map: country names
+            zoomed out, neighborhoods/streets up close, without leaving satellite. */}
+        <TileLayer url={LABELS_TILE.url} attribution={LABELS_TILE.attribution} zIndex={650} />
 
         {/* White casing under the blue line for contrast on satellite imagery */}
         {linePoints.length > 1 && (

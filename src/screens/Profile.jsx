@@ -19,7 +19,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { RATING_GOAL } from '../lib/ratingFlow';
 import { getRegion, REGIONS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
-import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
+import { getPendingLandmarks, approveCustomLandmark, deleteCustomLandmark, getCustomLandmarks, needsFactsBackfill } from '../lib/customLandmarks';
 import { useBadges } from '../lib/BadgesContext';
 import { closestUnearnedBadge, PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
@@ -34,6 +34,7 @@ import CheckInButton from '../components/CheckInButton';
 import RegionSearch from '../components/RegionSearch';
 import ProfileTasteCard from '../components/ProfileTasteCard';
 import MaprPicksCarousel from '../components/MaprPicksCarousel';
+import RateLandmarkSearch from '../components/RateLandmarkSearch';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -338,6 +339,342 @@ function PendingLandmarksPanel({ email }) {
   );
 }
 
+// Admin-only, read-only: every user-submitted landmark in one place, newest
+// first, so "which one was that again?" (e.g. after a bulk backfill names
+// them in a toast that then disappears) has a real answer instead of
+// guessing from the Landmarks tab or the map.
+function AllSubmittedLandmarksPanel({ email }) {
+  const [all, setAll] = useState(null); // null = still loading
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isAdmin(email)) return;
+    getCustomLandmarks().then((landmarks) => {
+      setAll(
+        [...landmarks].sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))
+      );
+    });
+  }, [email]);
+
+  if (!isAdmin(email) || all === null || all.length === 0) return null;
+
+  return (
+    <div className="card section">
+      <h3 style={{ marginTop: 0 }}>{'\u{1F4CB}'} All Submitted Landmarks ({all.length})</h3>
+      <p className="screen-subtitle" style={{ marginTop: -6 }}>
+        Everything anyone's added via "Add Landmark", newest first — tap one to check its facts.
+      </p>
+      {all.map((l) => (
+        <div
+          key={l.docId}
+          className="checkin-row"
+          onClick={() => navigate(`/landmarks/${l.region}/${l.id}`)}
+        >
+          <LandmarkThumb landmark={l} size={56} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="checkin-name">{l.name}</div>
+            <div className="checkin-sub" style={{ whiteSpace: 'normal' }}>
+              {l.summary}
+            </div>
+            <div className="checkin-sub" style={{ marginTop: 4 }}>
+              {l.createdAt?.toDate ? l.createdAt.toDate().toLocaleString() : 'unknown date'}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Admin-only, one-off tool: re-runs AI research on custom landmarks that
+// still carry the generic "A community-submitted spot" filler text --
+// submissions added before AI_ENRICHMENT_ENABLED shipped (api/verify-
+// landmark.js), which never got real facts written for them. Renders
+// nothing for a non-admin account or once nothing needs it.
+// Verified by hand (a real web search, not the AI) -- pre-fills the manual
+// editor below so a known-wrong submission doesn't need retyping from
+// scratch. Keyed by the landmark's exact name, lowercased. Add to this as
+// more come up; it's just a convenience default, always editable before
+// saving.
+const VERIFIED_CORRECTIONS = {
+  watsco: {
+    summary:
+      "An 8,000-seat multi-purpose arena on the University of Miami campus in Coral Gables, home to Miami " +
+      'Hurricanes basketball since it opened in 2003.',
+    facts: [
+      'Opened in 2003, originally named the University of Miami Convocation Center',
+      'Seats about 8,000, with capacity of 7,972 for basketball and 5,990 for ice hockey',
+      "Home court for the Miami Hurricanes' men's and women's basketball teams",
+      'Cost roughly $48 million to build',
+      'Also hosts concerts, trade shows, lectures, and other university events, and is served by the Miami Metrorail’s University station',
+    ],
+    free: true,
+  },
+};
+
+function BackfillFactsPanel({ email, user }) {
+  const [candidates, setCandidates] = useState(null); // null = still loading
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  // Force-recheck: for a landmark the automatic detector can't catch --
+  // e.g. facts that came back well-formed but about the wrong real-world
+  // place (a name collision the AI got wrong, like "Watsco" the company
+  // vs. "Watsco Center" the arena named after it).
+  const [forceQuery, setForceQuery] = useState('');
+  const [forceBusy, setForceBusy] = useState(false);
+  const [forceResult, setForceResult] = useState(null);
+
+  // Manual, no-AI correction -- for when the AI got it wrong and the fix is
+  // just to type the right thing in directly instead of hoping a re-run
+  // does better. Look up by name, edit, save -- no research call at all.
+  const [editQuery, setEditQuery] = useState('');
+  const [editFindBusy, setEditFindBusy] = useState(false);
+  const [editMatch, setEditMatch] = useState(null); // { docId, name }
+  const [editSummary, setEditSummary] = useState('');
+  const [editFacts, setEditFacts] = useState('');
+  const [editFree, setEditFree] = useState(true);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editResult, setEditResult] = useState(null);
+
+  const refresh = () => {
+    getCustomLandmarks().then((all) => setCandidates(all.filter(needsFactsBackfill)));
+  };
+
+  useEffect(() => {
+    if (!isAdmin(email)) return;
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email]);
+
+  if (!isAdmin(email) || candidates === null) return null;
+
+  const runBackfill = async (body) => {
+    const idToken = await user.getIdToken();
+    const res = await fetch('/api/backfill-landmark-facts', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${idToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error || 'Backfill failed.');
+    return data;
+  };
+
+  const run = async () => {
+    setBusy(true);
+    setResult(null);
+    try {
+      setResult(await runBackfill());
+      refresh();
+    } catch (e) {
+      setResult({ error: e.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runForce = async () => {
+    const term = forceQuery.trim().toLowerCase();
+    if (!term) return;
+    setForceBusy(true);
+    setForceResult(null);
+    try {
+      const all = await getCustomLandmarks();
+      const matches = all.filter((l) => l.name?.toLowerCase().includes(term));
+      if (matches.length === 0) {
+        setForceResult({ error: `No submitted landmark matches "${forceQuery}".` });
+        return;
+      }
+      if (matches.length > 1) {
+        setForceResult({ error: `${matches.length} matches — be more specific: ${matches.map((l) => l.name).join(', ')}` });
+        return;
+      }
+      setForceResult(await runBackfill({ landmarkId: matches[0].docId }));
+      refresh();
+    } catch (e) {
+      setForceResult({ error: e.message });
+    } finally {
+      setForceBusy(false);
+    }
+  };
+
+  const findForEdit = async () => {
+    const term = editQuery.trim().toLowerCase();
+    if (!term) return;
+    setEditFindBusy(true);
+    setEditResult(null);
+    setEditMatch(null);
+    try {
+      const all = await getCustomLandmarks();
+      const matches = all.filter((l) => l.name?.toLowerCase().includes(term));
+      if (matches.length === 0) {
+        setEditResult({ error: `No submitted landmark matches "${editQuery}".` });
+        return;
+      }
+      if (matches.length > 1) {
+        setEditResult({ error: `${matches.length} matches — be more specific: ${matches.map((l) => l.name).join(', ')}` });
+        return;
+      }
+      const l = matches[0];
+      setEditMatch({ docId: l.docId, name: l.name });
+      const known = VERIFIED_CORRECTIONS[l.name?.trim().toLowerCase()];
+      setEditSummary(known?.summary ?? l.summary ?? '');
+      setEditFacts((known?.facts ?? l.facts ?? []).join('\n'));
+      setEditFree(known ? known.free : l.free !== false);
+    } catch (e) {
+      setEditResult({ error: e.message });
+    } finally {
+      setEditFindBusy(false);
+    }
+  };
+
+  const saveManualEdit = async () => {
+    if (!editMatch) return;
+    setEditBusy(true);
+    setEditResult(null);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/set-landmark-facts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          landmarkId: editMatch.docId,
+          summary: editSummary,
+          facts: editFacts.split('\n'),
+          free: editFree,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Could not save.');
+      setEditResult({ ok: true });
+      refresh();
+    } catch (e) {
+      setEditResult({ error: e.message });
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
+  return (
+    <div className="card section">
+      <h3 style={{ marginTop: 0 }}>{'\u{2728}'} AI Facts Maintenance</h3>
+
+      {candidates.length > 0 && (
+        <>
+          <p className="screen-subtitle" style={{ marginTop: -6 }}>
+            {candidates.length} landmark{candidates.length === 1 ? '' : 's'} still show generic filler text or leftover
+            citation markup — research and fill them in for real.
+          </p>
+          <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={run}>
+            {busy ? 'Researching…' : `Backfill ${candidates.length} Landmark${candidates.length === 1 ? '' : 's'}`}
+          </button>
+          {result && (
+            <p
+              style={{
+                marginTop: 10,
+                fontSize: '0.85rem',
+                color: result.error ? 'var(--color-rust)' : 'var(--color-parchment-dim)',
+              }}
+            >
+              {result.error ||
+                `Updated ${result.updated} of ${result.total}${result.updatedNames?.length ? `: ${result.updatedNames.join(', ')}` : ''}${result.remaining ? ` — ${result.remaining} left, run again to continue` : ''}.`}
+            </p>
+          )}
+          <div className="compass-divider" style={{ marginTop: 16, marginBottom: 12 }}>
+            or
+          </div>
+        </>
+      )}
+
+      <p className="screen-subtitle" style={{ marginTop: candidates.length > 0 ? 0 : -6 }}>
+        Force re-research one landmark by name — for facts that look fine but are about the wrong place (e.g. a company
+        name that's really a venue named after it).
+      </p>
+      <input
+        type="text"
+        placeholder="Landmark name…"
+        value={forceQuery}
+        onChange={(e) => setForceQuery(e.target.value)}
+        style={{ marginBottom: 8 }}
+      />
+      <button type="button" className="btn btn-ghost btn-block" disabled={forceBusy || !forceQuery.trim()} onClick={runForce}>
+        {forceBusy ? 'Researching…' : 'Re-research This Landmark'}
+      </button>
+      {forceResult && (
+        <p
+          style={{
+            marginTop: 10,
+            fontSize: '0.85rem',
+            color: forceResult.error ? 'var(--color-rust)' : 'var(--color-parchment-dim)',
+          }}
+        >
+          {forceResult.error || `Updated: ${forceResult.updatedNames?.join(', ') || 'done'}.`}
+        </p>
+      )}
+
+      <div className="compass-divider" style={{ marginTop: 16, marginBottom: 12 }}>
+        or
+      </div>
+
+      <p className="screen-subtitle" style={{ marginTop: 0 }}>
+        Manually correct a landmark — no AI, no research call. You write the summary and facts, this just saves
+        exactly what you type.
+      </p>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <input
+          type="text"
+          placeholder="Landmark name…"
+          value={editQuery}
+          onChange={(e) => setEditQuery(e.target.value)}
+          style={{ flex: 1 }}
+        />
+        <button type="button" className="btn btn-ghost btn-sm" disabled={editFindBusy || !editQuery.trim()} onClick={findForEdit}>
+          {editFindBusy ? '…' : 'Find'}
+        </button>
+      </div>
+      {editMatch && (
+        <>
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-brass-bright)', marginBottom: 8 }}>
+            Editing: {editMatch.name}
+          </p>
+          <textarea
+            className="rating-comment"
+            style={{ width: '100%', minHeight: 60, marginBottom: 8 }}
+            placeholder="Summary…"
+            value={editSummary}
+            onChange={(e) => setEditSummary(e.target.value)}
+          />
+          <textarea
+            className="rating-comment"
+            style={{ width: '100%', minHeight: 100, marginBottom: 8 }}
+            placeholder="One fact per line, up to 5…"
+            value={editFacts}
+            onChange={(e) => setEditFacts(e.target.value)}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: '0.85rem' }}>
+            <input type="checkbox" checked={editFree} onChange={(e) => setEditFree(e.target.checked)} />
+            Free to visit
+          </label>
+          <button type="button" className="btn btn-primary btn-block" disabled={editBusy} onClick={saveManualEdit}>
+            {editBusy ? 'Saving…' : 'Save'}
+          </button>
+        </>
+      )}
+      {editResult && (
+        <p
+          style={{
+            marginTop: 10,
+            fontSize: '0.85rem',
+            color: editResult.error ? 'var(--color-rust)' : 'var(--color-parchment-dim)',
+          }}
+        >
+          {editResult.error || 'Saved.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Profile() {
   const { user, firebaseEnabled, signOutUser, deleteAccount, resendVerification, refreshUser } = useAuth();
   const [verifyMsg, setVerifyMsg] = useState(null);
@@ -575,6 +912,8 @@ export default function Profile() {
   return (
     <div>
       <PendingLandmarksPanel email={user.email} />
+      <AllSubmittedLandmarksPanel email={user.email} />
+      <BackfillFactsPanel email={user.email} user={user} />
 
       {/* 0.5 — At a glance: closest badge + closest rival, above everything
           else so it's the first thing visible on the Profile screen. */}
@@ -802,6 +1141,7 @@ export default function Profile() {
           </div>
         </div>
         <ProfileTasteCard reviews={myReviews} />
+        <RateLandmarkSearch />
         <MaprPicksCarousel
           reviews={myReviews}
           interests={trip.savedInterests}

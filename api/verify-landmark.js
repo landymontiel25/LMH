@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { isRateLimited } from './_lib/rateLimit.js';
 import { verifyIdToken } from './_lib/verifyAuth.js';
+import { enrichLandmark, reverseGeocode } from './_lib/enrichLandmark.js';
 
 // Backs "Add Landmark" on the map: before a user-submitted spot gets saved as
 // a real landmark, this asks the AI to sanity-check it's a genuine physical
@@ -38,10 +39,22 @@ const INSTRUCTIONS =
 // Turned off by request -- submissions were getting rejected too often and
 // it was making Add Landmark feel broken. Left in place (not deleted) so
 // it's a one-line flip to turn back on once that's tuned or wanted again.
-// While off, every submission is accepted outright with no AI call at all
-// (no plausibility screening, no photo check) -- the pending-approval queue
-// is the only remaining filter.
+// While off, every submission is accepted outright with no accept/reject AI
+// call at all (no plausibility screening, no photo check) -- the
+// pending-approval queue is the only remaining filter (also off, see
+// LANDMARK_APPROVAL_ENABLED in src/lib/customLandmarks.js).
 const AI_MODERATION_ENABLED = false;
+
+// Separate from moderation: this only researches and WRITES the summary/
+// facts/free guess so a submitter doesn't have to type them by hand every
+// time. Runs whenever ANTHROPIC_API_KEY is set, regardless of
+// AI_MODERATION_ENABLED above -- it never accepts or rejects a submission,
+// it only makes the auto-filled copy less generic. Uses Claude's web search
+// tool for real grounding (unlike the old always-on filler, which could
+// only guess); if search finds nothing specific or the call fails for any
+// reason, this falls back to the same generic filler as before -- a
+// submission is never blocked by this. Turn off by flipping this to false.
+const AI_ENRICHMENT_ENABLED = true;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -95,8 +108,13 @@ export default async function handler(req, res) {
       return;
     }
 
+    // Best-effort reverse geocode for real-world grounding -- never blocks
+    // the request if it fails or is slow. Used by both the enrichment and
+    // (if re-enabled) the moderation call below.
+    const placeContext = await reverseGeocode(lat, lng);
+
     if (!AI_MODERATION_ENABLED) {
-      res.status(200).json({
+      const fallback = {
         ok: true,
         reason: '',
         summary: userFacts.length
@@ -104,30 +122,26 @@ export default async function handler(req, res) {
           : `A community-submitted spot${categories[0] ? ` (${categories[0]})` : ''}.`,
         facts: userFacts,
         free: true,
-      });
+      };
+
+      if (!AI_ENRICHMENT_ENABLED || !process.env.ANTHROPIC_API_KEY) {
+        res.status(200).json(fallback);
+        return;
+      }
+
+      try {
+        const enriched = await enrichLandmark({ name, lat, lng, userFacts, placeContext, categories, hasPhoto });
+        res.status(200).json({ ok: true, reason: '', ...enriched });
+      } catch {
+        // Search failed, timed out, or the AI's answer didn't parse --
+        // never block the submission over this, just fall back to the
+        // same generic filler used when enrichment is off entirely.
+        res.status(200).json(fallback);
+      }
       return;
     }
 
     const [, mediaType, imageB64] = hasPhoto ? match : [];
-
-    // Best-effort reverse geocode for real-world grounding -- never blocks
-    // the request if it fails or is slow.
-    let placeContext = '';
-    try {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 4000);
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=16`,
-        { headers: { Accept: 'application/json' }, signal: controller.signal }
-      );
-      clearTimeout(t);
-      if (r.ok) {
-        const data = await r.json();
-        if (data?.display_name) placeContext = String(data.display_name).slice(0, 200);
-      }
-    } catch {
-      // offline / rate-limited -- fine without it
-    }
 
     const client = new Anthropic();
     const msg = await client.messages.create({
