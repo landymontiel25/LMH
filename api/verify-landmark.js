@@ -38,10 +38,40 @@ const INSTRUCTIONS =
 // Turned off by request -- submissions were getting rejected too often and
 // it was making Add Landmark feel broken. Left in place (not deleted) so
 // it's a one-line flip to turn back on once that's tuned or wanted again.
-// While off, every submission is accepted outright with no AI call at all
-// (no plausibility screening, no photo check) -- the pending-approval queue
-// is the only remaining filter.
+// While off, every submission is accepted outright with no accept/reject AI
+// call at all (no plausibility screening, no photo check) -- the
+// pending-approval queue is the only remaining filter (also off, see
+// LANDMARK_APPROVAL_ENABLED in src/lib/customLandmarks.js).
 const AI_MODERATION_ENABLED = false;
+
+// Separate from moderation: this only researches and WRITES the summary/
+// facts/free guess so a submitter doesn't have to type them by hand every
+// time. Runs whenever ANTHROPIC_API_KEY is set, regardless of
+// AI_MODERATION_ENABLED above -- it never accepts or rejects a submission,
+// it only makes the auto-filled copy less generic. Uses Claude's web search
+// tool for real grounding (unlike the old always-on filler, which could
+// only guess); if search finds nothing specific or the call fails for any
+// reason, this falls back to the same generic filler as before -- a
+// submission is never blocked by this. Turn off by flipping this to false.
+const AI_ENRICHMENT_ENABLED = true;
+
+const ENRICHMENT_INSTRUCTIONS =
+  `You help fill in details for a new landmark submitted to "Landmark Hunters", an app where people visit real places ` +
+  `and check in. A user gave a name and an approximate location for a real physical place (the name may actually be an ` +
+  `address, since that's what the location box auto-fills with when left blank). Use web search to find out what this ` +
+  `specific place actually is, and write REAL, SPECIFIC facts about it from what you find -- never invent a fact you ` +
+  `can't source. Search using the name and location together.\n\n` +
+  `If the submitter already gave their own facts, trust them (they're on the ground, you're not) -- keep those exactly ` +
+  `as given (only clean up grammar), and add your own researched facts only to fill the list up to 5 total, never ` +
+  `replacing or contradicting what they wrote. If they gave 5 or more already, don't add any.\n\n` +
+  `Write a SHORT (1-2 sentence) honest summary of the place based on what your search actually finds. If search turns ` +
+  `up nothing specific about this exact place (too small, too new, or just an address with no indexed business), say ` +
+  `so plainly in the summary instead of guessing -- e.g. "A community-submitted spot; couldn't find more detail on it ` +
+  `online yet." -- and lean on the submitter's own facts if they gave any.\n\n` +
+  `Guess whether it's normally free to visit based on what you find (default to true unless search indicates a paid ` +
+  `attraction or venue).\n\n` +
+  `Reply with ONLY a JSON object, no other text:\n` +
+  `{"summary": "<1-2 sentence summary>", "facts": ["<fact>", ...], "free": true|false}`;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -95,23 +125,9 @@ export default async function handler(req, res) {
       return;
     }
 
-    if (!AI_MODERATION_ENABLED) {
-      res.status(200).json({
-        ok: true,
-        reason: '',
-        summary: userFacts.length
-          ? ''
-          : `A community-submitted spot${categories[0] ? ` (${categories[0]})` : ''}.`,
-        facts: userFacts,
-        free: true,
-      });
-      return;
-    }
-
-    const [, mediaType, imageB64] = hasPhoto ? match : [];
-
     // Best-effort reverse geocode for real-world grounding -- never blocks
-    // the request if it fails or is slow.
+    // the request if it fails or is slow. Used by both the enrichment and
+    // (if re-enabled) the moderation call below.
     let placeContext = '';
     try {
       const controller = new AbortController();
@@ -128,6 +144,69 @@ export default async function handler(req, res) {
     } catch {
       // offline / rate-limited -- fine without it
     }
+
+    if (!AI_MODERATION_ENABLED) {
+      const fallback = {
+        ok: true,
+        reason: '',
+        summary: userFacts.length
+          ? ''
+          : `A community-submitted spot${categories[0] ? ` (${categories[0]})` : ''}.`,
+        facts: userFacts,
+        free: true,
+      };
+
+      if (!AI_ENRICHMENT_ENABLED || !process.env.ANTHROPIC_API_KEY) {
+        res.status(200).json(fallback);
+        return;
+      }
+
+      try {
+        const client = new Anthropic();
+        const msg = await client.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 1500,
+          system: ENRICHMENT_INSTRUCTIONS,
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+          messages: [
+            {
+              role: 'user',
+              content:
+                `Name: ${name}\n` +
+                `Approximate location: ${placeContext || `${lat}, ${lng}`}\n` +
+                (userFacts.length
+                  ? `Facts the submitter already gave (keep these, only add more to reach 5):\n${userFacts.map((f) => `- ${f}`).join('\n')}\n`
+                  : 'The submitter gave no facts of their own.'),
+            },
+          ],
+        });
+
+        const raw = msg.content
+          .filter((b) => b.type === 'text')
+          .map((b) => b.text)
+          .join('\n')
+          .trim();
+        const parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+
+        res.status(200).json({
+          ok: true,
+          reason: '',
+          summary: String(parsed.summary || fallback.summary).slice(0, 300),
+          facts: (Array.isArray(parsed.facts) && parsed.facts.length ? parsed.facts : userFacts)
+            .map((f) => String(f).slice(0, 160))
+            .slice(0, 5),
+          free: parsed.free !== false,
+        });
+      } catch {
+        // Search failed, timed out, or the AI's answer didn't parse --
+        // never block the submission over this, just fall back to the
+        // same generic filler used when enrichment is off entirely.
+        res.status(200).json(fallback);
+      }
+      return;
+    }
+
+    const [, mediaType, imageB64] = hasPhoto ? match : [];
 
     const client = new Anthropic();
     const msg = await client.messages.create({
