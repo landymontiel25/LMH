@@ -338,6 +338,53 @@ function PendingLandmarksPanel({ email }) {
   );
 }
 
+// Admin-only, read-only: every user-submitted landmark in one place, newest
+// first, so "which one was that again?" (e.g. after a bulk backfill names
+// them in a toast that then disappears) has a real answer instead of
+// guessing from the Landmarks tab or the map.
+function AllSubmittedLandmarksPanel({ email }) {
+  const [all, setAll] = useState(null); // null = still loading
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isAdmin(email)) return;
+    getCustomLandmarks().then((landmarks) => {
+      setAll(
+        [...landmarks].sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))
+      );
+    });
+  }, [email]);
+
+  if (!isAdmin(email) || all === null || all.length === 0) return null;
+
+  return (
+    <div className="card section">
+      <h3 style={{ marginTop: 0 }}>{'\u{1F4CB}'} All Submitted Landmarks ({all.length})</h3>
+      <p className="screen-subtitle" style={{ marginTop: -6 }}>
+        Everything anyone's added via "Add Landmark", newest first — tap one to check its facts.
+      </p>
+      {all.map((l) => (
+        <div
+          key={l.docId}
+          className="checkin-row"
+          onClick={() => navigate(`/landmarks/${l.region}/${l.id}`)}
+        >
+          <LandmarkThumb landmark={l} size={56} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="checkin-name">{l.name}</div>
+            <div className="checkin-sub" style={{ whiteSpace: 'normal' }}>
+              {l.summary}
+            </div>
+            <div className="checkin-sub" style={{ marginTop: 4 }}>
+              {l.createdAt?.toDate ? l.createdAt.toDate().toLocaleString() : 'unknown date'}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Admin-only, one-off tool: re-runs AI research on custom landmarks that
 // still carry the generic "A community-submitted spot" filler text --
 // submissions added before AI_ENRICHMENT_ENABLED shipped (api/verify-
@@ -864,6 +911,7 @@ export default function Profile() {
   return (
     <div>
       <PendingLandmarksPanel email={user.email} />
+      <AllSubmittedLandmarksPanel email={user.email} />
       <BackfillFactsPanel email={user.email} user={user} />
 
       {/* 0.5 — At a glance: closest badge + closest rival, above everything
