@@ -47,6 +47,9 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
   const [editError, setEditError] = useState('');
 
   const startEdit = (it) => {
+    // Grid tiles have no room for the inline date/time editor -- hand off
+    // to List view (where it lives) already opened to this check-in.
+    setLayout('list');
     setEditingId(it.id);
     setEditValue(toLocalInputValue(it.createdAt));
     setEditError('');
