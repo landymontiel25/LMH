@@ -16,7 +16,8 @@ import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
 import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
 import { isRateable, tierById } from '../lib/ratingFlow';
-import { getMyCheckin, addCheckinPhoto, removeCheckinPhoto, MAX_CHECKIN_PHOTOS } from '../lib/leaderboard';
+import { getMyCheckin, addCheckinPhoto, removeCheckinPhoto, updateCheckinTimestamp, MAX_CHECKIN_PHOTOS } from '../lib/leaderboard';
+import { regionTimezone, tzAbbrev, toZonedInputValue, fromZonedInputValue } from '../lib/timezones';
 import RatingFlow from '../components/RatingFlow';
 import StarRatingFlow from '../components/StarRatingFlow';
 import LandmarkPostcard from '../components/LandmarkPostcard';
@@ -47,6 +48,7 @@ function fmtCheckinTime(seconds) {
   const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   return `${day} at ${time}`;
 }
+
 const FACTS_PREVIEW = 5;
 
 export default function LandmarkDetail() {
@@ -130,6 +132,12 @@ export default function LandmarkDetail() {
   const [ratingMode, setRatingMode] = useState('tags');
   // Your own check-in doc here (for "Checked in: Tuesday, Sep 15 at 3:47 PM").
   const [myCheckin, setMyCheckin] = useState(null);
+  // Admin Mode: editing this check-in's date/time, same as editing the
+  // landmark's own fields above.
+  const [editingCheckinDate, setEditingCheckinDate] = useState(false);
+  const [checkinDateValue, setCheckinDateValue] = useState('');
+  const [checkinDateSaving, setCheckinDateSaving] = useState(false);
+  const [checkinDateError, setCheckinDateError] = useState('');
   const [myPhotos, setMyPhotos] = useState([]);
   // "My Photos" panel -- your own check-in gallery, addable/removable
   // anytime after checking in, independent of the star rating below.
@@ -360,6 +368,37 @@ export default function LandmarkDetail() {
     await reloadMyPhotos();
   };
 
+  const startEditCheckinDate = () => {
+    setCheckinDateValue(toZonedInputValue(myCheckin?.createdAt?.seconds, regionTimezone(regionId, landmark?.lng)));
+    setCheckinDateError('');
+    setEditingCheckinDate(true);
+  };
+  const cancelEditCheckinDate = () => {
+    setEditingCheckinDate(false);
+    setCheckinDateError('');
+  };
+  const saveCheckinDate = async () => {
+    if (!checkinDateValue) return;
+    // The picker holds the landmark's OWN local wall-clock time, not the
+    // admin's device time.
+    const date = fromZonedInputValue(checkinDateValue, regionTimezone(regionId, landmark?.lng));
+    if (Number.isNaN(date.getTime())) {
+      setCheckinDateError('Invalid date/time.');
+      return;
+    }
+    setCheckinDateSaving(true);
+    setCheckinDateError('');
+    try {
+      await updateCheckinTimestamp(`${user.uid}_${landmark.id}`, date);
+      setMyCheckin((cur) => ({ ...cur, createdAt: { seconds: Math.floor(date.getTime() / 1000) } }));
+      setEditingCheckinDate(false);
+    } catch (e) {
+      setCheckinDateError(e.message || 'Could not save — try again.');
+    } finally {
+      setCheckinDateSaving(false);
+    }
+  };
+
   const checkinPhotos = myCheckin?.photoURLs || (myCheckin?.photoURL ? [myCheckin.photoURL] : []);
 
   const addMyCheckinPhoto = async () => {
@@ -584,6 +623,51 @@ export default function LandmarkDetail() {
             <ul className="checkin-stats">
               <li>
                 <span>Checked in:</span> {myCheckin?.createdAt?.seconds ? fmtCheckinTime(myCheckin.createdAt.seconds) : '…'}
+                {adminMode && isAdmin(user?.email) && !editingCheckinDate && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ marginLeft: 8, padding: '1px 6px', fontSize: '0.7rem' }}
+                    onClick={startEditCheckinDate}
+                  >
+                    {'\u{270F}\u{FE0F}'} Edit
+                  </button>
+                )}
+                {editingCheckinDate && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, alignItems: 'center' }}>
+                    <input
+                      type="datetime-local"
+                      value={checkinDateValue}
+                      onChange={(e) => setCheckinDateValue(e.target.value)}
+                      disabled={checkinDateSaving}
+                      style={{ fontSize: '0.78rem', padding: '4px 6px' }}
+                    />
+                    <span className="tag" style={{ fontSize: '0.68rem' }}>
+                      {tzAbbrev(regionTimezone(regionId, landmark?.lng))} — {getRegion(regionId)?.name || regionId}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      disabled={checkinDateSaving}
+                      onClick={saveCheckinDate}
+                    >
+                      {checkinDateSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      disabled={checkinDateSaving}
+                      onClick={cancelEditCheckinDate}
+                    >
+                      Cancel
+                    </button>
+                    {checkinDateError && (
+                      <span className="tag tag-error" style={{ fontSize: '0.7rem' }}>
+                        {checkinDateError}
+                      </span>
+                    )}
+                  </div>
+                )}
               </li>
               <li>
                 <span>Your rating:</span>{' '}

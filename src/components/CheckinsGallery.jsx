@@ -8,6 +8,7 @@ import { CHECKIN_SORTS, sortCheckins } from '../lib/checkinSort';
 import { useAdminMode } from '../lib/AdminModeContext';
 import { isAdmin } from '../lib/admins';
 import { useAuth } from '../lib/AuthContext';
+import { regionTimezone, tzAbbrev, toZonedInputValue, fromZonedInputValue } from '../lib/timezones';
 
 
 // Shared "Sep 7, 2026, 10:04 AM" formatting for check-in timestamps.
@@ -20,15 +21,6 @@ function fmtDateTime(seconds) {
     hour: 'numeric',
     minute: '2-digit',
   });
-}
-
-// <input type="datetime-local"> wants "YYYY-MM-DDTHH:mm" in LOCAL time, with
-// no timezone suffix -- toISOString gives UTC, so this builds it by hand.
-function toLocalInputValue(seconds) {
-  if (!seconds) return '';
-  const d = new Date(seconds * 1000);
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 // The full photo gallery of everywhere you've checked in -- lives on the
@@ -47,8 +39,11 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
   const [editError, setEditError] = useState('');
 
   const startEdit = (it) => {
+    // Grid tiles have no room for the inline date/time editor -- hand off
+    // to List view (where it lives) already opened to this check-in.
+    setLayout('list');
     setEditingId(it.id);
-    setEditValue(toLocalInputValue(it.createdAt));
+    setEditValue(toZonedInputValue(it.createdAt, regionTimezone(it.regionId, it.lng)));
     setEditError('');
   };
   const cancelEdit = () => {
@@ -57,7 +52,10 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
   };
   const saveEdit = async (it) => {
     if (!editValue) return;
-    const date = new Date(editValue);
+    // The picker holds the landmark's OWN local wall-clock time, not the
+    // admin's device time -- fromZonedInputValue does the timezone math to
+    // get back to the real instant.
+    const date = fromZonedInputValue(editValue, regionTimezone(it.regionId, it.lng));
     if (Number.isNaN(date.getTime())) {
       setEditError('Invalid date/time.');
       return;
@@ -118,6 +116,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         id: c.id,
         landmarkId: c.landmarkId,
         regionId: c.region,
+        lng: lm?.lng ?? null,
         name: c.landmarkName || lm?.name || c.landmarkId,
         photo: mine || lm?.images?.[0] || null,
         isMine: !!mine,
@@ -272,6 +271,9 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
                       disabled={editSaving}
                       style={{ fontSize: '0.78rem', padding: '4px 6px' }}
                     />
+                    <span className="tag" style={{ fontSize: '0.68rem' }}>
+                      {tzAbbrev(regionTimezone(it.regionId, it.lng))} — {it.city}
+                    </span>
                     <button
                       type="button"
                       className="btn btn-primary btn-sm"
