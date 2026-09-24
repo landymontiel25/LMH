@@ -2,7 +2,16 @@ import { verifyIdToken } from './_lib/verifyAuth.js';
 import { isRateLimited } from './_lib/rateLimit.js';
 import { enrichLandmark, reverseGeocode } from './_lib/enrichLandmark.js';
 import { ADMIN_EMAILS } from '../src/lib/admins.js';
-import { needsFactsBackfill } from '../src/lib/customLandmarks.js';
+
+// Deliberately NOT imported from src/lib/customLandmarks.js: that file
+// pulls in src/lib/firebase.js, which reads import.meta.env.VITE_* --
+// a Vite-only construct. Vercel's serverless function bundler doesn't
+// define it, so that import crashes this function before the handler
+// even runs (surfacing as an opaque non-JSON failure, not a real error).
+// Same check, kept in sync with needsFactsBackfill in customLandmarks.js.
+function needsFactsBackfill(landmark) {
+  return typeof landmark?.summary === 'string' && landmark.summary.startsWith('A community-submitted spot');
+}
 
 // Admin-only, manually triggered from Profile's "Backfill AI Facts" panel.
 // Re-runs the same AI research /api/verify-landmark does on new submissions
