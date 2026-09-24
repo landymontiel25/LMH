@@ -1,6 +1,7 @@
 import { verifyIdToken } from './_lib/verifyAuth.js';
 import { isRateLimited } from './_lib/rateLimit.js';
 import { enrichLandmark, reverseGeocode } from './_lib/enrichLandmark.js';
+import { decodeFields, encodeValue } from './_lib/firestoreRest.js';
 import { ADMIN_EMAILS } from '../src/lib/admins.js';
 
 // Deliberately NOT imported from src/lib/customLandmarks.js: that file
@@ -29,31 +30,6 @@ function needsFactsBackfill(landmark) {
 // rule is what actually authorizes the writes -- this endpoint's own admin
 // check is a second gate, not a bypass of that.
 const MAX_PER_RUN = 15;
-
-function decodeValue(v) {
-  if (v == null) return null;
-  if ('stringValue' in v) return v.stringValue;
-  if ('integerValue' in v) return Number(v.integerValue);
-  if ('doubleValue' in v) return v.doubleValue;
-  if ('booleanValue' in v) return v.booleanValue;
-  if ('arrayValue' in v) return (v.arrayValue.values || []).map(decodeValue);
-  if ('mapValue' in v) return decodeFields(v.mapValue.fields || {});
-  return null;
-}
-
-function decodeFields(fields) {
-  const out = {};
-  for (const [k, v] of Object.entries(fields || {})) out[k] = decodeValue(v);
-  return out;
-}
-
-function encodeValue(v) {
-  if (typeof v === 'string') return { stringValue: v };
-  if (typeof v === 'boolean') return { booleanValue: v };
-  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
-  if (Array.isArray(v)) return { arrayValue: { values: v.map(encodeValue) } };
-  return { nullValue: null };
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
