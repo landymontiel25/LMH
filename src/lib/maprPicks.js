@@ -1,5 +1,5 @@
 import { ALL_LANDMARKS } from '../data/regions';
-import { isRateable } from './ratingFlow';
+import { isRateable, chipLabel } from './ratingFlow';
 import { distanceMeters } from './geo';
 
 // Local stand-in for /api/mapr-picks when the AI isn't reachable (no key,
@@ -10,14 +10,17 @@ const NEARBY_KM = 150;
 
 // Category alone is too coarse to learn from fast: a zoo and a hiking trail
 // both read as "parks-nature", a cemetery and a historic mansion both read
-// as "history-culture". One bad experience with a specific TYPE of place
-// (rated probably-skip, or repeatedly ✗'d) should suppress that type
-// specifically and immediately, not just nudge the whole broad category
-// down a little. This is a coarse keyword match on the place's own
-// name/summary -- simple on purpose, since it only needs to catch the
-// traveler's own words closely enough to recognize the same kind of place
-// again.
-const TYPE_KEYWORDS = [
+// as "history-culture". What actually explains a rating is the SPECIFIC
+// reason behind it -- the traveler's own words, in their comment and the
+// chip they tapped -- not the broad bucket the landmark happens to sit in.
+// This list is the vocabulary that reasoning runs on: matched against a
+// review's comment + chip labels on one side, and a candidate's own
+// name/summary on the other. Two kinds of entries: concrete place TYPES
+// (a zoo is never a hiking trail, whatever the category says) and
+// experiential TRAITS pulled straight from how people actually describe
+// why they loved or skipped somewhere.
+const TRAIT_KEYWORDS = [
+  // Specific place types.
   'zoo',
   'aquarium',
   'cemetery',
@@ -25,75 +28,131 @@ const TYPE_KEYWORDS = [
   'amusement park',
   'theme park',
   'water park',
-  // Quiet, members-only or institutional sites -- a cricket club or a
-  // meeting house shares a broad category (sports, history-culture) with
-  // genuinely loved public places like a ballpark or a museum, but is a
-  // completely different kind of visit. Specific complaints from this
-  // project's own history, not a guess.
   'cricket club',
   'country club',
   'social club',
   'meeting house',
+  // Experiential traits -- "loved it for the rooftop view" should boost
+  // other places whose own description mentions a view, not just
+  // "restaurants" or "parks" in general.
+  'rooftop',
+  'view',
+  'waterfront',
+  'scenic',
+  'crowded',
+  'long lines',
+  'busy',
+  'quiet',
+  'peaceful',
+  'relaxing',
+  'live music',
+  'nightlife',
+  'family-friendly',
+  'kid-friendly',
+  'romantic',
+  'historic',
 ];
 
-function typeKeywordOf(text) {
+// Every TRAIT_KEYWORDS entry found in `text` (lowercased, substring match --
+// simple on purpose, since it only needs to catch the traveler's own words
+// closely enough to recognize the same kind of place or the same reason
+// again).
+function keywordsIn(text) {
   const t = (text || '').toLowerCase();
-  return TYPE_KEYWORDS.find((k) => t.includes(k)) || null;
+  return TRAIT_KEYWORDS.filter((k) => t.includes(k));
+}
+
+// Recent signal matters more than old signal (preferences shift -- someone
+// who loved clubs at 21 might not at 25), but old signal should FADE, not
+// vanish outright. Halves every ~4 months. A review/vote with no known
+// timestamp (older data, or a caller that doesn't have one) is treated as
+// full-weight rather than guessed at as stale.
+const RECENCY_HALF_LIFE_DAYS = 120;
+function recencyWeight(seconds, nowSec) {
+  if (!seconds) return 1;
+  const ageDays = Math.max(0, nowSec - seconds) / 86400;
+  return Math.pow(0.5, ageDays / RECENCY_HALF_LIFE_DAYS);
 }
 
 export function localMaprPicks({
   reviews = [],
   interests = [],
   checkedInIds = [],
+  // Checked in but never rated -- a real visit is worth something (you
+  // didn't hate it enough to skip rating out of spite), but nowhere near
+  // as much as an actual verdict. Distinct from checkedInIds, which this
+  // function also uses to exclude anywhere already visited from the pool.
+  weakCheckedInIds = [],
   regionIds = [],
   origin = null,
   ratings = {},
   feedback = [],
   passedIds = [],
   limit = 4,
+  now = Date.now(),
 }) {
+  const nowSec = now / 1000;
   const affinity = {};
+  // keyword -> summed (recency-weighted) strength of "loved it for this".
+  const positiveTraits = new Map();
+  // keyword -> hard-exclude candidates naming it (recent/strong enough).
+  const negativeTraits = new Set();
+  // keyword -> summed (decayed) strength of an older/weaker dislike --
+  // still counts against a match, just doesn't rule it out outright.
+  const softNegativeTraits = new Map();
+
   // A single clear "probably skip" now counts for noticeably more than a
   // single loved rating pulls the other way -- taste should snap toward a
   // stated dislike fast, not need several repeats to overcome how many
-  // things the traveler has loved overall.
+  // things the traveler has loved overall. The comment (and the chip
+  // tapped) is the actual REASON, so it's parsed for traits above and
+  // beyond the plain category/tier math here.
   for (const r of reviews) {
-    const w = r.tier === 'highly-recommend' ? 3 : r.tier === 'probably-skip' ? -3 : 1;
+    const rw = recencyWeight(r.updatedAt?.seconds, nowSec);
+    const w = (r.tier === 'highly-recommend' ? 3 : r.tier === 'probably-skip' ? -3 : 1) * rw;
     for (const c of r.categories || []) affinity[c] = (affinity[c] || 0) + w;
+
+    const text = [r.name, r.comment, ...(r.highlights || []).map(chipLabel)].filter(Boolean).join(' ');
+    for (const kw of keywordsIn(text)) {
+      if (r.tier === 'highly-recommend') {
+        positiveTraits.set(kw, (positiveTraits.get(kw) || 0) + rw);
+      } else if (r.tier === 'probably-skip') {
+        if (rw >= 0.35) negativeTraits.add(kw);
+        else softNegativeTraits.set(kw, (softNegativeTraits.get(kw) || 0) + rw);
+      }
+    }
   }
   for (const c of interests) affinity[c] = (affinity[c] || 0) + 1;
+  // A plain check-in with no rating at all: a weak signal, not neutral and
+  // not an endorsement either -- a small nudge, well under even a single
+  // "worth trying".
+  for (const id of weakCheckedInIds) {
+    const lm = ALL_LANDMARKS.find((l) => l.id === id);
+    for (const c of lm?.categories || []) affinity[c] = (affinity[c] || 0) + 0.5;
+  }
   // ✓ / ✗ on earlier picks: a lighter nudge than a rating (±1 per category).
-  for (const f of feedback) {
-    const w = f.verdict === 'yes' ? 1 : -1;
-    for (const c of f.categories || []) affinity[c] = (affinity[c] || 0) + w;
-  }
-
-  // Specific-type suppression: one probably-skip rating on a place whose
-  // name says what it specifically is, or two ✗ votes on the same type, is
-  // enough to rule that type out entirely -- see TYPE_KEYWORDS above.
-  const dislikedTypes = new Set();
-  for (const r of reviews) {
-    if (r.tier !== 'probably-skip') continue;
-    const kw = typeKeywordOf(r.name);
-    if (kw) dislikedTypes.add(kw);
-  }
+  // A vote carries no comment, so only its landmark's own name can surface
+  // a trait -- weaker evidence, so it takes two ✗'s naming the same thing
+  // (not one) to rule it out, same as before.
   const noVotesByType = {};
   for (const f of feedback) {
+    const rw = recencyWeight(f.at ? f.at / 1000 : null, nowSec);
+    const w = (f.verdict === 'yes' ? 1 : -1) * rw;
+    for (const c of f.categories || []) affinity[c] = (affinity[c] || 0) + w;
     if (f.verdict !== 'no') continue;
-    const kw = typeKeywordOf(f.name);
-    if (!kw) continue;
-    noVotesByType[kw] = (noVotesByType[kw] || 0) + 1;
-    if (noVotesByType[kw] >= 2) dislikedTypes.add(kw);
+    for (const kw of keywordsIn(f.name)) {
+      noVotesByType[kw] = (noVotesByType[kw] || 0) + 1;
+      if (noVotesByType[kw] >= 2) negativeTraits.add(kw);
+    }
   }
 
   const visited = new Set([...checkedInIds, ...passedIds]);
   const cities = new Set(regionIds);
-  let pool = ALL_LANDMARKS.filter(
-    (l) =>
-      !visited.has(l.id) &&
-      isRateable(l) &&
-      !dislikedTypes.has(typeKeywordOf(l.name) || typeKeywordOf(l.summary))
-  );
+  let pool = ALL_LANDMARKS.filter((l) => {
+    if (visited.has(l.id) || !isRateable(l)) return false;
+    const kws = keywordsIn(`${l.name} ${l.summary || ''}`);
+    return !kws.some((k) => negativeTraits.has(k));
+  });
   // Near you first: everything within NEARBY_KM of your fix (or, if that's
   // too few, the closest 40). Only without a fix do visited cities apply.
   if (origin) {
@@ -112,10 +171,17 @@ export function localMaprPicks({
     const crowd = ratings[l.id]?.avg || 0;
     // Closer is better: full bonus at 0 km fading out by NEARBY_KM.
     const near = l.km != null ? Math.max(0, 1 - l.km / NEARBY_KM) * 3 : 0;
+    const traitText = `${l.name} ${l.summary || ''}`;
+    const kws = keywordsIn(traitText);
+    let traitScore = 0;
+    for (const kw of kws) {
+      if (positiveTraits.has(kw)) traitScore += positiveTraits.get(kw) * 2;
+      if (softNegativeTraits.has(kw)) traitScore -= softNegativeTraits.get(kw) * 2;
+    }
     // affinity[cat] drives which of these are worth showing at all --
     // ranked by the full score (distance/crowd/popularity as tie-breakers),
     // but see matchPercentage below for why it isn't what sets the %.
-    const score = (affinity[cat] || 0) * 2 + crowd * 0.8 + (l.popularity || 0) * 0.15 + near;
+    const score = (affinity[cat] || 0) * 2 + crowd * 0.8 + (l.popularity || 0) * 0.15 + near + traitScore;
     return { l, cat, score };
   });
   return scored
@@ -149,8 +215,14 @@ const TTL_MS = 4 * 60 * 60 * 1000;
 // Keyed on a coarse (~10 km) location too, so walking across town keeps
 // the same picks but flying to another city gets fresh ones.
 export const coarseLocation = (origin) => (origin ? `${origin.lat.toFixed(1)},${origin.lng.toFixed(1)}` : 'nowhere');
+// Bump this whenever a change to the scoring/ranking logic (local or
+// server) should force EVERY user's next load to recompute fresh, rather
+// than possibly keep serving a list built under the old rules until the
+// TTL or ratingsCount happens to change. Old-prefixed entries are simply
+// never read again -- harmless dead keys, not worth cleaning up.
+const CACHE_VERSION = 'v2';
 export const picksCacheKey = (uid, ratingsCount, origin) =>
-  `lh-mapr-picks:${uid}:${ratingsCount}:${coarseLocation(origin)}`;
+  `lh-mapr-picks:${CACHE_VERSION}:${uid}:${ratingsCount}:${coarseLocation(origin)}`;
 
 export function readPicksCache(key) {
   try {

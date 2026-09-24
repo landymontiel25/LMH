@@ -110,6 +110,146 @@ describe('specific-type suppression', () => {
   });
 });
 
+describe('trait-based generalization (comment reasoning, not just category)', () => {
+  it('boosts a place sharing a stated reason, even in an unrelated category', () => {
+    // South Pointe Park's summary mentions "views" -- a comment praising a
+    // rooftop view on a totally unrelated (food) rating should still lift
+    // it, purely from the shared trait, not from category affinity.
+    const origin = { lat: 25.7743, lng: -80.1937 };
+    const withoutTrait = localMaprPicks({ origin, limit: 500 });
+    const withTrait = localMaprPicks({
+      origin,
+      reviews: [
+        {
+          tier: 'highly-recommend',
+          categories: ['food'],
+          name: 'Some Restaurant',
+          comment: 'Amazing rooftop with an incredible view.',
+        },
+      ],
+      limit: 500,
+    });
+    const rank = (list) => list.findIndex((p) => p.id === 'south-pointe-park-and-pier');
+    expect(rank(withTrait)).toBeGreaterThanOrEqual(0);
+    expect(rank(withTrait)).toBeLessThan(rank(withoutTrait));
+  });
+
+  it('suppresses a place sharing a stated dislike reason from a comment, not just a fixed word list', () => {
+    const origin = { lat: 25.7743, lng: -80.1937 };
+    const before = localMaprPicks({ origin, limit: 500 });
+    expect(before.some((p) => p.id === 'south-pointe-park-and-pier')).toBe(true);
+    const after = localMaprPicks({
+      origin,
+      reviews: [
+        {
+          tier: 'probably-skip',
+          categories: ['entertainment'],
+          name: 'Some Other Place',
+          comment: 'Skip it, the waterfront area was way too crowded.',
+        },
+      ],
+      limit: 500,
+    });
+    // "Some Other Place" isn't in the catalog, and its category
+    // (entertainment) doesn't match South Pointe Park's (parks-nature) --
+    // the only way this place could drop out is the comment's own words
+    // ("waterfront", "crowded") matching its summary.
+    expect(after.some((p) => p.id === 'south-pointe-park-and-pier')).toBe(false);
+  });
+
+  it('reads a trait from the tapped chip highlight, not only the freeform comment', () => {
+    const origin = { lat: 25.7743, lng: -80.1937 };
+    const withoutTrait = localMaprPicks({ origin, limit: 500 });
+    // 'beautiful-views' is a real parks-nature chip id (see ratingFlow.js);
+    // chipLabel resolves it to "Beautiful views" -- the word "views" alone
+    // is what the trait matcher should catch, from the chip, not the
+    // category array.
+    const withTrait = localMaprPicks({
+      origin,
+      reviews: [
+        {
+          tier: 'highly-recommend',
+          categories: ['food'],
+          name: 'Some Restaurant',
+          highlights: ['beautiful-views'],
+        },
+      ],
+      limit: 500,
+    });
+    const rank = (list) => list.findIndex((p) => p.id === 'south-pointe-park-and-pier');
+    expect(rank(withTrait)).toBeGreaterThanOrEqual(0);
+    expect(rank(withTrait)).toBeLessThan(rank(withoutTrait));
+  });
+});
+
+describe('recency decay', () => {
+  const DAY = 86400;
+  const NOW = Date.now();
+  const nowSec = NOW / 1000;
+
+  it('gives a recent loved rating more pull on matchPercentage than an old one', () => {
+    const recentPicks = localMaprPicks({
+      reviews: [{ tier: 'highly-recommend', categories: ['food'], updatedAt: { seconds: nowSec - 1 * DAY } }],
+      regionIds: ['miami'],
+      now: NOW,
+      limit: 500,
+    });
+    const oldPicks = localMaprPicks({
+      reviews: [{ tier: 'highly-recommend', categories: ['food'], updatedAt: { seconds: nowSec - 400 * DAY } }],
+      regionIds: ['miami'],
+      now: NOW,
+      limit: 500,
+    });
+    const recentFood = recentPicks.find((p) => p.categories.includes('food'));
+    const oldFood = oldPicks.find((p) => p.categories.includes('food'));
+    expect(recentFood.matchPercentage).toBeGreaterThan(oldFood.matchPercentage);
+  });
+
+  it('fades an old dislike into a soft penalty instead of a hard exclusion', () => {
+    const origin = { lat: 25.7743, lng: -80.1937 };
+    const recentDislike = localMaprPicks({
+      origin,
+      reviews: [
+        { tier: 'probably-skip', categories: ['parks-nature'], name: 'Zoo Miami', updatedAt: { seconds: nowSec - 1 * DAY } },
+      ],
+      now: NOW,
+      limit: 500,
+    });
+    const oldDislike = localMaprPicks({
+      origin,
+      reviews: [
+        { tier: 'probably-skip', categories: ['parks-nature'], name: 'Zoo Miami', updatedAt: { seconds: nowSec - 400 * DAY } },
+      ],
+      now: NOW,
+      limit: 500,
+    });
+    // Recent: still excluded outright, same as the no-timestamp case.
+    expect(recentDislike.some((p) => p.id === 'zoo-miami')).toBe(false);
+    // Old enough to have decayed below the hard-exclude threshold: present
+    // again, just not favored -- faded, not forgotten.
+    expect(oldDislike.some((p) => p.id === 'zoo-miami')).toBe(true);
+  });
+});
+
+describe('weak signal from an unrated check-in', () => {
+  it('nudges the category a small amount -- less than a real "worth trying" rating would', () => {
+    const withWeak = localMaprPicks({
+      weakCheckedInIds: ['joes-stone-crab'],
+      regionIds: ['miami'],
+      limit: 500,
+    });
+    const withRating = localMaprPicks({
+      reviews: [{ tier: 'worth-trying', categories: ['food'] }],
+      regionIds: ['miami'],
+      limit: 500,
+    });
+    const weakFood = withWeak.find((p) => p.categories.includes('food'));
+    const ratedFood = withRating.find((p) => p.categories.includes('food'));
+    expect(weakFood.matchPercentage).toBeGreaterThan(65); // some lift over neutral
+    expect(weakFood.matchPercentage).toBeLessThan(ratedFood.matchPercentage);
+  });
+});
+
 describe('pick feedback', () => {
   it('keeps a recently ✗’d place out and nudges categories only lightly', () => {
     const origin = { lat: 25.7743, lng: -80.1937 };
