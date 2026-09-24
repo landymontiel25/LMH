@@ -347,6 +347,13 @@ function BackfillFactsPanel({ email, user }) {
   const [candidates, setCandidates] = useState(null); // null = still loading
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  // Force-recheck: for a landmark the automatic detector can't catch --
+  // e.g. facts that came back well-formed but about the wrong real-world
+  // place (a name collision the AI got wrong, like "Watsco" the company
+  // vs. "Watsco Center" the arena named after it).
+  const [forceQuery, setForceQuery] = useState('');
+  const [forceBusy, setForceBusy] = useState(false);
+  const [forceResult, setForceResult] = useState(null);
 
   const refresh = () => {
     getCustomLandmarks().then((all) => setCandidates(all.filter(needsFactsBackfill)));
@@ -358,20 +365,25 @@ function BackfillFactsPanel({ email, user }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email]);
 
-  if (!isAdmin(email) || candidates === null || candidates.length === 0) return null;
+  if (!isAdmin(email) || candidates === null) return null;
+
+  const runBackfill = async (body) => {
+    const idToken = await user.getIdToken();
+    const res = await fetch('/api/backfill-landmark-facts', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${idToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error || 'Backfill failed.');
+    return data;
+  };
 
   const run = async () => {
     setBusy(true);
     setResult(null);
     try {
-      const idToken = await user.getIdToken();
-      const res = await fetch('/api/backfill-landmark-facts', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || 'Backfill failed.');
-      setResult(data);
+      setResult(await runBackfill());
       refresh();
     } catch (e) {
       setResult({ error: e.message });
@@ -380,25 +392,85 @@ function BackfillFactsPanel({ email, user }) {
     }
   };
 
+  const runForce = async () => {
+    const term = forceQuery.trim().toLowerCase();
+    if (!term) return;
+    setForceBusy(true);
+    setForceResult(null);
+    try {
+      const all = await getCustomLandmarks();
+      const matches = all.filter((l) => l.name?.toLowerCase().includes(term));
+      if (matches.length === 0) {
+        setForceResult({ error: `No submitted landmark matches "${forceQuery}".` });
+        return;
+      }
+      if (matches.length > 1) {
+        setForceResult({ error: `${matches.length} matches — be more specific: ${matches.map((l) => l.name).join(', ')}` });
+        return;
+      }
+      setForceResult(await runBackfill({ landmarkId: matches[0].docId }));
+      refresh();
+    } catch (e) {
+      setForceResult({ error: e.message });
+    } finally {
+      setForceBusy(false);
+    }
+  };
+
   return (
     <div className="card section">
-      <h3 style={{ marginTop: 0 }}>{'\u{2728}'} Backfill AI Facts ({candidates.length})</h3>
-      <p className="screen-subtitle" style={{ marginTop: -6 }}>
-        Landmarks added before AI research existed still show generic filler text — research and fill them in for real.
+      <h3 style={{ marginTop: 0 }}>{'\u{2728}'} AI Facts Maintenance</h3>
+
+      {candidates.length > 0 && (
+        <>
+          <p className="screen-subtitle" style={{ marginTop: -6 }}>
+            {candidates.length} landmark{candidates.length === 1 ? '' : 's'} still show generic filler text or leftover
+            citation markup — research and fill them in for real.
+          </p>
+          <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={run}>
+            {busy ? 'Researching…' : `Backfill ${candidates.length} Landmark${candidates.length === 1 ? '' : 's'}`}
+          </button>
+          {result && (
+            <p
+              style={{
+                marginTop: 10,
+                fontSize: '0.85rem',
+                color: result.error ? 'var(--color-rust)' : 'var(--color-parchment-dim)',
+              }}
+            >
+              {result.error ||
+                `Updated ${result.updated} of ${result.total}${result.updatedNames?.length ? `: ${result.updatedNames.join(', ')}` : ''}${result.remaining ? ` — ${result.remaining} left, run again to continue` : ''}.`}
+            </p>
+          )}
+          <div className="compass-divider" style={{ marginTop: 16, marginBottom: 12 }}>
+            or
+          </div>
+        </>
+      )}
+
+      <p className="screen-subtitle" style={{ marginTop: candidates.length > 0 ? 0 : -6 }}>
+        Force re-research one landmark by name — for facts that look fine but are about the wrong place (e.g. a company
+        name that's really a venue named after it).
       </p>
-      <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={run}>
-        {busy ? 'Researching…' : `Backfill ${candidates.length} Landmark${candidates.length === 1 ? '' : 's'}`}
+      <input
+        type="text"
+        placeholder="Landmark name…"
+        value={forceQuery}
+        onChange={(e) => setForceQuery(e.target.value)}
+        style={{ marginBottom: 8 }}
+      />
+      <button type="button" className="btn btn-ghost btn-block" disabled={forceBusy || !forceQuery.trim()} onClick={runForce}>
+        {forceBusy ? 'Researching…' : 'Re-research This Landmark'}
       </button>
-      {result && (
+      {forceResult && (
         <p
           style={{
             marginTop: 10,
             fontSize: '0.85rem',
-            color: result.error ? 'var(--color-rust)' : 'var(--color-parchment-dim)',
+            color: forceResult.error ? 'var(--color-rust)' : 'var(--color-parchment-dim)',
           }}
         >
-          {result.error ||
-            `Updated ${result.updated} of ${result.total}${result.updatedNames?.length ? `: ${result.updatedNames.join(', ')}` : ''}${result.remaining ? ` — ${result.remaining} left, run again to continue` : ''}.`}
+          {forceResult.error || `Updated: ${forceResult.updatedNames?.join(', ') || 'done'}.`}
         </p>
       )}
     </div>
