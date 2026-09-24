@@ -17,7 +17,10 @@ export default function FriendStatsModal({ uid, name, onClose }) {
     let cancelled = false;
     Promise.all([getUserStats(uid), getUserCheckins(uid)])
       .then(([stats, checkins]) => {
-        if (!cancelled) setState({ loading: false, stats, recent: checkins[0] || null });
+        // A "Rate a Landmark" claim (0 points) isn't a visit -- skip it for
+        // "most recent check-in", same as the check-ins gallery does.
+        const recent = checkins.find((c) => c.points !== 0) || null;
+        if (!cancelled) setState({ loading: false, stats, recent });
       })
       .catch(() => {
         if (!cancelled) setState({ loading: false, error: true });

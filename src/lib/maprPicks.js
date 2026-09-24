@@ -52,21 +52,28 @@ export function localMaprPicks({
     const crowd = ratings[l.id]?.avg || 0;
     // Closer is better: full bonus at 0 km fading out by NEARBY_KM.
     const near = l.km != null ? Math.max(0, 1 - l.km / NEARBY_KM) * 3 : 0;
+    // affinity[cat] drives which of these are worth showing at all --
+    // ranked by the full score (distance/crowd/popularity as tie-breakers),
+    // but see matchPercentage below for why it isn't what sets the %.
     const score = (affinity[cat] || 0) * 2 + crowd * 0.8 + (l.popularity || 0) * 0.15 + near;
-    return { l, score };
+    return { l, cat, score };
   });
-  const max = Math.max(1, ...scored.map((s) => s.score));
-  const min = Math.min(0, ...scored.map((s) => s.score));
   return scored
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map(({ l, score }) => ({
+    .map(({ l, cat }) => ({
       id: l.id,
       region: l.regionId,
       name: l.name,
       image: l.images?.[0] || null,
       categories: l.categories || [],
-      matchPercentage: Math.round(70 + (28 * (score - min)) / (max - min || 1)),
+      // Reflects actual affinity for this category, not rank within
+      // whatever happened to be nearby -- rescaling against the pool's own
+      // min/max (as this used to) always gave the top of the pool ~98%
+      // even when every nearby option was a category the traveler
+      // disliked. No signal for the category at all lands at a neutral
+      // 65%, not "should still be nearly perfect."
+      matchPercentage: Math.round(Math.min(97, Math.max(45, 65 + (affinity[cat] || 0) * 6))),
       oneLineSummary: (l.summary || '').split(/[.!?]/)[0].slice(0, 90),
     }));
 }

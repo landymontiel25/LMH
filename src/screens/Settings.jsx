@@ -5,6 +5,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { useTheme } from '../lib/useTheme';
 import { useUnits, countryName } from '../lib/UnitsContext';
 import { setProfileVisibility, getUserProfile } from '../lib/friends';
+import { useAdminMode } from '../lib/AdminModeContext';
 import PreferenceChips from '../components/PreferenceChips';
 
 export default function Settings() {
@@ -13,6 +14,7 @@ export default function Settings() {
   const { myProfile, reload: reloadFriends } = useFriends();
   const { theme, toggleTheme } = useTheme();
   const { units, mode, setMode, autoCountry } = useUnits();
+  const { adminMode, canUseAdminMode, setAdminMode } = useAdminMode();
   const [visBusy, setVisBusy] = useState(false);
   const [visMsg, setVisMsg] = useState(null);
 
@@ -123,6 +125,24 @@ export default function Settings() {
               {visMsg}
             </p>
           )}
+        </div>
+      )}
+
+      {canUseAdminMode && (
+        <div className="card section">
+          <h3 style={{ marginTop: 0 }}>{'\u{1F6E0}\u{FE0F}'} Admin Mode</h3>
+          <p className="screen-subtitle" style={{ marginTop: 0 }}>
+            {adminMode
+              ? 'On for this device. Editing/deleting a submitted landmark from its page or map pin changes it for everyone, immediately — there is no undo.'
+              : 'Only visible to your account. Turn on to edit or delete any user-submitted landmark directly from its page or map pin.'}
+          </p>
+          <button
+            type="button"
+            className={`btn btn-block ${adminMode ? 'btn-danger' : 'btn-ghost'}`}
+            onClick={() => setAdminMode(!adminMode)}
+          >
+            {adminMode ? `${'\u{2715}'} Turn Off Admin Mode` : `${'\u{1F6E0}\u{FE0F}'} Turn On Admin Mode`}
+          </button>
         </div>
       )}
     </div>

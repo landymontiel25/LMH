@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { getCustomLandmark, reportCustomLandmark } from '../lib/customLandmarks';
+import { useAdminMode } from '../lib/AdminModeContext';
+import { isAdmin } from '../lib/admins';
+import AdminEditLandmarkPanel from '../components/AdminEditLandmarkPanel';
 import { blockUser } from '../lib/blocks';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
@@ -67,6 +70,7 @@ export default function LandmarkDetail() {
   };
   const { toggleLandmark, getRegionSelection, updateTrip, setMapFocus, setMapFocusPoint } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { adminMode } = useAdminMode();
   const { coords } = useGeo();
   const region = getRegion(regionId);
   const staticLandmark = getLandmark(regionId, id);
@@ -502,6 +506,13 @@ export default function LandmarkDetail() {
             </button>
           )}
         </p>
+      )}
+
+      {customLandmark && adminMode && isAdmin(user?.email) && (
+        <AdminEditLandmarkPanel
+          landmark={customLandmark}
+          onSaved={(fields) => setCustomLandmark((cur) => ({ ...cur, ...fields }))}
+        />
       )}
 
       <div className="center" style={{ marginBottom: 18 }}>

@@ -15,8 +15,12 @@ describe('localMaprPicks', () => {
     expect(picks).toHaveLength(4);
     expect(picks.map((p) => p.id)).not.toContain('joes-stone-crab');
     expect(picks.every((p) => p.region === 'miami')).toBe(true);
-    expect(picks[0].matchPercentage).toBe(98);
-    expect(picks.every((p) => p.matchPercentage >= 70 && p.matchPercentage <= 98)).toBe(true);
+    // matchPercentage reflects affinity for that specific category, not rank
+    // within the pool -- a strongly loved category (two highly-recommends)
+    // caps near the top, while an unrelated/no-signal category lands at a
+    // neutral 65, not artificially inflated just for being the best nearby.
+    expect(picks[0].matchPercentage).toBe(97);
+    expect(picks.every((p) => p.matchPercentage >= 45 && p.matchPercentage <= 97)).toBe(true);
     expect(picks.every((p) => p.oneLineSummary.length > 0)).toBe(true);
   });
 

@@ -75,13 +75,6 @@ export default function RateLandmarkSearch() {
   const close = () => setOpen(false);
 
   const pick = (landmark) => {
-    // Only this search (Mapr Picks) blocks a repeat rating -- rating the
-    // same place twice from an actual visit still works fine from the
-    // landmark's own page, where it's an edit, not a duplicate.
-    if (myReviews[landmark.id]) {
-      setCreateError('Hey, you already rated this. Try rating something else.');
-      return;
-    }
     // Mandatory comment here, only here -- a plain "Check In" doesn't
     // require one. Mapr needs to know *why* when there's no visit context
     // to lean on. ratingOnly keeps this from paying out check-in points.
@@ -247,7 +240,7 @@ export default function RateLandmarkSearch() {
                         key={`${l.regionId}-${l.id}`}
                         className="autocomplete-item"
                         onClick={() => pick(l)}
-                        disabled={creating}
+                        disabled={creating || alreadyRated}
                       >
                         <span className="autocomplete-primary">{l.name}</span>
                         <span className="autocomplete-secondary">

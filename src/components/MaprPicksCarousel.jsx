@@ -178,13 +178,15 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     <div className="mapr-picks">
       <div className="taste-card-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <span>{'\u{1F525}'} Your Mapr Picks</span>
-        <span
+        <button
+          type="button"
           className="tag"
-          style={{ fontSize: '0.68rem' }}
-          title={`${actionsToday} of ${PICKS_STREAK_THRESHOLD} needed today to secure your streak without a check-in -- more is fine, ${PICKS_STREAK_THRESHOLD} is just the minimum`}
+          style={{ fontSize: '0.68rem', cursor: 'pointer', fontFamily: 'inherit', appearance: 'none' }}
+          title={`${actionsToday} of ${PICKS_STREAK_THRESHOLD} needed today to secure your streak without a check-in -- more is fine, ${PICKS_STREAK_THRESHOLD} is just the minimum. Tap to see everything you've rated.`}
+          onClick={() => navigate('/mapr-ratings')}
         >
           {actionsToday}/{PICKS_STREAK_THRESHOLD} today
-        </span>
+        </button>
       </div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>
         {picks.length > 0
