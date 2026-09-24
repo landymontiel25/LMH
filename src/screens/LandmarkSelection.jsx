@@ -209,9 +209,24 @@ export default function LandmarkSelection() {
 
   // Same shape as ALL_LANDMARKS entries (regionId set from the doc's
   // `region` field) so the filter/sort/render logic below doesn't need to
-  // know which source a landmark came from.
+  // know which source a landmark came from -- including defaults for
+  // fields a custom doc might not have (an older submission, or one still
+  // missing a field a newer feature added later). Without these, a single
+  // malformed custom landmark crashes this whole screen the moment its
+  // row tries to render (e.g. `l.categories.map(...)` on an undefined
+  // categories) -- same defensive defaults LandmarkDetail.jsx already
+  // applies for the same reason.
   const normalizedCustomLandmarks = useMemo(
-    () => customLandmarks.map((l) => ({ ...l, regionId: l.region })),
+    () =>
+      customLandmarks.map((l) => ({
+        ...l,
+        regionId: l.region,
+        categories: l.categories || [],
+        images: l.images || [],
+        facts: l.facts || [],
+        free: l.free ?? true,
+        typicalMinutes: l.typicalMinutes ?? 15,
+      })),
     [customLandmarks]
   );
 
