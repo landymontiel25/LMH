@@ -10,6 +10,7 @@ import { FriendsProvider } from './lib/FriendsContext';
 import { UnitsProvider } from './lib/UnitsContext';
 import { BadgesProvider } from './lib/BadgesContext';
 import { AdminModeProvider } from './lib/AdminModeContext';
+import { LandmarkEditsProvider } from './lib/LandmarkEditsContext';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -85,6 +86,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AdminModeProvider>
+      <LandmarkEditsProvider>
       <FriendsProvider>
       <CheckInProvider>
       <TripProvider>
@@ -113,6 +115,7 @@ export default function App() {
       </TripProvider>
       </CheckInProvider>
       </FriendsProvider>
+      </LandmarkEditsProvider>
       </AdminModeProvider>
     </AuthProvider>
   );

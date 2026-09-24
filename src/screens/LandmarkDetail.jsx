@@ -3,8 +3,10 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getLandmark, getRegion, INTERESTS } from '../data/regions';
 import { getCustomLandmark, reportCustomLandmark } from '../lib/customLandmarks';
 import { useAdminMode } from '../lib/AdminModeContext';
+import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
 import { isAdmin } from '../lib/admins';
 import AdminEditLandmarkPanel from '../components/AdminEditLandmarkPanel';
+import AdminEditBuiltInPanel from '../components/AdminEditBuiltInPanel';
 import { blockUser } from '../lib/blocks';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
@@ -71,6 +73,7 @@ export default function LandmarkDetail() {
   const { toggleLandmark, getRegionSelection, updateTrip, setMapFocus, setMapFocusPoint } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { adminMode } = useAdminMode();
+  const { applyEdit, reload: reloadLandmarkEdits } = useLandmarkEdits();
   const { coords } = useGeo();
   const region = getRegion(regionId);
   const staticLandmark = getLandmark(regionId, id);
@@ -102,7 +105,7 @@ export default function LandmarkDetail() {
   // since the custom-landmark branch would build a brand-new object each time.
   const landmark = useMemo(
     () =>
-      staticLandmark ||
+      (staticLandmark && applyEdit(staticLandmark)) ||
       (customLandmark && {
         ...customLandmark,
         regionId: customLandmark.region,
@@ -112,7 +115,7 @@ export default function LandmarkDetail() {
         free: customLandmark.free ?? true,
         typicalMinutes: customLandmark.typicalMinutes ?? 15,
       }),
-    [staticLandmark, customLandmark]
+    [staticLandmark, customLandmark, applyEdit]
   );
   const { ratings, reload: reloadRatings } = useRatings();
   const { reload: reloadMyPhotos } = useMyPhotos();
@@ -513,6 +516,10 @@ export default function LandmarkDetail() {
           landmark={customLandmark}
           onSaved={(fields) => setCustomLandmark((cur) => ({ ...cur, ...fields }))}
         />
+      )}
+
+      {staticLandmark && adminMode && isAdmin(user?.email) && (
+        <AdminEditBuiltInPanel landmark={landmark} onSaved={reloadLandmarkEdits} />
       )}
 
       <div className="center" style={{ marginBottom: 18 }}>
