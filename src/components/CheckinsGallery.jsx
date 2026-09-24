@@ -87,6 +87,9 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
       } catch {
         rows = [];
       }
+      // A "Rate a Landmark" claim (ratingOnly, 0 points) isn't a visit --
+      // it never belongs here, only in My Mapr Ratings.
+      rows = rows.filter((c) => c.points !== 0);
       if (cancelled) return;
       // Show right away using landmark photos, so the gallery is never blank…
       setCheckins(rows.map((c) => build(c, null)));

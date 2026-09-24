@@ -15,8 +15,9 @@ import { useUnits, formatDistance } from '../lib/UnitsContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { getLandmarkOverrides, saveLandmarkPosition } from '../lib/landmarkOverrides';
-import { getCustomLandmarks, deleteCustomLandmark } from '../lib/customLandmarks';
+import { getCustomLandmarks, deleteCustomLandmark, updateCustomLandmark } from '../lib/customLandmarks';
 import { isAdmin } from '../lib/admins';
+import { useAdminMode } from '../lib/AdminModeContext';
 import CheckInButton from '../components/CheckInButton';
 import DirectionsButton from '../components/DirectionsButton';
 import LandmarkThumb from '../components/LandmarkThumb';
@@ -182,6 +183,7 @@ function LocateControl({ coords, radiusMiles }) {
 export default function MapExplore() {
   const { toggleLandmark, getRegionSelection, trip, mapFocus, mapFocusPoint, setMapFocusPoint } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
+  const { adminMode } = useAdminMode();
   const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
   const { coords, error: geoError, loading: geoLoading } = useGeo();
@@ -523,49 +525,110 @@ export default function MapExplore() {
     [trip.byRegion, claimedMap, checkingIn, user, firebaseEnabled, savedOverrides, filterCats, editMode]
   );
 
+  // Admin Mode's pin-move for a custom landmark -- separate from the
+  // crowd-sourced editMode drag-to-fix above (that one's open to any
+  // signed-in user and only ever nudges built-in landmarks via
+  // landmark_overrides). This writes straight onto the custom landmark's
+  // own doc, admin-only per firestore.rules.
+  const handleCustomPinDragEnd = (l, e) => {
+    const { lat, lng } = e.target.getLatLng();
+    setCustomLandmarks((prev) => prev.map((x) => (x.docId === l.docId ? { ...x, lat, lng } : x)));
+    updateCustomLandmark(l.docId, { lat, lng }).catch(() => {
+      // Revert this one pin on failure -- everything else stays as-is.
+      setCustomLandmarks((prev) => prev.map((x) => (x.docId === l.docId ? { ...x, lat: l.lat, lng: l.lng } : x)));
+    });
+  };
+
   const customMarkers = useMemo(
     () =>
       customLandmarks.filter(passesFilter).map((l) => {
         const region = getRegion(l.region);
-        // Needs both regionId (used by claimCheckIn/leaderboard) and region
-        // (used by submitReview's review doc) -- omitting the latter used to
-        // write `region: undefined` into the review, which the Firestore SDK
-        // rejects client-side ("Unsupported field value: undefined").
-        const syntheticLandmark = { id: l.id, name: l.name, regionId: l.region, region: l.region, lat: l.lat, lng: l.lng };
+        // Same shape as a built-in landmark (regionId, categories/free
+        // defaulted) so this popup can be the exact same one `markers`
+        // renders below -- a custom landmark deserves the full card
+        // (photo, category tags, Add to Itinerary, Details, Check In),
+        // not a stripped-down one just for living in Firestore instead of
+        // the static catalog. Still needs both regionId (claimCheckIn/
+        // leaderboard) and region (submitReview's review doc) -- omitting
+        // the latter used to write `region: undefined` into the review,
+        // which the Firestore SDK rejects client-side.
+        const landmark = {
+          ...l,
+          regionId: l.region,
+          categories: l.categories || [],
+          images: l.images || [],
+          facts: l.facts || [],
+          free: l.free ?? true,
+        };
+        const isSelected = getRegionSelection(l.region).includes(l.id);
         const isClaimed = !!claimedMap[l.id];
+        const goToDetails = () => navigate(`/landmarks/${l.region}/${l.id}`);
         return (
-          <Marker key={l.docId} position={[l.lat, l.lng]} icon={pinIcon(isClaimed, false)}>
+          <Marker
+            key={l.docId}
+            position={[l.lat, l.lng]}
+            icon={pinIcon(isClaimed, isSelected)}
+            draggable={adminMode}
+            eventHandlers={adminMode ? { dragend: (e) => handleCustomPinDragEnd(l, e) } : undefined}
+          >
             <Popup>
               <div className="map-popup">
-                <div className="quick-rate-row">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={goToDetails}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      goToDetails();
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                  title="Tap for details"
+                >
+                  <LandmarkThumb landmark={landmark} width={228} height={110} myPhoto={myPhotos[l.id]?.[0]} />
+                </div>
+                <div className="quick-rate-row" style={{ marginTop: 8 }}>
                   <h4 style={{ margin: 0 }}>{l.name}</h4>
-                  <QuickRateButton landmark={l} />
+                  <QuickRateButton landmark={landmark} />
                 </div>
                 <p style={{ margin: '2px 0 8px', fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
                   {region?.name || 'Custom pin'}
                 </p>
-                <CheckInButton
-                  landmark={syntheticLandmark}
-                  user={user}
-                  firebaseEnabled={firebaseEnabled}
-                  claimedMap={claimedMap}
-                  checkingIn={checkingIn}
-                  onCheckIn={checkIn}
-                  className="btn-block"
-                />
-                <DirectionsButton name={l.name} lat={l.lat} lng={l.lng} className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 8 }}>
-                  {'\u{1F9ED}'} Directions
-                </DirectionsButton>
-                {l.summary && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 8px' }}>
+                  {landmark.categories.map((c) => (
+                    <span key={c} className="tag">
+                      {CATEGORY_LABEL[c]}
+                    </span>
+                  ))}
+                  <span className={`tag ${landmark.free ? 'tag-free' : ''}`}>{landmark.free ? 'Free' : 'Ticketed'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm btn-block"
-                    style={{ marginTop: 8 }}
-                    onClick={() => navigate(`/landmarks/${l.region}/${l.id}`)}
+                    className={`btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'}`}
+                    onClick={() => handleAdd(landmark)}
                   >
-                    {'ℹ️'} Info
+                    {isSelected ? '✓ Added to Itinerary' : 'Add to Itinerary'}
                   </button>
-                )}
+                  <DirectionsButton name={l.name} lat={l.lat} lng={l.lng} className="btn btn-ghost btn-sm">
+                    {'\u{1F9ED}'} Directions
+                  </DirectionsButton>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={goToDetails}>
+                    Details
+                  </button>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <CheckInButton
+                    landmark={landmark}
+                    user={user}
+                    firebaseEnabled={firebaseEnabled}
+                    claimedMap={claimedMap}
+                    checkingIn={checkingIn}
+                    onCheckIn={checkIn}
+                    className="btn-block"
+                  />
+                </div>
                 {user && (l.createdBy === user.uid || isAdmin(user.email)) && (
                   <button
                     type="button"
@@ -582,7 +645,7 @@ export default function MapExplore() {
         );
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- passesFilter only reads filterCats
-    [customLandmarks, claimedMap, checkingIn, user, firebaseEnabled, checkIn, navigate, filterCats]
+    [customLandmarks, claimedMap, checkingIn, user, firebaseEnabled, checkIn, navigate, filterCats, myPhotos, getRegionSelection, adminMode]
   );
 
   return (

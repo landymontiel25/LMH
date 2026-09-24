@@ -9,6 +9,7 @@ import { MyPhotosProvider } from './lib/MyPhotosContext';
 import { FriendsProvider } from './lib/FriendsContext';
 import { UnitsProvider } from './lib/UnitsContext';
 import { BadgesProvider } from './lib/BadgesContext';
+import { AdminModeProvider } from './lib/AdminModeContext';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -35,6 +36,7 @@ const GroupTrip = lazy(() => import('./screens/GroupTrip'));
 const Settings = lazy(() => import('./screens/Settings'));
 const FullStats = lazy(() => import('./screens/FullStats'));
 const MyCheckins = lazy(() => import('./screens/MyCheckins'));
+const MyMaprRatings = lazy(() => import('./screens/MyMaprRatings'));
 const MyCities = lazy(() => import('./screens/MyCities'));
 const FriendCheckins = lazy(() => import('./screens/FriendCheckins'));
 const FriendCities = lazy(() => import('./screens/FriendCities'));
@@ -66,6 +68,7 @@ function AppRoutes() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/stats" element={<FullStats />} />
           <Route path="/checkins" element={<MyCheckins />} />
+          <Route path="/mapr-ratings" element={<MyMaprRatings />} />
           <Route path="/cities" element={<MyCities />} />
           <Route path="/friend/:uid/checkins" element={<FriendCheckins />} />
           <Route path="/friend/:uid/cities" element={<FriendCities />} />
@@ -81,6 +84,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
+      <AdminModeProvider>
       <FriendsProvider>
       <CheckInProvider>
       <TripProvider>
@@ -109,6 +113,7 @@ export default function App() {
       </TripProvider>
       </CheckInProvider>
       </FriendsProvider>
+      </AdminModeProvider>
     </AuthProvider>
   );
 }

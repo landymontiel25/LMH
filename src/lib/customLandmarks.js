@@ -96,6 +96,18 @@ export async function deleteCustomLandmark(docId) {
   await deleteDoc(doc(db, 'custom_landmarks', docId));
 }
 
+// Admin Mode (Settings -> "Admin Mode") -- edits any field of a
+// user-submitted landmark directly: name, category, facts, summary, free,
+// typicalMinutes, images, even lat/lng (moving the pin). The Firestore
+// rules only let the admin's own account (ADMIN_EMAILS in lib/admins.js)
+// write here with no field restriction; every other signed-in account is
+// still limited to the reportedBy-only update reportCustomLandmark uses.
+// The change is immediate and permanent for everyone, same as a built-in
+// catalog entry -- there's no draft/preview step.
+export async function updateCustomLandmark(docId, fields) {
+  await updateDoc(doc(db, 'custom_landmarks', docId), fields);
+}
+
 // Same reportedBy-array pattern as reviews.js -- firestore.rules hides a
 // submission (photo, name, everything) from everyone but the submitter and
 // admins once enough distinct people have reported it.
