@@ -43,6 +43,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // deliberately claims its check-in for 0 points (not a real visit), so
   // it never shows up there even though you've clearly already weighed in.
   const excludeIds = [...new Set([...checkedInIds, ...reviews.map((r) => r.landmarkId).filter(Boolean)])];
+  // Oldest -> newest, so the server prompt (which is told this ordering) can
+  // actually weigh a recent change of taste over a large pile of older
+  // ratings, instead of averaging everything together as if said at once.
+  const orderedReviews = [...reviews].sort((a, b) => (a.updatedAt?.seconds || 0) - (b.updatedAt?.seconds || 0));
 
   useEffect(() => {
     if (!user) {
@@ -65,7 +69,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       }
       const fallback = () =>
         localMaprPicks({
-          reviews: reviews.map((r) => ({ tier: r.ratingTier, categories: r.categories || [] })),
+          reviews: orderedReviews.map((r) => ({ tier: r.ratingTier, categories: r.categories || [], name: r.landmarkName })),
           interests,
           checkedInIds: excludeIds,
           regionIds,
@@ -81,7 +85,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            reviews: reviews.map((r) => ({
+            reviews: orderedReviews.map((r) => ({
               name: r.landmarkName,
               tier: r.ratingTier,
               categories: r.categories || [],
@@ -156,7 +160,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       if (next.length < SHOWN) {
         const seen = new Set([...next.map((x) => x.id), ...Object.keys(nextFeedback), ...excludeIds]);
         const extra = localMaprPicks({
-          reviews: reviews.map((r) => ({ tier: r.ratingTier, categories: r.categories || [] })),
+          reviews: orderedReviews.map((r) => ({ tier: r.ratingTier, categories: r.categories || [], name: r.landmarkName })),
           interests,
           checkedInIds: [...seen],
           regionIds,

@@ -8,6 +8,22 @@ import { distanceMeters } from './geo';
 // little, plus a nudge from the crowd's rating and the editors' popularity.
 const NEARBY_KM = 150;
 
+// Category alone is too coarse to learn from fast: a zoo and a hiking trail
+// both read as "parks-nature", a cemetery and a historic mansion both read
+// as "history-culture". One bad experience with a specific TYPE of place
+// (rated probably-skip, or repeatedly ✗'d) should suppress that type
+// specifically and immediately, not just nudge the whole broad category
+// down a little. This is a coarse keyword match on the place's own
+// name/summary -- simple on purpose, since it only needs to catch the
+// traveler's own words closely enough to recognize the same kind of place
+// again.
+const TYPE_KEYWORDS = ['zoo', 'aquarium', 'cemetery', 'safari', 'amusement park', 'theme park', 'water park'];
+
+function typeKeywordOf(text) {
+  const t = (text || '').toLowerCase();
+  return TYPE_KEYWORDS.find((k) => t.includes(k)) || null;
+}
+
 export function localMaprPicks({
   reviews = [],
   interests = [],
@@ -20,8 +36,12 @@ export function localMaprPicks({
   limit = 4,
 }) {
   const affinity = {};
+  // A single clear "probably skip" now counts for noticeably more than a
+  // single loved rating pulls the other way -- taste should snap toward a
+  // stated dislike fast, not need several repeats to overcome how many
+  // things the traveler has loved overall.
   for (const r of reviews) {
-    const w = r.tier === 'highly-recommend' ? 3 : r.tier === 'probably-skip' ? -2 : 1;
+    const w = r.tier === 'highly-recommend' ? 3 : r.tier === 'probably-skip' ? -3 : 1;
     for (const c of r.categories || []) affinity[c] = (affinity[c] || 0) + w;
   }
   for (const c of interests) affinity[c] = (affinity[c] || 0) + 1;
@@ -31,9 +51,32 @@ export function localMaprPicks({
     for (const c of f.categories || []) affinity[c] = (affinity[c] || 0) + w;
   }
 
+  // Specific-type suppression: one probably-skip rating on a place whose
+  // name says what it specifically is, or two ✗ votes on the same type, is
+  // enough to rule that type out entirely -- see TYPE_KEYWORDS above.
+  const dislikedTypes = new Set();
+  for (const r of reviews) {
+    if (r.tier !== 'probably-skip') continue;
+    const kw = typeKeywordOf(r.name);
+    if (kw) dislikedTypes.add(kw);
+  }
+  const noVotesByType = {};
+  for (const f of feedback) {
+    if (f.verdict !== 'no') continue;
+    const kw = typeKeywordOf(f.name);
+    if (!kw) continue;
+    noVotesByType[kw] = (noVotesByType[kw] || 0) + 1;
+    if (noVotesByType[kw] >= 2) dislikedTypes.add(kw);
+  }
+
   const visited = new Set([...checkedInIds, ...passedIds]);
   const cities = new Set(regionIds);
-  let pool = ALL_LANDMARKS.filter((l) => !visited.has(l.id) && isRateable(l));
+  let pool = ALL_LANDMARKS.filter(
+    (l) =>
+      !visited.has(l.id) &&
+      isRateable(l) &&
+      !dislikedTypes.has(typeKeywordOf(l.name) || typeKeywordOf(l.summary))
+  );
   // Near you first: everything within NEARBY_KM of your fix (or, if that's
   // too few, the closest 40). Only without a fix do visited cities apply.
   if (origin) {

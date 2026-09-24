@@ -16,7 +16,9 @@ const INSTRUCTIONS =
   `- Every catalog line ends with how far it is from the traveler right now. These are all nearby; among good fits, prefer the closer one, and never pick something far when a similar closer option exists.\n` +
   `- Weigh what they wrote in their own words most, then their loved places' categories and chips, then saved interests.\n` +
   `- Just as important: weigh what they DISLIKED. A "probably skip" rating, or repeated ✗ feedback, on a category means avoid recommending more of that same category, even if it's the only thing nearby -- distance and popularity never outweigh a category the traveler has already told you they don't want. If most of what's nearby is a category they've skipped or rated poorly, it's fine to return fewer than 8 picks rather than filling the list with more of what they don't want.\n` +
-  `- PICK FEEDBACK (✓ "I'd go" / ✗ "not for me" on earlier picks) is a light signal about general taste -- lighter than a rating, and context-dependent: someone may ✗ a cathedral at night in Miami and still love cathedrals in Italy, or ✓ Yankee Stadium in New York but never a ballpark in Colorado. Use it to nudge category preferences, not to rule categories out entirely on its own -- but several ✗'s on the same category is a real signal, not noise.\n` +
+  `- Go past the broad category label to the SPECIFIC kind of place, using each place's own description. A broad category can hide very different experiences: a zoo and a hiking trail both file under parks/nature; a cemetery and a historic mansion both file under history/culture. If the traveler rated or clearly said they'd skip a specific kind of place -- a zoo, a cemetery, an amusement park, whatever it is -- don't recommend another one of that same specific kind even when the broad category is otherwise something they like. One clear "probably skip" on that specific kind is enough on its own; don't wait for a pattern to repeat before acting on it.\n` +
+  `- Recent signal matters more than old signal. If their most recent few ratings or votes point a different direction than their older history, trust the recent ones -- taste can change, and this app should notice fast, not average everything together as if it were said at once.\n` +
+  `- PICK FEEDBACK (✓ "I'd go" / ✗ "not for me" on earlier picks) is a light signal about general taste -- lighter than a rating, and context-dependent: someone may ✗ a cathedral at night in Miami and still love cathedrals in Italy, or ✓ Yankee Stadium in New York but never a ballpark in Colorado. Use it to nudge category preferences, not to rule categories out entirely on its own -- but several ✗'s on the same category, or even a single ✗ that clearly names a specific kind of place (see above), is a real signal, not noise.\n` +
   `- Prefer variety across the 8 picks unless the history is clearly single-minded.\n` +
   `- matchPercentage is your honest confidence this SPECIFIC traveler will love this SPECIFIC place, 60-99 -- never inflate it just because a pick is the best of a mediocre nearby pool. If nothing nearby is a strong match for their taste, say so with a modest score (60s) rather than dressing up a weak fit as 90+, and it's fine to return fewer than 8 picks. Don't give everything 97.\n` +
   `- oneLineSummary: under 12 words, concrete, about the place itself (not "you'll love it").\n` +
@@ -100,7 +102,7 @@ export default async function handler(req, res) {
 
     const history =
       (reviews.length
-        ? 'RATING HISTORY:\n' +
+        ? 'RATING HISTORY (oldest first, most recent last -- weigh the end of this list more heavily):\n' +
           reviews
             .map(
               (r) =>

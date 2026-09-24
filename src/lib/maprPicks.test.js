@@ -37,6 +37,51 @@ describe('localMaprPicks', () => {
   });
 });
 
+describe('specific-type suppression', () => {
+  it('excludes zoos entirely after a single probably-skip rating naming one', () => {
+    const origin = { lat: 25.7743, lng: -80.1937 }; // Miami -- Zoo Miami is nearby
+    const before = localMaprPicks({ origin, limit: 500 });
+    expect(before.some((p) => p.id === 'zoo-miami')).toBe(true);
+    const after = localMaprPicks({
+      origin,
+      reviews: [{ tier: 'probably-skip', categories: ['parks-nature'], name: 'Zoo Miami' }],
+      limit: 500,
+    });
+    expect(after.some((p) => p.id === 'zoo-miami')).toBe(false);
+    // A loved park in the same broad category should NOT get swept out too --
+    // only the specific type (zoo) is suppressed, not all of parks-nature.
+    expect(after.length).toBeGreaterThan(0);
+  });
+
+  it('leaves a disliked type alone after just one ✗ vote, but excludes it after two', () => {
+    const origin = { lat: 25.7743, lng: -80.1937 };
+    const oneVote = localMaprPicks({
+      origin,
+      feedback: [{ verdict: 'no', categories: ['parks-nature'], name: 'Zoo Miami' }],
+      limit: 500,
+    });
+    expect(oneVote.some((p) => p.id === 'zoo-miami')).toBe(true);
+    const twoVotes = localMaprPicks({
+      origin,
+      feedback: [
+        { verdict: 'no', categories: ['parks-nature'], name: 'Zoo Miami' },
+        { verdict: 'no', categories: ['parks-nature'], name: 'Another Zoo' },
+      ],
+      limit: 500,
+    });
+    expect(twoVotes.some((p) => p.id === 'zoo-miami')).toBe(false);
+  });
+
+  it('never suppresses anything when nothing disliked names a known type', () => {
+    const picks = localMaprPicks({
+      reviews: [{ tier: 'probably-skip', categories: ['art-museums'], name: 'Some Gallery' }],
+      regionIds: ['miami'],
+      limit: 500,
+    });
+    expect(picks.length).toBeGreaterThan(0);
+  });
+});
+
 describe('pick feedback', () => {
   it('keeps a recently ✗’d place out and nudges categories only lightly', () => {
     const origin = { lat: 25.7743, lng: -80.1937 };
