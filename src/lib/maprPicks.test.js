@@ -80,6 +80,34 @@ describe('specific-type suppression', () => {
     });
     expect(picks.length).toBeGreaterThan(0);
   });
+
+  it('excludes a real disliked pick (Merion Cricket Club) without touching a loved public sports venue', () => {
+    const origin = { lat: 40.037, lng: -75.342 }; // Villanova/Philly area
+    const before = localMaprPicks({ origin, limit: 500 });
+    expect(before.some((p) => p.id === 'merion-cricket-club')).toBe(true);
+    const after = localMaprPicks({
+      origin,
+      reviews: [
+        { tier: 'highly-recommend', categories: ['stadiums'], name: 'Yankee Stadium' },
+        { tier: 'probably-skip', categories: ['sports'], name: 'Merion Cricket Club' },
+      ],
+      limit: 500,
+    });
+    expect(after.some((p) => p.id === 'merion-cricket-club')).toBe(false);
+  });
+
+  it('excludes a disliked Quaker meeting house by name, not the whole history-culture category', () => {
+    const origin = { lat: 40.037, lng: -75.342 };
+    const before = localMaprPicks({ origin, limit: 500 });
+    expect(before.some((p) => p.id === 'merion-friends-meeting-house')).toBe(true);
+    const after = localMaprPicks({
+      origin,
+      reviews: [{ tier: 'probably-skip', categories: ['history-culture'], name: 'Merion Friends Meeting House' }],
+      limit: 500,
+    });
+    expect(after.some((p) => p.id === 'merion-friends-meeting-house')).toBe(false);
+    expect(after.length).toBeGreaterThan(0);
+  });
 });
 
 describe('pick feedback', () => {

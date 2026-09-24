@@ -17,7 +17,24 @@ const NEARBY_KM = 150;
 // name/summary -- simple on purpose, since it only needs to catch the
 // traveler's own words closely enough to recognize the same kind of place
 // again.
-const TYPE_KEYWORDS = ['zoo', 'aquarium', 'cemetery', 'safari', 'amusement park', 'theme park', 'water park'];
+const TYPE_KEYWORDS = [
+  'zoo',
+  'aquarium',
+  'cemetery',
+  'safari',
+  'amusement park',
+  'theme park',
+  'water park',
+  // Quiet, members-only or institutional sites -- a cricket club or a
+  // meeting house shares a broad category (sports, history-culture) with
+  // genuinely loved public places like a ballpark or a museum, but is a
+  // completely different kind of visit. Specific complaints from this
+  // project's own history, not a guess.
+  'cricket club',
+  'country club',
+  'social club',
+  'meeting house',
+];
 
 function typeKeywordOf(text) {
   const t = (text || '').toLowerCase();
@@ -121,9 +138,14 @@ export function localMaprPicks({
     }));
 }
 
-// Picks are cached per user for a day, keyed on how many ratings they had
-// at the time -- a new rating is the one thing that should change them.
-const TTL_MS = 24 * 60 * 60 * 1000;
+// Picks are cached per user, keyed on how many ratings they had at the
+// time -- a new rating is one thing that should change them; the other is
+// just time passing, since votes on the current set (which don't change
+// ratingsCount) should still get a genuinely fresh batch from the AI
+// before too long, not wait a full day. Shortened from 24h so a session's
+// worth of ✓/✗ feedback actually gets re-reasoned about soon, not just
+// patched over locally until the cache key itself changes.
+const TTL_MS = 4 * 60 * 60 * 1000;
 // Keyed on a coarse (~10 km) location too, so walking across town keeps
 // the same picks but flying to another city gets fresh ones.
 export const coarseLocation = (origin) => (origin ? `${origin.lat.toFixed(1)},${origin.lng.toFixed(1)}` : 'nowhere');
