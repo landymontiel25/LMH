@@ -10,7 +10,10 @@ import { ADMIN_EMAILS } from '../src/lib/admins.js';
 // even runs (surfacing as an opaque non-JSON failure, not a real error).
 // Same check, kept in sync with needsFactsBackfill in customLandmarks.js.
 function needsFactsBackfill(landmark) {
-  return typeof landmark?.summary === 'string' && landmark.summary.startsWith('A community-submitted spot');
+  const summary = typeof landmark?.summary === 'string' ? landmark.summary : '';
+  const facts = Array.isArray(landmark?.facts) ? landmark.facts : [];
+  const hasCiteTags = /<\/?cite\b/i.test(summary) || facts.some((f) => typeof f === 'string' && /<\/?cite\b/i.test(f));
+  return summary.startsWith('A community-submitted spot') || hasCiteTags;
 }
 
 // Admin-only, manually triggered from Profile's "Backfill AI Facts" panel.
@@ -98,6 +101,7 @@ export default async function handler(req, res) {
     const candidates = docs.filter((doc) => needsFactsBackfill(decodeFields(doc.fields))).slice(0, MAX_PER_RUN);
 
     let updated = 0;
+    const updatedNames = [];
     const errors = [];
 
     for (const doc of candidates) {
@@ -123,6 +127,7 @@ export default async function handler(req, res) {
         );
         if (!patchRes.ok) throw new Error(`Firestore write failed (${patchRes.status})`);
         updated++;
+        updatedNames.push(data.name);
       } catch (e) {
         errors.push({ name: data.name, error: e.message || 'unknown error' });
       }
@@ -132,6 +137,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       total: totalCandidates,
       updated,
+      updatedNames,
       remaining: Math.max(0, totalCandidates - updated),
       errors,
     });

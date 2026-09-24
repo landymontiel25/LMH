@@ -397,7 +397,8 @@ function BackfillFactsPanel({ email, user }) {
             color: result.error ? 'var(--color-rust)' : 'var(--color-parchment-dim)',
           }}
         >
-          {result.error || `Updated ${result.updated} of ${result.total}${result.remaining ? ` — ${result.remaining} left, run again to continue` : ''}.`}
+          {result.error ||
+            `Updated ${result.updated} of ${result.total}${result.updatedNames?.length ? `: ${result.updatedNames.join(', ')}` : ''}${result.remaining ? ` — ${result.remaining} left, run again to continue` : ''}.`}
         </p>
       )}
     </div>

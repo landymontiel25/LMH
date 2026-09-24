@@ -61,12 +61,18 @@ export function subscribePendingCount(callback) {
   );
 }
 
-// The exact filler text written when AI enrichment is off/unavailable (see
+// Two things flag a submission as a "Backfill AI Facts" candidate: the
+// exact filler text written when AI enrichment is off/unavailable (see
 // AI_ENRICHMENT_ENABLED in api/verify-landmark.js) -- a submission still
-// carrying it either predates that feature or hit its fallback path, and
-// is a candidate for the Profile "Backfill AI Facts" admin action.
+// carrying it either predates that feature or hit its fallback path -- or
+// leftover <cite> markup from a research pass that ran before the citation
+// tags were stripped server-side (api/_lib/enrichLandmark.js). Either way
+// it's real content that needs (re)running through enrichment.
 export function needsFactsBackfill(landmark) {
-  return typeof landmark?.summary === 'string' && landmark.summary.startsWith('A community-submitted spot');
+  const summary = typeof landmark?.summary === 'string' ? landmark.summary : '';
+  const facts = Array.isArray(landmark?.facts) ? landmark.facts : [];
+  const hasCiteTags = /<\/?cite\b/i.test(summary) || facts.some((f) => typeof f === 'string' && /<\/?cite\b/i.test(f));
+  return summary.startsWith('A community-submitted spot') || hasCiteTags;
 }
 
 // Direct lookup by id -- the doc id and the `id` field are always the same
