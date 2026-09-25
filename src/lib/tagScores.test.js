@@ -10,6 +10,9 @@ import {
   pickRegion,
   rebuildTagScores,
   scoreShortlist,
+  settleShownPicks,
+  timeSlotFor,
+  applyTimeSlot,
   TAG_CAP,
 } from './tagScores';
 
@@ -33,15 +36,47 @@ describe('applyRating', () => {
   });
 
   it('caps at 100 and reports the tag that hit it', () => {
-    let state = { scores: {}, at: {} };
+    let state = { scores: {}, at: {}, counts: {} };
     let capped = [];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 20; i++) {
       const next = applyRating(state, ['food'], 'highly-recommend', T0);
-      state = { scores: { ...state.scores, ...next.scores }, at: { ...state.at, ...next.at } };
+      state = {
+        scores: { ...state.scores, ...next.scores },
+        at: { ...state.at, ...next.at },
+        counts: { ...state.counts, ...next.counts },
+      };
       capped = next.capped;
     }
     expect(state.scores.food).toBe(TAG_CAP);
+    expect(state.counts.food).toBe(20);
     expect(capped).toEqual(['food']);
+  });
+
+  it('counts ratings after the 5th on a tag at half value', () => {
+    const fifth = applyRating({ scores: { food: 40 }, at: { food: T0 }, counts: { food: 4 } }, ['food'], 'highly-recommend', T0);
+    expect(fifth.scores.food).toBe(50);
+    const sixth = applyRating({ scores: { food: 50 }, at: { food: T0 }, counts: { food: 5 } }, ['food'], 'highly-recommend', T0);
+    expect(sixth.scores.food).toBe(55);
+    expect(sixth.counts.food).toBe(6);
+  });
+});
+
+describe('cross-region warm start', () => {
+  const miamiFood = { tagScores: { miami: { food: 100 } }, tagScoresAt: { miami: { food: T0 } } };
+
+  it('borrows 40% of other regions in a brand-new region', () => {
+    expect(effectiveTagScores(miamiFood, 'milan', T0).food).toBeCloseTo(40);
+  });
+
+  it('fades out as local ratings reach 15', () => {
+    const half = { ...miamiFood, tagCounts: { milan: { 'art-museums': 7.5 } } };
+    expect(effectiveTagScores(half, 'milan', T0).food).toBeCloseTo(20);
+    const done = { ...miamiFood, tagCounts: { milan: { 'art-museums': 15 } } };
+    expect(effectiveTagScores(done, 'milan', T0).food).toBeUndefined();
+  });
+
+  it('turns cold start off once any other region has signal', () => {
+    expect(buildShortlist({ profile: miamiFood, region: 'milan', now: T0 }).coldStart).toBe(false);
   });
 });
 
@@ -62,9 +97,13 @@ describe('decay and boosts', () => {
     expect(profile.tagScores.milan.food).toBe(100);
   });
 
-  it('keeps regions separate', () => {
-    const profile = { tagScores: { milan: { food: 40 } }, tagScoresAt: { milan: { food: T0 } } };
-    expect(effectiveTagScores(profile, 'miami', T0)).toEqual({});
+  it('keeps regions separate once a region has 15 ratings of its own', () => {
+    const profile = {
+      tagScores: { milan: { food: 40 }, miami: { 'art-museums': 10 } },
+      tagScoresAt: { milan: { food: T0 }, miami: { 'art-museums': T0 } },
+      tagCounts: { miami: { 'art-museums': 15 } },
+    };
+    expect(effectiveTagScores(profile, 'miami', T0)).toEqual({ 'art-museums': 10 });
   });
 });
 
@@ -118,6 +157,28 @@ describe('shortlists', () => {
     expect(list).toHaveLength(milan.filter((l) => l.categories[0] !== 'dorms').length);
   });
 
+  it('ranks a close score backed by more ratings first', () => {
+    const list = scoreShortlist({
+      scores: { food: 10, 'art-museums': 11 },
+      tagCounts: { food: 20, 'art-museums': 1 },
+      region: 'milan',
+    });
+    expect(list[0].categories[0]).toBe('food');
+    expect(list[0].tagRatings).toBe(20);
+  });
+
+  it('holds 4 wildcard slots for barely-rated, not-disliked tags', () => {
+    const scores = { 'history-culture': 90, food: 10, 'art-museums': 5, 'parks-nature': -10 };
+    const list = scoreShortlist({ scores, region: 'milan', random: () => 0 });
+    const wild = list.filter((l) => l.wildcard);
+    expect(list).toHaveLength(30);
+    expect(wild).toHaveLength(4);
+    expect(new Set(wild.map((l) => l.categories[0])).size).toBe(4);
+    for (const l of wild) {
+      expect(['history-culture', 'food', 'art-museums', 'parks-nature']).not.toContain(l.categories[0]);
+    }
+  });
+
   it('breaks ties by check-in count', () => {
     const foods = milan.filter((l) => l.categories[0] === 'food');
     const underdog = foods.at(-1);
@@ -149,5 +210,60 @@ describe('pickRegion', () => {
   it('finds the region nearest a GPS fix, else falls back', () => {
     expect(pickRegion({ origin: { lat: 45.4642, lng: 9.19 } })).toBe('milan');
     expect(pickRegion({ origin: null, fallbackRegions: [undefined, 'miami'] })).toBe('miami');
+  });
+});
+
+describe('settleShownPicks', () => {
+  const lm = ALL_LANDMARKS.find((l) => l.regionId === 'milan' && l.categories[0] === 'food');
+
+  it('counts a pick shown on an earlier day and not visited as one ignore', () => {
+    const profile = { picksShown: { milan: { [lm.id]: '2026-09-24' } } };
+    const out = settleShownPicks(profile, { today: '2026-09-25' });
+    expect(out.changed).toBe(true);
+    expect(out.timesShownNotVisited.milan[lm.id]).toBe(1);
+    expect(out.picksShown).toEqual({});
+    expect(out.scorePatches).toEqual([]);
+  });
+
+  it('leaves today alone and resets the count after a visit', () => {
+    const profile = {
+      picksShown: { milan: { [lm.id]: '2026-09-25' } },
+      timesShownNotVisited: { milan: { other: 2 } },
+    };
+    const out = settleShownPicks(profile, { today: '2026-09-25', engagedIds: ['other'] });
+    expect(out.picksShown.milan[lm.id]).toBe('2026-09-25');
+    expect(out.timesShownNotVisited).toEqual({});
+  });
+
+  it('nudges the tag down by 3 on the third ignore', () => {
+    const profile = {
+      picksShown: { milan: { [lm.id]: '2026-09-24' } },
+      timesShownNotVisited: { milan: { [lm.id]: 2 } },
+      tagScores: { milan: { food: 20 } },
+      tagScoresAt: { milan: { food: T0 } },
+    };
+    const out = settleShownPicks(profile, { today: '2026-09-25', nowMs: T0 });
+    expect(out.scorePatches).toEqual([{ region: 'milan', tag: 'food', value: 17, at: T0 }]);
+  });
+});
+
+describe('time slots', () => {
+  it('boosts food at lunch and nightlife on Friday night', () => {
+    expect(timeSlotFor(2, 12).boosts).toEqual({ food: 1.3 });
+    const fri = timeSlotFor(5, 21);
+    expect(fri.weekendNight).toBe(true);
+    expect(fri.boosts['local-life']).toBe(1.5);
+  });
+
+  it('treats after midnight as the night before', () => {
+    expect(timeSlotFor(6, 1).weekendNight).toBe(true);
+    expect(timeSlotFor(1, 1).weekendNight).toBe(false);
+  });
+
+  it('never boosts a disliked tag', () => {
+    expect(applyTimeSlot({ food: 20, 'local-life': -10 }, { food: 1.5, 'local-life': 1.5 })).toEqual({
+      food: 30,
+      'local-life': -10,
+    });
   });
 });

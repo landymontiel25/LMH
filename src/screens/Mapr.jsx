@@ -6,6 +6,8 @@ import { useFriends } from '../lib/FriendsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useTrip } from '../lib/TripContext';
+import { useGeo } from '../lib/GeoContext';
+import { effectiveTagScores, pickRegion } from '../lib/tagScores';
 import { useMaprChat } from '../lib/MaprChatContext';
 import MultiRegionSearch from '../components/MultiRegionSearch';
 import { mapsDeepLink } from '../lib/routing';
@@ -52,6 +54,7 @@ export default function Mapr() {
   const { myPhotos } = useMyPhotos();
   const { myReviews } = useRatings();
   const { trip } = useTrip();
+  const { coords } = useGeo();
   // Chat thread, city picks, planner-open state, cost total and busy all
   // live in MaprChatContext (above the router in App.jsx) instead of here
   // -- this screen unmounts like any other route the moment you tap over
@@ -165,6 +168,26 @@ export default function Mapr() {
         ...baselineToSyntheticReviews(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
       ];
       const insiderMode = hasInsiderMode(computeTasteConfidence(confidenceInputs).confidence);
+      // Learned per-category scores for the chat's cities (or wherever the
+      // traveler is), plus the local clock, so the server can weigh
+      // categories by the time a plan is for (tagScores.js TIME_SLOTS).
+      const tagRegions = regions.length
+        ? regions.map((reg) => reg.id)
+        : [pickRegion({ origin: coords, fallbackRegions: [trip.activeRegion] })].filter(Boolean);
+      const tagScoreSummary = Object.fromEntries(
+        tagRegions
+          .slice(0, 3)
+          .map((id) => [
+            id,
+            Object.fromEntries(
+              Object.entries(effectiveTagScores(myProfile, id))
+                .map(([tag, v]) => [tag, Math.round(v)])
+                .filter(([, v]) => v !== 0)
+            ),
+          ])
+          .filter(([, m]) => Object.keys(m).length)
+      );
+      const now = new Date();
       const startedAt = performance.now();
       const r = await fetch('/api/plan-ai', {
         method: 'POST',
@@ -176,6 +199,12 @@ export default function Mapr() {
           interests: trip.savedInterests || [],
           tasteIntro: composeTasteIntro(myProfile),
           insiderMode,
+          tagScoreSummary,
+          localNow: {
+            day: now.getDay(),
+            hour: now.getHours(),
+            label: now.toLocaleString('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit' }),
+          },
         }),
       });
       const generationMs = performance.now() - startedAt;

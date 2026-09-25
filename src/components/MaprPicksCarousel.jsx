@@ -11,8 +11,8 @@ import { composeTasteIntro, baselineToSyntheticReviews, tasteFingerprint } from 
 import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { useTrip } from '../lib/TripContext';
 import { getRegionCheckinCounts } from '../lib/leaderboard';
-import { saveRebuiltTagScores } from '../lib/friends';
-import { pickRegion, rebuildTagScores, TAG_SCORES_VERSION } from '../lib/tagScores';
+import { recordShownPicks, saveRebuiltTagScores, saveSettledPicks } from '../lib/friends';
+import { pickRegion, rebuildTagScores, settleShownPicks, TAG_SCORES_VERSION } from '../lib/tagScores';
 import RateLandmarkSearch from './RateLandmarkSearch';
 
 // "Your Mapr Picks": landmarks Mapr thinks you'll love next, as a
@@ -27,6 +27,8 @@ import RateLandmarkSearch from './RateLandmarkSearch';
 // call would otherwise land. Cached for a day per user, rating count and
 // coarse location.
 const RESERVE = 10;
+
+const localDayKey = () => new Date().toLocaleDateString('en-CA');
 
 export default function MaprPicksCarousel({ reviews, interests = [], checkedInIds = [], regionIds = [] }) {
   const { user } = useAuth();
@@ -110,6 +112,22 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, profileFresh, reviews.length, myProfile?.tagScoresVersion]);
 
+  // Ignored picks (tagScores.js settleShownPicks): once a day, any pick shown
+  // on an earlier day that you didn't visit, rate or vote on counts as one
+  // ignore. Waits for the replay above so it can't overwrite a nudge.
+  const settledDayRef = useRef(null);
+  useEffect(() => {
+    if (!user || !profileFresh) return;
+    if ((myProfile?.tagScoresVersion || 0) < TAG_SCORES_VERSION && reviews.length) return;
+    const today = localDayKey();
+    if (settledDayRef.current === today) return;
+    settledDayRef.current = today;
+    const voted = Object.values(readLocalFeedback(user.uid) || {}).map((f) => f.landmarkId);
+    const result = settleShownPicks(myProfile, { engagedIds: [...excludeIds, ...voted], today });
+    if (result.changed) saveSettledPicks(user.uid, result).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, profileFresh, myProfile?.tagScoresVersion, reviews.length]);
+
   useEffect(() => {
     if (!user) {
       setQueue(null);
@@ -183,8 +201,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             region,
-            tagScores: myProfile?.tagScores?.[region] || {},
-            tagScoresAt: myProfile?.tagScoresAt?.[region] || {},
+            // Every region's scores: the warm start borrows from the others.
+            tagScores: myProfile?.tagScores || {},
+            tagScoresAt: myProfile?.tagScoresAt || {},
+            tagCounts: myProfile?.tagCounts || {},
             tagBoosts: myProfile?.tagBoosts?.[region] || {},
             tagNotes: myProfile?.tagNotes?.[region] || {},
             checkinCounts,
@@ -232,6 +252,24 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     // ride along with those.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, ratingsCount, locKey, tasteFP, region]);
+
+  // Marks today's picks as seen, after the day's settle pass has gone out
+  // (Firestore applies one client's writes in order, so the settle's
+  // whole-map replace can't clobber these).
+  const recordedRef = useRef(new Set());
+  useEffect(() => {
+    if (!user || !profileFresh || !queue?.length) return;
+    const today = localDayKey();
+    if (settledDayRef.current !== today) return;
+    const fresh = queue.filter((p) => {
+      const key = `${today}:${p.region}/${p.id}`;
+      return myProfile?.picksShown?.[p.region]?.[p.id] !== today && !recordedRef.current.has(key);
+    });
+    if (!fresh.length) return;
+    for (const p of fresh) recordedRef.current.add(`${today}:${p.region}/${p.id}`);
+    recordShownPicks(user.uid, fresh, today).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue, profileFresh, user?.uid, myProfile?.tagScoresVersion]);
 
   // Which card is in view, for the dots. The dots below only represent the
   // actual picks, but the "+ Rate a Landmark" card sits before them in the
@@ -317,7 +355,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
                 ) : (
                   <div className="mapr-pick-img mapr-pick-img-blank">{'\u{1F4CD}'}</div>
                 )}
-                <span className="mapr-pick-match">{'\u{1F525}'} {p.matchPercentage}% match</span>
+                <span className="mapr-pick-match">
+                  {p.wildcard ? `${'\u{1F3B2}'} Something new · ` : `${'\u{1F525}'} `}
+                  {p.matchPercentage}% match
+                </span>
                 <span className="mapr-pick-name">{p.name}</span>
                 <span className="mapr-pick-sub">{p.oneLineSummary}</span>
               </button>

@@ -126,7 +126,7 @@ export async function submitReview({ userId, userName, landmark, rating, photoFi
       if (region && rating.tier) {
         const u = userSnap.exists() ? userSnap.data() : {};
         const next = applyRating(
-          { scores: u.tagScores?.[region], at: u.tagScoresAt?.[region] },
+          { scores: u.tagScores?.[region], at: u.tagScoresAt?.[region], counts: u.tagCounts?.[region] },
           landmark.categories,
           rating.tier,
           Date.now()
@@ -134,7 +134,11 @@ export async function submitReview({ userId, userName, landmark, rating, photoFi
         if (Object.keys(next.scores).length) {
           tx.set(
             userRef,
-            { tagScores: { [region]: next.scores }, tagScoresAt: { [region]: next.at } },
+            {
+              tagScores: { [region]: next.scores },
+              tagScoresAt: { [region]: next.at },
+              tagCounts: { [region]: next.counts },
+            },
             { merge: true }
           );
         }

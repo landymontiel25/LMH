@@ -10,7 +10,8 @@ import { isRateLimited } from './_lib/rateLimit.js';
 const INSTRUCTIONS =
   `You are Mapr, the taste engine inside the app "Landmark Hunters". You get a SHORTLIST of real landmarks the ` +
   `traveler has NOT visited, already ranked by an internal score built from their ratings in this region, one per ` +
-  `line as "region/id | name | category | short description | fit score | check-ins | distance". You also get ` +
+  `line as "region/id | name | category | short description | fit score | ratings behind that score | check-ins | ` +
+  `distance", with WILDCARD at the end of some lines. You also get ` +
   `their few most recent ratings (for tone, not math), anything they told Mapr in their own words, and TAG NOTES: ` +
   `comments they left about a category they love. Pick the 8 shortlist landmarks this traveler is most likely to ` +
   `love next, most confident first.\n\n` +
@@ -22,6 +23,11 @@ const INSTRUCTIONS =
   `- Go past the broad category to the SPECIFIC kind of place. If a recent rating or their own words rule out a ` +
   `specific kind (a zoo, a cemetery, a private club, whatever it is), skip other places of that kind even when the ` +
   `category scores well.\n` +
+  `- A fit score backed by 1-2 ratings is a guess; the same score backed by 10+ ratings is proven. Trust it accordingly.\n` +
+  `- WILDCARD lines are deliberate exploration: categories this traveler has barely rated, so Mapr can find new ` +
+  `interests instead of only repeating known ones. Include 1-2 wildcards among the 8 when one looks like a real ` +
+  `standout (well visited, distinctive), give them an honest modest matchPercentage (60s-70s), and never let them ` +
+  `push out a clearly stronger fit.\n` +
   `- If the list says COLD START, the traveler has no ratings here yet: the shortlist is their signup interests ` +
   `ordered by how many people checked in. Lean on that popularity, and keep matchPercentage modest (60s-70s).\n` +
   `- Prefer variety across the 8 unless their taste is clearly single-minded. Among close fits, prefer the closer place.\n` +
@@ -65,7 +71,8 @@ export default async function handler(req, res) {
       res.status(200).json({ picks: [] });
       return;
     }
-    // One region's slice of each users/{uid} tag map (see tagScores.js).
+    // users/{uid} tag maps (see tagScores.js). Scores, timestamps and counts
+    // come for every region, since the warm start borrows from the others.
     const numMap = (m) =>
       Object.fromEntries(
         Object.entries(m && typeof m === 'object' ? m : {})
@@ -80,10 +87,17 @@ export default async function handler(req, res) {
           .map(([k, v]) => [str(k, 40), str(v, n)])
           .filter(([, v]) => v)
       );
+    const nestedNumMap = (m) =>
+      Object.fromEntries(
+        Object.entries(m && typeof m === 'object' ? m : {})
+          .slice(0, 40)
+          .map(([k, v]) => [str(k, 40), numMap(v)])
+      );
     const tagNotes = strMap(body.tagNotes, 500);
     const profile = {
-      tagScores: { [region]: numMap(body.tagScores) },
-      tagScoresAt: { [region]: numMap(body.tagScoresAt) },
+      tagScores: nestedNumMap(body.tagScores),
+      tagScoresAt: nestedNumMap(body.tagScoresAt),
+      tagCounts: nestedNumMap(body.tagCounts),
       tagBoosts: { [region]: strMap(body.tagBoosts, 3) },
     };
     const checkinCounts = numMap(
@@ -139,14 +153,15 @@ export default async function handler(req, res) {
             .join('\n') +
           '\n\n'
         : '') +
-      'SHORTLIST (region/id | name | category | description | fit score | check-ins | distance), best internal score first:\n' +
+      'SHORTLIST (region/id | name | category | description | fit score | ratings behind it | check-ins | distance), best internal score first:\n' +
       shortlist
         .map((l) => {
           const km = origin ? distanceKm(origin.lat, origin.lng, l.lat, l.lng) : null;
           return (
             `${l.regionId}/${l.id} | ${l.name} | ${l.categories?.[0] || ''} | ${(l.summary || '').slice(0, 120)}` +
-            ` | ${l.tagScore} | ${checkinCounts[l.id] || 0}` +
-            (km != null ? ` | ${km < 10 ? km.toFixed(1) : Math.round(km)} km` : '')
+            ` | ${l.tagScore} | ${l.tagRatings} | ${checkinCounts[l.id] || 0}` +
+            (km != null ? ` | ${km < 10 ? km.toFixed(1) : Math.round(km)} km` : '') +
+            (l.wildcard ? ' | WILDCARD' : '')
           );
         })
         .join('\n');
@@ -195,6 +210,7 @@ export default async function handler(req, res) {
           categories: landmark.categories || [],
           matchPercentage: Number.isFinite(pct) ? Math.min(99, Math.max(60, pct)) : 80,
           oneLineSummary: str(p?.oneLineSummary, 90) || (landmark.summary || '').split(/[.!?]/)[0].slice(0, 90),
+          wildcard: !!landmark.wildcard,
         };
       })
       .filter(Boolean)

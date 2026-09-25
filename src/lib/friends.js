@@ -157,12 +157,33 @@ export async function answerTagCapPrompt(uid, region, tag, answer, note) {
   );
 }
 
-// One-time replay of ratings saved before tagScores existed. Replaces both
-// maps whole (updateDoc, not a deep merge) since the replay covers every
-// review the user has.
-export async function saveRebuiltTagScores(uid, { tagScores, tagScoresAt }, version) {
+// One-time replay of ratings saved before the current tag-score version.
+// Replaces the maps whole (updateDoc, not a deep merge) since the replay
+// covers every review the user has.
+export async function saveRebuiltTagScores(uid, { tagScores, tagScoresAt, tagCounts }, version) {
   if (!db || !uid) return;
-  await updateDoc(doc(db, 'users', uid), { tagScores, tagScoresAt, tagScoresVersion: version });
+  await updateDoc(doc(db, 'users', uid), { tagScores, tagScoresAt, tagCounts, tagScoresVersion: version });
+}
+
+// Marks Mapr Picks as seen today, so a later day can count them as ignored
+// if the user never went (see settleShownPicks in tagScores.js).
+export async function recordShownPicks(uid, picks, today) {
+  if (!db || !uid || !picks.length) return;
+  const picksShown = {};
+  for (const p of picks) (picksShown[p.region] ||= {})[p.id] = today;
+  await setDoc(doc(db, 'users', uid), { picksShown }, { merge: true });
+}
+
+// Writes settleShownPicks' result: both ignore maps replaced whole, plus a
+// small tag-score nudge for any pick ignored IGNORE_LIMIT times.
+export async function saveSettledPicks(uid, { picksShown, timesShownNotVisited, scorePatches }) {
+  if (!db || !uid) return;
+  const update = { picksShown, timesShownNotVisited };
+  for (const { region, tag, value, at } of scorePatches) {
+    update[`tagScores.${region}.${tag}`] = value;
+    update[`tagScoresAt.${region}.${tag}`] = at;
+  }
+  await updateDoc(doc(db, 'users', uid), update);
 }
 
 // The structured like/dislike answers from TasteNudgeCard -- separate from

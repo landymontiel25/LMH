@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS, getRegion } from '../src/data/regions.js';
 import { isRateLimited } from './_lib/rateLimit.js';
+import { TIME_SLOTS, WEEKEND_NIGHT_BOOSTS, timeSlotFor } from '../src/lib/tagScores.js';
 
 // Backs the Mapr tab's chat interface -- the app's home screen, the one
 // thing people open every day -- a real back-and-forth instead of a
@@ -45,6 +46,10 @@ const INSTRUCTIONS =
   `- Repeat check-ins are a real, encouraged feature here (see the app's own rules), so it's fine to bring back a spot they've already loved alongside something new -- if it's genuinely unclear which they want, ask in plain words, never a bare "new or repeat?" fragment: something like "Want me to stick to places you haven't been, or is it fine to bring back a favorite too?"\n` +
   `- Whenever you ask a clarifying question that has a small set of short, natural answers (new vs. a repeat favorite, indoor vs. outdoor, morning vs. evening, etc.), ALSO fill "quickReplies" with 2-4 of those answers verbatim, each just a few words, in the exact words a traveler would tap rather than type -- the app shows these as tappable buttons under your message. Leave "quickReplies" empty whenever you're not asking that kind of question (recommending stops, just chatting, an open-ended "what are you into?" with no short-answer shape).\n` +
   `- If they're just chatting (thanks, small talk, a question about a place you already suggested, or a question about their own taste/interests), reply naturally with no stops.\n` +
+  `- Plan for the time the stops are FOR, not the time they're asking. Work that out from their message ("tonight", ` +
+  `"Saturday night", "lunch tomorrow", a time they name); only if they don't say, assume RIGHT NOW. At that planned ` +
+  `time, favor the categories the TIME SLOTS table lists for it, on top of their TAG SCORES. Never favor a category ` +
+  `they score negative just because it fits the time.\n` +
   `- When they push back or ask to adjust ("more nightlife", "skip the museum", "somewhere closer"), revise the picks accordingly.\n` +
   `- Never invent a place. Catalog stops must be real region/id values from the catalog below. Web-found stops must be real places you actually found via search, and must include the source URL.\n\n` +
   `Once you're done -- searching or not -- your ENTIRE visible reply must be ONLY a single JSON object. No narration before or after it, not even a note that you're searching:\n` +
@@ -127,8 +132,10 @@ export default async function handler(req, res) {
       (regions.length
         ? `The traveler wants stops in ${regions.map((r) => r.name).join(' or ')} only.\n\n`
         : 'The traveler has not picked a city, so any city is fair game.\n\n') +
-      'CATALOG (region/id | name | description):\n' +
-      pool.map((l) => `${l.regionId}/${l.id} | ${l.name} | ${(l.summary || '').slice(0, 140)}`).join('\n');
+      'CATALOG (region/id | name | category | description):\n' +
+      pool
+        .map((l) => `${l.regionId}/${l.id} | ${l.name} | ${l.categories?.[0] || ''} | ${(l.summary || '').slice(0, 140)}`)
+        .join('\n');
 
     // Same rating history Mapr Picks reads -- this is the app's home
     // screen now, so it should never have to say "I don't know you" when
@@ -169,6 +176,42 @@ export default async function handler(req, res) {
       profileParts.push('RATING HISTORY: none yet.');
     }
     if (interests.length) profileParts.push(`Saved interests: ${interests.join(', ')}`);
+    // Per-city category scores learned from ratings (src/lib/tagScores.js),
+    // and the time-slot table for weighing them by when a plan is for.
+    const tagLines = Object.entries(body.tagScoreSummary && typeof body.tagScoreSummary === 'object' ? body.tagScoreSummary : {})
+      .slice(0, 3)
+      .map(([region, tags]) => {
+        const parts = Object.entries(tags && typeof tags === 'object' ? tags : {})
+          .slice(0, 20)
+          .map(([tag, v]) => [str(tag, 30), Math.round(Number(v))])
+          .filter(([, v]) => Number.isFinite(v))
+          .sort((a, b) => b[1] - a[1])
+          .map(([tag, v]) => `${tag} ${v}`);
+        return parts.length ? `${str(region, 40)}: ${parts.join(', ')}` : '';
+      })
+      .filter(Boolean);
+    if (tagLines.length) {
+      profileParts.push(
+        'TAG SCORES (learned per city from their ratings; about -100 to 150, higher = stronger, negative = dislikes):\n' +
+          tagLines.join('\n')
+      );
+    }
+    const nowDay = Number(body.localNow?.day);
+    const nowHour = Number(body.localNow?.hour);
+    if (Number.isInteger(nowDay) && Number.isInteger(nowHour)) {
+      const current = timeSlotFor(nowDay, nowHour);
+      profileParts.push(
+        `RIGHT NOW for the traveler: ${str(body.localNow?.label, 40) || 'unknown'}` +
+          (current.slot ? ` (${current.weekendNight ? 'weekend night' : current.slot.label})` : ' (late night)') +
+          '.\nTIME SLOTS (category multipliers for the time a plan is for):\n' +
+          TIME_SLOTS.map(
+            (t) => `- ${t.label}: ${Object.entries(t.boosts).map(([tag, m]) => `${tag} x${m}`).join(', ')}`
+          ).join('\n') +
+          `\n- Friday/Saturday night instead: ${Object.entries(WEEKEND_NIGHT_BOOSTS)
+            .map(([tag, m]) => `${tag} x${m}`)
+            .join(', ')}`
+      );
+    }
     const profile = profileParts.length ? `TRAVELER PROFILE:\n${profileParts.join('\n\n')}` : '';
 
     const client = new Anthropic();
