@@ -1,65 +1,21 @@
 import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
+import { FlaskConical, Map as MapIcon, MapPin, Route, Sparkles, UserRound } from 'lucide-react';
 
-// Outline icons (drawn in currentColor, so the active tab's color applies).
-const Icon = ({ children }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {children}
-  </svg>
-);
-
-const ICONS = {
-  plan: (
-    <Icon>
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5 9.5V21h14V9.5" />
-      <path d="M10 21v-6h4v6" />
-    </Icon>
-  ),
-  landmarks: (
-    <Icon>
-      <path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z" />
-      <path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z" />
-    </Icon>
-  ),
-  map: (
-    <Icon>
-      <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" />
-      <path d="M9 4v14M15 6v14" />
-    </Icon>
-  ),
-  itinerary: (
-    <Icon>
-      <rect x="3" y="5" width="18" height="16" rx="2.5" />
-      <path d="M16 3v4M8 3v4M3 10h18" />
-    </Icon>
-  ),
-  profile: (
-    <Icon>
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
-    </Icon>
-  ),
-  test: (
-    <Icon>
-      <path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3" />
-    </Icon>
-  ),
-};
-
-// Same tabs and routes as always (Setup lives in Itinerary's "Create New
-// Trip" modal); only the order, icons and the Mapr tab's "Plan" label follow
-// the redesign.
+// 5 tabs -- Setup is no longer one of them (it's the "Create New Trip"
+// modal inside Itinerary now). Mapr sits dead center: it's the app's home
+// screen, the one thing people open every day, so it gets the "create"
+// position instead of an end slot.
 const items = [
-  { to: '/mapr', label: 'Plan', icon: ICONS.plan },
-  { to: '/landmarks', label: 'Landmarks', icon: ICONS.landmarks },
-  { to: '/', label: 'Map', icon: ICONS.map, end: true },
-  { to: '/itinerary', label: 'Itinerary', icon: ICONS.itinerary },
-  { to: '/profile', label: 'Profile', icon: ICONS.profile },
+  { to: '/', label: 'Map', Icon: MapIcon, end: true },
+  { to: '/landmarks', label: 'Landmarks', Icon: MapPin },
+  { to: '/mapr', label: 'Mapr', Icon: Sparkles },
+  { to: '/itinerary', label: 'Itinerary', Icon: Route },
+  { to: '/profile', label: 'Profile', Icon: UserRound },
   // Throwaway tab for previewing a Mapr redesign concept -- see MaprTest.jsx.
   // Remove this row (and its route in App.jsx) once the design question is
   // settled either way.
-  { to: '/mapr-test', label: 'Test', icon: ICONS.test },
+  { to: '/mapr-test', label: 'Test', Icon: FlaskConical },
 ];
 
 export default function BottomNav() {
@@ -98,7 +54,9 @@ export default function BottomNav() {
     <nav className="bottom-nav" ref={navRef}>
       {items.map((item) => (
         <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'active' : '')}>
-          <span className="nav-icon">{item.icon}</span>
+          <span className="nav-icon">
+            <item.Icon strokeWidth={1.75} aria-hidden="true" />
+          </span>
           <span>{item.label}</span>
         </NavLink>
       ))}
