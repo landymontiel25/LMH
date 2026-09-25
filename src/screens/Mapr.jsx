@@ -6,6 +6,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useTrip } from '../lib/TripContext';
+import { useMaprChat } from '../lib/MaprChatContext';
 import MultiRegionSearch from '../components/MultiRegionSearch';
 import { mapsDeepLink } from '../lib/routing';
 import { computeTasteConfidence, hasInsiderMode } from '../lib/tasteProfile';
@@ -36,9 +37,6 @@ function dismissTasteNudge(uid) {
   }
 }
 
-const GREETING =
-  "Hey — I'm Mapr. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
-
 // The app's home screen -- the one thing people open every day. A live
 // chat instead of a form: you type what you want in your own words, the AI
 // replies conversationally, and it drops in real catalog stops when it has
@@ -54,18 +52,26 @@ export default function Mapr() {
   const { myPhotos } = useMyPhotos();
   const { myReviews } = useRatings();
   const { trip } = useTrip();
-  // Several cities at once ("Philly or NYC this weekend") -- empty means
-  // "any city", same meaning ANY_REGION used to carry as a single value.
-  const [regions, setRegions] = useState([]);
+  // Chat thread, city picks, planner-open state, cost total and busy all
+  // live in MaprChatContext (above the router in App.jsx) instead of here
+  // -- this screen unmounts like any other route the moment you tap over
+  // to another tab, so anything kept as local state here was silently
+  // wiped the moment you stepped away to check a landmark and came back.
+  const {
+    messages,
+    setMessages,
+    draft,
+    setDraft,
+    regions,
+    setRegions,
+    showPlanner,
+    setShowPlanner,
+    totalCost,
+    setTotalCost,
+    busy,
+    setBusy,
+  } = useMaprChat();
   const [regionOpen, setRegionOpen] = useState(false);
-  // Opened automatically when Itinerary's "Use Mapr" button sends you here
-  // -- "Plan Your Trip" is ready the moment you land, no extra tap needed.
-  // Otherwise it's a click away via the banner below.
-  const [showPlanner, setShowPlanner] = useState(() => !!location.state?.openTripPlanner);
-  const [messages, setMessages] = useState([{ role: 'assistant', text: GREETING, stops: [] }]);
-  const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [totalCost, setTotalCost] = useState(0);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const feedEndRef = useRef(null);
   const regionBoxRef = useRef(null);
@@ -85,9 +91,16 @@ export default function Mapr() {
   }, [messages, busy]);
 
   // Consume the "open the planner" nav state once so it doesn't reopen on
-  // every re-render or if you navigate back to Mapr again later.
+  // every re-render or if you navigate back to Mapr again later. showPlanner
+  // itself now lives in MaprChatContext (so it survives leaving and
+  // returning to this tab on its own) -- this effect only ever turns it ON
+  // when arriving via that specific nav state, never off, so it doesn't
+  // clobber a planner you already had open from before.
   useEffect(() => {
-    if (location.state?.openTripPlanner) navigate(location.pathname, { replace: true, state: {} });
+    if (location.state?.openTripPlanner) {
+      setShowPlanner(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

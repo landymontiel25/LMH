@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './lib/AuthContext';
+import { MaprChatProvider } from './lib/MaprChatContext';
 import { CheckInProvider } from './lib/CheckInContext';
 import { TripProvider } from './lib/TripContext';
 import { GeoProvider } from './lib/GeoContext';
@@ -97,6 +98,7 @@ export default function App() {
           <RatingsProvider>
           <MyPhotosProvider>
           <UnitsProvider>
+          <MaprChatProvider>
           <HashRouter>
           <OfflineBanner />
           <StreakWarningBanner />
@@ -111,6 +113,7 @@ export default function App() {
           <CelebrationOverlay />
           <AdminModeBadge />
           </HashRouter>
+          </MaprChatProvider>
           </UnitsProvider>
           </MyPhotosProvider>
           </RatingsProvider>
