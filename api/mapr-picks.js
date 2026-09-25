@@ -2,16 +2,18 @@ import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS } from '../src/data/regions.js';
 import { isRateLimited } from './_lib/rateLimit.js';
 
-// "Your Mapr Picks" on Profile: 4 catalog landmarks the traveler hasn't
-// checked into yet, ranked by how well they fit what that traveler has
-// rated so far (loved / skipped places, the chips they tap, their own
-// comments, their saved interests). One call per profile load, cached on
-// the client for a day, so this stays cheap despite the bigger model.
+// "Your Mapr Picks" on Profile: up to 10 catalog landmarks the traveler
+// hasn't checked into yet, ranked by how well they fit what that traveler
+// has rated so far (loved / skipped places, the chips they tap, their own
+// comments, their saved interests). All 10 stay on screen at once -- only
+// voting ✓/✗/"not sure" on one pulls in a replacement. One call per profile
+// load, cached on the client for a day, so this stays cheap despite the
+// bigger model.
 const INSTRUCTIONS =
   `You are Mapr, the taste engine inside the app "Landmark Hunters". You get a traveler's rating history ` +
   `(places they loved or would skip, the short reasons they tapped, anything they wrote) and a catalog of real ` +
   `landmarks they have NOT visited yet, one per line as "region/id | name | category | short description". ` +
-  `Pick the 8 catalog landmarks this traveler is most likely to love next, most confident first (the app shows 4 and keeps the rest in reserve).\n\n` +
+  `Pick the 10 catalog landmarks this traveler is most likely to love next, most confident first (the app keeps all 10 on screen and only pulls a replacement in once the traveler votes on one).\n\n` +
   `Rules:\n` +
   `- Every catalog line ends with how far it is from the traveler right now. These are all nearby; among good fits, prefer the closer one, and never pick something far when a similar closer option exists.\n` +
   `- Weigh what they wrote in their own words most, then their loved places' categories and chips, then saved interests.\n` +
@@ -21,7 +23,7 @@ const INSTRUCTIONS =
   `- Just as important: weigh what they DISLIKED. A "probably skip" rating, or repeated ✗ feedback, on a category means avoid recommending more of that same category, even if it's the only thing nearby -- distance and popularity never outweigh a category the traveler has already told you they don't want. If most of what's nearby is a category they've skipped or rated poorly, it's fine to return fewer than 8 picks rather than filling the list with more of what they don't want.\n` +
   `- Go past the broad category label to the SPECIFIC kind of place, using each place's own description. A broad category can hide very different experiences: a zoo and a hiking trail both file under parks/nature; a cemetery, a private cricket club, and a historic mansion all file under history/culture or sports right alongside a beloved public museum or stadium. If the traveler rated or clearly said they'd skip a specific kind of place -- a zoo, a cemetery, an amusement park, a private/members-only club, a house of worship, whatever it specifically is -- don't recommend another one of that same specific kind even when the broad category is otherwise something they like, and even when a place they DID love (a public ballpark, say) happens to share that same broad category. One clear "probably skip" on that specific kind is enough on its own; don't wait for a pattern to repeat before acting on it.\n` +
   `- Recent signal matters more than old signal. If their most recent few ratings or votes point a different direction than their older history, trust the recent ones -- taste can change, and this app should notice fast, not average everything together as if it were said at once.\n` +
-  `- PICK FEEDBACK (✓ "I'd go" / ✗ "not for me" on earlier picks) is a light signal about general taste -- lighter than a rating, and context-dependent: someone may ✗ a cathedral at night in Miami and still love cathedrals in Italy, or ✓ Yankee Stadium in New York but never a ballpark in Colorado. Use it to nudge category preferences, not to rule categories out entirely on its own -- but several ✗'s on the same category, or even a single ✗ that clearly names a specific kind of place (see above), is a real signal, not noise.\n` +
+  `- PICK FEEDBACK (✓ "I'd go" / ✗ "not for me" on earlier picks) is a light signal about general taste -- lighter than a rating, and context-dependent: someone may ✗ a cathedral at night in Miami and still love cathedrals in Italy, or ✓ Yankee Stadium in New York but never a ballpark in Colorado. Use it to nudge category preferences, not to rule categories out entirely on its own -- but several ✗'s on the same category, or even a single ✗ that clearly names a specific kind of place (see above), is a real signal, not noise. A pick they marked "not sure" on carries no taste signal at all (they just weren't ready to call it either way) -- it's only excluded from the catalog below, never treated as a dislike.\n` +
   `- WEAK SIGNAL (checked in, never rated) means they went and never bothered leaving a verdict -- worth a small nudge toward that category (they didn't hate it enough to say so), but far lighter than an actual "worth trying", let alone a "probably skip". Don't treat silence as either love or dislike.\n` +
   `- With little or no rating history yet, don't guess at taste from nothing -- lean on proximity and general popularity instead, and let matchPercentage reflect that real uncertainty (modest, not falsely confident) rather than inventing a strong personal fit this early.\n` +
   `- Prefer variety across the 8 picks unless the history is clearly single-minded.\n` +
@@ -72,12 +74,18 @@ export default async function handler(req, res) {
     const tasteIntro = str(body.tasteIntro, 600);
     const checkedIn = new Set((Array.isArray(body.checkedInIds) ? body.checkedInIds : []).map((id) => str(id, 80)));
     const regionIds = new Set((Array.isArray(body.regionIds) ? body.regionIds : []).map((id) => str(id, 40)));
-    const feedback = (Array.isArray(body.feedback) ? body.feedback : []).slice(0, 80).map((f) => ({
-      name: str(f.name, 80),
-      region: str(f.region, 40),
-      categories: (Array.isArray(f.categories) ? f.categories : []).map((c) => str(c, 30)).slice(0, 3),
-      verdict: f.verdict === 'yes' ? 'yes' : 'no',
-    }));
+    // "Not sure" votes carry no taste signal (see PICK FEEDBACK rule below)
+    // -- they're excluded from the catalog via passedIds, not sent up here
+    // as a fake ✗.
+    const feedback = (Array.isArray(body.feedback) ? body.feedback : [])
+      .filter((f) => f.verdict === 'yes' || f.verdict === 'no')
+      .slice(0, 80)
+      .map((f) => ({
+        name: str(f.name, 80),
+        region: str(f.region, 40),
+        categories: (Array.isArray(f.categories) ? f.categories : []).map((c) => str(c, 30)).slice(0, 3),
+        verdict: f.verdict,
+      }));
     const passedIds = new Set((Array.isArray(body.passedIds) ? body.passedIds : []).map((id) => str(id, 80)));
     const weakCheckedInIds = new Set(
       (Array.isArray(body.weakCheckedInIds) ? body.weakCheckedInIds : []).map((id) => str(id, 80))
@@ -194,7 +202,7 @@ export default async function handler(req, res) {
       })
       .filter(Boolean)
       .sort((a, b) => b.matchPercentage - a.matchPercentage)
-      .slice(0, 8);
+      .slice(0, 10);
 
     res.status(200).json({ picks });
   } catch (err) {

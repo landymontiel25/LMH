@@ -181,6 +181,10 @@ export function localMaprPicks({
   // (not one) to rule it out, same as before.
   const noVotesByType = {};
   for (const f of feedback) {
+    // "Not sure" carries no taste signal either way -- it only means the
+    // landmark shouldn't be re-offered (handled via passedIds), not that it
+    // was disliked.
+    if (f.verdict !== 'yes' && f.verdict !== 'no') continue;
     const rw = recencyWeight(f.at ? f.at / 1000 : null, nowSec);
     const w = (f.verdict === 'yes' ? 1 : -1) * rw;
     for (const c of f.categories || []) affinity[c] = (affinity[c] || 0) + w;
