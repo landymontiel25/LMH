@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authHeaders } from '../lib/apiAuth';
 
 // Global AI helper, available from anywhere in the app (not just a landmark's
 // own detail page): identifies a place from a vague description, answers
@@ -27,7 +28,7 @@ export default function AskLandmarkWidget() {
     try {
       const r = await fetch('/api/ask-ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({ question: q }),
       });
       const data = await r.json().catch(() => null);

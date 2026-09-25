@@ -5,7 +5,9 @@
 // the client already uses -- that key identifies the Firebase project, it
 // isn't a secret, so this needs no new env var.
 //
-// Returns { uid, email, emailVerified } or null if the token is missing/invalid.
+// Returns { uid, email, emailVerified, idToken } or null if the token is
+// missing/invalid. idToken is passed back so callers can make Firestore REST
+// calls as that user (see dailyUsage.js).
 export async function verifyIdToken(req) {
   const auth = req.headers.authorization || '';
   const idToken = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -22,7 +24,7 @@ export async function verifyIdToken(req) {
     const data = await r.json();
     const account = data.users?.[0];
     return account
-      ? { uid: account.localId, email: account.email || '', emailVerified: !!account.emailVerified }
+      ? { uid: account.localId, email: account.email || '', emailVerified: !!account.emailVerified, idToken }
       : null;
   } catch {
     return null;

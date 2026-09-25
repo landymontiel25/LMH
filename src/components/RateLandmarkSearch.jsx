@@ -9,6 +9,7 @@ import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { useRatings } from '../lib/RatingsContext';
 import { authErrorMessage } from '../lib/authErrors';
+import { auth } from '../lib/firebase';
 import { isRateable, diversityHint } from '../lib/ratingFlow';
 
 // The first card in "Your Mapr Picks" -- a big "+" tile the same size and
@@ -149,7 +150,10 @@ export default function RateLandmarkSearch() {
       const details = await getPlaceDetails(s.placeId, sessionTokenRef.current);
       sessionTokenRef.current = makeSessionToken();
       const finalName = details.primary || s.primary;
-      const idToken = await user.getIdToken();
+      // Forced refresh: right after verifying their email, a cached token
+      // still says unverified for up to an hour, and firestore.rules checks
+      // the token's email_verified before accepting the new landmark.
+      const idToken = await (auth.currentUser || user).getIdToken(true);
       const verifyRes = await fetch('/api/verify-landmark', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },

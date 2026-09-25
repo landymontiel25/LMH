@@ -18,6 +18,7 @@ import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
 import TasteNudgeCard from '../components/TasteNudgeCard';
 import TripPlannerCard from '../components/TripPlannerCard';
+import { authHeaders } from '../lib/apiAuth';
 
 // "You haven't told Mapr what you like yet" nudge -- shown once (per
 // device/account) until either dismissed outright or satisfied by actually
@@ -191,7 +192,7 @@ export default function Mapr() {
       const startedAt = performance.now();
       const r = await fetch('/api/plan-ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({
           messages: payload,
           regionIds: regions.map((r) => r.id),

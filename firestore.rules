@@ -2,6 +2,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // The admin account(s). Mirrors ADMIN_EMAILS in src/lib/admins.js.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email in ['landymontiel25@gmail.com'];
+    }
+
+    // A friend request from `fromUid` to `toUid` is waiting. Its id is
+    // always "{from}_{to}" (see friend_requests below).
+    function pendingRequest(fromUid, toUid) {
+      let path = /databases/$(database)/documents/friend_requests/$(fromUid + '_' + toUid);
+      return exists(path) && get(path).data.from == fromUid && get(path).data.to == toUid;
+    }
+
+    // Largest single payout the app ever makes: one check-in (100) or one
+    // referral bonus (50). Keeps a hand-crafted write from minting points.
+    function maxPointsPerWrite() {
+      return 100;
+    }
+
     // Shared by reviews/{reviewId}/replies below -- same visibility a
     // review itself has (its own read rule, duplicated here since a
     // subcollection's rules can't reference a sibling match block).
@@ -22,12 +40,24 @@ service cloud.firestore {
       // Repeat check-ins to the same landmark are real now -- visit #1 keeps
       // the original uid_landmarkId doc id (so every existing check-in stays
       // valid untouched); visit #2 onward is uid_landmarkId_<visitNumber>.
+      // Fields and point values are pinned to what claimCheckIn writes, so a
+      // direct database call can't mint a 1,000,000-point check-in.
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid
         && (
           checkinId == request.auth.uid + '_' + request.resource.data.landmarkId
           || checkinId.matches(request.auth.uid + '_' + request.resource.data.landmarkId + '_[0-9]+')
-        );
+        )
+        && request.resource.data.keys().hasOnly(['userId', 'userName', 'landmarkId', 'landmarkName', 'region',
+             'points', 'basePoints', 'visitNumber', 'ratingOnly', 'visited', 'insideHomeRadius', 'createdAt'])
+        && request.resource.data.points is number
+        && request.resource.data.points >= 0
+        && request.resource.data.points <= maxPointsPerWrite()
+        && request.resource.data.get('basePoints', 0) is number
+        && request.resource.data.get('basePoints', 0) <= maxPointsPerWrite()
+        && request.resource.data.get('userName', '') is string
+        && request.resource.data.get('userName', '').size() <= 200
+        && request.resource.data.createdAt == request.time;
       // Owner may update ONLY photoURL / photoURLs / userName (own check-in
       // photos via addCheckinPhoto/removeCheckinPhoto, the legacy single
       // attachCheckinPhoto, email->username backfill via backfillUserName).
@@ -39,24 +69,68 @@ service cloud.firestore {
         && (
           (checkinId.split('_')[0] == request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'photoURLs', 'userName']))
-          || (request.auth.token.email in ['landymontiel25@gmail.com']
+          || (isAdmin()
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdAt']))
         );
       allow delete: if false;
     }
+    // Id is always "{period}_{periodKey}_{uid}" (see leaderboard.js). Before,
+    // any signed-in account could write any entry id with any points, which
+    // also let it overwrite (erase) someone else's entry. Now: your own id
+    // only, and points only ever go up, by at most one payout per write.
     match /leaderboard_entries/{entryId} {
       allow read: if true;
-      allow write: if request.auth != null
-        && request.resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && entryId.matches('(weekly|monthly|yearly)_[0-9W-]+_' + request.auth.uid)
+        && request.resource.data.keys().hasOnly(['userId', 'userName', 'period', 'periodKey', 'points', 'updatedAt'])
+        && request.resource.data.points is number
+        && request.resource.data.points >= 0
+        && request.resource.data.points <= maxPointsPerWrite()
+        && request.resource.data.get('userName', '') is string
+        && request.resource.data.get('userName', '').size() <= 200;
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userName', 'points', 'updatedAt'])
+        && request.resource.data.points is number
+        && request.resource.data.points >= resource.data.points
+        && request.resource.data.points <= resource.data.points + maxPointsPerWrite()
+        && request.resource.data.get('userName', '') is string
+        && request.resource.data.get('userName', '').size() <= 200;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
+    // Your own profile only. On top of ownership, a few fields other people
+    // rely on are pinned: `email` must be your real sign-in email (friends
+    // search by it, and the feature-request notification finds the admin by
+    // it), `username` must be one you actually hold in usernames/, bonus
+    // points only go up by one bonus at a time, and privilege-looking fields
+    // can't be set at all (nothing reads them today; this keeps it that way).
+    function profileFieldsOk() {
+      let d = request.resource.data;
+      let changed = resource == null ? d.keys() : d.diff(resource.data).affectedKeys();
+      return !d.keys().hasAny(['isAdmin', 'admin', 'role', 'roles', 'isVerified', 'verified', 'moderator'])
+        && (!changed.hasAny(['uid']) || d.uid == request.auth.uid)
+        && (!changed.hasAny(['email']) || d.email == request.auth.token.email.lower())
+        && (!changed.hasAny(['username'])
+            || getAfter(/databases/$(database)/documents/usernames/$(d.username)).data.uid == request.auth.uid)
+        && (!changed.hasAny(['bonusPoints'])
+            || (d.bonusPoints is number
+                && d.bonusPoints >= (resource == null ? 0 : resource.data.get('bonusPoints', 0))
+                && d.bonusPoints <= (resource == null ? 0 : resource.data.get('bonusPoints', 0)) + maxPointsPerWrite()));
+    }
     match /users/{uid} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid && profileFieldsOk();
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
     match /usernames/{name} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && name.matches('[a-z0-9_]{3,20}')
+        && request.resource.data.keys().hasOnly(['uid']);
       // The client re-writes its own username doc on save even when it
       // already exists (e.g. re-submitting the same name, or touching other
       // fields) -- that's an update in Firestore's terms since the doc
@@ -70,7 +144,10 @@ service cloud.firestore {
     match /friend_requests/{id} {
       allow read, delete: if request.auth != null
         && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+      // Id pinned to "{from}_{to}" so friend_edges below can trust it.
       allow create: if request.auth != null && request.resource.data.from == request.auth.uid
+        && id == request.resource.data.from + '_' + request.resource.data.to
+        && request.resource.data.to != request.auth.uid
         && !exists(/databases/$(database)/documents/blocks/$(request.resource.data.to + '_' + request.resource.data.from))
         && !exists(/databases/$(database)/documents/blocks/$(request.resource.data.from + '_' + request.resource.data.to));
     }
@@ -127,8 +204,16 @@ service cloud.firestore {
       // this needs the resource.data version specifically (using the id
       // version here silently rejects the whole query instead).
       allow list: if request.auth != null && resource.data.owner == request.auth.uid;
+      // Only the person accepting a real, pending friend request can create
+      // the pair of edges (acceptRequest in friends.js). Before, any account
+      // could write friend_edges/{self}_{anyone} on its own and instantly read
+      // that person's friends-only reviews and photos.
       allow create: if request.auth != null
-        && (request.resource.data.owner == request.auth.uid || request.resource.data.friend == request.auth.uid);
+        && id == request.resource.data.owner + '_' + request.resource.data.friend
+        && (
+          (request.resource.data.owner == request.auth.uid && pendingRequest(request.resource.data.friend, request.auth.uid))
+          || (request.resource.data.friend == request.auth.uid && pendingRequest(request.resource.data.owner, request.auth.uid))
+        );
       allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
 
@@ -165,13 +250,16 @@ service cloud.firestore {
         && (
           resource.data.get('reportedBy', []).size() < 2
           || (request.auth != null
-              && (reviewId.split('_')[0] == request.auth.uid || request.auth.token.email in ['landymontiel25@gmail.com']))
+              && (reviewId.split('_')[0] == request.auth.uid || isAdmin()))
         )
         && !(request.auth != null
           && (exists(/databases/$(database)/documents/blocks/$(request.auth.uid + '_' + resource.data.userId))
               || exists(/databases/$(database)/documents/blocks/$(resource.data.userId + '_' + request.auth.uid))));
       allow create: if request.auth != null
         && reviewId == request.auth.uid + '_' + request.resource.data.landmarkId
+        && request.resource.data.userId == request.auth.uid
+        && !request.resource.data.keys().hasAny(['reportedBy'])
+        && request.resource.data.get('comment', '').size() <= 500
         && exists(/databases/$(database)/documents/checkins/$(reviewId));
       // Two ways to update: the author editing their own review (unchanged),
       // or someone else reporting it -- which may ONLY append their own uid
@@ -180,7 +268,11 @@ service cloud.firestore {
       // an actual server-side enforcement instead of a client-side filter.
       allow update: if request.auth != null
         && (
+          // The author can't clear reportedBy to un-hide a reported review.
           (reviewId == request.auth.uid + '_' + request.resource.data.landmarkId
+            && request.resource.data.userId == request.auth.uid
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reportedBy', 'userId'])
+            && request.resource.data.get('comment', '').size() <= 500
             && exists(/databases/$(database)/documents/checkins/$(reviewId)))
           || (
             reviewId.split('_')[0] != request.auth.uid
@@ -208,7 +300,7 @@ service cloud.firestore {
       allow delete: if request.auth != null
         && (resource.data.uid == request.auth.uid
             || reviewId.split('_')[0] == request.auth.uid
-            || request.auth.token.email in ['landymontiel25@gmail.com']);
+            || isAdmin());
     }
     // ✓ / ✗ on a Mapr pick ("I'd go" / "not for me"). Private to its
     // owner; one doc per user+landmark, so the id is pinned to both.
@@ -232,6 +324,28 @@ service cloud.firestore {
         && request.resource.data.minutesSaved >= 0;
       allow update, delete: if false;
     }
+    // Per-account daily AI usage counter (api/_lib/dailyUsage.js). The
+    // server increments it as the calling user; the user can only ever push
+    // it up (never reset or delete it), so the daily cap holds even though
+    // there's no service account involved.
+    match /ai_usage/{id} {
+      allow get: if request.auth != null && id.matches(request.auth.uid + '_[0-9]{4}-[0-9]{2}-[0-9]{2}');
+      allow create: if request.auth != null
+        && id.matches(request.auth.uid + '_[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && request.resource.data.keys().hasOnly(['units', 'updatedAt'])
+        && request.resource.data.units is int
+        && request.resource.data.units > 0
+        && request.resource.data.units <= 10
+        && request.resource.data.updatedAt == request.time;
+      allow update: if request.auth != null
+        && id.matches(request.auth.uid + '_[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && request.resource.data.keys().hasOnly(['units', 'updatedAt'])
+        && request.resource.data.units is int
+        && request.resource.data.units > resource.data.units
+        && request.resource.data.units <= resource.data.units + 10
+        && request.resource.data.updatedAt == request.time;
+      allow list, delete: if false;
+    }
     // Running per-landmark check-in counts for one region (Mapr Picks' cold
     // start ranks by these). Same trust level as landmark_ratings below.
     match /region_stats/{region} {
@@ -239,13 +353,47 @@ service cloud.firestore {
       allow write: if request.auth != null
         && request.resource.data.keys().hasOnly(['counts', 'backfilled', 'updatedAt']);
     }
+    // Running rating aggregate per landmark. Only moves together with your
+    // own review for that landmark in the same transaction (submitReview /
+    // deleteMyReview): +1 count when your review is new, 0 on an edit, -1
+    // when it's deleted, and the star sum by at most one review's worth.
+    // Before, any signed-in account could set any landmark to 5.0 or wipe it.
     match /landmark_ratings/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['landmarkId', 'sum', 'count', 'avg', 'updatedAt'])
+        && request.resource.data.sum is number
+        && request.resource.data.count is number
+        && request.resource.data.count >= 0
+        && request.resource.data.sum >= 0
+        && ratingDeltaOk(id,
+             request.resource.data.count - (resource == null ? 0 : resource.data.get('count', 0)),
+             request.resource.data.sum - (resource == null ? 0 : resource.data.get('sum', 0)));
+      allow delete: if false;
     }
+    function ratingDeltaOk(landmarkId, countDelta, sumDelta) {
+      let review = /databases/$(database)/documents/reviews/$(request.auth.uid + '_' + landmarkId);
+      return sumDelta >= -5 && sumDelta <= 5
+        && (
+          (countDelta == 1 && !exists(review) && existsAfter(review))
+          || (countDelta == 0 && existsAfter(review))
+          || (countDelta == -1 && exists(review) && !existsAfter(review))
+        );
+    }
+    // "Move pins" on the map: any signed-in account can correct a built-in
+    // landmark's position for everyone (by design). Shape-checked so it can
+    // only ever hold a position, stamped with who moved it.
     match /landmark_overrides/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create, update: if request.auth != null
+        && id == request.resource.data.region + '__' + request.resource.data.id
+        && request.resource.data.keys().hasOnly(['region', 'id', 'name', 'lat', 'lng', 'updatedAt', 'updatedBy'])
+        && request.resource.data.lat is number && request.resource.data.lat >= -90 && request.resource.data.lat <= 90
+        && request.resource.data.lng is number && request.resource.data.lng >= -180 && request.resource.data.lng <= 180
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.get('name', '') is string
+        && request.resource.data.get('name', '').size() <= 200;
+      allow delete: if isAdmin();
     }
     // Admin Mode's live corrections to a built-in (static catalog)
     // landmark -- name/category/summary/facts/free/typicalMinutes/images,
@@ -254,24 +402,40 @@ service cloud.firestore {
     // position-only), this can touch any of those fields, so it's admin-only.
     match /landmark_edits/{id} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email in ['landymontiel25@gmail.com'];
+      allow write: if request.auth != null && isAdmin();
     }
     match /custom_landmarks/{id} {
       // Same reportedBy hide-past-threshold rule as reviews, unless you're
       // the submitter or an admin.
       allow read: if resource.data.get('reportedBy', []).size() < 2
         || (request.auth != null
-            && (resource.data.createdBy == request.auth.uid || request.auth.token.email in ['landymontiel25@gmail.com']));
+            && (resource.data.createdBy == request.auth.uid || isAdmin()));
       // A brand-new submission always starts "pending" -- enforced here, not
       // just in the app's own code, so calling the database directly can't
       // skip the approval queue and self-publish as "approved".
-      allow create: if request.auth != null && request.resource.data.status == 'pending';
+      // Matches the server-side gate in api/verify-landmark.js (verified
+      // email), which the app calls first -- without this, writing to the
+      // database directly skipped it. Shape and sizes are pinned too.
+      allow create: if request.auth != null
+        && request.auth.token.email_verified == true
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdBy == request.auth.uid
+        && id == request.resource.data.id
+        && request.resource.data.keys().hasOnly(['region', 'id', 'name', 'lat', 'lng', 'categories', 'images',
+             'summary', 'facts', 'free', 'typicalMinutes', 'status', 'createdBy', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.get('summary', '').size() <= 2000
+        && request.resource.data.get('images', []).size() <= 10
+        && request.resource.data.get('facts', []).size() <= 20
+        && request.resource.data.get('categories', []).size() <= 10;
       // An admin can change status (approve) or anything else. Anyone else
       // (not the submitter) may only report it -- same restricted
       // reportedBy-append as reviews above.
       allow update: if request.auth != null
         && (
-          request.auth.token.email in ['landymontiel25@gmail.com']
+          isAdmin()
           || (
             resource.data.createdBy != request.auth.uid
             && !(resource.data.get('reportedBy', []).hasAny([request.auth.uid]))
@@ -282,7 +446,7 @@ service cloud.firestore {
       // Only the original submitter or an admin can delete a submission --
       // any other signed-in account could wipe any landmark before this.
       allow delete: if request.auth != null
-        && (resource.data.createdBy == request.auth.uid || request.auth.token.email in ['landymontiel25@gmail.com']);
+        && (resource.data.createdBy == request.auth.uid || isAdmin());
     }
 
     // Profile's "Request a Feature" -- anyone signed in can submit one
@@ -292,12 +456,12 @@ service cloud.firestore {
     // Approve/Reject Features tab.
     match /feature_requests/{id} {
       allow read: if request.auth != null
-        && (resource.data.userId == request.auth.uid || request.auth.token.email in ['landymontiel25@gmail.com']);
+        && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'pending';
-      allow update: if request.auth != null && request.auth.token.email in ['landymontiel25@gmail.com'];
-      allow delete: if request.auth != null && request.auth.token.email in ['landymontiel25@gmail.com'];
+      allow update: if request.auth != null && isAdmin();
+      allow delete: if request.auth != null && isAdmin();
     }
 
     // A trip a few friends build together (item i6). Only current members
@@ -339,7 +503,7 @@ service cloud.firestore {
       allow get, list: if request.auth != null && resource.data.uid == request.auth.uid;
       allow create: if request.auth != null
         && (request.resource.data.uid == request.auth.uid
-            || request.auth.token.email in ['landymontiel25@gmail.com']
+            || isAdmin()
             || (request.resource.data.type == 'group_invite'
                 && exists(/databases/$(database)/documents/group_trips/$(request.resource.data.groupTripId))
                 && request.auth.uid in

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS, getRegion } from '../src/data/regions.js';
-import { isRateLimited } from './_lib/rateLimit.js';
+import { guardAiRequest } from './_lib/aiGuard.js';
 import { TIME_SLOTS, WEEKEND_NIGHT_BOOSTS, timeSlotFor } from '../src/lib/tagScores.js';
 
 // Backs the Mapr tab's chat interface -- the app's home screen, the one
@@ -92,12 +92,8 @@ export default async function handler(req, res) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
     return;
   }
-  // Tighter than ask-ai's limit -- this endpoint's uncapped web_search tool
-  // makes each call more expensive.
-  if (isRateLimited(req, 'plan-ai', { limit: 10, windowMs: 10 * 60 * 1000 })) {
-    res.status(429).json({ error: 'Too many planning requests in a row — take a short break and try again.' });
-    return;
-  }
+  // Tighter than ask-ai's limit -- web_search makes each call more expensive.
+  if (!(await guardAiRequest(req, res, { key: 'plan-ai', units: 4, limit: 10, windowMs: 10 * 60 * 1000 }))) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
@@ -238,7 +234,8 @@ export default async function handler(req, res) {
       // Lets the AI look beyond our own catalog -- uncapped, so a request that
       // genuinely needs several searches isn't cut off. The client shows a
       // running cost total instead, so the trade-off stays visible.
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      // max_uses caps per-reply search spend (each search is billed).
+      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
       messages: turns,
     });
 

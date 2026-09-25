@@ -1,3 +1,5 @@
+import { authHeaders } from './apiAuth';
+
 const DEFAULT_EMOJI = '\u{2728}'; // sparkle -- shown until/unless the AI call succeeds
 
 // Asks the AI which landmarks (across every city) fit a free-text custom
@@ -11,7 +13,7 @@ export async function classifyInterest(interest) {
   try {
     const res = await fetch('/api/classify-interest', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
       body: JSON.stringify({ interest }),
     });
     if (!res.ok) return { matches: [], emoji: DEFAULT_EMOJI };

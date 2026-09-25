@@ -14,9 +14,14 @@ function clientIp(req) {
   return req.socket?.remoteAddress || 'unknown';
 }
 
-/** Returns true if this request should be rejected as over the limit. */
-export function isRateLimited(req, key, { limit, windowMs }) {
-  const bucketKey = `${key}:${clientIp(req)}`;
+/**
+ * Returns true if this request should be rejected as over the limit. Pass
+ * `id` (a verified uid) to count per account instead of per IP, so one
+ * person can't dodge it by switching networks and a shared IP (campus
+ * wifi) doesn't lock out everyone behind it.
+ */
+export function isRateLimited(req, key, { limit, windowMs, id }) {
+  const bucketKey = `${key}:${id ? `uid:${id}` : clientIp(req)}`;
   const now = Date.now();
   const entry = buckets.get(bucketKey);
   if (!entry || now - entry.start > windowMs) {
