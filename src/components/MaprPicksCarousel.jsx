@@ -97,7 +97,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
           customMatchIds,
           limit: RESERVE,
         })
-      : globalPopularPicks({ excludeIds: exclude, checkinCounts, limit: RESERVE });
+      : globalPopularPicks({ excludeIds: exclude, checkinCounts, interests, customMatchIds, limit: RESERVE });
   // Region in the cache key: picking a city or getting a location fix must
   // replace a global-popularity list right away, not after the TTL.
   const cacheFP = `${tasteFP}.${region || 'global'}`;
