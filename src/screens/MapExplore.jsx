@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -22,6 +22,8 @@ import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
 import { matchesSearch } from '../lib/search';
 import CheckInButton from '../components/CheckInButton';
 import DirectionsButton from '../components/DirectionsButton';
+import TurnByTurnPanel from '../components/TurnByTurnPanel';
+import { fetchDirections } from '../lib/routing';
 import LandmarkThumb from '../components/LandmarkThumb';
 import QuickRateButton from '../components/QuickRateButton';
 
@@ -182,6 +184,16 @@ function LocateControl({ coords, radiusMiles }) {
   );
 }
 
+// Frames the whole route once directions come back (and again after a
+// refresh), leaving room at the bottom for the steps sheet.
+function FitNavRoute({ points }) {
+  const map = useMap();
+  useEffect(() => {
+    if (points?.length > 1) map.fitBounds(points, { paddingTopLeft: [80, 110], paddingBottomRight: [40, 340] });
+  }, [map, points]);
+  return null;
+}
+
 export default function MapExplore() {
   const { toggleLandmark, getRegionSelection, trip, mapFocus, mapFocusPoint, setMapFocusPoint } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
@@ -192,7 +204,50 @@ export default function MapExplore() {
   const { coords, error: geoError, loading: geoLoading } = useGeo();
   const { units } = useUnits();
   const mapRef = useRef(null);
+  const location = useLocation();
   const [satellite] = useState(true);
+
+  // "Use the Map" from any Get Directions sheet (DirectionsButton) lands
+  // here with location.state.directionsTo. The route runs from your live
+  // location, so a request waits for the GPS fix if it hasn't come in yet.
+  const [nav, setNav] = useState(null); // { dest, loading, error, data, req }
+  useEffect(() => {
+    const dest = location.state?.directionsTo;
+    if (!dest) return;
+    mapRef.current?.closePopup();
+    setNav({ dest, loading: true, error: null, data: null, req: 0 });
+    // Clear it so a reload or back-navigation doesn't re-open directions.
+    navigate(location.pathname, { replace: true, state: {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
+  const coordsRef = useRef(coords);
+  coordsRef.current = coords;
+  const hasFix = !!coords;
+  useEffect(() => {
+    if (!nav?.loading) return undefined;
+    const from = coordsRef.current;
+    if (!from) {
+      if (geoError) {
+        setNav((cur) => cur && { ...cur, loading: false, error: 'Turn on location to get directions on the map.' });
+      }
+      return undefined;
+    }
+    let cancelled = false;
+    const dest = nav.dest;
+    fetchDirections(from, dest)
+      .then((data) => !cancelled && setNav((cur) => (cur?.dest === dest ? { ...cur, loading: false, data } : cur)))
+      .catch((e) => !cancelled && setNav((cur) => (cur?.dest === dest ? { ...cur, loading: false, error: e.message } : cur)));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nav?.dest, nav?.req, nav?.loading, hasFix, geoError]);
+  // The floating Ask AI button would sit on top of the steps sheet.
+  useEffect(() => {
+    document.body.classList.toggle('map-nav-open', !!nav);
+    return () => document.body.classList.remove('map-nav-open');
+  }, [nav]);
+  const refreshNav = () => setNav((cur) => cur && { ...cur, loading: true, error: null, req: cur.req + 1 });
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -706,6 +761,18 @@ export default function MapExplore() {
               zIndex={650}
             />
           )}
+          {nav?.data?.points?.length > 1 && (
+            <>
+              <FitNavRoute points={nav.data.points} />
+              <Polyline positions={nav.data.points} pathOptions={{ color: '#ffffff', weight: 9, opacity: 0.6 }} />
+              <Polyline positions={nav.data.points} pathOptions={{ color: '#2b7fff', weight: 5, opacity: 1 }} />
+              <Marker position={[nav.dest.lat, nav.dest.lng]} icon={focusIcon} zIndexOffset={1000} interactive={false}>
+                <Tooltip permanent direction="top" offset={[0, -34]} className="focus-tooltip">
+                  {nav.dest.name}
+                </Tooltip>
+              </Marker>
+            </>
+          )}
           {coords && (
             <Marker position={[coords.lat, coords.lng]} icon={userIcon}>
               <Popup>You are here</Popup>
@@ -780,6 +847,19 @@ export default function MapExplore() {
             {customMarkers}
           </MarkerClusterGroup>
         </MapContainer>
+
+      {nav && (
+        <div className="map-nav-sheet">
+          <TurnByTurnPanel
+            stop={nav.dest}
+            loading={nav.loading}
+            error={nav.error}
+            data={nav.data}
+            onRefresh={refreshNav}
+            onClose={() => setNav(null)}
+          />
+        </div>
+      )}
 
       {!placingPin && (
         <>

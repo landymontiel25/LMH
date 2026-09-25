@@ -84,11 +84,13 @@ const APP_HELP =
   `follow, Global splits into Worldwide and Regional (one curated city). Each has Weekly/Monthly/Yearly views.\n` +
   `- Inviting friends: Profile has an "Invite Friends" button that shares your username/link; once someone signs up through it, both of you get 50 ` +
   `bonus points (credited quietly into your point total — there's no separate referral display anymore).\n` +
-  `- In-app directions: on an itinerary (list or map view), "Get Directions" → "🧭 Directions Here" draws the real road route on the itinerary ` +
-  `map with turn-by-turn steps, total distance and ETA, without leaving the app. Short hops (about 1.2 km / 0.75 mi or less) are walking ` +
-  `directions; longer ones are driving, with the ETA including live traffic and a note on how many minutes traffic is adding. It starts from ` +
-  `your live location when you're in town; if you're planning from far away it shows the leg from the previous stop instead. "Refresh from ` +
-  `Here" re-routes from where you are now, and "Open in Maps App" (Apple or Google Maps) is always there as a fallback.\n` +
+  `- Directions: every "Get Directions" button in the app (Map tab pins, Landmarks list, a landmark's page, itineraries) opens the same ` +
+  `choice: "🗺️ Use the Map", "🌐 Use Google Maps", or "🍎 Use Apple Maps". "Use the Map" keeps you in the app: it draws the real road ` +
+  `route from your live location with turn-by-turn steps, total distance and ETA (on the Map tab, or right on the itinerary's own map when ` +
+  `you're in an itinerary). Short hops (about 1.2 km / 0.75 mi or less) are walking directions; longer ones are driving, with the ETA ` +
+  `including live traffic and a note on how many minutes traffic is adding. On the Map tab it needs location turned on; on an itinerary, ` +
+  `if you're planning from far away it shows the leg from the previous stop instead. "Refresh from Here" re-routes from where you are ` +
+  `now, and "Open in Maps App" hands off to Google or Apple Maps.\n` +
   `- Group Trips: a shared itinerary a few friends can all see and edit together (only the trip's owner can change who's a member).\n` +
   `- Adding a landmark that's missing (Add Landmark screen): anyone can submit one; it stays pending until an admin approves it before it appears for ` +
   `everyone.\n` +
