@@ -25,7 +25,6 @@ import AdminModeBadge from './components/AdminModeBadge';
 // only pulled in by MapExplore/AddLandmark) ships as its own chunk instead
 // of all up front in one bundle, same as everything past the entry chunk
 // that Vite would otherwise inline.
-const TripSetup = lazy(() => import('./screens/TripSetup'));
 const LandmarkSelection = lazy(() => import('./screens/LandmarkSelection'));
 const MapExplore = lazy(() => import('./screens/MapExplore'));
 const AddLandmark = lazy(() => import('./screens/AddLandmark'));
@@ -57,7 +56,6 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<MapExplore />} />
           <Route path="/add-landmark" element={<AddLandmark />} />
-          <Route path="/setup" element={<TripSetup />} />
           <Route path="/landmarks" element={<LandmarkSelection />} />
           <Route path="/landmarks/:region/:id" element={<LandmarkDetail />} />
           <Route path="/itinerary" element={<Itinerary />} />

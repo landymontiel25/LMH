@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -24,6 +24,29 @@ import { useRatings } from '../lib/RatingsContext';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
 
 const ROUTE_BLUE = '#2b7fff';
+
+// Setup used to be its own bottom-nav tab; it's now this modal, opened from
+// here instead -- "Create New Trip" is the only place it's reachable from.
+const TripSetup = lazy(() => import('./TripSetup'));
+
+function CreateTripModal({ onClose }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-card"
+        style={{ maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 12 }} onClick={onClose}>
+          {'\u{2715}'} Close
+        </button>
+        <Suspense fallback={<p className="screen-subtitle">Loading…</p>}>
+          <TripSetup />
+        </Suspense>
+      </div>
+    </div>
+  );
+}
 
 // Satellite basemap (matches the Explore map's default look).
 const SAT_TILE = {
@@ -152,6 +175,7 @@ export default function Itinerary() {
   // One itinerary per city. Overview lists them; opening one shows its route.
   const myRegions = regionsWithItineraries();
   const [openRegion, setOpenRegion] = useState(null);
+  const [showCreateTrip, setShowCreateTrip] = useState(false);
   const openReg = openRegion && myRegions.includes(openRegion) ? openRegion : null;
   const region = getRegion(openReg);
 
@@ -301,10 +325,11 @@ export default function Itinerary() {
   if (myRegions.length === 0 && groupTrips.length === 0) {
     return (
       <div className="empty-state">
-        <p>No itineraries yet. Add landmarks in any city to start one.</p>
-        <button className="btn btn-primary" onClick={() => navigate('/landmarks')}>
-          Choose Landmarks
+        <p>No itineraries yet. Create a trip to start one.</p>
+        <button className="btn btn-primary" onClick={() => setShowCreateTrip(true)}>
+          {'\u{2795}'} Create New Trip
         </button>
+        {showCreateTrip && <CreateTripModal onClose={() => setShowCreateTrip(false)} />}
       </div>
     );
   }
@@ -355,9 +380,10 @@ export default function Itinerary() {
             </button>
           );
         })}
-        <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => navigate('/landmarks')}>
-          {'➕'} Add another city
+        <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setShowCreateTrip(true)}>
+          {'\u{2795}'} Create New Trip
         </button>
+        {showCreateTrip && <CreateTripModal onClose={() => setShowCreateTrip(false)} />}
       </div>
     );
   }

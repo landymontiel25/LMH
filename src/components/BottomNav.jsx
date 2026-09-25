@@ -1,13 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 
+// 5 tabs -- Setup is no longer one of them (it's the "Create New Trip"
+// modal inside Itinerary now). Mapr sits dead center: it's the app's home
+// screen, the one thing people open every day, so it gets the "create"
+// position instead of an end slot.
 const items = [
   { to: '/', label: 'Map', icon: '\u{1F310}', end: true },
-  { to: '/setup', label: 'Setup', icon: '\u{1F9ED}' },
   { to: '/landmarks', label: 'Landmarks', icon: '\u{1F4CD}' },
+  { to: '/mapr', label: 'Mapr', icon: '\u{1F9E0}' },
   { to: '/itinerary', label: 'Itinerary', icon: '\u{1F5FA}\u{FE0F}' },
   { to: '/profile', label: 'Profile', icon: '\u{1F3C6}' },
-  { to: '/mapr', label: 'Mapr', icon: '\u{1F9E0}' },
 ];
 
 export default function BottomNav() {
