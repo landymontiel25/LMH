@@ -10,8 +10,29 @@ import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
 import { mapsDeepLink } from '../lib/routing';
 import { computeTasteConfidence, hasInsiderMode } from '../lib/tasteProfile';
 import { logPlanningEvent } from '../lib/timeSaved';
+import { useVoiceInput } from '../lib/useVoiceInput';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
+
+// "You haven't told Mapr what you like yet" nudge -- shown once (per
+// device/account) until either dismissed outright or satisfied by actually
+// talking to Mapr or filling in Settings' taste intro. Per-uid so signing
+// into a different account doesn't inherit another account's dismissal.
+const TASTE_NUDGE_DISMISSED_PREFIX = 'landmarkhunters.tasteNudgeDismissed.';
+function isTasteNudgeDismissed(uid) {
+  try {
+    return localStorage.getItem(`${TASTE_NUDGE_DISMISSED_PREFIX}${uid}`) === '1';
+  } catch {
+    return false;
+  }
+}
+function dismissTasteNudge(uid) {
+  try {
+    localStorage.setItem(`${TASTE_NUDGE_DISMISSED_PREFIX}${uid}`, '1');
+  } catch {
+    /* storage full/disabled -- non-fatal, nudge just won't stay dismissed */
+  }
+}
 
 const GREETING =
   "Hey — I'm Mapr. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
@@ -36,8 +57,16 @@ export default function Mapr() {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [totalCost, setTotalCost] = useState(0);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const feedEndRef = useRef(null);
   const regionBoxRef = useRef(null);
+  const { listening, toggleListening } = useVoiceInput((spoken) => setDraft((prev) => (prev ? `${prev} ${spoken}` : spoken)));
+
+  const showTasteNudge = !!user && !myProfile?.tasteIntro && !nudgeDismissed && !isTasteNudgeDismissed(user.uid);
+  const dismissNudge = () => {
+    if (user) dismissTasteNudge(user.uid);
+    setNudgeDismissed(true);
+  };
 
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -55,6 +84,11 @@ export default function Mapr() {
     e.preventDefault();
     const text = draft.trim();
     if (!text || busy) return;
+
+    // Actually talking to Mapr about what you're into satisfies the taste
+    // nudge just as well as filling in the Settings field does -- that's
+    // the whole point of the nudge, so don't ask again once it's happened.
+    if (showTasteNudge) dismissNudge();
 
     const history = [...messages, { role: 'user', text }];
     setMessages(history);
@@ -155,6 +189,26 @@ export default function Mapr() {
         </div>
       </div>
 
+      {showTasteNudge && (
+        <div className="card section taste-nudge-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+            <p style={{ margin: 0 }}>
+              {'\u{1F44B}'} Hey — you haven't told Mapr what you like yet. Just say it in the chat below (like "I
+              love hiking and steak") and that counts — you won't see this again.
+            </p>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ flexShrink: 0 }}
+              onClick={dismissNudge}
+              aria-label="Dismiss"
+            >
+              {'\u{2715}'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <DiscoveryStatsCard />
       <TasteProfileCard />
 
@@ -226,11 +280,21 @@ export default function Mapr() {
             type="text"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Tell it what you're up for…"
+            placeholder={listening ? 'Listening…' : "Tell it what you're up for… (or tap the mic)"}
             maxLength={500}
             autoComplete="off"
             autoCapitalize="off"
           />
+          <button
+            type="button"
+            className={`chatlab-mic ${listening ? 'listening' : ''}`}
+            onClick={toggleListening}
+            disabled={busy}
+            aria-label={listening ? 'Stop listening' : 'Speak instead'}
+            title={listening ? 'Stop listening' : 'Speak instead — faster than typing'}
+          >
+            {'\u{1F3A4}'}
+          </button>
           <button type="submit" className="chatlab-send" disabled={busy || !draft.trim()} aria-label="Send">
             {'\u{27A4}'}
           </button>

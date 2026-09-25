@@ -8,6 +8,7 @@ import { setProfileVisibility, getUserProfile, saveHomeLocation, saveTasteIntro 
 import { useAdminMode } from '../lib/AdminModeContext';
 import PreferenceChips from '../components/PreferenceChips';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import VoiceInputButton from '../components/VoiceInputButton';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -149,7 +150,7 @@ export default function Settings() {
           <h3 style={{ marginTop: 0 }}>{'\u{1F9E9}'} Tell Mapr What You Love</h3>
           <p className="screen-subtitle" style={{ marginTop: -6 }}>
             In your own words -- "I love racing, steak, pickleball, the boat... I like fancy, luxurious things." Mapr
-            reads this directly, no rating required.
+            reads this directly, no rating required. Talking is faster than typing -- tap the mic.
           </p>
           <textarea
             className="rating-comment"
@@ -160,6 +161,9 @@ export default function Settings() {
             onChange={(e) => setTasteIntro(e.target.value)}
             disabled={tasteBusy}
           />
+          <div style={{ marginTop: 8 }}>
+            <VoiceInputButton onText={(spoken) => setTasteIntro((prev) => (prev ? `${prev} ${spoken}` : spoken))} disabled={tasteBusy} />
+          </div>
           <button
             type="button"
             className="btn btn-ghost btn-block"
