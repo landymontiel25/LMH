@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, ScaleControl, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -682,6 +682,10 @@ export default function MapExplore() {
             radiusMiles={radiusMiles}
           />
           {!placingPin && <LocateControl coords={coords} radiusMiles={radiusMiles} />}
+          {/* Leaflet redraws this on every zoom/pan on its own -- the bar's
+              length and its mi/km number always track the current zoom
+              level live, no extra state needed here. */}
+          <ScaleControl position="bottomleft" imperial={units !== 'metric'} metric={units !== 'imperial'} />
           <PinDropHandler onDrop={setPinDrop} disabled={placingPin} />
           <TileLayer
             key={satellite ? 'satellite' : 'street'}
