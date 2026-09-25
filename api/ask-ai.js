@@ -45,9 +45,9 @@ const APP_HELP =
   `for it anywhere -- it's just how the chat behaves once it's confident enough.\n` +
   `- Mapr Picks (on Profile): up to 10 landmarks Mapr thinks you'll love next at once, for the city you're in right now. Every rating updates a ` +
   `per-city score for that landmark's category ("I loved it" +10, "It was okay" +2, "Not for me" -15, capped at 100, fading by half every 90 days); ` +
-  `Mapr shortlists that city's 30 best-scoring places and then picks the final ones with your recent ratings and own words in mind. With no ratings ` +
+  `Mapr shortlists that city's 30 best-scoring places (no more than 12 from any one category, so one favorite can't crowd out the rest) and then picks the final ones with your recent ratings and own words in mind. With no ratings ` +
   `in a city yet, it starts from your signup interests, most-visited places first. When a category hits the cap, a one-time pop-up asks "You really ` +
-  `love [category]. Want us to lean more into it?" -- Yes tilts picks toward it (other categories still show up), No leaves it as is, and the ` +
+  `love [category]. Want us to lean more into it?" -- Yes tilts picks toward it and lets it take up to 18 of the 30 shortlist spots (other categories still show up), No leaves it as is, and the ` +
   `optional comment box tells Mapr what you want more of there. It never asks again for that category in that city. Swipe to browse them. Only meant to hold things you'd clearly go to or clearly skip. Tap ✓ "I'd go" or ✗ "not for me" for a real, ` +
   `conclusive verdict -- that landmark won't be offered again. "🤷 Not sure" is different: it means "I genuinely don't know yet" (not a hidden ` +
   `dislike), drops that landmark out of the current row, but leaves it eligible to be recommended again later once the picks refresh. Voting on ` +
