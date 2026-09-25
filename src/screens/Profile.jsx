@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTrip } from '../lib/TripContext';
@@ -635,6 +635,10 @@ export default function Profile() {
         )}
 
       </div>
+
+      <Link to="/settings" className="btn btn-ghost btn-block" style={{ marginTop: 20 }}>
+        {'\u{2699}\u{FE0F}'} Settings
+      </Link>
     </div>
   );
 }
