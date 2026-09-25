@@ -87,6 +87,19 @@ export async function setProfileVisibility(uid, isPublic) {
   await setDoc(doc(db, 'users', uid), { public: !!isPublic, updatedAt: serverTimestamp() }, { merge: true });
 }
 
+// The free-text "tell Mapr what you already love" blurb -- optional, set at
+// onboarding (TasteIntroStep) or anytime after from Settings. Same
+// users/{uid} doc getUserProfile already reads, so it's available for free
+// via FriendsContext's myProfile once saved. Fed to the AI verbatim (see
+// api/plan-ai.js/api/mapr-picks.js's TASTE INTRO section) rather than
+// parsed into categories -- "I love racing, steak, pickleball, the boat...
+// I like fancy things" is exactly the kind of free-form context an LLM
+// reads better than any keyword list could.
+export async function saveTasteIntro(uid, text) {
+  if (!db || !uid) return;
+  await setDoc(doc(db, 'users', uid), { tasteIntro: (text || '').trim().slice(0, 600), updatedAt: serverTimestamp() }, { merge: true });
+}
+
 // Home address + coords, used to zero out points for check-ins within
 // HOME_RADIUS_METERS (see src/lib/leaderboard.js) -- also closes the
 // self-submitted-landmark-near-home exploit. Same users/{uid} doc

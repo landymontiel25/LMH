@@ -117,25 +117,35 @@ export default async function handler(req, res) {
       comment: str(r.comment, 280),
     }));
     const interests = (Array.isArray(body.interests) ? body.interests : []).map((c) => str(c, 30)).slice(0, 20);
+    // Told directly at onboarding or from Settings (src/screens/TasteIntroStep.jsx,
+    // src/screens/Settings.jsx) -- free-form, in the traveler's own words, not
+    // tied to any rating. Read as prose, same as the rest of the profile.
+    const tasteIntro = str(body.tasteIntro, 600);
     // Insider Mode -- unlocked client-side once Mapr's own predictions are
     // confidently right about this traveler (src/lib/tasteProfile.js). The
     // client decides the unlock and just tells us the flag; this only
     // changes how a request already this personalized gets phrased.
     const insiderMode = body.insiderMode === true;
-    const profile = reviews.length
-      ? 'TRAVELER PROFILE (their real rating history -- use it; see the rules on how):\n' +
-        reviews
-          .map(
-            (r) =>
-              `- ${r.name} [${r.categories.join(', ') || '?'}]: ${r.tier || 'rated'}` +
-              (r.highlights.length ? ` — ${r.highlights.join(', ')}` : '') +
-              (r.comment ? ` — "${r.comment}"` : '')
-          )
-          .join('\n') +
-        (interests.length ? `\n\nSaved interests: ${interests.join(', ')}` : '')
-      : interests.length
-      ? `TRAVELER PROFILE: no ratings yet, but saved interests: ${interests.join(', ')}`
-      : '';
+    const hasHistory = reviews.length > 0;
+    const profileParts = [];
+    if (tasteIntro) profileParts.push(`IN THEIR OWN WORDS (told Mapr this directly): "${tasteIntro}"`);
+    if (hasHistory) {
+      profileParts.push(
+        'RATING HISTORY (use it; see the rules on how):\n' +
+          reviews
+            .map(
+              (r) =>
+                `- ${r.name} [${r.categories.join(', ') || '?'}]: ${r.tier || 'rated'}` +
+                (r.highlights.length ? ` — ${r.highlights.join(', ')}` : '') +
+                (r.comment ? ` — "${r.comment}"` : '')
+            )
+            .join('\n')
+      );
+    } else if (!tasteIntro) {
+      profileParts.push('RATING HISTORY: none yet.');
+    }
+    if (interests.length) profileParts.push(`Saved interests: ${interests.join(', ')}`);
+    const profile = profileParts.length ? `TRAVELER PROFILE:\n${profileParts.join('\n\n')}` : '';
 
     const client = new Anthropic();
 

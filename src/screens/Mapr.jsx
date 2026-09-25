@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LandmarkThumb from '../components/LandmarkThumb';
 import { useAuth } from '../lib/AuthContext';
+import { useFriends } from '../lib/FriendsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useTrip } from '../lib/TripContext';
@@ -25,6 +26,7 @@ const GREETING =
 export default function Mapr() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { myProfile } = useFriends();
   const { myPhotos } = useMyPhotos();
   const { myReviews } = useRatings();
   const { trip } = useTrip();
@@ -95,6 +97,7 @@ export default function Mapr() {
           regionId: region.id,
           reviews,
           interests: trip.savedInterests || [],
+          tasteIntro: myProfile?.tasteIntro || '',
           insiderMode,
         }),
       });

@@ -64,6 +64,9 @@ export default async function handler(req, res) {
       comment: str(r.comment, 280),
     }));
     const interests = (Array.isArray(body.interests) ? body.interests : []).map((c) => str(c, 30)).slice(0, 20);
+    // Told directly at onboarding or from Settings -- free-form, not tied
+    // to any rating. Read as prose alongside everything else here.
+    const tasteIntro = str(body.tasteIntro, 600);
     const checkedIn = new Set((Array.isArray(body.checkedInIds) ? body.checkedInIds : []).map((id) => str(id, 80)));
     const regionIds = new Set((Array.isArray(body.regionIds) ? body.regionIds : []).map((id) => str(id, 40)));
     const feedback = (Array.isArray(body.feedback) ? body.feedback : []).slice(0, 80).map((f) => ({
@@ -107,6 +110,7 @@ export default async function handler(req, res) {
     const weakCheckins = ALL_LANDMARKS.filter((l) => weakCheckedInIds.has(l.id)).slice(0, 30);
 
     const history =
+      (tasteIntro ? `IN THEIR OWN WORDS (told Mapr this directly): "${tasteIntro}"\n\n` : '') +
       (reviews.length
         ? 'RATING HISTORY (oldest first, most recent last -- weigh the end of this list more heavily):\n' +
           reviews
