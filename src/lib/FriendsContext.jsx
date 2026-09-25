@@ -27,6 +27,30 @@ function cacheProfile(uid, profile) {
   }
 }
 
+// The very first profile read of a session can lose a race with Firebase
+// Auth/Firestore still wiring up the ID token right after sign-in/app
+// launch -- one transient failure there used to mean falling back to
+// whatever was in localStorage (stale -- e.g. from before a taste baseline
+// was ever saved) and then just staying on it until SOMETHING else
+// happened to call reload() again (the taste editor's own close handler
+// was the only thing that ever did), which is exactly why the Taste
+// Profile card only ever "loaded in" after interacting with Edit instead
+// of the moment the app opened. A couple of quick retries covers that
+// startup race without needing any user interaction to recover.
+const PROFILE_FETCH_RETRIES = 2;
+async function fetchProfileWithRetry(uid) {
+  for (let attempt = 0; attempt <= PROFILE_FETCH_RETRIES; attempt++) {
+    try {
+      const profile = await getUserProfile(uid);
+      if (profile) return profile;
+    } catch (e) {
+      if (attempt === PROFILE_FETCH_RETRIES) throw e;
+    }
+    if (attempt < PROFILE_FETCH_RETRIES) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+  }
+  return null;
+}
+
 export function FriendsProvider({ children }) {
   const { user } = useAuth();
   const [friendUids, setFriendUids] = useState(() => new Set());
@@ -52,7 +76,7 @@ export function FriendsProvider({ children }) {
     // Load each independently — one failing query must never hide the others
     // (a friends-rule hiccup should not wipe out your saved username).
     const [p, f, r] = await Promise.allSettled([
-      getUserProfile(user.uid),
+      fetchProfileWithRetry(user.uid),
       listFriends(user.uid),
       listIncomingRequests(user.uid),
     ]);
@@ -61,15 +85,20 @@ export function FriendsProvider({ children }) {
       cacheProfile(user.uid, p.value);
       setProfileFresh(true);
     } else {
-      // Read failed or empty — fall back to the cached profile so the username
-      // (and hero name) survive a flaky load. Logged (not just swallowed) so a
-      // real read failure -- e.g. a permission error on a cold load -- shows
+      // Read failed (even after retrying) or the doc genuinely doesn't
+      // exist yet. Logged (not just swallowed) so a real read failure shows
       // up somewhere instead of silently serving stale cached data forever.
       if (p.status === 'rejected') {
         console.error('[FriendsContext] getUserProfile failed on reload:', p.reason);
       }
-      const cached = loadCachedProfile(user.uid);
-      if (cached) setMyProfile(cached);
+      // Only ever fall back to the localStorage snapshot when there's
+      // nothing better already in memory (the very first load, before any
+      // real read has landed this session) -- a LATER hiccup must never
+      // regress already-correct data back to an older cached copy that
+      // could be missing something saved since (a taste baseline edit,
+      // say), which used to make a transient failure here look identical
+      // to that save never having happened.
+      setMyProfile((cur) => cur ?? loadCachedProfile(user.uid));
     }
     if (f.status === 'fulfilled') setFriendUids(new Set((f.value || []).map((x) => x.friend)));
     if (r.status === 'fulfilled') setRequests(r.value || []);

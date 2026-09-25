@@ -10,6 +10,26 @@ import { useAuth } from './AuthContext';
 // read per landmark. Both refresh together via reload() after a save.
 const RatingsContext = createContext(null);
 
+// The very first read of a session can lose a race with Firebase Auth/
+// Firestore still wiring up right after sign-in/app launch -- one
+// transient failure there used to mean myReviews just stayed empty until
+// something ELSE happened to call reload() again, which made anything
+// built on it (the Taste Profile Score, most visibly) look like it hadn't
+// loaded at all until some unrelated interaction triggered a fresh fetch.
+// A couple of quick retries covers that startup race on its own.
+const FETCH_RETRIES = 2;
+async function withRetry(fn) {
+  for (let attempt = 0; attempt <= FETCH_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt === FETCH_RETRIES) throw e;
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
+  }
+  return undefined;
+}
+
 export function RatingsProvider({ children }) {
   const { user } = useAuth();
   const [ratings, setRatings] = useState({});
@@ -18,7 +38,7 @@ export function RatingsProvider({ children }) {
   const reload = useCallback(async () => {
     if (!firebaseEnabled) return;
     try {
-      setRatings(await getAllRatings());
+      setRatings(await withRetry(getAllRatings));
     } catch {
       /* offline / rules — leave ratings empty */
     }
@@ -27,7 +47,7 @@ export function RatingsProvider({ children }) {
       return;
     }
     try {
-      const list = await getUserReviews(user.uid);
+      const list = await withRetry(() => getUserReviews(user.uid));
       setMyReviews(Object.fromEntries(list.map((r) => [r.landmarkId, r])));
     } catch {
       /* leave whatever we had */
