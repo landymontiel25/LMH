@@ -49,9 +49,9 @@ const APP_HELP =
   `reason back into future recommendations.\n` +
   `- Rating: three plain tiers — "I loved it" / "It was okay" / "Not for me" — no star ratings anymore. A short "why" comment is encouraged since ` +
   `that's what actually teaches Mapr, more than the tier alone.\n` +
-  `- Badges (Profile → "See your full stats"): earned automatically from your check-in history — total check-ins (First Steps, Explorer, Adventurer, ` +
-  `Legend), distinct cities visited (City Hopper, Globetrotter), daily check-in streaks (3/7/30-Day Streak), and the one-time Welcome badge from ` +
-  `onboarding.\n` +
+  `- Badges: not shown on Profile itself (that screen is deliberately kept simple) — see them all at Profile → "See Full Stats". Earned ` +
+  `automatically from your check-in history — total check-ins (First Steps, Explorer, Adventurer, Legend), distinct cities visited (City Hopper, ` +
+  `Globetrotter), daily check-in streaks (3/7/30-Day Streak), and the one-time Welcome badge from onboarding.\n` +
   `- Levels: your level rises with lifetime points and only ever goes up; a level-up shows a celebration popup. Points and the leaderboard are ` +
   `intentionally de-emphasized in the UI now — Mapr and your taste profile are the headline, not the score.\n` +
   `- Time saved / discovery: Mapr shows real, tracked numbers — minutes saved today, summed from actual Mapr chat replies that produced stops, each ` +
@@ -61,15 +61,17 @@ const APP_HELP =
   `- Ranks / Leaderboard (also a Profile section, now secondary to Mapr/taste stats): a Friends/Global toggle — Friends ranks you against people you ` +
   `follow, Global splits into Worldwide and Regional (one curated city). Each has Weekly/Monthly/Yearly views.\n` +
   `- Inviting friends: Profile has an "Invite Friends" button that shares your username/link; once someone signs up through it, both of you get 50 ` +
-  `bonus points.\n` +
+  `bonus points (credited quietly into your point total — there's no separate referral display anymore).\n` +
   `- Group Trips: a shared itinerary a few friends can all see and edit together (only the trip's owner can change who's a member).\n` +
   `- Adding a landmark that's missing (Add Landmark screen): anyone can submit one; it stays pending until an admin approves it before it appears for ` +
   `everyone.\n` +
   `- "Nearby Now" (on the map screen): an expandable panel showing landmarks close to your current location right now.\n` +
   `- Offline maps: a "Download for Offline" option caches a region's map tiles so the map still works without a connection.\n` +
   `- Settings: switch dark/light mode, switch units between imperial (mi/ft) and metric (km/m), toggle your profile between public (reviews/photos ` +
-  `visible to everyone) and private (friends only), set a home address (used for taste learning), and edit the taste baseline described above.\n` +
-  `- Account deletion: available from Profile — permanently erases your account and its data.\n\n`;
+  `visible to everyone) and private (friends only), set a home address (used for taste learning), edit the taste baseline described above, and (at ` +
+  `the very bottom) Request a Feature, Privacy Policy & Terms of Service, Sign Out, Delete Account, and the date you joined. All account-level ` +
+  `actions live in Settings now, not on Profile.\n` +
+  `- Account deletion: available from the bottom of Settings — permanently erases your account and its data.\n\n`;
 
 const INSTRUCTIONS =
   `You are the friendly AI assistant inside the app "Landmark Hunters". You have the app's full catalog of real landmarks (below, one per line as ` +
