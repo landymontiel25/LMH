@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { PICKABLE_REGIONS } from '../data/regions';
+import { matchesSearch } from '../lib/search';
 
 export const ANY_REGION = { id: '', name: 'Any region', tagline: 'Search everywhere' };
 
@@ -23,7 +24,7 @@ export default function RegionSearch({ region, onSelect, includeAny = false, pla
   const sortedRegions = [...PICKABLE_REGIONS].sort((a, b) => a.name.localeCompare(b.name));
   const options = includeAny ? [ANY_REGION, ...sortedRegions] : sortedRegions;
   const matches = q
-    ? options.filter((r) => r.name.toLowerCase().includes(q) || r.city?.toLowerCase().includes(q) || r.country?.toLowerCase().includes(q))
+    ? options.filter((r) => matchesSearch([r.name, r.city, r.country, r.tagline].filter(Boolean).join(' '), q))
     : options;
 
   return (

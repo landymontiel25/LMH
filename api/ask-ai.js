@@ -38,7 +38,8 @@ const APP_HELP =
   `Mapr directly works just as well. This baseline is what Mapr leans on before you've rated much; an actual rating on a specific landmark is more ` +
   `precise and wins if the two ever disagree.\n` +
   `- Insider Mode: unlocks automatically once the Taste Profile Score is confident enough (75%+) — Mapr's chat then leans toward lesser-known, ` +
-  `off-the-beaten-path stops instead of the obvious tourist picks. Nothing to turn on manually, it just activates.\n` +
+  `off-the-beaten-path stops instead of the obvious tourist picks. Nothing to turn on manually, it just activates, and there's no badge or toggle ` +
+  `for it anywhere -- it's just how the chat behaves once it's confident enough.\n` +
   `- Mapr Picks (on Profile): up to 10 landmarks Mapr thinks you'll love next at once, ranked by your rating history/taste baseline and how close ` +
   `you are; swipe to browse them. Only meant to hold things you'd clearly go to or clearly skip. Tap ✓ "I'd go" or ✗ "not for me" for a real, ` +
   `conclusive verdict -- that landmark won't be offered again. "🤷 Not sure" is different: it means "I genuinely don't know yet" (not a hidden ` +

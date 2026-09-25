@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { INTERESTS } from '../data/regions';
+import { matchesSearch } from '../lib/search';
 
 // Type-to-search category picker for Add Landmark, the same control as the
 // city picker (RegionSearch). One category per landmark. `value` is the
@@ -19,7 +20,7 @@ export default function CategorySelect({ value, onSelect, placeholder = 'Search 
 
   const selected = INTERESTS.find((i) => i.id === value) || null;
   const q = query.trim().toLowerCase();
-  const matches = q ? INTERESTS.filter((i) => i.label.toLowerCase().includes(q)) : INTERESTS;
+  const matches = q ? INTERESTS.filter((i) => matchesSearch(i.label, q)) : INTERESTS;
 
   return (
     <div className="autocomplete" ref={ref}>

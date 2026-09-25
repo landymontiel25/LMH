@@ -3,7 +3,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useRatings } from '../lib/RatingsContext';
 import { saveTasteBaseline, saveTasteIntro } from '../lib/friends';
-import { computeTasteConfidence, hasInsiderMode, INSIDER_MODE_CONFIDENCE } from '../lib/tasteProfile';
+import { computeTasteConfidence } from '../lib/tasteProfile';
 import { baselineToSyntheticReviews, extractLegacyBaselineFromIntro } from '../lib/tasteQuestions';
 import TasteNudgeCard from './TasteNudgeCard';
 
@@ -83,7 +83,6 @@ export default function TasteProfileCard() {
     ...baselineToSyntheticReviews(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
   ];
   const { confidence, sampleCount } = computeTasteConfidence(reviews);
-  const unlocked = hasInsiderMode(confidence);
   const hasBaseline = !!(myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length);
 
   const closeEditor = async () => {
@@ -125,16 +124,9 @@ export default function TasteProfileCard() {
     <div className="card section taste-profile-card">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile — {confidence}% confident</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          {unlocked && (
-            <span className="tag" style={{ fontSize: '0.65rem' }} title={`Unlocked at ${INSIDER_MODE_CONFIDENCE}% confidence`}>
-              {'\u{1F511}'} Insider Mode
-            </span>
-          )}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}>
-            {'\u{270F}\u{FE0F}'} Edit
-          </button>
-        </div>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}>
+          {'\u{270F}\u{FE0F}'} Edit
+        </button>
       </div>
       <div
         className="level-bar-track"
@@ -147,9 +139,8 @@ export default function TasteProfileCard() {
         <div className="level-bar-fill" style={{ width: `${confidence}%` }} />
       </div>
       <p className="screen-subtitle" style={{ margin: '6px 0 0' }}>
-        {unlocked
-          ? "Insider Mode is on — Mapr's chat leans toward lesser-known spots for you now."
-          : 'How well Mapr can predict a rating of yours from your OTHER ratings alone. The more you rate — across different kinds of places — the higher this climbs.'}
+        How well Mapr can predict a rating of yours from your OTHER ratings alone. The more you rate — across
+        different kinds of places — the higher this climbs.
       </p>
     </div>
   );

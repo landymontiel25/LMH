@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { PICKABLE_REGIONS } from '../data/regions';
+import { matchesSearch } from '../lib/search';
 
 // Same type-to-search box as RegionSearch, but for picking SEVERAL cities at
 // once ("Philly or NYC this weekend") instead of one -- built as its own
@@ -24,9 +25,7 @@ export default function MultiRegionSearch({ selectedIds, onToggle, onClearAll, p
   const q = query.trim().toLowerCase();
   const sortedRegions = [...PICKABLE_REGIONS].sort((a, b) => a.name.localeCompare(b.name));
   const matches = q
-    ? sortedRegions.filter(
-        (r) => r.name.toLowerCase().includes(q) || r.city?.toLowerCase().includes(q) || r.country?.toLowerCase().includes(q)
-      )
+    ? sortedRegions.filter((r) => matchesSearch([r.name, r.city, r.country, r.tagline].filter(Boolean).join(' '), q))
     : sortedRegions;
   const selected = sortedRegions.filter((r) => selectedIds.includes(r.id));
 
