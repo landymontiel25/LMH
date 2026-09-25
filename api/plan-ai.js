@@ -28,6 +28,10 @@ const INSTRUCTIONS =
   `answer directly and specifically from the profile -- name actual places and reasons, don't hedge or deflect to ` +
   `a generic question when you genuinely have this data. If no profile is given (or it's empty), say plainly that ` +
   `you don't have a rating history for them yet rather than pretending otherwise, and ask what they're into.\n` +
+  `- The IN THEIR OWN WORDS section (if present) is a general BASELINE the traveler set once -- broad likes and ` +
+  `dislikes by category. Actual rating history is more precise and specific (a real place, a real reason), so when ` +
+  `the two would point different directions on the same thing, trust the specific rating over the general baseline. ` +
+  `Use the baseline to cover categories no rating has touched yet, not to override a specific one.\n` +
   `- Loving something is not the same as wanting it RIGHT NOW -- someone can genuinely love hiking and scenic ` +
   `views and still want a club, not a trail, on a Saturday night in the city. Read their CURRENT message for time, ` +
   `day, mood, and occasion cues (tonight, this weekend, "something chill", "we're getting dressed up") and weigh ` +
