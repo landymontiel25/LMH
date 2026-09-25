@@ -165,6 +165,9 @@ export default function CheckInReview() {
                     ? 'This also claims a check-in — a comment is required so Mapr knows why.'
                     : 'How was it? One tap is enough — the rest is optional.'}
                 </p>
+                <p className="screen-subtitle" style={{ marginTop: -10, fontSize: '0.78rem' }}>
+                  Rate for yourself, not others. This is just so we learn your taste.
+                </p>
                 {(() => {
                   const hint = diversityHint(Object.values(myReviews));
                   return hint ? (

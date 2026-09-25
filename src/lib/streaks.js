@@ -1,19 +1,9 @@
 // Daily check-in streak + milestone badges (item i1) -- both derived
 // entirely from the same check-in history Profile already fetches, so
 // there's nothing new to store or keep in sync.
+import { isRealCheckin } from './leaderboard';
 
 const dayKey = (d) => `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
-
-// A real, physical check-in -- worth points. Excludes only the explicit
-// 0-point claims "Rate a Landmark" makes (see CheckInContext's ratingOnly
-// flag): those are a rating, not a claim you were there, so on their own
-// they only ever feed the lighter daily-actions tally below, same as a
-// plain ✓/✗ Mapr Pick vote. A checkin with no points field at all (older
-// data, or a test fixture) is treated as real -- explicit 0 is the only
-// non-real case.
-function isRealCheckin(c) {
-  return c.points !== 0;
-}
 
 /** Whether a real (points-earning) check-in happened today (UTC) -- used to warn when an active streak is about to lapse. */
 export function hasCheckedInToday(checkins, now = new Date()) {

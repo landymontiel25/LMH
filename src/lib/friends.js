@@ -87,6 +87,20 @@ export async function setProfileVisibility(uid, isPublic) {
   await setDoc(doc(db, 'users', uid), { public: !!isPublic, updatedAt: serverTimestamp() }, { merge: true });
 }
 
+// Home address + coords, used to zero out points for check-ins within
+// HOME_RADIUS_METERS (see src/lib/leaderboard.js) -- also closes the
+// self-submitted-landmark-near-home exploit. Same users/{uid} doc
+// getUserProfile already reads, so it's available for free via
+// FriendsContext's myProfile once saved.
+export async function saveHomeLocation(uid, { address, lat, lng }) {
+  if (!db || !uid) return;
+  await setDoc(
+    doc(db, 'users', uid),
+    { homeAddress: address || '', homeCoords: { lat, lng }, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
 // Stamps when this account was last seen. Written once per session (on
 // auth), not per action -- enough to answer "did they come back within 30
 // days?" for the retention-by-ratings-count analysis without write spam.

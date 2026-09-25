@@ -4,9 +4,10 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTheme } from '../lib/useTheme';
 import { useUnits, countryName } from '../lib/UnitsContext';
-import { setProfileVisibility, getUserProfile } from '../lib/friends';
+import { setProfileVisibility, getUserProfile, saveHomeLocation } from '../lib/friends';
 import { useAdminMode } from '../lib/AdminModeContext';
 import PreferenceChips from '../components/PreferenceChips';
+import LocationAutocomplete from '../components/LocationAutocomplete';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -17,6 +18,23 @@ export default function Settings() {
   const { adminMode, canUseAdminMode, setAdminMode } = useAdminMode();
   const [visBusy, setVisBusy] = useState(false);
   const [visMsg, setVisMsg] = useState(null);
+  const [homeAddress, setHomeAddress] = useState(myProfile?.homeAddress || '');
+  const [homeBusy, setHomeBusy] = useState(false);
+  const [homeMsg, setHomeMsg] = useState(null);
+
+  const pickHome = async (s) => {
+    setHomeAddress(s.primary);
+    setHomeMsg(null);
+    setHomeBusy(true);
+    try {
+      await saveHomeLocation(user.uid, { address: s.primary, lat: s.lat, lng: s.lng });
+      await reloadFriends();
+    } catch (e) {
+      setHomeMsg(e.message || 'Could not save — try again.');
+    } finally {
+      setHomeBusy(false);
+    }
+  };
 
   const toggleVisibility = async () => {
     setVisBusy(true);
@@ -99,6 +117,38 @@ export default function Settings() {
         </p>
         <PreferenceChips />
       </div>
+
+      {firebaseEnabled && user && (
+        <div className="card section">
+          <h3 style={{ marginTop: 0 }}>{'\u{1F3E0}'} Home Address</h3>
+          <p className="screen-subtitle" style={{ marginTop: 0 }}>
+            Check-ins within half a mile of home don't earn points — they still count toward your
+            taste profile.
+          </p>
+          <LocationAutocomplete
+            id="home-address"
+            placeholder="Enter your home address"
+            value={homeAddress}
+            onChange={setHomeAddress}
+            onSelect={pickHome}
+          />
+          {homeBusy && (
+            <p className="screen-subtitle" style={{ marginTop: 8 }}>
+              Saving…
+            </p>
+          )}
+          {myProfile?.homeCoords && !homeBusy && (
+            <p className="screen-subtitle" style={{ marginTop: 8 }}>
+              Saved: {myProfile.homeAddress}
+            </p>
+          )}
+          {homeMsg && (
+            <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
+              {homeMsg}
+            </p>
+          )}
+        </div>
+      )}
 
       {firebaseEnabled && user && (
         <div className="card section">

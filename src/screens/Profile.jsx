@@ -32,6 +32,7 @@ import CheckInButton from '../components/CheckInButton';
 import RegionSearch from '../components/RegionSearch';
 import ProfileTasteCard from '../components/ProfileTasteCard';
 import MaprPicksCarousel from '../components/MaprPicksCarousel';
+import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -495,6 +496,8 @@ export default function Profile() {
         onboardingCompleted={onboardingDone}
         onStartOnboarding={() => setOnboardingStep('checkin')}
       />
+      <DiscoveryStatsCard />
+
       {closestRival && (
         <div className="card section">
           <p style={{ margin: 0 }}>
@@ -504,9 +507,11 @@ export default function Profile() {
         </div>
       )}
 
-      <h1 className="screen-title">
+      {/* Points/leaderboard are secondary now (item 7) -- a lighter heading
+          than the Discovery card above it gets, not the page's headline. */}
+      <h2 className="screen-title" style={{ fontSize: '1.1rem', opacity: 0.75 }}>
         <span>{'\u{1F3C6}'}</span> Ranks
-      </h1>
+      </h2>
 
       <div className="tabs" style={{ justifyContent: 'center', marginBottom: 14 }}>
         <button type="button" className={`tab-btn ${scope === 'friends' ? 'active' : ''}`} onClick={() => setScope('friends')}>

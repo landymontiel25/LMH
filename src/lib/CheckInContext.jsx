@@ -1,7 +1,13 @@
 import { createContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useFriends } from './FriendsContext';
-import { claimCheckIn, getUserCheckedInLandmarkIds, subscribeLeaderboard, POINTS_PER_CHECKIN } from './leaderboard';
+import {
+  claimCheckIn,
+  getUserCheckedInLandmarkIds,
+  subscribeLeaderboard,
+  shouldPromptLoveReason,
+  POINTS_PER_CHECKIN,
+} from './leaderboard';
 
 // Shared check-in state so there's ONE source of truth and a single place to
 // trigger the "rate + post" prompt, no matter which screen you checked in
@@ -10,7 +16,7 @@ export const CheckInContext = createContext(null);
 
 export function CheckInProvider({ children }) {
   const { user, firebaseEnabled } = useAuth();
-  const { myUsername } = useFriends();
+  const { myUsername, myProfile } = useFriends();
   const [claimedMap, setClaimedMap] = useState({});
   const [checkingIn, setCheckingIn] = useState(null);
   // The landmark currently in the rate + post prompt. Tapping "Check In" sets
@@ -24,6 +30,10 @@ export function CheckInProvider({ children }) {
   const [checkInOptions, setCheckInOptions] = useState({});
   // The "+100! You passed Eduardo — now #1 👑" payoff shown after posting.
   const [celebration, setCelebration] = useState(null);
+  // Set right after a real (non-ratingOnly) check-in lands on visit 3, 13,
+  // 23, ... -- see shouldPromptLoveReason. The landmark + visit number is
+  // all LoveReasonPrompt needs; it looks up any earlier answer itself.
+  const [loveReasonPrompt, setLoveReasonPrompt] = useState(null);
 
   // Keep this week's standings warm so we can detect an overtake the instant a
   // check-in lands (compare where you were vs where +100 puts you).
@@ -100,7 +110,9 @@ export function CheckInProvider({ children }) {
     if (!user || !landmark) return null;
     setCheckingIn(landmark.id);
     try {
-      const points = checkInOptions?.ratingOnly ? 0 : landmark.points ?? POINTS_PER_CHECKIN;
+      const ratingOnly = !!checkInOptions?.ratingOnly;
+      const points = ratingOnly ? 0 : landmark.points ?? POINTS_PER_CHECKIN;
+      const landmarkCoords = landmark.lat != null && landmark.lng != null ? { lat: landmark.lat, lng: landmark.lng } : null;
       const result = await claimCheckIn({
         userId: user.uid,
         // Never store the email on public leaderboards — prefer the username.
@@ -109,19 +121,30 @@ export function CheckInProvider({ children }) {
         landmarkName: landmark.name,
         region: landmark.regionId ?? landmark.region,
         points,
+        ratingOnly,
+        homeCoords: myProfile?.homeCoords || null,
+        landmarkCoords,
       });
-      // Only a real (points > 0) attempt marks the map/UI as "checked in"
+      // Only a real (non-ratingOnly) attempt marks the map/UI as "checked in"
       // here -- a ratingOnly claim never should, even if it's the one that
       // just created the underlying checkins doc (Firestore rules require
       // one to exist before a review can be written -- see firestore.rules
       // -- so the doc itself is unavoidable, but the visual "you've been
       // here" state is not). If you rate first and physically check in
       // later, that later real attempt is what finally marks it claimed.
-      if (points > 0 && (result.claimed || result.alreadyClaimed)) {
+      if (!ratingOnly && (result.claimed || result.alreadyClaimed)) {
         setClaimedMap((m) => ({ ...m, [landmark.id]: true }));
       }
-      if (result.claimed && points > 0) {
-        setCelebration(buildCelebration(points));
+      // Celebrate off the actual payout, not the base point value -- a
+      // home-radius or 6th+ repeat visit pays 0 and has nothing to celebrate.
+      if (result.claimed && result.payout > 0) {
+        setCelebration(buildCelebration(result.payout));
+      }
+      // Only a brand-new claim has a visitNumber worth checking -- a repeat
+      // tap on an already-claimed check-in (result.alreadyClaimed) never
+      // re-fires this, since nothing new was actually logged.
+      if (!ratingOnly && result.claimed && shouldPromptLoveReason(result.visitNumber)) {
+        setLoveReasonPrompt({ landmark, visitNumber: result.visitNumber });
       }
       return result;
     } finally {
@@ -137,6 +160,8 @@ export function CheckInProvider({ children }) {
     setCheckInOptions({});
   };
 
+  const clearLoveReasonPrompt = () => setLoveReasonPrompt(null);
+
   return (
     <CheckInContext.Provider
       value={{
@@ -150,6 +175,8 @@ export function CheckInProvider({ children }) {
         checkInOptions,
         celebration,
         clearJustCheckedIn,
+        loveReasonPrompt,
+        clearLoveReasonPrompt,
       }}
     >
       {children}

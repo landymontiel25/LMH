@@ -6,6 +6,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { useTrip } from '../lib/TripContext';
 import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
 import { mapsDeepLink } from '../lib/routing';
+import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 
 const GREETING =
   "Hey — I'm Mapr. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
@@ -70,7 +71,9 @@ export default function Mapr() {
           tier: r.ratingTier,
           categories: r.categories || [],
           highlights: r.highlights || [],
-          comment: r.comment || '',
+          // Folds in loveNotes -- the "why do you love this place" answers
+          // from repeat visits -- alongside the rating's own comment.
+          comment: [r.comment, ...(r.loveNotes || [])].filter(Boolean).join('. '),
         }));
       const r = await fetch('/api/plan-ai', {
         method: 'POST',
@@ -128,6 +131,8 @@ export default function Mapr() {
           {totalCost > 0 && <span className="chatlab-cost">{'⚡'} ${totalCost.toFixed(4)}</span>}
         </div>
       </div>
+
+      <DiscoveryStatsCard />
 
       <div className="chatlab-feed">
         {messages.map((m, i) => (

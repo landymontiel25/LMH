@@ -16,10 +16,16 @@ import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
 import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
 import { isRateable, tierById } from '../lib/ratingFlow';
-import { getMyCheckin, addCheckinPhoto, removeCheckinPhoto, updateCheckinTimestamp, MAX_CHECKIN_PHOTOS } from '../lib/leaderboard';
+import {
+  getMyCheckin,
+  getVisitCount,
+  addCheckinPhoto,
+  removeCheckinPhoto,
+  updateCheckinTimestamp,
+  MAX_CHECKIN_PHOTOS,
+} from '../lib/leaderboard';
 import { regionTimezone, tzAbbrev, toZonedInputValue, fromZonedInputValue } from '../lib/timezones';
 import RatingFlow from '../components/RatingFlow';
-import StarRatingFlow from '../components/StarRatingFlow';
 import LandmarkPostcard from '../components/LandmarkPostcard';
 import Lightbox from '../components/Lightbox';
 import ReviewReplies from '../components/ReviewReplies';
@@ -122,16 +128,13 @@ export default function LandmarkDetail() {
   const { ratings, reload: reloadRatings } = useRatings();
   const { reload: reloadMyPhotos } = useMyPhotos();
   const { myUsername } = useFriends();
-  // myRating: live RatingFlow/StarRatingFlow payload (null until something's
-  // picked). savedRating: what's already on file, to pre-fill on an edit.
-  // ratingMode picks which flow is showing -- 'tags' (Highly recommend /
-  // Worth trying / Probably skip) or 'stars' (a plain 1-5 tap); switches to
-  // match whichever a saved rating was made with.
+  // myRating: live RatingFlow payload (null until a tier's picked).
+  // savedRating: what's already on file, to pre-fill on an edit.
   const [myRating, setMyRating] = useState(null);
   const [savedRating, setSavedRating] = useState(null);
-  const [ratingMode, setRatingMode] = useState('tags');
   // Your own check-in doc here (for "Checked in: Tuesday, Sep 15 at 3:47 PM").
   const [myCheckin, setMyCheckin] = useState(null);
+  const [visitCount, setVisitCount] = useState(0);
   // Admin Mode: editing this check-in's date/time, same as editing the
   // landmark's own fields above.
   const [editingCheckinDate, setEditingCheckinDate] = useState(false);
@@ -220,10 +223,10 @@ export default function LandmarkDetail() {
     if (!firebaseEnabled || !user || !landmark) return;
     const r = await getMyReview(user.uid, landmark.id);
     if (!r) return;
-    // Whichever flow made this review, pre-fill that same one on an edit:
-    // a tier (Highly recommend / etc.) pre-fills the tag flow, a plain
-    // star count -- including an old review from before the tag flow
-    // existed -- pre-fills the star picker instead.
+    // Pre-fills the tier flow on an edit. A legacy star-only review (from
+    // before there was only ever the tier flow) has no tier to pre-fill --
+    // .stars is kept here only so "Your rating" below has something to
+    // show, not to feed back into the (now tier-only) rating flow.
     setSavedRating(
       r.ratingTier
         ? {
@@ -237,7 +240,6 @@ export default function LandmarkDetail() {
         ? { stars: r.stars, comment: r.comment || '' }
         : null
     );
-    setRatingMode(r.ratingTier ? 'tags' : r.stars ? 'stars' : 'tags');
     setMyPhotos(r.photoURLs?.length ? r.photoURLs : r.photoURL ? [r.photoURL] : []);
   }, [firebaseEnabled, user, landmark]);
 
@@ -249,9 +251,13 @@ export default function LandmarkDetail() {
   useEffect(() => {
     if (!firebaseEnabled || !user || !landmark || !checkedInHere) {
       setMyCheckin(null);
+      setVisitCount(0);
       return;
     }
     let cancelled = false;
+    getVisitCount(user.uid, landmark.id).then((n) => {
+      if (!cancelled) setVisitCount(n);
+    });
     getMyCheckin(user.uid, landmark.id)
       .then((c) => {
         if (cancelled) return;
@@ -621,6 +627,11 @@ export default function LandmarkDetail() {
             </p>
           ) : (
             <ul className="checkin-stats">
+              {visitCount > 1 && (
+                <li>
+                  <span>Visits:</span> {visitCount}
+                </li>
+              )}
               <li>
                 <span>Checked in:</span> {myCheckin?.createdAt?.seconds ? fmtCheckinTime(myCheckin.createdAt.seconds) : '…'}
                 {adminMode && isAdmin(user?.email) && !editingCheckinDate && (
@@ -674,7 +685,7 @@ export default function LandmarkDetail() {
                 {savedRating?.tier
                   ? `${tierById(savedRating.tier)?.emoji || ''} ${tierById(savedRating.tier)?.label || ''}`
                   : savedRating?.stars
-                  ? '★'.repeat(savedRating.stars) + '☆'.repeat(5 - savedRating.stars)
+                  ? 'Rated (before Mapr’s current rating system)'
                   : 'Not rated yet'}
               </li>
             </ul>
@@ -842,52 +853,18 @@ export default function LandmarkDetail() {
                   {'\u{2713}'} Already rated — change anything below to update it.
                 </p>
               )}
-              <div className="tabs" style={{ margin: '0 0 14px' }}>
-                <button
-                  type="button"
-                  className={`tab-btn ${ratingMode === 'tags' ? 'active' : ''}`}
-                  onClick={() => {
-                    if (ratingMode === 'tags') return;
-                    setRatingMode('tags');
-                    setMyRating(null);
-                    setSubmitted(false);
-                  }}
-                >
-                  Quick Tags
-                </button>
-                <button
-                  type="button"
-                  className={`tab-btn ${ratingMode === 'stars' ? 'active' : ''}`}
-                  onClick={() => {
-                    if (ratingMode === 'stars') return;
-                    setRatingMode('stars');
-                    setMyRating(null);
-                    setSubmitted(false);
-                  }}
-                >
-                  Star Rating
-                </button>
-              </div>
-              {ratingMode === 'tags' ? (
-                <RatingFlow
-                  key={landmark.id}
-                  landmark={landmark}
-                  initial={savedRating?.tier ? savedRating : null}
-                  onChange={(r) => {
-                    setMyRating(r);
-                    setSubmitted(false);
-                  }}
-                />
-              ) : (
-                <StarRatingFlow
-                  key={landmark.id}
-                  initial={savedRating?.stars ? savedRating : null}
-                  onChange={(r) => {
-                    setMyRating(r);
-                    setSubmitted(false);
-                  }}
-                />
-              )}
+              <p className="screen-subtitle" style={{ marginTop: 0, marginBottom: 12 }}>
+                Rate for yourself, not others. This is just so we learn your taste.
+              </p>
+              <RatingFlow
+                key={landmark.id}
+                landmark={landmark}
+                initial={savedRating?.tier ? savedRating : null}
+                onChange={(r) => {
+                  setMyRating(r);
+                  setSubmitted(false);
+                }}
+              />
               {photoPreviews.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   {photoPreviews.map((src, i) => (
@@ -953,7 +930,13 @@ export default function LandmarkDetail() {
               <div key={r.id} className="review-item">
                 <div className="review-head">
                   <strong>{r.userName}</strong>
-                  <RatingStars value={r.stars} count={null} />
+                  {r.ratingTier ? (
+                    <span className="tag">
+                      {tierById(r.ratingTier)?.emoji} {tierById(r.ratingTier)?.label}
+                    </span>
+                  ) : (
+                    <span className="tag">Rated</span>
+                  )}
                 </div>
                 {r.comment && <p className="review-comment">{r.comment}</p>}
                 {(() => {

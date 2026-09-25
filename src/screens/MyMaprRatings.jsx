@@ -5,7 +5,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { getUserCheckins } from '../lib/leaderboard';
 import { deleteMyReview } from '../lib/reviews';
 import { getRegion } from '../data/regions';
-import { TIERS, chipLabel } from '../lib/ratingFlow';
+import { TIERS, tierById, chipLabel } from '../lib/ratingFlow';
 
 // Everything rated through "Rate a Landmark" on Mapr Picks -- separate from
 // the check-ins list, since these are ratings-only claims (0 points, never
@@ -41,10 +41,16 @@ export default function MyMaprRatings() {
     getUserCheckins(user.uid)
       .then((rows) => {
         if (cancelled) return;
-        // A ratingOnly claim always has points === 0 (see CheckInContext) --
-        // a real check-in either has no points field at all (older data) or
-        // a positive one, never exactly 0.
-        setRatingOnlyIds(new Set(rows.filter((c) => c.points === 0).map((c) => c.landmarkId)));
+        // A ratingOnly claim is an explicit "Rate a Landmark" click, never a
+        // real visit -- legacy rows without the field fall back to the old
+        // points === 0 heuristic (payout-0 real visits didn't exist yet then).
+        setRatingOnlyIds(
+          new Set(
+            rows
+              .filter((c) => (typeof c.ratingOnly === 'boolean' ? c.ratingOnly : c.points === 0))
+              .map((c) => c.landmarkId)
+          )
+        );
       })
       .catch(() => {
         if (!cancelled) setRatingOnlyIds(new Set());
@@ -103,7 +109,7 @@ export default function MyMaprRatings() {
 
       {!loading && shown.length === 0 && (
         <div className="empty-state">
-          <p>Nothing rated {tab === 'highly-recommend' ? 'Highly recommend' : tab === 'worth-trying' ? 'Worth trying' : 'Probably skip'} yet.</p>
+          <p>Nothing rated {tierById(tab)?.label} yet.</p>
         </div>
       )}
 

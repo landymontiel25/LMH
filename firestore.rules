@@ -19,9 +19,15 @@ service cloud.firestore {
     // checkins, and leaderboard entries locked to their own owner. ---
     match /checkins/{checkinId} {
       allow read: if true;
+      // Repeat check-ins to the same landmark are real now -- visit #1 keeps
+      // the original uid_landmarkId doc id (so every existing check-in stays
+      // valid untouched); visit #2 onward is uid_landmarkId_<visitNumber>.
       allow create: if request.auth != null
-        && checkinId == request.auth.uid + '_' + request.resource.data.landmarkId
-        && request.resource.data.userId == request.auth.uid;
+        && request.resource.data.userId == request.auth.uid
+        && (
+          checkinId == request.auth.uid + '_' + request.resource.data.landmarkId
+          || checkinId.matches(request.auth.uid + '_' + request.resource.data.landmarkId + '_[0-9]+')
+        );
       // Owner may update ONLY photoURL / photoURLs / userName (own check-in
       // photos via addCheckinPhoto/removeCheckinPhoto, the legacy single
       // attachCheckinPhoto, email->username backfill via backfillUserName).

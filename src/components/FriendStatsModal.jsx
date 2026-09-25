@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUserStats, getUserCheckins } from '../lib/leaderboard';
+import { getUserStats, getUserCheckins, isRealCheckin } from '../lib/leaderboard';
 import { getRegion } from '../data/regions';
 
 // A friend's quick summary -- points/check-ins/cities/last check-in -- as a
@@ -17,9 +17,9 @@ export default function FriendStatsModal({ uid, name, onClose }) {
     let cancelled = false;
     Promise.all([getUserStats(uid), getUserCheckins(uid)])
       .then(([stats, checkins]) => {
-        // A "Rate a Landmark" claim (0 points) isn't a visit -- skip it for
+        // A "Rate a Landmark" claim isn't a visit -- skip it for
         // "most recent check-in", same as the check-ins gallery does.
-        const recent = checkins.find((c) => c.points !== 0) || null;
+        const recent = checkins.find(isRealCheckin) || null;
         if (!cancelled) setState({ loading: false, stats, recent });
       })
       .catch(() => {

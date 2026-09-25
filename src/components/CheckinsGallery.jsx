@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getLandmark, getRegion } from '../data/regions';
-import { getUserCheckins, updateCheckinTimestamp } from '../lib/leaderboard';
+import { getUserCheckins, updateCheckinTimestamp, isRealCheckin } from '../lib/leaderboard';
 import { getMyReview } from '../lib/reviews';
 import { isRateable, tierById, tierStars } from '../lib/ratingFlow';
 import { CHECKIN_SORTS, sortCheckins } from '../lib/checkinSort';
@@ -140,7 +140,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
       }
       // A "Rate a Landmark" claim (ratingOnly, 0 points) isn't a visit --
       // it never belongs here, only in My Mapr Ratings.
-      rows = rows.filter((c) => c.points !== 0);
+      rows = rows.filter(isRealCheckin);
       if (cancelled) return;
       // Show right away using landmark photos, so the gallery is never blank…
       setCheckins(rows.map((c) => build(c, null)));

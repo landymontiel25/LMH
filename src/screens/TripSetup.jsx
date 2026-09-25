@@ -59,6 +59,10 @@ function GroupFriendPicker({ friends, query, onQueryChange, selected, onToggle }
   );
 }
 
+// No longer its own bottom-nav tab -- opened as the "Create New Trip" modal
+// from Itinerary instead. Unchanged otherwise: still a full region/interests/
+// trip-type form, its own lazy chunk, navigating away (Map, Choose Landmarks,
+// a new group trip) closes the modal the same way leaving any route would.
 export default function TripSetup() {
   const { trip, updateTrip, setCustomInterestMatches, setCustomInterestEmoji, removeCustomInterest, applyPreferences } =
     useTrip();

@@ -9,6 +9,7 @@ import {
   orderBy,
   limit,
   updateDoc,
+  setDoc,
   deleteDoc,
   addDoc,
   arrayUnion,
@@ -39,10 +40,10 @@ function withTimeout(promise, ms) {
  */
 export async function submitReview({ userId, userName, landmark, rating, photoFiles, photoFile }) {
   const landmarkId = landmark.id;
-  // Two ways in: the tier flow (Highly recommend / Worth trying / Probably
-  // skip) derives its stars from the tier, or a plain 1-5 star tap sets
-  // stars directly with no tier at all. Whichever was used last is what
-  // wins -- rating.tier is only ever set by one or the other, never both.
+  // stars is derived from the tier (I loved it / It was okay / Not for me)
+  // for the landmark_ratings aggregate's math -- the UI only ever picks a
+  // tier now. The plain rating.stars fallback below is just for any
+  // leftover pre-tier data, not a live input path.
   const stars = rating?.tier ? tierStars(rating.tier) : Number(rating?.stars) || 0;
   if (!stars) throw new Error('Pick a rating first.');
 
@@ -214,6 +215,43 @@ export async function deleteMyReview(userId, landmarkId) {
     tx.set(aggRef, { sum: newSum, count: newCount, avg: newCount ? newSum / newCount : 0, updatedAt: serverTimestamp() }, { merge: true });
     tx.delete(reviewRef);
   });
+}
+
+/**
+ * Stores the answer to "why do you love this place" (the repeat-visit
+ * prompt at visit 3, 13, 23, ... -- see shouldPromptLoveReason in
+ * leaderboard.js) on the same reviews/{uid}_{landmarkId} doc a rating
+ * lives on, so maprPicks/plan-ai's trait matching -- which already reads a
+ * review's `comment` -- picks it up for free by joining it in with any
+ * loveNotes. Doesn't require a rating to already exist (checking in 3
+ * times without ever tapping a tier is possible), so this is a merge, not
+ * an update -- the create-or-update case is identical here since the only
+ * field touched either way is loveNotes.
+ */
+export async function appendLoveNote(userId, landmarkId, landmark, note) {
+  const text = (note || '').trim().slice(0, 280);
+  if (!db || !userId || !landmarkId || !text) return;
+  const reviewRef = doc(db, 'reviews', `${userId}_${landmarkId}`);
+  await setDoc(
+    reviewRef,
+    {
+      userId,
+      landmarkId,
+      landmarkName: landmark?.name,
+      region: landmark?.region ?? landmark?.regionId,
+      loveNotes: arrayUnion(text),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+/** The most recent "why do you love this place" answer for a landmark, or null. */
+export async function getLoveNote(userId, landmarkId) {
+  if (!db || !userId || !landmarkId) return null;
+  const snap = await getDoc(doc(db, 'reviews', `${userId}_${landmarkId}`));
+  const notes = snap.exists() ? snap.data().loveNotes : null;
+  return notes?.length ? notes[notes.length - 1] : null;
 }
 
 /** One reply level on a review -- see firestore.rules for who can read/write. */

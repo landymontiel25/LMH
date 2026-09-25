@@ -1,25 +1,8 @@
-// Star rating — read-only display (with average + count) or an interactive picker.
-export default function RatingStars({ value = 0, count = null, interactive = false, onChange, size = '1rem' }) {
+// Read-only star display for the crowd's average rating (avg + count) --
+// individual ratings are the tier system (I loved it / It was okay / Not
+// for me) now, not stars; this is only the aggregate community number.
+export default function RatingStars({ value = 0, count = null, size = '1rem' }) {
   const stars = [1, 2, 3, 4, 5];
-
-  if (interactive) {
-    return (
-      <span className="rating-stars interactive" style={{ fontSize: size }}>
-        {stars.map((s) => (
-          <button
-            key={s}
-            type="button"
-            className="star-btn"
-            aria-label={`${s} star${s > 1 ? 's' : ''}`}
-            onClick={() => onChange?.(s)}
-          >
-            {s <= value ? '★' : '☆'}
-          </button>
-        ))}
-      </span>
-    );
-  }
-
   const rounded = Math.round(value);
 
   // count === null → just render one rating's stars (no average/count, no empty state).
