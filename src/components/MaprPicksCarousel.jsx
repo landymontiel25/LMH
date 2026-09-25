@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getPickFeedback, votedIds, setPickFeedback } from '../lib/pickFeedback';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
+import { useFriends } from '../lib/FriendsContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useGeo } from '../lib/GeoContext';
 import { useBadges } from '../lib/BadgesContext';
@@ -21,6 +22,7 @@ const RESERVE = 8;
 
 export default function MaprPicksCarousel({ reviews, interests = [], checkedInIds = [], regionIds = [] }) {
   const { user } = useAuth();
+  const { myProfile } = useFriends();
   const { ratings } = useRatings();
   const { coords } = useGeo();
   const { reload: reloadBadges, actionsToday } = useBadges();
@@ -114,6 +116,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
               comment: commentWithLoveNotes(r),
             })),
             interests,
+            tasteIntro: myProfile?.tasteIntro || '',
             checkedInIds: excludeIds,
             weakCheckedInIds,
             regionIds,

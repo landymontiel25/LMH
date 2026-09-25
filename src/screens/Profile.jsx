@@ -25,6 +25,7 @@ import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals'
 import { completeOnboarding, hasCompletedOnboardingLocally, markOnboardingCompletedLocally } from '../lib/onboarding';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
+import TasteIntroStep from './TasteIntroStep';
 import PreferenceChips from '../components/PreferenceChips';
 import LandmarkThumb from '../components/LandmarkThumb';
 import FriendPopoverName from '../components/FriendPopoverName';
@@ -284,7 +285,7 @@ export default function Profile() {
   const [regionalRegionId, setRegionalRegionId] = useState(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [onboardingStep, setOnboardingStep] = useState(null); // null | 'preferences' | 'checkin'
+  const [onboardingStep, setOnboardingStep] = useState(null); // null | 'preferences' | 'tasteIntro' | 'checkin'
   const healedRef = useRef(false);
   // Which badge's description popover is open -- hover (desktop, with the
   // same short grace period as the header's profile popover) or tap
@@ -431,7 +432,8 @@ export default function Profile() {
 
   if (!user) return <SignInForm onSignedUp={() => setOnboardingStep('preferences')} />;
 
-  if (onboardingStep === 'preferences') return <OnboardingPreferences onDone={() => setOnboardingStep('checkin')} />;
+  if (onboardingStep === 'preferences') return <OnboardingPreferences onDone={() => setOnboardingStep('tasteIntro')} />;
+  if (onboardingStep === 'tasteIntro') return <TasteIntroStep onDone={() => setOnboardingStep('checkin')} />;
   if (onboardingStep === 'checkin') return <FirstCheckInStep onDone={() => setOnboardingStep(null)} />;
 
   const myIdx = entries.findIndex((e) => e.userId === user.uid);

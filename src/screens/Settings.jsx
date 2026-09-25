@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTheme } from '../lib/useTheme';
 import { useUnits, countryName } from '../lib/UnitsContext';
-import { setProfileVisibility, getUserProfile, saveHomeLocation } from '../lib/friends';
+import { setProfileVisibility, getUserProfile, saveHomeLocation, saveTasteIntro } from '../lib/friends';
 import { useAdminMode } from '../lib/AdminModeContext';
 import PreferenceChips from '../components/PreferenceChips';
 import LocationAutocomplete from '../components/LocationAutocomplete';
@@ -21,6 +21,32 @@ export default function Settings() {
   const [homeAddress, setHomeAddress] = useState(myProfile?.homeAddress || '');
   const [homeBusy, setHomeBusy] = useState(false);
   const [homeMsg, setHomeMsg] = useState(null);
+  const [tasteIntro, setTasteIntro] = useState(myProfile?.tasteIntro || '');
+  const [tasteBusy, setTasteBusy] = useState(false);
+  const [tasteMsg, setTasteMsg] = useState(null);
+
+  // myProfile loads asynchronously (FriendsContext), so the field would
+  // otherwise start permanently blank whenever this screen mounts before
+  // that first read lands -- sync it in once it does, but only if the user
+  // hasn't already started typing over it.
+  useEffect(() => {
+    if (myProfile?.tasteIntro && !tasteIntro) setTasteIntro(myProfile.tasteIntro);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myProfile?.tasteIntro]);
+
+  const saveTaste = async () => {
+    setTasteBusy(true);
+    setTasteMsg(null);
+    try {
+      await saveTasteIntro(user.uid, tasteIntro);
+      await reloadFriends();
+      setTasteMsg('Saved.');
+    } catch (e) {
+      setTasteMsg(e.message || 'Could not save — try again.');
+    } finally {
+      setTasteBusy(false);
+    }
+  };
 
   const pickHome = async (s) => {
     setHomeAddress(s.primary);
@@ -117,6 +143,39 @@ export default function Settings() {
         </p>
         <PreferenceChips />
       </div>
+
+      {firebaseEnabled && user && (
+        <div className="card section">
+          <h3 style={{ marginTop: 0 }}>{'\u{1F9E9}'} Tell Mapr What You Love</h3>
+          <p className="screen-subtitle" style={{ marginTop: -6 }}>
+            In your own words -- "I love racing, steak, pickleball, the boat... I like fancy, luxurious things." Mapr
+            reads this directly, no rating required.
+          </p>
+          <textarea
+            className="rating-comment"
+            rows={3}
+            maxLength={600}
+            placeholder="What are you already into?"
+            value={tasteIntro}
+            onChange={(e) => setTasteIntro(e.target.value)}
+            disabled={tasteBusy}
+          />
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            style={{ marginTop: 10 }}
+            disabled={tasteBusy || !tasteIntro.trim()}
+            onClick={saveTaste}
+          >
+            {tasteBusy ? 'Saving…' : 'Save'}
+          </button>
+          {tasteMsg && (
+            <p className="screen-subtitle" style={{ marginTop: 8 }}>
+              {tasteMsg}
+            </p>
+          )}
+        </div>
+      )}
 
       {firebaseEnabled && user && (
         <div className="card section">
