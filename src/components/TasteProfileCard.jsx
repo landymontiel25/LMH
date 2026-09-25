@@ -19,7 +19,12 @@ import TasteNudgeCard from './TasteNudgeCard';
 // reads.
 export default function TasteProfileCard() {
   const { user } = useAuth();
-  const { myProfile, reload: reloadFriends } = useFriends();
+  // profileFresh: true only once a REAL server read of the profile has
+  // landed this session. Before that, myProfile is at best the localStorage
+  // prefill from some earlier session (which can predate the taste picks
+  // entirely) -- rendering that as "you have no picks" is exactly what made
+  // the card look empty on app open until something else re-fetched it.
+  const { myProfile, profileFresh, reload: reloadFriends } = useFriends();
   const { myReviews } = useRatings();
   const [editing, setEditing] = useState(false);
   // Bridges the gap between "saveTasteBaseline's write resolved" and "the
@@ -57,6 +62,11 @@ export default function TasteProfileCard() {
   // tasteBaseline is populated the guard clause below skips it for good.
   useEffect(() => {
     if (!user || migratedRef.current || suppressMigrationRef.current) return;
+    // Never decide "there's no baseline, recover one from tasteIntro" off the
+    // localStorage prefill -- that snapshot can be from before the picks
+    // were ever saved, and acting on it would overwrite the real server
+    // baseline with whatever the stale text yields. Wait for a real read.
+    if (!profileFresh) return;
     if (myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length) return;
     if (!myProfile?.tasteIntro) return;
     const { baseline, remainingIntro } = extractLegacyBaselineFromIntro(myProfile.tasteIntro);
@@ -77,9 +87,27 @@ export default function TasteProfileCard() {
         migratedRef.current = false;
       }
     })();
-  }, [user, myProfile?.tasteIntro, myProfile?.tasteBaseline, reloadFriends]);
+  }, [user, profileFresh, myProfile?.tasteIntro, myProfile?.tasteBaseline, reloadFriends]);
 
   if (!user) return null;
+
+  // The server read hasn't landed yet (and nothing was just saved this
+  // session to show in its place): say so, instead of rendering the empty
+  // "answer a few quick picks" state -- or letting Edit open pre-filled
+  // with nothing -- against data that simply isn't here yet.
+  if (!profileFresh && !justSaved && !editing) {
+    return (
+      <div className="card section taste-profile-card">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile</h3>
+          <span className="tag" style={{ fontSize: '0.65rem' }}>Loading…</span>
+        </div>
+        <p className="screen-subtitle" style={{ margin: '6px 0 0' }}>
+          Loading what you've told Mapr…
+        </p>
+      </div>
+    );
+  }
 
   // justSaved (set the instant TasteNudgeCard's Save succeeds) wins over
   // myProfile until the reload below confirms it -- see the state comment.

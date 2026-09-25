@@ -50,7 +50,7 @@ export default function Mapr() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { myProfile } = useFriends();
+  const { myProfile, profileFresh } = useFriends();
   const { myPhotos } = useMyPhotos();
   const { myReviews } = useRatings();
   const { trip } = useTrip();
@@ -71,7 +71,10 @@ export default function Mapr() {
   const regionBoxRef = useRef(null);
 
   const hasTasteInfo = !!(myProfile?.tasteIntro || (myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length));
-  const showTasteNudge = !!user && !hasTasteInfo && !nudgeDismissed && !isTasteNudgeDismissed(user.uid);
+  // profileFresh: don't nag "you haven't told Mapr what you like" off the
+  // localStorage prefill -- until the real server read lands, the profile
+  // can look empty when it isn't.
+  const showTasteNudge = !!user && profileFresh && !hasTasteInfo && !nudgeDismissed && !isTasteNudgeDismissed(user.uid);
   const dismissNudge = () => {
     if (user) dismissTasteNudge(user.uid);
     setNudgeDismissed(true);
