@@ -2,13 +2,17 @@ import { ALL_LANDMARKS } from '../data/regions.js';
 
 // Per-region tag scoring for Mapr Picks. A "tag" is a landmark's category id
 // (food, history-culture, ...), the same ids signup interests use. Everything
-// here is scoped to one region: Milan's "history" never touches Miami's.
+// here is scoped to one region: Milan's "history" never touches Miami's,
+// except for the phased-out warm start in effectiveTagScores.
 //
 // Firestore shape on users/{uid}:
 //   tagScores[region][tag]   = score as of tagScoresAt (never above TAG_CAP)
 //   tagScoresAt[region][tag] = ms timestamp that score was last written
+//   tagCounts[region][tag]   = ratings behind that score (keeps climbing past the cap)
 //   tagBoosts[region][tag]   = 'yes' | 'no' -- answer to the at-cap prompt
 //   tagNotes[region][tag]    = free-text comment from that prompt
+//   picksShown[region][id]   = 'YYYY-MM-DD' a pick was last on screen, not yet settled
+//   timesShownNotVisited[region][id] = days it was shown and ignored
 //
 // Exponential decay is linear, so decaying one running total from its last
 // write equals decaying every rating from its own timestamp and summing.
@@ -23,8 +27,24 @@ export const SHORTLIST_SIZE = 30;
 // Most shortlist slots one tag can take, so a top category can't fill all
 // 30 by itself. A tag the user said "lean into it" to gets 1.5x the room.
 export const PER_TAG_LIMIT = 12;
+// A tag's first FULL_VALUE_RATINGS ratings move its score in full; later
+// ones count half, so a proven tag keeps reacting instead of piling up.
+export const FULL_VALUE_RATINGS = 5;
+// Other regions' scores lend WARM_START_WEIGHT of themselves to a region the
+// user is new to, fading linearly to zero by WARM_START_RATINGS local ratings.
+export const WARM_START_WEIGHT = 0.4;
+export const WARM_START_RATINGS = 15;
+// Scores this close count as a tie, and the tag with more ratings behind it wins.
+export const CLOSE_SCORE = 3;
+// Shortlist slots held for tags the user has barely rated.
+export const WILDCARD_SLOTS = 4;
+export const WILDCARD_MAX_RATINGS = 2;
+// Days a pick can sit on screen without a visit before its tag takes a
+// small hit, and how big that hit is (a "not for me" is -15).
+export const IGNORE_LIMIT = 3;
+export const IGNORE_DELTA = -3;
 // Bump when the stored shape or deltas change, so clients rebuild from reviews.
-export const TAG_SCORES_VERSION = 1;
+export const TAG_SCORES_VERSION = 2;
 
 const DAY_MS = 86400000;
 const UNRATEABLE = new Set(['dorms', 'campus-life']);
@@ -35,54 +55,90 @@ export function decayFactor(fromMs, nowMs) {
   return Math.pow(0.5, ageDays / HALF_LIFE_DAYS);
 }
 
-// One rating applied to one region's tag map. Returns only the tags it
+// One rating applied to one region's tag maps. Returns only the tags it
 // touched, plus which of them landed on the cap, so callers can merge-write.
-export function applyRating({ scores = {}, at = {} }, tags, tier, nowMs) {
+export function applyRating({ scores = {}, at = {}, counts = {} }, tags, tier, nowMs) {
   const delta = TAG_DELTAS[tier];
-  const nextScores = {};
-  const nextAt = {};
-  const capped = [];
-  if (delta == null) return { scores: nextScores, at: nextAt, capped };
+  const next = { scores: {}, at: {}, counts: {}, capped: [] };
+  if (delta == null) return next;
   for (const tag of new Set(tags || [])) {
-    const base = (scores[tag] || 0) * decayFactor(at[tag], nowMs);
-    const value = Math.min(TAG_CAP, base + delta);
-    nextScores[tag] = value;
-    nextAt[tag] = nowMs;
-    if (value >= TAG_CAP) capped.push(tag);
+    const prior = counts[tag] || 0;
+    const step = prior >= FULL_VALUE_RATINGS ? delta / 2 : delta;
+    const value = Math.min(TAG_CAP, (scores[tag] || 0) * decayFactor(at[tag], nowMs) + step);
+    next.scores[tag] = value;
+    next.at[tag] = nowMs;
+    next.counts[tag] = prior + 1;
+    if (value >= TAG_CAP) next.capped.push(tag);
   }
-  return { scores: nextScores, at: nextAt, capped };
+  return next;
 }
 
 // Replays a user's saved reviews oldest-first through applyRating, for users
-// who rated before tagScores existed. Same math as the live path.
+// who rated before the current TAG_SCORES_VERSION. Same math as the live path.
 export function rebuildTagScores(reviews) {
   const toMs = (r) => (r.updatedAt?.seconds ? r.updatedAt.seconds * 1000 : r.updatedAtMs || 0);
-  const tagScores = {};
-  const tagScoresAt = {};
+  const out = { tagScores: {}, tagScoresAt: {}, tagCounts: {} };
   const ordered = [...(reviews || [])].sort((a, b) => toMs(a) - toMs(b));
   for (const r of ordered) {
     const region = r.region;
     if (!region || !TAG_DELTAS[r.ratingTier]) continue;
-    const when = toMs(r) || Date.now();
-    const cur = { scores: tagScores[region] || {}, at: tagScoresAt[region] || {} };
-    const next = applyRating(cur, r.categories, r.ratingTier, when);
-    tagScores[region] = { ...cur.scores, ...next.scores };
-    tagScoresAt[region] = { ...cur.at, ...next.at };
+    const cur = {
+      scores: out.tagScores[region] || {},
+      at: out.tagScoresAt[region] || {},
+      counts: out.tagCounts[region] || {},
+    };
+    const next = applyRating(cur, r.categories, r.ratingTier, toMs(r) || Date.now());
+    out.tagScores[region] = { ...cur.scores, ...next.scores };
+    out.tagScoresAt[region] = { ...cur.at, ...next.at };
+    out.tagCounts[region] = { ...cur.counts, ...next.counts };
   }
-  return { tagScores, tagScoresAt };
+  return out;
 }
 
-// Decayed, capped scores for one region, with a 1.5x multiplier on any tag
-// the user said "yes, lean into it" to. Only this ranking view can exceed
-// the cap; the stored score never does.
-export function effectiveTagScores(profile, region, nowMs = Date.now()) {
+function decayedRegion(profile, region, nowMs) {
   const scores = profile?.tagScores?.[region] || {};
   const at = profile?.tagScoresAt?.[region] || {};
-  const boosts = profile?.tagBoosts?.[region] || {};
   const out = {};
   for (const [tag, raw] of Object.entries(scores)) {
-    const decayed = Math.min(TAG_CAP, Number(raw) || 0) * decayFactor(at[tag], nowMs);
-    out[tag] = boosts[tag] === 'yes' ? decayed * BOOST_MULTIPLIER : decayed;
+    out[tag] = Math.min(TAG_CAP, Number(raw) || 0) * decayFactor(at[tag], nowMs);
+  }
+  return out;
+}
+
+export function localRatingCount(profile, region) {
+  return Object.values(profile?.tagCounts?.[region] || {}).reduce((s, n) => s + (Number(n) || 0), 0);
+}
+
+// Weight other regions lend this one: 40% with no local ratings, 0 at 15.
+export function warmStartWeight(profile, region) {
+  return WARM_START_WEIGHT * Math.max(0, 1 - localRatingCount(profile, region) / WARM_START_RATINGS);
+}
+
+// Decayed, capped scores for one region, topped up by the warm start from
+// the user's other regions, with a 1.5x multiplier on any tag the user said
+// "yes, lean into it" to. Only this ranking view can exceed the cap; the
+// stored score never does.
+export function effectiveTagScores(profile, region, nowMs = Date.now()) {
+  const local = decayedRegion(profile, region, nowMs);
+  const w = warmStartWeight(profile, region);
+  const borrowed = {};
+  if (w > 0) {
+    const sums = {};
+    const seen = {};
+    for (const other of Object.keys(profile?.tagScores || {})) {
+      if (other === region) continue;
+      for (const [tag, v] of Object.entries(decayedRegion(profile, other, nowMs))) {
+        sums[tag] = (sums[tag] || 0) + v;
+        seen[tag] = (seen[tag] || 0) + 1;
+      }
+    }
+    for (const tag of Object.keys(sums)) borrowed[tag] = (sums[tag] / seen[tag]) * w;
+  }
+  const boosts = profile?.tagBoosts?.[region] || {};
+  const out = {};
+  for (const tag of new Set([...Object.keys(local), ...Object.keys(borrowed)])) {
+    const v = Math.min(TAG_CAP, (local[tag] || 0) + (borrowed[tag] || 0));
+    out[tag] = boosts[tag] === 'yes' ? v * BOOST_MULTIPLIER : v;
   }
   return out;
 }
@@ -127,29 +183,14 @@ function candidates(region, excludeIds) {
 const byDemand = (checkinCounts) => (a, b) =>
   (checkinCounts[b.id] || 0) - (checkinCounts[a.id] || 0) || (b.popularity || 0) - (a.popularity || 0);
 
-// Step 6: sum the user's effective tag scores over each landmark's tags and
-// keep the top SHORTLIST_SIZE, at most PER_TAG_LIMIT per tag. Ties (same
-// tag) break on check-in count, then the catalog's editorial popularity.
-// Places held back by the per-tag limit fill any slots left over, so a
-// small region still returns a full list.
-export function scoreShortlist({
-  scores,
-  region,
-  excludeIds = [],
-  checkinCounts = {},
-  boostedTags = [],
-  limit = SHORTLIST_SIZE,
-}) {
-  const demand = byDemand(checkinCounts);
-  const boosted = new Set(boostedTags);
-  const tagLimit = (tag) => (boosted.has(tag) ? Math.round(PER_TAG_LIMIT * BOOST_MULTIPLIER) : PER_TAG_LIMIT);
-  const ranked = candidates(region, excludeIds)
-    .map((l) => ({ l, score: (l.categories || []).reduce((s, t) => s + (scores[t] || 0), 0) }))
-    .sort((a, b) => b.score - a.score || demand(a.l, b.l));
+// Walks a ranked list keeping at most tagLimit(tag) per tag; anything held
+// back fills the leftover slots, so a small region still returns a full list.
+function takeWithTagLimit(ranked, limit, tagLimit) {
   const perTag = {};
   const kept = [];
   const heldBack = [];
   for (const item of ranked) {
+    if (kept.length >= limit) break;
     const tag = item.l.categories?.[0];
     if ((perTag[tag] || 0) < tagLimit(tag)) {
       perTag[tag] = (perTag[tag] || 0) + 1;
@@ -157,17 +198,77 @@ export function scoreShortlist({
     } else {
       heldBack.push(item);
     }
-    if (kept.length >= limit) break;
   }
-  return [...kept, ...heldBack]
-    .slice(0, limit)
-    .map(({ l, score }) => ({ ...l, tagScore: Math.round(score * 10) / 10 }));
+  return [...kept, ...heldBack].slice(0, limit);
+}
+
+// Step 6 (+ steps 9 and 10): sum the user's effective tag scores over each
+// landmark's tags. Scores within CLOSE_SCORE of each other rank by how many
+// ratings back the tag, then by check-in count and editorial popularity.
+// Keeps at most PER_TAG_LIMIT per tag, and holds WILDCARD_SLOTS for tags the
+// user has barely rated so picks can find new interests.
+export function scoreShortlist({
+  scores,
+  region,
+  tagCounts = {},
+  excludeIds = [],
+  checkinCounts = {},
+  boostedTags = [],
+  limit = SHORTLIST_SIZE,
+  wildcardSlots = WILDCARD_SLOTS,
+  random = Math.random,
+}) {
+  const demand = byDemand(checkinCounts);
+  const boosted = new Set(boostedTags);
+  const tagLimit = (tag) => (boosted.has(tag) ? Math.round(PER_TAG_LIMIT * BOOST_MULTIPLIER) : PER_TAG_LIMIT);
+  const pool = candidates(region, excludeIds);
+
+  // Wildcards: tags outside the user's top 3, rated at most twice here, and
+  // not disliked. One place per tag (its most-visited), tags in random order.
+  const topTags = new Set(
+    Object.entries(scores)
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([t]) => t)
+  );
+  const wildTags = [...new Set(pool.map((l) => l.categories?.[0]))].filter(
+    (t) => t && !topTags.has(t) && (tagCounts[t] || 0) <= WILDCARD_MAX_RATINGS && (scores[t] || 0) >= 0
+  );
+  for (let i = wildTags.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [wildTags[i], wildTags[j]] = [wildTags[j], wildTags[i]];
+  }
+  const wildcards = wildTags
+    .slice(0, wildcardSlots)
+    .map((t) => pool.filter((l) => l.categories?.[0] === t).sort(demand)[0])
+    .filter(Boolean);
+  const wildIds = new Set(wildcards.map((l) => l.id));
+
+  const scoreOf = (l) => (l.categories || []).reduce((s, t) => s + (scores[t] || 0), 0);
+  const countOf = (l) => tagCounts[l.categories?.[0]] || 0;
+  const ranked = pool
+    .filter((l) => !wildIds.has(l.id))
+    .map((l) => ({ l, score: scoreOf(l) }))
+    .sort(
+      (a, b) =>
+        Math.floor(b.score / CLOSE_SCORE) - Math.floor(a.score / CLOSE_SCORE) ||
+        countOf(b.l) - countOf(a.l) ||
+        b.score - a.score ||
+        demand(a.l, b.l)
+    );
+  const main = takeWithTagLimit(ranked, limit - wildcards.length, tagLimit);
+  const round = (n) => Math.round(n * 10) / 10;
+  return [
+    ...main.map(({ l, score }) => ({ ...l, tagScore: round(score), tagRatings: countOf(l) })),
+    ...wildcards.map((l) => ({ ...l, tagScore: round(scoreOf(l)), tagRatings: countOf(l), wildcard: true })),
+  ];
 }
 
 // Step 8: no rating signal in this region yet. Landmarks in the user's
 // signup interests (built-in category ids, plus any landmarks their custom
-// "Add Your Own" interests matched) come first, most-checked-in first. The
-// rest of the region fills out the shortlist in the same order.
+// "Add Your Own" interests matched) come first, most-checked-in first, at
+// most PER_TAG_LIMIT per tag. The rest of the region fills out the list.
 export function coldStartShortlist({
   region,
   interests = [],
@@ -180,7 +281,8 @@ export function coldStartShortlist({
   const custom = new Set(customMatchIds);
   const fits = (l) => custom.has(`${l.regionId}/${l.id}`) || (l.categories || []).some((c) => wanted.has(c));
   const pool = candidates(region, excludeIds).sort(byDemand(checkinCounts));
-  return [...pool.filter(fits), ...pool.filter((l) => !fits(l))].slice(0, limit).map((l) => ({ ...l, tagScore: 0 }));
+  const ranked = [...pool.filter(fits), ...pool.filter((l) => !fits(l))].map((l) => ({ l }));
+  return takeWithTagLimit(ranked, limit, () => PER_TAG_LIMIT).map(({ l }) => ({ ...l, tagScore: 0, tagRatings: 0 }));
 }
 
 const boostedTagsFor = (profile, region) =>
@@ -194,7 +296,91 @@ export function buildShortlist({ profile, region, now = Date.now(), ...rest }) {
   return {
     coldStart: !hasSignal,
     shortlist: hasSignal
-      ? scoreShortlist({ scores, region, boostedTags: boostedTagsFor(profile, region), ...rest })
+      ? scoreShortlist({
+          scores,
+          region,
+          tagCounts: profile?.tagCounts?.[region] || {},
+          boostedTags: boostedTagsFor(profile, region),
+          ...rest,
+        })
       : coldStartShortlist({ region, ...rest }),
   };
+}
+
+// Step 13. Settles picks shown on an earlier day: a visit (or a vote, or a
+// rating) clears the landmark's ignore count; otherwise that day counts as
+// one ignore, and the IGNORE_LIMIT-th one nudges its tag down by
+// IGNORE_DELTA. Returns full replacement maps plus the tag scores to patch.
+export function settleShownPicks(profile, { engagedIds = [], today, nowMs = Date.now() }) {
+  const engaged = new Set(engagedIds);
+  const picksShown = {};
+  const ignored = {};
+  const nudges = [];
+  let changed = false;
+  for (const [region, ids] of Object.entries(profile?.timesShownNotVisited || {})) {
+    for (const [id, n] of Object.entries(ids || {})) {
+      if (engaged.has(id)) changed = true;
+      else (ignored[region] ||= {})[id] = n;
+    }
+  }
+  for (const [region, ids] of Object.entries(profile?.picksShown || {})) {
+    for (const [id, day] of Object.entries(ids || {})) {
+      if (engaged.has(id)) {
+        changed = true;
+        if (ignored[region]) delete ignored[region][id];
+      } else if (day < today) {
+        changed = true;
+        const n = ((ignored[region] ||= {})[id] || 0) + 1;
+        ignored[region][id] = n;
+        const tag = ALL_LANDMARKS.find((l) => l.regionId === region && l.id === id)?.categories?.[0];
+        if (n === IGNORE_LIMIT && tag) nudges.push({ region, tag });
+      } else {
+        (picksShown[region] ||= {})[id] = day;
+      }
+    }
+  }
+  const scorePatch = {};
+  for (const { region, tag } of nudges) {
+    const key = `${region}/${tag}`;
+    const cur = scorePatch[key] || {
+      value: Number(profile?.tagScores?.[region]?.[tag]) || 0,
+      at: profile?.tagScoresAt?.[region]?.[tag],
+    };
+    scorePatch[key] = {
+      region,
+      tag,
+      value: Math.min(TAG_CAP, cur.value * decayFactor(cur.at, nowMs) + IGNORE_DELTA),
+      at: nowMs,
+    };
+  }
+  return { changed, picksShown, timesShownNotVisited: ignored, scorePatches: Object.values(scorePatch) };
+}
+
+// Step 16. Tag multipliers for the time a plan is FOR (not when it's being
+// built). Only positive scores get multiplied, so a disliked tag never gets
+// pushed further down by its time slot.
+export const TIME_SLOTS = [
+  { id: 'morning', label: 'morning (6-11am)', start: 6, end: 11, boosts: { 'parks-nature': 1.2, 'history-culture': 1.1 } },
+  { id: 'lunch', label: 'lunch (11am-2pm)', start: 11, end: 14, boosts: { food: 1.3 } },
+  { id: 'afternoon', label: 'afternoon (2-5pm)', start: 14, end: 17, boosts: { 'art-museums': 1.2, 'history-culture': 1.2 } },
+  { id: 'dinner', label: 'dinner (5-8pm)', start: 17, end: 20, boosts: { food: 1.3 } },
+  { id: 'night', label: 'night (8pm-3am)', start: 20, end: 27, boosts: { 'local-life': 1.3, entertainment: 1.2 } },
+];
+// Friday and Saturday nights lean harder into bars and clubs.
+export const WEEKEND_NIGHT_BOOSTS = { 'local-life': 1.5, entertainment: 1.3 };
+
+// day: 0 = Sunday ... 6 = Saturday, hour: 0-23 local time.
+export function timeSlotFor(day, hour) {
+  const h = hour < 3 ? hour + 24 : hour;
+  const slot = TIME_SLOTS.find((s) => h >= s.start && h < s.end) || null;
+  // After midnight still belongs to the night before.
+  const nightOf = hour < 3 ? (day + 6) % 7 : day;
+  const weekendNight = slot?.id === 'night' && (nightOf === 5 || nightOf === 6);
+  return { slot, weekendNight, boosts: weekendNight ? WEEKEND_NIGHT_BOOSTS : slot?.boosts || {} };
+}
+
+export function applyTimeSlot(scores, boosts) {
+  const out = {};
+  for (const [tag, v] of Object.entries(scores)) out[tag] = v > 0 && boosts[tag] ? v * boosts[tag] : v;
+  return out;
 }
