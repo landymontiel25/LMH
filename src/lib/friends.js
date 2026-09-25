@@ -120,6 +120,26 @@ export async function saveTasteIntro(uid, text) {
   await setDoc(doc(db, 'users', uid), { tasteIntro: (text || '').trim().slice(0, 2000), updatedAt: serverTimestamp() }, { merge: true });
 }
 
+// Situational taste, separate from the general baseline above: what they
+// want on a weekday vs a weekend, and in a chill/relaxed vs active/physical
+// mood -- e.g. "I'll go to a bar or club on the weekend, not on a Tuesday."
+// { weekday, weekend, chill, active }, each free text. See
+// composeContextPreferences (tasteQuestions.js) for how these actually
+// reach the AI -- only the day-type that matches the REAL current day is
+// used automatically; both mood lines are always included since mood has
+// no reliable automatic signal. setDoc with merge:true replaces the whole
+// contextPreferences field (a single top-level key), so re-saving from the
+// edit card cleanly overwrites old text instead of needing per-field
+// updates.
+export async function saveContextPreferences(uid, prefs) {
+  if (!db || !uid) return;
+  const clean = {};
+  for (const key of ['weekday', 'weekend', 'chill', 'active']) {
+    clean[key] = (prefs?.[key] || '').trim().slice(0, 1000);
+  }
+  await setDoc(doc(db, 'users', uid), { contextPreferences: clean, updatedAt: serverTimestamp() }, { merge: true });
+}
+
 // The structured like/dislike answers from TasteNudgeCard -- separate from
 // the free-text tasteIntro above so re-editing it (see TasteProfileCard's
 // Edit button) cleanly REPLACES the old picks instead of appending onto a
