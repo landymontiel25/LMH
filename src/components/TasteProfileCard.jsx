@@ -98,13 +98,11 @@ export default function TasteProfileCard() {
   if (!profileFresh && !justSaved && !editing) {
     return (
       <div className="card section taste-profile-card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile</h3>
-          <span className="tag" style={{ fontSize: '0.65rem' }}>Loading…</span>
+        <div className="taste-head">
+          <span className="taste-title">Taste Profile</span>
+          <span className="tag">Loading…</span>
         </div>
-        <p className="screen-subtitle" style={{ margin: '6px 0 0' }}>
-          Loading what you've told Mapr…
-        </p>
+        <p className="taste-note">Loading what you've told Mapr…</p>
       </div>
     );
   }
@@ -155,13 +153,13 @@ export default function TasteProfileCard() {
   if (sampleCount < 2) {
     return (
       <div className="card section taste-profile-card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile</h3>
+        <div className="taste-head">
+          <span className="taste-title">Taste Profile</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}>
-            {hasBaseline ? `${'\u{270F}\u{FE0F}'} Edit` : `${'\u{2795}'} Answer a few quick picks`}
+            {hasBaseline ? 'Edit' : 'Answer a few quick picks'}
           </button>
         </div>
-        <p className="screen-subtitle" style={{ margin: '6px 0 0' }}>
+        <p className="taste-note">
           Rate a couple more places (or answer the quick-pick questions) and Mapr can start scoring how well it
           actually knows your taste.
         </p>
@@ -171,23 +169,30 @@ export default function TasteProfileCard() {
 
   return (
     <div className="card section taste-profile-card">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile — {confidence}% confident</h3>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}>
-          {'\u{270F}\u{FE0F}'} Edit
+      <div className="taste-head">
+        <button type="button" className="taste-title" onClick={startEditing} aria-label="Edit your taste profile">
+          Taste Profile
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m9 6 6 6-6 6" />
+          </svg>
         </button>
+        <div className="taste-meter">
+          <div
+            className="level-bar-track"
+            role="progressbar"
+            aria-valuenow={confidence}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div className="level-bar-fill" style={{ width: `${confidence}%` }} />
+          </div>
+          <div className="taste-pct">
+            <strong>{confidence}%</strong>
+            <span>confident</span>
+          </div>
+        </div>
       </div>
-      <div
-        className="level-bar-track"
-        style={{ marginTop: 8 }}
-        role="progressbar"
-        aria-valuenow={confidence}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div className="level-bar-fill" style={{ width: `${confidence}%` }} />
-      </div>
-      <p className="screen-subtitle" style={{ margin: '6px 0 0' }}>
+      <p className="taste-note">
         How well Mapr can predict a rating of yours from your OTHER ratings alone. The more you rate — across
         different kinds of places — the higher this climbs.
       </p>

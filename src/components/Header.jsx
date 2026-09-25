@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
@@ -11,7 +11,7 @@ import { subscribeMyNotifications } from '../lib/notifications';
 // live inside this dropdown rather than as their own header icon -- a
 // second always-visible icon here has no room next to the wordmark on a
 // narrow phone.
-function ProfileMenu() {
+export function ProfileMenu() {
   const { user, firebaseEnabled } = useAuth();
   const { myUsername, requests } = useFriends();
   const navigate = useNavigate();
@@ -75,15 +75,26 @@ function ProfileMenu() {
 
   const name = myUsername ? `@${myUsername}` : user.displayName || 'Explorer';
   const notificationCount = unread + requests.length;
+  // Initials for the avatar: "Landy Montiel" -> LM, else the username's first two letters.
+  const words = (user.displayName || '').trim().split(/\s+/).filter(Boolean);
+  const initials = (
+    words.length >= 2 ? words[0][0] + words[words.length - 1][0] : (myUsername || words[0] || 'Explorer').slice(0, 2)
+  ).toUpperCase();
 
   return (
     <div className="profile-menu" ref={ref} onMouseEnter={openNow} onMouseLeave={closeSoon}>
-      <button type="button" className="score-chip profile-menu-trigger" onClick={() => setOpen((o) => !o)}>
-        <span className="score-chip-pts">{name}</span>
-        <span className="profile-menu-caret">{'▾'}</span>
+      <button
+        type="button"
+        className="profile-avatar profile-menu-trigger"
+        title={name}
+        aria-label={`${name} menu`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {initials}
       </button>
       {open && (
         <div className="points-popover">
+          <div className="points-popover-name">{name}</div>
           <div className="points-popover-joined">This Week</div>
           <div>
             {'\u{1F3C6}'} {me?.rank ? `#${me.rank}` : '—'} {'·'} {me ? me.points.toLocaleString() : 0} pts
@@ -135,6 +146,9 @@ function ProfileMenu() {
 }
 
 export default function Header() {
+  // The Plan (Mapr) screen draws its own top row (wordmark, city, avatar).
+  const { pathname } = useLocation();
+  if (pathname === '/mapr') return null;
   return (
     <header className="app-header">
       <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flex: 1, minWidth: 0 }}>

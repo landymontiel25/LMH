@@ -29,8 +29,12 @@ export default function DiscoveryStatsCard() {
 
   return (
     <div className="card section discovery-stats-card">
-      <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>{minutesSaved}</div>
-      <div className="screen-subtitle" style={{ margin: 0 }}>minutes saved planning today</div>
+      <div className="stat-label">Today</div>
+      <div className="stat-row">
+        <span className="stat-num">{minutesSaved}</span>
+        <span className="stat-unit">min</span>
+      </div>
+      <div className="stat-sub">saved planning today</div>
     </div>
   );
 }
