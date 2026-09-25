@@ -22,6 +22,16 @@ export default function TasteProfileCard() {
   const { myProfile, reload: reloadFriends } = useFriends();
   const { myReviews } = useRatings();
   const [editing, setEditing] = useState(false);
+  // Bridges the gap between "saveTasteBaseline's write resolved" and "the
+  // FriendsContext re-render carrying the reloaded myProfile has actually
+  // happened" -- without this, closing the editor right after Save could
+  // render once (or more) against the STILL-STALE myProfile from before the
+  // reload settled, showing the old/empty state until something else (like
+  // reopening and closing Edit again) happened to trigger another render
+  // after the reload had caught up. Cleared once reloadFriends() in
+  // closeEditor below actually resolves, so myProfile is the source of
+  // truth again from then on.
+  const [justSaved, setJustSaved] = useState(null);
   const migratedRef = useRef(false);
   // Set the instant the Edit card is opened, and checked again right before
   // the migration below actually writes anything. Without this, opening
@@ -71,6 +81,12 @@ export default function TasteProfileCard() {
 
   if (!user) return null;
 
+  // justSaved (set the instant TasteNudgeCard's Save succeeds) wins over
+  // myProfile until the reload below confirms it -- see the state comment.
+  const effectiveBaseline = justSaved ? justSaved.baseline : myProfile?.tasteBaseline;
+  const effectiveNotes = justSaved ? justSaved.notes : myProfile?.tasteBaselineNotes;
+  const effectiveCategoryNotes = justSaved ? justSaved.categoryNotes : myProfile?.tasteBaselineCategoryNotes;
+
   const reviews = [
     ...Object.values(myReviews).map((r) => ({
       tier: r.ratingTier,
@@ -80,23 +96,28 @@ export default function TasteProfileCard() {
       highlights: r.highlights || [],
       updatedAt: r.updatedAt,
     })),
-    ...baselineToSyntheticReviews(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
+    ...baselineToSyntheticReviews(effectiveBaseline, effectiveCategoryNotes),
   ];
   const { confidence, sampleCount } = computeTasteConfidence(reviews);
-  const hasBaseline = !!(myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length);
+  const hasBaseline = !!(effectiveBaseline && Object.keys(effectiveBaseline).length);
 
-  const closeEditor = async () => {
+  const closeEditor = async (saved) => {
+    if (saved) setJustSaved(saved);
     setEditing(false);
     await reloadFriends();
+    // myProfile is caught up now (or this was just a dismiss with nothing
+    // to catch up on) -- go back to trusting it as the single source of
+    // truth instead of holding onto this forever.
+    setJustSaved(null);
   };
 
   if (editing) {
     return (
       <TasteNudgeCard
         editing
-        initialBaseline={myProfile?.tasteBaseline}
-        initialNotes={myProfile?.tasteBaselineNotes}
-        initialCategoryNotes={myProfile?.tasteBaselineCategoryNotes}
+        initialBaseline={effectiveBaseline}
+        initialNotes={effectiveNotes}
+        initialCategoryNotes={effectiveCategoryNotes}
         onDone={closeEditor}
         onDismiss={closeEditor}
       />
