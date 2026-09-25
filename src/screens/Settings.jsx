@@ -9,7 +9,6 @@ import { useAdminMode } from '../lib/AdminModeContext';
 import { authErrorMessage } from '../lib/authErrors';
 import PreferenceChips from '../components/PreferenceChips';
 import LocationAutocomplete from '../components/LocationAutocomplete';
-import { Calendar as CalendarIcon, CalendarDays as CalendarDaysIcon, CircleCheck as CircleCheckIcon, CircleX as CircleXIcon, Coffee as CoffeeIcon, Globe as GlobeIcon, House as HouseIcon, Lightbulb as LightbulbIcon, Lock as LockIcon, Moon as MoonIcon, PartyPopper as PartyPopperIcon, Puzzle as PuzzleIcon, Ruler as RulerIcon, Settings as SettingsIcon, Star as StarIcon, Sun as SunIcon, Wrench as WrenchIcon, X as XIcon, Zap as ZapIcon } from 'lucide-react';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -136,24 +135,24 @@ export default function Settings() {
   return (
     <div>
       <h1 className="screen-title">
-        <span><SettingsIcon aria-hidden="true" /></span> Settings
+        <span>{'\u{2699}\u{FE0F}'}</span> Settings
       </h1>
       <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 24 }} onClick={() => navigate(-1)}>
         {'\u{2190}'} Back
       </button>
 
       <div className="card section">
-        <h3 style={{ marginTop: 0 }}>{theme === 'dark' ? <MoonIcon aria-hidden="true" /> : <SunIcon aria-hidden="true" />} Appearance</h3>
+        <h3 style={{ marginTop: 0 }}>{theme === 'dark' ? '\u{1F319}' : '\u{2600}\u{FE0F}'} Appearance</h3>
         <p className="screen-subtitle" style={{ marginTop: 0 }}>
           {theme === 'dark' ? 'Dark mode is on.' : 'Light mode is on.'}
         </p>
         <button type="button" className="btn btn-block btn-ghost" onClick={toggleTheme}>
-          {theme === 'dark' ? <><SunIcon aria-hidden="true" /> Switch to Light Mode</> : <><MoonIcon aria-hidden="true" /> Switch to Dark Mode</>}
+          {theme === 'dark' ? `${'\u{2600}\u{FE0F}'} Switch to Light Mode` : `${'\u{1F319}'} Switch to Dark Mode`}
         </button>
       </div>
 
       <div className="card section">
-        <h3 style={{ marginTop: 0 }}><RulerIcon aria-hidden="true" /> Units</h3>
+        <h3 style={{ marginTop: 0 }}>{'\u{1F4CF}'} Units</h3>
         <p className="screen-subtitle" style={{ marginTop: 0 }}>
           {units === 'imperial' ? 'Distances show in feet and miles.' : 'Distances show in meters and kilometers.'}
           {mode === 'auto' && (
@@ -187,7 +186,7 @@ export default function Settings() {
       </div>
 
       <div className="card section">
-        <h3 style={{ marginTop: 0 }}><StarIcon aria-hidden="true" /> My Preferences</h3>
+        <h3 style={{ marginTop: 0 }}>{'⭐'} My Preferences</h3>
         <p className="screen-subtitle" style={{ marginTop: -6 }}>
           Save what you're usually into — Setup can fill it in for you with one tap.
         </p>
@@ -196,7 +195,7 @@ export default function Settings() {
 
       {firebaseEnabled && user && (
         <div className="card section">
-          <h3 style={{ marginTop: 0 }}><PuzzleIcon aria-hidden="true" /> Tell Mapr What You Love</h3>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F9E9}'} Tell Mapr What You Love</h3>
           <p className="screen-subtitle" style={{ marginTop: -6 }}>
             In your own words -- "I love racing, steak, pickleball, the boat... I like fancy, luxurious things." Mapr
             reads this directly, no rating required.
@@ -229,7 +228,7 @@ export default function Settings() {
 
       {firebaseEnabled && user && (
         <div className="card section">
-          <h3 style={{ marginTop: 0 }}><CalendarDaysIcon aria-hidden="true" /> Preferences by Situation</h3>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F5D3}\u{FE0F}'} Preferences by Situation</h3>
           <p className="screen-subtitle" style={{ marginTop: -6 }}>
             The taste above is your general baseline. This is for when it actually depends -- you might want a bar or
             a club on a Saturday night and nothing like that on a Tuesday. Fill in whichever apply; Mapr only uses
@@ -237,10 +236,10 @@ export default function Settings() {
             them at once.
           </p>
           {[
-            { key: 'weekday', icon: <CalendarIcon aria-hidden="true" />, label: 'On weekdays', placeholder: 'e.g. "Quiet dinners, coffee shops, nothing too late"' },
-            { key: 'weekend', icon: <PartyPopperIcon aria-hidden="true" />, label: 'On weekends', placeholder: 'e.g. "I\'m up for a bar or a club, later nights"' },
-            { key: 'chill', icon: <CoffeeIcon aria-hidden="true" />, label: 'When I want something chill', placeholder: 'e.g. "A quiet walk, a museum, low-key cafes"' },
-            { key: 'active', icon: <ZapIcon aria-hidden="true" />, label: 'When I want something active', placeholder: 'e.g. "Pickleball, hiking, anything with movement"' },
+            { key: 'weekday', icon: '\u{1F4C5}', label: 'On weekdays', placeholder: 'e.g. "Quiet dinners, coffee shops, nothing too late"' },
+            { key: 'weekend', icon: '\u{1F389}', label: 'On weekends', placeholder: 'e.g. "I\'m up for a bar or a club, later nights"' },
+            { key: 'chill', icon: '\u{1F634}', label: 'When I want something chill', placeholder: 'e.g. "A quiet walk, a museum, low-key cafes"' },
+            { key: 'active', icon: '⚡', label: 'When I want something active', placeholder: 'e.g. "Pickleball, hiking, anything with movement"' },
           ].map((f) => (
             <div key={f.key} className="field" style={{ marginTop: 12 }}>
               <label htmlFor={`ctx-${f.key}`}>
@@ -280,7 +279,7 @@ export default function Settings() {
 
       {firebaseEnabled && user && (
         <div className="card section">
-          <h3 style={{ marginTop: 0 }}><HouseIcon aria-hidden="true" /> Home Address</h3>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F3E0}'} Home Address</h3>
           <p className="screen-subtitle" style={{ marginTop: 0 }}>
             Helps Mapr learn your taste around where you actually live.
           </p>
@@ -311,7 +310,7 @@ export default function Settings() {
 
       {firebaseEnabled && user && (
         <div className="card section">
-          <h3 style={{ marginTop: 0 }}>{myProfile?.public ? <GlobeIcon aria-hidden="true" /> : <LockIcon aria-hidden="true" />} Privacy</h3>
+          <h3 style={{ marginTop: 0 }}>{myProfile?.public ? '\u{1F30E}' : '\u{1F512}'} Privacy</h3>
           <p className="screen-subtitle" style={{ marginTop: 0 }}>
             {myProfile?.public
               ? 'Your reviews and check-in photos are visible to everyone.'
@@ -326,8 +325,8 @@ export default function Settings() {
             {visBusy
               ? '…'
               : myProfile?.public
-              ? <><GlobeIcon aria-hidden="true" /> Public — tap to make Private</>
-              : <><LockIcon aria-hidden="true" /> Private — tap to make Public</>}
+              ? `${'\u{1F30E}'} Public — tap to make Private`
+              : `${'\u{1F512}'} Private — tap to make Public`}
           </button>
           {visMsg && (
             <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
@@ -339,7 +338,7 @@ export default function Settings() {
 
       {canUseAdminMode && (
         <div className="card section">
-          <h3 style={{ marginTop: 0 }}><WrenchIcon aria-hidden="true" /> Admin Mode</h3>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F6E0}\u{FE0F}'} Admin Mode</h3>
           <p className="screen-subtitle" style={{ marginTop: 0 }}>
             {adminMode
               ? 'On for this device. Editing/deleting a submitted landmark from its page or map pin changes it for everyone, immediately — there is no undo.'
@@ -350,7 +349,7 @@ export default function Settings() {
             className={`btn btn-block ${adminMode ? 'btn-danger' : 'btn-ghost'}`}
             onClick={() => setAdminMode(!adminMode)}
           >
-            {adminMode ? <><XIcon aria-hidden="true" /> Turn Off Admin Mode</> : <><WrenchIcon aria-hidden="true" /> Turn On Admin Mode</>}
+            {adminMode ? `${'\u{2715}'} Turn Off Admin Mode` : `${'\u{1F6E0}\u{FE0F}'} Turn On Admin Mode`}
           </button>
         </div>
       )}
@@ -360,7 +359,7 @@ export default function Settings() {
       {firebaseEnabled && user && (
         <div className="card section">
           <Link to="/request-feature" className="btn btn-ghost btn-block">
-            <LightbulbIcon aria-hidden="true" /> Request a Feature
+            {'\u{1F4A1}'} Request a Feature
           </Link>
           {!user.emailVerified && (
             <div style={{ marginTop: 12 }}>
@@ -419,15 +418,7 @@ export default function Settings() {
             className={`tag ${user.emailVerified ? 'tag-free' : 'tag-error'}`}
             style={{ display: 'block', textAlign: 'center', marginTop: 12 }}
           >
-            {user.emailVerified ? (
-              <>
-                <CircleCheckIcon aria-hidden="true" /> Your email has been verified.
-              </>
-            ) : (
-              <>
-                <CircleXIcon aria-hidden="true" /> Your email isn't verified yet.
-              </>
-            )}
+            {user.emailVerified ? '\u{2705} Your email has been verified.' : "\u{274C} Your email isn't verified yet."}
           </p>
         </div>
       )}

@@ -5,7 +5,6 @@ import { useFriends } from '../lib/FriendsContext';
 import { acceptRequest, declineRequest } from '../lib/friends';
 import { subscribeMyNotifications, markNotificationRead } from '../lib/notifications';
 import { ALL_LANDMARKS } from '../data/regions';
-import { Bell as BellIcon, Megaphone as MegaphoneIcon, Ticket as TicketIcon, Users as UsersIcon } from 'lucide-react';
 
 // Everything that can ask for your attention, in one place, grouped by what
 // it actually is rather than one flat feed: friend requests (their own
@@ -70,7 +69,7 @@ export default function Notifications() {
   return (
     <div>
       <h1 className="screen-title">
-        <span><BellIcon aria-hidden="true" /></span> Notifications
+        <span>{'\u{1F514}'}</span> Notifications
       </h1>
 
       {isEmpty && (
@@ -79,7 +78,7 @@ export default function Notifications() {
 
       {requests.length > 0 && (
         <div className="card section">
-          <h3 style={{ marginTop: 0 }}><UsersIcon aria-hidden="true" /> Friend Requests</h3>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F465}'} Friend Requests</h3>
           {requests.map((r) => (
             <div key={r.id} className="friend-row">
               <span>@{r.fromName}</span>
@@ -108,7 +107,7 @@ export default function Notifications() {
 
       {groupInvites.length > 0 && (
         <div className="card section">
-          <h3 style={{ marginTop: 0 }}><TicketIcon aria-hidden="true" /> Group Trip Invites</h3>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F3AB}'} Group Trip Invites</h3>
           {groupInvites.map((n) => (
             <div
               key={n.id}
@@ -136,7 +135,7 @@ export default function Notifications() {
 
       {otherUpdates.length > 0 && (
         <div className="card section">
-          <h3 style={{ marginTop: 0 }}><MegaphoneIcon aria-hidden="true" /> Other Updates</h3>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F4E3}'} Other Updates</h3>
           {otherUpdates.map((n) => (
             <div
               key={n.id}

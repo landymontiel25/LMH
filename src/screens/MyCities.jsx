@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useBadges } from '../lib/BadgesContext';
 import CityList from '../components/CityList';
-import { Building2 as Building2Icon } from 'lucide-react';
 
 // Just the cities list, on its own -- Your Stats' "cities" tile used to open
 // a modal; this is a real page instead, matching "check-ins" and the friend
@@ -29,7 +28,7 @@ export default function MyCities() {
         {'←'} Back to Profile
       </button>
       <h1 className="screen-title">
-        <span><Building2Icon aria-hidden="true" /></span> Cities you've visited
+        <span>{'\u{1F3D9}\u{FE0F}'}</span> Cities you've visited
       </h1>
       <CityList cityIds={stats?.cityIds} cityPoints={stats?.cityPoints} cityLastVisit={stats?.cityLastVisit} />
     </div>

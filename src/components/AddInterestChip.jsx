@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { matchesSearch } from '../lib/search';
-import { Plus as PlusIcon } from 'lucide-react';
 
 export const OTHER_INTERESTS = [
   'Shopping',
@@ -61,7 +60,7 @@ export default function AddInterestChip({ existing, onAdd }) {
           setOpen(true);
         }}
       >
-        <span className="chip-icon"><PlusIcon aria-hidden="true" /></span>
+        <span className="chip-icon">{'\u{2795}'}</span>
         <span>Add Your Own</span>
       </button>
     );

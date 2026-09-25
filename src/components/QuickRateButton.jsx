@@ -7,7 +7,6 @@ import { useRatings } from '../lib/RatingsContext';
 import { submitReview } from '../lib/reviews';
 import { isRateable } from '../lib/ratingFlow';
 import RatingFlow from './RatingFlow';
-import { Check as CheckIcon, Star as StarIcon } from 'lucide-react';
 
 // TEMPORARY. A "Rate" pill next to a landmark's name so places checked
 // into before the rating flow existed can be rated now. Rating normally
@@ -82,22 +81,14 @@ export default function QuickRateButton({ landmark }) {
         className={`btn btn-ghost btn-tight quick-rate-btn ${mine ? 'rated' : ''}`}
         onClick={openModal}
       >
-        {mine ? (
-          <>
-            <CheckIcon aria-hidden="true" /> Rated · Edit
-          </>
-        ) : (
-          <>
-            <StarIcon aria-hidden="true" /> Rate
-          </>
-        )}
+        {mine ? '\u{2713} Rated \u{00B7} Edit' : '\u{2B50} Rate'}
       </button>
       {open &&
         createPortal(
           <div className="modal-backdrop" onClick={close}>
             <div className="modal-card" onClick={(e) => e.stopPropagation()}>
               <h3 style={{ marginTop: 0 }}>
-                <StarIcon aria-hidden="true" /> {mine ? 'Edit your rating' : 'Rate'} {mine ? 'of ' : ''}
+                {'\u{2B50}'} {mine ? 'Edit your rating' : 'Rate'} {mine ? 'of ' : ''}
                 {landmark.name}
               </h3>
               <p className="screen-subtitle" style={{ marginTop: 0 }}>

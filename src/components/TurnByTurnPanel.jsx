@@ -1,6 +1,5 @@
 import { useUnits, formatDistance } from '../lib/UnitsContext';
 import DirectionsButton from './DirectionsButton';
-import { Car as CarIcon, Compass as CompassIcon, Flag as FlagIcon, Footprints as FootprintsIcon, RefreshCw as RefreshCwIcon, X as XIcon } from 'lucide-react';
 
 const minutes = (sec) => Math.max(1, Math.round(sec / 60));
 
@@ -25,10 +24,10 @@ export default function TurnByTurnPanel({ stop, loading, error, data, onRefresh,
     <div className="card turn-panel">
       <div className="turn-panel-head">
         <h3 style={{ margin: 0 }}>
-          <CompassIcon aria-hidden="true" /> To {stop.name}
+          {'\u{1F9ED}'} To {stop.name}
         </h3>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-          <XIcon aria-hidden="true" /> Close
+          {'\u{2715}'} Close
         </button>
       </div>
 
@@ -55,7 +54,7 @@ export default function TurnByTurnPanel({ stop, loading, error, data, onRefresh,
           <div className="turn-panel-summary">
             <span className="turn-panel-eta">{formatDuration(data.durationSeconds)}</span>
             <span>
-              {formatDistance(data.distanceMeters, units)} · {data.mode === 'WALK' ? <><FootprintsIcon aria-hidden="true" /> Walking</> : <><CarIcon aria-hidden="true" /> Driving</>}
+              {formatDistance(data.distanceMeters, units)} · {data.mode === 'WALK' ? '\u{1F6B6} Walking' : '\u{1F697} Driving'}
             </span>
             {data.mode === 'DRIVE' && (
               <span className={`tag ${trafficMin >= 5 ? 'tag-error' : ''}`}>
@@ -75,14 +74,14 @@ export default function TurnByTurnPanel({ stop, loading, error, data, onRefresh,
               ))}
             <li className="turn-step-arrive">
               <span>
-                <FlagIcon aria-hidden="true" /> Arrive at {stop.name}
+                {'\u{1F3C1}'} Arrive at {stop.name}
               </span>
             </li>
           </ol>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-ghost btn-sm" onClick={onRefresh}>
-              <RefreshCwIcon aria-hidden="true" /> Refresh from Here
+              {'\u{1F504}'} Refresh from Here
             </button>
             <DirectionsButton name={stop.name} lat={stop.lat} lng={stop.lng} className="btn btn-ghost btn-sm" external>
               Open in Maps App

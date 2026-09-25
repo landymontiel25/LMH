@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getUserStats } from '../lib/leaderboard';
 import { getUserProfile } from '../lib/friends';
 import CityList from '../components/CityList';
-import { Building2 as Building2Icon } from 'lucide-react';
 
 // A friend's cities list as its own page, reached from FriendStats' "cities"
 // tile -- self-sufficient (fetches its own name/stats) so it survives a
@@ -38,7 +37,7 @@ export default function FriendCities() {
         {'←'} Back
       </button>
       <h1 className="screen-title">
-        <span><Building2Icon aria-hidden="true" /></span> @{name || '…'}'s Cities
+        <span>{'\u{1F3D9}\u{FE0F}'}</span> @{name || '…'}'s Cities
       </h1>
       {error && <p className="screen-subtitle">Could not load their cities — try again.</p>}
       {!error && !stats && <p className="screen-subtitle">Loading…</p>}

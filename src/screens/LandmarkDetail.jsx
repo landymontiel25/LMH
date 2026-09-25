@@ -33,8 +33,6 @@ import CheckInButton from '../components/CheckInButton';
 import RatingStars from '../components/RatingStars';
 import DirectionsButton from '../components/DirectionsButton';
 import { pickPhoto } from '../lib/imageUtils';
-import { Camera as CameraIcon, Check as CheckIcon, Compass as CompassIcon, Map as MapIcon, MapPin as MapPinIcon, Pencil as PencilIcon, Sparkles as SparklesIcon, TriangleAlert as TriangleAlertIcon, Trophy as TrophyIcon } from 'lucide-react';
-import { TierIcon } from '../components/icons';
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
 
@@ -544,12 +542,12 @@ export default function LandmarkDetail() {
         ))}
         <span className={`tag ${landmark.free ? 'tag-free' : ''}`}>{landmark.free ? 'Free to Visit' : 'Ticketed'}</span>
         <span className="tag">{'~' + landmark.typicalMinutes + ' min'}</span>
-        {customLandmark && <span className="tag"><SparklesIcon aria-hidden="true" /> Community-submitted</span>}
+        {customLandmark && <span className="tag">{'\u{2728}'} Community-submitted</span>}
       </div>
       {customLandmark && user && customLandmark.createdBy !== user.uid && (
         <p className="center" style={{ marginTop: -10, marginBottom: 18 }}>
           {landmarkReported ? (
-            <span className="review-reported">Reported <CheckIcon aria-hidden="true" /></span>
+            <span className="review-reported">Reported ✓</span>
           ) : (
             <button className="btn btn-ghost btn-tight" onClick={handleReportLandmark}>
               Report this landmark
@@ -588,7 +586,7 @@ export default function LandmarkDetail() {
             alignItems: 'flex-start',
           }}
         >
-          <span style={{ fontSize: '1.2rem', lineHeight: 1.3 }}><TriangleAlertIcon aria-hidden="true" /></span>
+          <span style={{ fontSize: '1.2rem', lineHeight: 1.3 }}>{'⚠️'}</span>
           <p style={{ margin: 0, lineHeight: 1.5 }}>
             <strong>Good to know:</strong> {landmark.tip}
           </p>
@@ -622,7 +620,7 @@ export default function LandmarkDetail() {
 
       {firebaseEnabled && user && (
         <div className="card checkin-stats-card">
-          <h3 style={{ marginTop: 0 }}><MapPinIcon aria-hidden="true" /> Your Check-in Stats</h3>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F4CD}'} Your Check-in Stats</h3>
           {!checkedInHere ? (
             <p className="screen-subtitle" style={{ margin: 0 }}>
               You haven't checked in yet. Check in to see your stats.
@@ -643,7 +641,7 @@ export default function LandmarkDetail() {
                     style={{ marginLeft: 8, padding: '1px 6px', fontSize: '0.7rem' }}
                     onClick={startEditCheckinDate}
                   >
-                    <PencilIcon aria-hidden="true" /> Edit
+                    {'\u{270F}\u{FE0F}'} Edit
                   </button>
                 )}
                 {editingCheckinDate && (
@@ -685,7 +683,7 @@ export default function LandmarkDetail() {
               <li>
                 <span>Your rating:</span>{' '}
                 {savedRating?.tier
-                  ? <><TierIcon id={savedRating.tier} /> {tierById(savedRating.tier)?.label || ''}</>
+                  ? `${tierById(savedRating.tier)?.emoji || ''} ${tierById(savedRating.tier)?.label || ''}`
                   : savedRating?.stars
                   ? 'Rated (before Mapr’s current rating system)'
                   : 'Not rated yet'}
@@ -702,7 +700,7 @@ export default function LandmarkDetail() {
         className="btn btn-ghost btn-block"
         style={{ marginBottom: 12 }}
       >
-        <CompassIcon aria-hidden="true" /> Get Directions
+        {'\u{1F9ED}'} Get Directions
       </DirectionsButton>
 
       <button
@@ -714,7 +712,7 @@ export default function LandmarkDetail() {
           navigate('/');
         }}
       >
-        <MapIcon aria-hidden="true" /> See it on the Map
+        {'\u{1F5FA}\u{FE0F}'} See it on the Map
       </button>
 
       <button
@@ -723,7 +721,7 @@ export default function LandmarkDetail() {
         style={{ marginBottom: aiOpen ? 10 : 12 }}
         onClick={() => setAiOpen((o) => !o)}
       >
-        <SparklesIcon aria-hidden="true" /> Ask AI about {landmark.name}
+        {'✨'} Ask AI about {landmark.name}
       </button>
 
       {aiOpen && (
@@ -770,7 +768,7 @@ export default function LandmarkDetail() {
         onClick={() => toggleLandmark(landmark.id, regionId)}
         style={{ marginBottom: 12 }}
       >
-        {isSelected ? <><CheckIcon aria-hidden="true" /> Added to Itinerary</> : 'Add to Itinerary'}
+        {isSelected ? '✓ Added to Itinerary' : 'Add to Itinerary'}
       </button>
 
       <CheckInButton
@@ -784,7 +782,7 @@ export default function LandmarkDetail() {
       />
 
       <button type="button" className="btn btn-primary btn-block" onClick={shareVisit} style={{ marginTop: 12 }}>
-        <TrophyIcon aria-hidden="true" /> Share with Friends & Family
+        {'\u{1F3C6}'} Share with Friends & Family
       </button>
       {shareMsg && (
         <p className="screen-subtitle" style={{ textAlign: 'center', marginTop: 6, marginBottom: 0 }}>
@@ -794,7 +792,7 @@ export default function LandmarkDetail() {
 
       {firebaseEnabled && user && checkedInHere && (
         <div className="card section" style={{ marginTop: 16 }}>
-          <h3 style={{ marginTop: 0 }}><CameraIcon aria-hidden="true" /> My Photos</h3>
+          <h3 style={{ marginTop: 0 }}>{'\u{1F4F8}'} My Photos</h3>
           <p className="screen-subtitle" style={{ marginTop: 0 }}>
             Your own photos of this spot — add more anytime, remove any you don't want.
           </p>
@@ -827,7 +825,7 @@ export default function LandmarkDetail() {
           {checkinPhotos.length < MAX_CHECKIN_PHOTOS && (
             <div style={{ marginTop: checkinPhotos.length > 0 ? 12 : 0 }}>
               <button type="button" className="btn btn-ghost btn-sm" disabled={checkinPhotoBusy} onClick={addMyCheckinPhoto}>
-                {checkinPhotoBusy ? 'Working…' : <><CameraIcon aria-hidden="true" /> Add photo ({checkinPhotos.length}/{MAX_CHECKIN_PHOTOS})</>}
+                {checkinPhotoBusy ? 'Working…' : `${'\u{1F4F8}'} Add photo (${checkinPhotos.length}/${MAX_CHECKIN_PHOTOS})`}
               </button>
             </div>
           )}
@@ -852,7 +850,7 @@ export default function LandmarkDetail() {
             <>
               {savedRating && (
                 <p className="screen-subtitle" style={{ marginTop: 0 }}>
-                  <CheckIcon aria-hidden="true" /> Already rated — change anything below to update it.
+                  {'\u{2713}'} Already rated — change anything below to update it.
                 </p>
               )}
               <p className="screen-subtitle" style={{ marginTop: 0, marginBottom: 12 }}>
@@ -894,7 +892,7 @@ export default function LandmarkDetail() {
               {photoFiles.length < 3 && (
                 <div style={{ marginTop: 12 }}>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={onPhotoChange}>
-                    <CameraIcon aria-hidden="true" /> Add photo ({photoFiles.length}/3)
+                    {'\u{1F4F8}'} Add photo ({photoFiles.length}/3)
                   </button>
                 </div>
               )}
@@ -908,7 +906,7 @@ export default function LandmarkDetail() {
                 {saving
                   ? 'Saving…'
                   : submitted
-                  ? <><CheckIcon aria-hidden="true" /> Rating {justEdited ? 'updated' : 'submitted'}!</>
+                  ? `\u{2713} Rating ${justEdited ? 'updated' : 'submitted'}!`
                   : savedRating
                   ? 'Update Rating'
                   : 'Submit Rating'}
@@ -934,7 +932,7 @@ export default function LandmarkDetail() {
                   <strong>{r.userName}</strong>
                   {r.ratingTier ? (
                     <span className="tag">
-                      <TierIcon id={r.ratingTier} /> {tierById(r.ratingTier)?.label}
+                      {tierById(r.ratingTier)?.emoji} {tierById(r.ratingTier)?.label}
                     </span>
                   ) : (
                     <span className="tag">Rated</span>
@@ -970,11 +968,11 @@ export default function LandmarkDetail() {
                         Delete
                       </button>
                     ) : blockedNow.has(r.userId) ? (
-                      <span className="review-reported">Blocked <CheckIcon aria-hidden="true" /></span>
+                      <span className="review-reported">Blocked ✓</span>
                     ) : (
                       <>
                         {reportedNow.has(r.id) || r.reportedBy?.includes(user.uid) ? (
-                          <span className="review-reported">Reported <CheckIcon aria-hidden="true" /></span>
+                          <span className="review-reported">Reported ✓</span>
                         ) : (
                           <button className="btn btn-ghost btn-tight" onClick={() => handleReport(r)}>
                             Report

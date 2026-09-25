@@ -3,8 +3,6 @@ import { useTrip } from '../lib/TripContext';
 import { INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import AddInterestChip from './AddInterestChip';
-import { Hourglass as HourglassIcon, Sparkles as SparklesIcon, Trash2 as Trash2Icon } from 'lucide-react';
-import { CategoryIcon } from './icons';
 
 // The actual chip-grid for saved preferences -- shared by Settings' "My
 // Preferences" card, Trip Setup, and the one-time onboarding step right
@@ -44,9 +42,7 @@ export default function PreferenceChips() {
           className={`chip ${trip.savedInterests.includes(i.id) ? 'selected' : ''}`}
           onClick={() => toggleSavedInterest(i.id)}
         >
-          <span className="chip-icon">
-            <CategoryIcon id={i.id} />
-          </span>
+          <span className="chip-icon">{i.icon}</span>
           <span>{i.label}</span>
         </button>
       ))}
@@ -68,7 +64,7 @@ export default function PreferenceChips() {
             }}
           >
             <span className="chip-icon">
-              {classifying.has(text) ? <HourglassIcon aria-hidden="true" /> : trip.customInterestEmoji[text] || <SparklesIcon aria-hidden="true" />}
+              {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
             </span>
             <span>{text}</span>
             <button
@@ -80,7 +76,7 @@ export default function PreferenceChips() {
                 removeSavedCustomInterest(text);
               }}
             >
-              <Trash2Icon aria-hidden="true" />
+              {'\u{1F5D1}\u{FE0F}'}
             </button>
           </div>
         );

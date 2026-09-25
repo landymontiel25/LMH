@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { appleMapsLink, googleMapsLink } from '../lib/routing';
-import { Apple as AppleIcon, Compass as CompassIcon, Globe as GlobeIcon, Map as MapIcon } from 'lucide-react';
 
 // Every "Get Directions" in the app opens this sheet: use the app's own map
 // (turn-by-turn from api/directions.js), Google Maps, or Apple Maps. "Use the
@@ -42,23 +41,23 @@ export default function DirectionsButton({
           setOpen(true);
         }}
       >
-        {children ?? <><CompassIcon aria-hidden="true" /> Directions</>}
+        {children ?? `${'\u{1F9ED}'} Directions`}
       </button>
       {open &&
         createPortal(
           <div className="modal-backdrop" onClick={close}>
             <div className="modal-card directions-sheet" onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ marginTop: 0 }}><CompassIcon aria-hidden="true" /> Directions to {name}</h3>
+              <h3 style={{ marginTop: 0 }}>{'\u{1F9ED}'} Directions to {name}</h3>
               {!external && lat != null && lng != null && (
                 <button type="button" className="btn btn-primary btn-block directions-choice" onClick={openOnMap}>
-                  <MapIcon aria-hidden="true" /> Use the Map
+                  {'\u{1F5FA}\u{FE0F}'} Use the Map
                 </button>
               )}
               <a className="btn btn-primary btn-block directions-choice" href={googleMapsLink(name, lat, lng)} target="_blank" rel="noreferrer" onClick={close}>
-                <GlobeIcon aria-hidden="true" /> Use Google Maps
+                {'\u{1F310}'} Use Google Maps
               </a>
               <a className="btn btn-primary btn-block directions-choice" href={appleMapsLink(name, lat, lng)} target="_blank" rel="noreferrer" onClick={close}>
-                <AppleIcon aria-hidden="true" /> Use Apple Maps
+                {'\u{1F34E}'} Use Apple Maps
               </a>
               <button type="button" className="btn btn-ghost btn-block" onClick={close}>
                 Cancel

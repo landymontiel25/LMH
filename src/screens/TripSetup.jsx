@@ -14,8 +14,6 @@ import LocationAutocomplete from '../components/LocationAutocomplete';
 import AddInterestChip from '../components/AddInterestChip';
 import RegionSearch from '../components/RegionSearch';
 import PreferenceChips from '../components/PreferenceChips';
-import { Compass as CompassIcon, Globe as GlobeIcon, Hourglass as HourglassIcon, MapPin as MapPinIcon, Sparkles as SparklesIcon, Star as StarIcon, Trash2 as Trash2Icon, User as UserIcon, Users as UsersIcon } from 'lucide-react';
-import { CategoryIcon } from '../components/icons';
 
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
 
@@ -216,12 +214,12 @@ export default function TripSetup() {
   return (
     <div>
       <h1 className="screen-title">
-        <span><CompassIcon aria-hidden="true" /></span> Plan Your Trip
+        <span>{'\u{1F9ED}'}</span> Plan Your Trip
       </h1>
       <p className="screen-subtitle">Tell us where you're starting and what you're into — we'll build the route.</p>
 
       <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 24 }} onClick={() => navigate('/')}>
-        <GlobeIcon aria-hidden="true" /> Just Browse the Map First
+        {'\u{1F310}'} Just Browse the Map First
       </button>
 
       <div className="field">
@@ -235,7 +233,7 @@ export default function TripSetup() {
           onClick={useCurrentLocation}
           disabled={locating}
         >
-          <MapPinIcon aria-hidden="true" /> {locating ? 'Locating…' : 'Use My Current Location'}
+          {'\u{1F4CD}'} {locating ? 'Locating…' : 'Use My Current Location'}
         </button>
         <LocationAutocomplete
           id="start"
@@ -276,7 +274,7 @@ export default function TripSetup() {
               className={`chip ${preferencesSelected ? 'selected' : ''}`}
               onClick={togglePreferences}
             >
-              <span className="chip-icon"><StarIcon aria-hidden="true" /></span>
+              <span className="chip-icon">{'⭐'}</span>
               <span>Use My Preferences</span>
             </button>
           </div>
@@ -289,9 +287,7 @@ export default function TripSetup() {
               className={`chip ${trip.interests.includes(i.id) ? 'selected' : ''}`}
               onClick={() => toggleInterest(i.id)}
             >
-              <span className="chip-icon">
-            <CategoryIcon id={i.id} />
-          </span>
+              <span className="chip-icon">{i.icon}</span>
               <span>{i.label}</span>
             </button>
           ))}
@@ -303,7 +299,7 @@ export default function TripSetup() {
               title={classifying.has(text) ? 'Finding matching landmarks…' : undefined}
             >
               <span className="chip-icon">
-                {classifying.has(text) ? <HourglassIcon aria-hidden="true" /> : trip.customInterestEmoji[text] || <SparklesIcon aria-hidden="true" />}
+                {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
               </span>
               <span>{text}</span>
               <button
@@ -312,7 +308,7 @@ export default function TripSetup() {
                 aria-label={`Remove ${text}`}
                 onClick={() => removeCustomInterest(text)}
               >
-                <Trash2Icon aria-hidden="true" />
+                {'\u{1F5D1}\u{FE0F}'}
               </button>
             </div>
           ))}
@@ -321,7 +317,7 @@ export default function TripSetup() {
       </div>
 
       <div className="card section">
-        <h3 style={{ marginTop: 0 }}><StarIcon aria-hidden="true" /> My Preferences</h3>
+        <h3 style={{ marginTop: 0 }}>{'⭐'} My Preferences</h3>
         <p className="screen-subtitle" style={{ marginTop: -6 }}>
           Save what you're usually into once, and "Use My Preferences" above fills it in with one tap on every trip.
         </p>
@@ -332,10 +328,10 @@ export default function TripSetup() {
         <label>Trip Type</label>
         <div className="tabs" style={{ justifyContent: 'center' }}>
           <button type="button" className={`tab-btn ${tripMode === 'solo' ? 'active' : ''}`} onClick={() => setTripMode('solo')}>
-            <UserIcon aria-hidden="true" /> Solo
+            {'\u{1F464}'} Solo
           </button>
           <button type="button" className={`tab-btn ${tripMode === 'group' ? 'active' : ''}`} onClick={() => setTripMode('group')}>
-            <UsersIcon aria-hidden="true" /> Group
+            {'\u{1F465}'} Group
           </button>
         </div>
         {tripMode === null && (
@@ -373,7 +369,7 @@ export default function TripSetup() {
         {tripMode === 'group'
           ? creatingGroup
             ? 'Starting…'
-            : <><UsersIcon aria-hidden="true" /> Start Group Trip {'\u{2192}'}</>
+            : `${'\u{1F465}'} Start Group Trip ${'\u{2192}'}`
           : `Choose Landmarks ${'\u{2192}'}`}
       </button>
     </div>

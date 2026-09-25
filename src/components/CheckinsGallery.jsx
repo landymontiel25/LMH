@@ -9,8 +9,6 @@ import { useAdminMode } from '../lib/AdminModeContext';
 import { isAdmin } from '../lib/admins';
 import { useAuth } from '../lib/AuthContext';
 import { regionTimezone, tzAbbrev, toZonedInputValue, fromZonedInputValue } from '../lib/timezones';
-import { Camera as CameraIcon, LayoutGrid as LayoutGridIcon, List as ListIcon, Pencil as PencilIcon } from 'lucide-react';
-import { TierIcon } from './icons';
 
 
 // Shared "Sep 7, 2026, 10:04 AM" formatting for check-in timestamps.
@@ -129,7 +127,6 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         rateable: lm ? isRateable(lm) : true,
         stars: tier ? tierStars(tier.id) : null,
         tierEmoji: tier?.emoji || null,
-        tierId: tier?.id || null,
         tierLabel: tier?.label || null,
       };
     };
@@ -197,13 +194,13 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ margin: 0 }}><CameraIcon aria-hidden="true" /> {title} {checkins ? `(${checkins.length})` : ''}</h3>
+        <h3 style={{ margin: 0 }}>{'\u{1F4F8}'} {title} {checkins ? `(${checkins.length})` : ''}</h3>
         <div className="tabs" style={{ margin: 0 }}>
           <button className={`tab-btn ${layout === 'list' ? 'active' : ''}`} onClick={() => setLayout('list')}>
-            <ListIcon aria-hidden="true" /> List
+            {'\u{1F4C4}'} List
           </button>
           <button className={`tab-btn ${layout === 'grid' ? 'active' : ''}`} onClick={() => setLayout('grid')}>
-            <LayoutGridIcon aria-hidden="true" /> Grid
+            {'\u{1F5BC}\u{FE0F}'} Grid
           </button>
         </div>
       </div>
@@ -261,13 +258,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="checkin-name">{it.name}</div>
-                <div className="checkin-sub">{it.tierEmoji ? (
-                    <>
-                      <TierIcon id={it.tierId} /> {it.tierLabel}
-                    </>
-                  ) : (
-                    'Not rated yet'
-                  )}</div>
+                <div className="checkin-sub">{it.tierEmoji ? `${it.tierEmoji} ${it.tierLabel}` : 'Not rated yet'}</div>
                 {canEditDates && editingId === it.id ? (
                   <div
                     style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, alignItems: 'center' }}
@@ -313,7 +304,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
                           startEdit(it);
                         }}
                       >
-                        <PencilIcon aria-hidden="true" /> Edit date
+                        {'\u{270F}\u{FE0F}'} Edit date
                       </button>
                     )}
                   </div>

@@ -6,8 +6,6 @@ import { getUserCheckins } from '../lib/leaderboard';
 import { deleteMyReview } from '../lib/reviews';
 import { getRegion } from '../data/regions';
 import { TIERS, tierById, chipLabel } from '../lib/ratingFlow';
-import { Star as StarIcon, Trash2 as Trash2Icon } from 'lucide-react';
-import { TierIcon } from '../components/icons';
 
 // Everything rated through "Rate a Landmark" on Mapr Picks -- separate from
 // the check-ins list, since these are ratings-only claims (0 points, never
@@ -88,7 +86,7 @@ export default function MyMaprRatings() {
       </button>
 
       <h1 className="screen-title">
-        <span><StarIcon aria-hidden="true" /></span> My Mapr Ratings
+        <span>{'\u{2B50}'}</span> My Mapr Ratings
       </h1>
       <p className="screen-subtitle">
         Everything you've rated through Mapr Picks — not places you've checked into, just rated directly.
@@ -102,7 +100,7 @@ export default function MyMaprRatings() {
             className={`tab-btn ${tab === t.id ? 'active' : ''}`}
             onClick={() => setTab(t.id)}
           >
-            <TierIcon id={t.id} /> {t.label} ({byTier[t.id]?.length ?? 0})
+            {t.emoji} {t.label} ({byTier[t.id]?.length ?? 0})
           </button>
         ))}
       </div>
@@ -149,7 +147,7 @@ export default function MyMaprRatings() {
               removeRating(r);
             }}
           >
-            {removingId === r.landmarkId ? '…' : <><Trash2Icon aria-hidden="true" /> Remove</>}
+            {removingId === r.landmarkId ? '…' : `${'\u{1F5D1}\u{FE0F}'} Remove`}
           </button>
         </div>
       ))}

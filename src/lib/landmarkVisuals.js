@@ -1,10 +1,27 @@
 const PALETTES = [
-  ['#1c2433', '#2c3d5c'],
-  ['#1a2329', '#2b4250'],
-  ['#1f1f2e', '#37375e'],
-  ['#1a2620', '#2c4538'],
-  ['#262129', '#423a4d'],
+  ['#8a6a3f', '#d9b876'],
+  ['#5f6b4a', '#a9b183'],
+  ['#6b4a42', '#c98f6e'],
+  ['#3f5a63', '#8fb0b8'],
+  ['#7a5240', '#cf9f6a'],
 ];
+
+const CATEGORY_ICON = {
+  'history-culture': '\u{1F3DB}\u{FE0F}',
+  'art-museums': '\u{1F5BC}\u{FE0F}',
+  food: '\u{1F37D}\u{FE0F}',
+  'local-life': '\u{1F378}',
+  sports: '\u{1F3C0}',
+  'parks-nature': '\u{1F333}',
+  'entertainment': '\u{1F39F}\u{FE0F}',
+  stadiums: '\u{1F3DF}\u{FE0F}',
+  'formula-1': '\u{1F3CE}\u{FE0F}',
+  benches: '\u{1FA91}',
+  tech: '\u{1F4BB}',
+  airports: '\u{2708}\u{FE0F}',
+  'campus-life': '\u{1F3EB}',
+  dorms: '\u{1F6CF}\u{FE0F}',
+};
 
 function hashStr(s) {
   let h = 0;
@@ -14,4 +31,8 @@ function hashStr(s) {
 
 export function paletteFor(id) {
   return PALETTES[hashStr(id) % PALETTES.length];
+}
+
+export function iconFor(categories) {
+  return CATEGORY_ICON[categories?.[0]] || '\u{1F4CD}';
 }

@@ -4,7 +4,6 @@ import { useFriends } from '../lib/FriendsContext';
 import { answerTagCapPrompt } from '../lib/friends';
 import { pendingCapPrompt } from '../lib/tagScores';
 import { categoryLabel } from '../lib/ratingFlow';
-import { Flame as FlameIcon } from 'lucide-react';
 
 // Shows once per tag, the first time a rating pushes that tag's score to
 // the cap in any region (see tagScores.js). "Yes" adds a 1.5x ranking boost
@@ -39,7 +38,7 @@ export default function TagCapPrompt() {
     <div className="modal-backdrop">
       <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby="tag-cap-title">
         <h3 id="tag-cap-title" style={{ marginTop: 0 }}>
-          <FlameIcon aria-hidden="true" /> You really love {categoryLabel(pending.tag)}.
+          {'\u{1F525}'} You really love {categoryLabel(pending.tag)}.
         </h3>
         <p className="screen-subtitle" style={{ marginTop: 0 }}>
           Want us to lean more into it, even if it means slightly fewer other picks?
