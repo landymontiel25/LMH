@@ -192,6 +192,26 @@ export async function enhanceRouteWithDrivingTimes(origin, route) {
   );
 }
 
+/**
+ * Turn-by-turn directions from the Routes API via api/directions.js:
+ * { mode, distanceMeters, durationSeconds, staticDurationSeconds,
+ *   points: [[lat, lng], ...], steps: [{ instruction, distanceMeters, durationSeconds }] }.
+ * Throws with the server's message on failure.
+ */
+export async function fetchDirections(origin, destination) {
+  const res = await fetch('/api/directions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      origin: { lat: origin.lat, lng: origin.lng },
+      destination: { lat: destination.lat, lng: destination.lng },
+    }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.points?.length) throw new Error(data?.error || 'Could not get directions right now.');
+  return data;
+}
+
 export function appleMapsLink(destination, destLat, destLng) {
   const dest = destLat != null && destLng != null ? `${destLat},${destLng}` : encodeURIComponent(destination);
   return `https://maps.apple.com/?daddr=${dest}&q=${encodeURIComponent(destination)}`;

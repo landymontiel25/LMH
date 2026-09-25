@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTrip } from '../lib/TripContext';
@@ -18,7 +18,8 @@ import { createGroupTrip, listMyGroupTrips } from '../lib/groupTrips';
 import { getRegion } from '../data/regions';
 import { geocodeLocation } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
-import { SORT_OPTIONS, orderStops, annotateRoute, enhanceRouteWithDrivingTimes } from '../lib/routing';
+import { SORT_OPTIONS, orderStops, annotateRoute, enhanceRouteWithDrivingTimes, fetchDirections } from '../lib/routing';
+import TurnByTurnPanel from '../components/TurnByTurnPanel';
 import DirectionsButton from '../components/DirectionsButton';
 import { useRatings } from '../lib/RatingsContext';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
@@ -93,7 +94,7 @@ function FitRoute({ points }) {
   return null;
 }
 
-function ItineraryMap({ origin, stops, onDetails }) {
+function ItineraryMap({ origin, stops, onDetails, onInApp, navPoints, navStopId, me }) {
   // Only put the START point on the map when it's actually near the city you're
   // viewing (same metro). If you're 1,000 miles away, including it would draw a
   // long line across states and zoom the map out to the whole coast — so we drop
@@ -109,21 +110,43 @@ function ItineraryMap({ origin, stops, onDetails }) {
     ...stops.map((s) => [s.lat, s.lng]),
   ];
 
+  const navigating = navPoints?.length > 1;
+
   return (
     <div className="itinerary-map">
       <MapContainer center={linePoints[0] || [25.77, -80.19]} zoom={12} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
-        <FitRoute points={linePoints} />
+        <FitRoute points={navigating ? navPoints : linePoints} />
         <TileLayer url={SAT_TILE.url} attribution={SAT_TILE.attribution} />
         {/* Transparent labels overlay, same as the Explore map: country names
             zoomed out, neighborhoods/streets up close, without leaving satellite. */}
         <TileLayer url={LABELS_TILE.url} attribution={LABELS_TILE.attribution} zIndex={650} />
 
         {/* White casing under the blue line for contrast on satellite imagery */}
-        {linePoints.length > 1 && (
+        {/* While showing directions, the stop-to-stop outline fades to a
+            dashed hint and the real road route takes over. */}
+        {linePoints.length > 1 &&
+          (navigating ? (
+            <Polyline positions={linePoints} pathOptions={{ color: '#ffffff', weight: 2, opacity: 0.45, dashArray: '6 8' }} />
+          ) : (
+            <>
+              <Polyline positions={linePoints} pathOptions={{ color: '#ffffff', weight: 8, opacity: 0.55 }} />
+              <Polyline positions={linePoints} pathOptions={{ color: ROUTE_BLUE, weight: 4, opacity: 0.95 }} />
+            </>
+          ))}
+
+        {navigating && (
           <>
-            <Polyline positions={linePoints} pathOptions={{ color: '#ffffff', weight: 8, opacity: 0.55 }} />
-            <Polyline positions={linePoints} pathOptions={{ color: ROUTE_BLUE, weight: 4, opacity: 0.95 }} />
+            <Polyline positions={navPoints} pathOptions={{ color: '#ffffff', weight: 9, opacity: 0.6 }} />
+            <Polyline positions={navPoints} pathOptions={{ color: ROUTE_BLUE, weight: 5, opacity: 1 }} />
           </>
+        )}
+
+        {navigating && me && (
+          <CircleMarker
+            center={[me.lat, me.lng]}
+            radius={8}
+            pathOptions={{ color: '#ffffff', weight: 3, fillColor: ROUTE_BLUE, fillOpacity: 1 }}
+          />
         )}
 
         {showOrigin && (
@@ -133,14 +156,25 @@ function ItineraryMap({ origin, stops, onDetails }) {
         )}
 
         {stops.map((s, idx) => (
-          <Marker key={s.id} position={[s.lat, s.lng]} icon={numberedIcon(idx + 1)}>
+          <Marker
+            key={s.id}
+            position={[s.lat, s.lng]}
+            icon={numberedIcon(idx + 1)}
+            opacity={navigating && s.id !== navStopId ? 0.55 : 1}
+          >
             <Popup>
               <div className="map-popup">
                 <h4>
                   {idx + 1}. {s.name}
                 </h4>
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                  <DirectionsButton name={s.name} lat={s.lat} lng={s.lng} className="btn btn-primary btn-sm">
+                  <DirectionsButton
+                    name={s.name}
+                    lat={s.lat}
+                    lng={s.lng}
+                    className="btn btn-primary btn-sm"
+                    onInApp={onInApp ? () => onInApp(s) : undefined}
+                  >
                     {'\u{1F9ED}'} Get Directions
                   </DirectionsButton>
                   {onDetails && (
@@ -305,6 +339,32 @@ export default function Itinerary() {
   }, [routeOrigin, route]);
 
   const displayRoute = drivingRoute.length === route.length ? drivingRoute : route;
+
+  // In-app turn-by-turn (api/directions.js). Starts from your live GPS when
+  // you're actually in the city; if you're planning from far away, from the
+  // stop before this one instead, so the route is still the useful leg.
+  const [nav, setNav] = useState(null); // { stop, loading, error, data }
+  const mapRef = useRef(null);
+  const startNav = async (stop) => {
+    const idx = displayRoute.findIndex((x) => x.id === stop.id);
+    const near = (p) => p && distanceMeters(p.lat, p.lng, stop.lat, stop.lng) <= 80000;
+    const from = near(coords) ? coords : idx > 0 ? displayRoute[idx - 1] : near(routeOrigin) ? routeOrigin : null;
+    setView('map');
+    requestAnimationFrame(() => mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    if (!from) {
+      setNav({ stop, loading: false, data: null, error: `You're far from ${stop.name} right now. Directions start once you're in town, or pick a later stop to get the leg from the stop before it.` });
+      return;
+    }
+    setNav({ stop, loading: true, error: null, data: null });
+    try {
+      const data = await fetchDirections(from, stop);
+      setNav((cur) => (cur?.stop.id === stop.id ? { ...cur, loading: false, data } : cur));
+    } catch (e) {
+      setNav((cur) => (cur?.stop.id === stop.id ? { ...cur, loading: false, error: e.message } : cur));
+    }
+  };
+  // Leaving the city's itinerary drops any directions that were open.
+  useEffect(() => setNav(null), [openReg]);
 
   const totals = useMemo(() => {
     // The first leg is from your location to stop #1. When you're far from the
@@ -514,11 +574,27 @@ export default function Itinerary() {
       </div>
 
       {view === 'map' && (
-        <ItineraryMap
-          origin={routeOrigin}
-          stops={displayRoute}
-          onDetails={(s) => navigate(`/landmarks/${region.id}/${s.id}`)}
-        />
+        <div ref={mapRef}>
+          <ItineraryMap
+            origin={routeOrigin}
+            stops={displayRoute}
+            onDetails={(s) => navigate(`/landmarks/${region.id}/${s.id}`)}
+            onInApp={startNav}
+            navPoints={nav?.data?.points}
+            navStopId={nav?.stop.id}
+            me={coords}
+          />
+          {nav && (
+            <TurnByTurnPanel
+              stop={nav.stop}
+              loading={nav.loading}
+              error={nav.error}
+              data={nav.data}
+              onRefresh={() => startNav(nav.stop)}
+              onClose={() => setNav(null)}
+            />
+          )}
+        </div>
       )}
 
       <div style={{ display: view === 'list' ? 'block' : 'none' }}>
@@ -560,7 +636,13 @@ export default function Itinerary() {
                   <span className="tag">{'\u{23F1}\u{FE0F}'} ~{stop.typicalMinutes} min there</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <DirectionsButton name={stop.name} lat={stop.lat} lng={stop.lng} className="btn btn-ghost btn-sm">
+                  <DirectionsButton
+                    name={stop.name}
+                    lat={stop.lat}
+                    lng={stop.lng}
+                    className="btn btn-ghost btn-sm"
+                    onInApp={() => startNav(stop)}
+                  >
                     Get Directions
                   </DirectionsButton>
                   {stop.free ? (
