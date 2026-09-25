@@ -103,6 +103,21 @@ describe('shortlists', () => {
     expect(list.every((l) => l.regionId === 'milan')).toBe(true);
   });
 
+  it('limits one tag to 12 of the 30 slots, 18 when boosted', () => {
+    const scores = { 'history-culture': 90, food: 10, 'art-museums': 5 };
+    const count = (list, tag) => list.filter((l) => l.categories[0] === tag).length;
+    const plain = scoreShortlist({ scores, region: 'milan' });
+    expect(plain).toHaveLength(30);
+    expect(count(plain, 'history-culture')).toBe(12);
+    const boosted = scoreShortlist({ scores, region: 'milan', boostedTags: ['history-culture'] });
+    expect(count(boosted, 'history-culture')).toBe(18);
+  });
+
+  it('fills leftover slots from held-back places in a small region', () => {
+    const list = scoreShortlist({ scores: { 'history-culture': 90 }, region: 'milan', limit: 500 });
+    expect(list).toHaveLength(milan.filter((l) => l.categories[0] !== 'dorms').length);
+  });
+
   it('breaks ties by check-in count', () => {
     const foods = milan.filter((l) => l.categories[0] === 'food');
     const underdog = foods.at(-1);

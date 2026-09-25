@@ -20,6 +20,9 @@ export const HALF_LIFE_DAYS = 90;
 export const TAG_CAP = 100;
 export const BOOST_MULTIPLIER = 1.5;
 export const SHORTLIST_SIZE = 30;
+// Most shortlist slots one tag can take, so a top category can't fill all
+// 30 by itself. A tag the user said "lean into it" to gets 1.5x the room.
+export const PER_TAG_LIMIT = 12;
 // Bump when the stored shape or deltas change, so clients rebuild from reviews.
 export const TAG_SCORES_VERSION = 1;
 
@@ -125,13 +128,38 @@ const byDemand = (checkinCounts) => (a, b) =>
   (checkinCounts[b.id] || 0) - (checkinCounts[a.id] || 0) || (b.popularity || 0) - (a.popularity || 0);
 
 // Step 6: sum the user's effective tag scores over each landmark's tags and
-// keep the top SHORTLIST_SIZE. Ties (same tag) break on check-in count, then
-// the catalog's editorial popularity.
-export function scoreShortlist({ scores, region, excludeIds = [], checkinCounts = {}, limit = SHORTLIST_SIZE }) {
+// keep the top SHORTLIST_SIZE, at most PER_TAG_LIMIT per tag. Ties (same
+// tag) break on check-in count, then the catalog's editorial popularity.
+// Places held back by the per-tag limit fill any slots left over, so a
+// small region still returns a full list.
+export function scoreShortlist({
+  scores,
+  region,
+  excludeIds = [],
+  checkinCounts = {},
+  boostedTags = [],
+  limit = SHORTLIST_SIZE,
+}) {
   const demand = byDemand(checkinCounts);
-  return candidates(region, excludeIds)
+  const boosted = new Set(boostedTags);
+  const tagLimit = (tag) => (boosted.has(tag) ? Math.round(PER_TAG_LIMIT * BOOST_MULTIPLIER) : PER_TAG_LIMIT);
+  const ranked = candidates(region, excludeIds)
     .map((l) => ({ l, score: (l.categories || []).reduce((s, t) => s + (scores[t] || 0), 0) }))
-    .sort((a, b) => b.score - a.score || demand(a.l, b.l))
+    .sort((a, b) => b.score - a.score || demand(a.l, b.l));
+  const perTag = {};
+  const kept = [];
+  const heldBack = [];
+  for (const item of ranked) {
+    const tag = item.l.categories?.[0];
+    if ((perTag[tag] || 0) < tagLimit(tag)) {
+      perTag[tag] = (perTag[tag] || 0) + 1;
+      kept.push(item);
+    } else {
+      heldBack.push(item);
+    }
+    if (kept.length >= limit) break;
+  }
+  return [...kept, ...heldBack]
     .slice(0, limit)
     .map(({ l, score }) => ({ ...l, tagScore: Math.round(score * 10) / 10 }));
 }
@@ -155,11 +183,18 @@ export function coldStartShortlist({
   return [...pool.filter(fits), ...pool.filter((l) => !fits(l))].slice(0, limit).map((l) => ({ ...l, tagScore: 0 }));
 }
 
+const boostedTagsFor = (profile, region) =>
+  Object.entries(profile?.tagBoosts?.[region] || {})
+    .filter(([, answer]) => answer === 'yes')
+    .map(([tag]) => tag);
+
 export function buildShortlist({ profile, region, now = Date.now(), ...rest }) {
   const scores = effectiveTagScores(profile, region, now);
   const hasSignal = Object.values(scores).some((v) => Math.abs(v) > 0.01);
   return {
     coldStart: !hasSignal,
-    shortlist: hasSignal ? scoreShortlist({ scores, region, ...rest }) : coldStartShortlist({ region, ...rest }),
+    shortlist: hasSignal
+      ? scoreShortlist({ scores, region, boostedTags: boostedTagsFor(profile, region), ...rest })
+      : coldStartShortlist({ region, ...rest }),
   };
 }
