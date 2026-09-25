@@ -64,14 +64,23 @@ export default function TasteNudgeCard({ onDone, onDismiss }) {
         <div>
           <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F44B}'} Tell Mapr what you like — and don't</h3>
           <p className="screen-subtitle" style={{ margin: '4px 0 0' }}>
-            Tap once to like, tap again to say you hate it, or just say it in the chat — either way counts and you
-            won't see this again. This becomes your baseline; rating actual landmarks fills in the specifics later.
+            Or just say it in the chat — either way counts and you won't see this again. This becomes your baseline;
+            rating actual landmarks fills in the specifics later.
           </p>
         </div>
         <button type="button" className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={onDismiss} aria-label="Dismiss">
           {'\u{2715}'}
         </button>
       </div>
+
+      <p
+        className="screen-subtitle"
+        style={{ margin: '10px 0 0', fontSize: '0.75rem', display: 'flex', gap: 12, flexWrap: 'wrap' }}
+      >
+        <span>{'\u{1F446}'} Tap once: {'\u{1F44D}'} like</span>
+        <span>Tap the SAME chip again: {'\u{1F44E}'} dislike</span>
+        <span>Tap a third time to clear it</span>
+      </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
         {TASTE_QUESTIONS.map((q) => (
