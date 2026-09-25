@@ -22,6 +22,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { db, storage } from './firebase';
 import { distanceMeters } from './geo';
 import { getUserProfile } from './friends';
+import { REGIONS } from '../data/regions';
 
 export { distanceMeters };
 
@@ -336,6 +337,34 @@ export async function getRegionCheckinCounts(region) {
     setDoc(statsRef, { counts, backfilled: true, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
   }
   regionCountsCache.set(region, { at: Date.now(), counts });
+  return counts;
+}
+
+/**
+ * Real check-ins per landmark across every region combined, for Mapr Picks
+ * when there's no region to score in yet. Reads the region_stats counter
+ * docs (one per region, so this stays a handful of reads); a region with no
+ * backfilled counter yet gets counted once through getRegionCheckinCounts.
+ * Cached for 10 minutes.
+ */
+let globalCountsCache = null;
+export async function getGlobalCheckinCounts() {
+  if (!db) return {};
+  if (globalCountsCache && Date.now() - globalCountsCache.at < 10 * 60 * 1000) return globalCountsCache.counts;
+  const counts = {};
+  const add = (map) => {
+    for (const [id, n] of Object.entries(map || {})) counts[id] = (counts[id] || 0) + (Number(n) || 0);
+  };
+  const snap = await getDocs(collection(db, 'region_stats')).catch(() => null);
+  const done = new Set();
+  for (const d of snap?.docs || []) {
+    if (!d.data().backfilled) continue;
+    done.add(d.id);
+    add(d.data().counts);
+  }
+  const missing = REGIONS.map((r) => r.id).filter((id) => !done.has(id));
+  (await Promise.all(missing.map((id) => getRegionCheckinCounts(id).catch(() => ({}))))).forEach(add);
+  globalCountsCache = { at: Date.now(), counts };
   return counts;
 }
 

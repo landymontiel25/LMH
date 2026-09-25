@@ -12,6 +12,7 @@ import {
   scoreShortlist,
   settleShownPicks,
   localTagPicks,
+  globalPopularPicks,
   capMaps,
   TAG_FLOOR,
   timeSlotFor,
@@ -317,5 +318,25 @@ describe('time slots', () => {
       food: 30,
       'local-life': -10,
     });
+  });
+});
+
+describe('globalPopularPicks', () => {
+  it('ranks by check-ins across every region, skipping visited and dorms', () => {
+    const [a, b, visited] = ALL_LANDMARKS.filter((l) => l.categories[0] === 'food' && l.regionId !== 'miami').slice(0, 3);
+    const miamiSpot = ALL_LANDMARKS.find((l) => l.regionId === 'miami' && l.categories[0] === 'history-culture');
+    const picks = globalPopularPicks({
+      excludeIds: [visited.id],
+      checkinCounts: { [a.id]: 5, [miamiSpot.id]: 9, [b.id]: 2, [visited.id]: 50 },
+      limit: 10,
+    });
+    expect(picks.slice(0, 3).map((p) => p.id)).toEqual([miamiSpot.id, a.id, b.id]);
+    expect(picks.some((p) => p.id === visited.id)).toBe(false);
+    expect(picks.some((p) => ['dorms', 'campus-life'].includes(p.categories[0]))).toBe(false);
+    expect(picks).toHaveLength(10);
+  });
+
+  it('still fills the row before any check-ins exist', () => {
+    expect(globalPopularPicks({ limit: 10 })).toHaveLength(10);
   });
 });

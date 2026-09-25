@@ -9,10 +9,11 @@ import { coarseLocation, picksCacheKey, readPicksCache, writePicksCache } from '
 import { composeTasteIntro, tasteFingerprint } from '../lib/tasteQuestions';
 import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { useTrip } from '../lib/TripContext';
-import { getRegionCheckinCounts } from '../lib/leaderboard';
+import { getGlobalCheckinCounts, getRegionCheckinCounts } from '../lib/leaderboard';
 import { recordShownPicks, saveRebuiltTagScores, saveSettledPicks } from '../lib/friends';
 import {
   capMaps,
+  globalPopularPicks,
   localTagPicks,
   pickRegion,
   rebuildTagScores,
@@ -83,16 +84,23 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     fallbackRegions: [orderedReviews.at(-1)?.region, ...[...regionIds].reverse()],
   });
   const customMatchIds = (trip.savedCustomInterests || []).flatMap((t) => trip.customInterestMatches?.[t] || []);
+  // With no region yet (no location, ratings or saved cities), fall back to
+  // the most-checked-into places across every region instead of an empty row.
   const localPicks = (exclude, checkinCounts) =>
-    localTagPicks({
-      profile: myProfile,
-      region,
-      excludeIds: exclude,
-      checkinCounts,
-      interests,
-      customMatchIds,
-      limit: RESERVE,
-    });
+    region
+      ? localTagPicks({
+          profile: myProfile,
+          region,
+          excludeIds: exclude,
+          checkinCounts,
+          interests,
+          customMatchIds,
+          limit: RESERVE,
+        })
+      : globalPopularPicks({ excludeIds: exclude, checkinCounts, limit: RESERVE });
+  // Region in the cache key: picking a city or getting a location fix must
+  // replace a global-popularity list right away, not after the TTL.
+  const cacheFP = `${tasteFP}.${region || 'global'}`;
 
   // Ratings saved before per-region tag scores existed: replay them once so
   // those travelers don't restart from zero. Waits for a server-fresh
@@ -126,7 +134,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       return;
     }
     let cancelled = false;
-    const key = picksCacheKey(user.uid, ratingsCount, origin, tasteFP);
+    const key = picksCacheKey(user.uid, ratingsCount, origin, cacheFP);
 
     // Paint something right away -- the cached list is already synchronous,
     // and the local scorer is free (no network), so neither should leave
@@ -156,10 +164,22 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         setQueue(cached.filter((p) => !passedIds.includes(p.id) && !excludeIds.includes(p.id)));
         return;
       }
-      const checkinCounts = region ? await getRegionCheckinCounts(region).catch(() => ({})) : {};
+      const checkinCounts = await (region ? getRegionCheckinCounts(region) : getGlobalCheckinCounts()).catch(() => ({}));
       if (cancelled) return;
       countsRef.current = checkinCounts;
       const fallback = () => localPicks([...excludeIds, ...passedIds], checkinCounts);
+      // Global popularity is a straight count, so there's nothing for
+      // Claude to rank; skip the API call and don't cache it.
+      if (!region) {
+        let list = [];
+        try {
+          list = fallback();
+        } catch {
+          /* empty rather than stuck at null */
+        }
+        setQueue(list);
+        return;
+      }
       const caps = capMaps(myProfile);
       let next = null;
       try {
@@ -310,7 +330,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         const extra = localPicks([...seen], countsRef.current).filter((x) => !seen.has(x.id));
         next = [...next, ...extra].slice(0, RESERVE);
       }
-      writePicksCache(picksCacheKey(user.uid, ratingsCount, origin, tasteFP), next);
+      if (region) writePicksCache(picksCacheKey(user.uid, ratingsCount, origin, cacheFP), next);
       return next;
     });
   };
@@ -338,7 +358,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       </div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>
         {picks.length > 0
-          ? `${origin ? 'Near you right now. ' : ''}Tap a card to go there. ${'\u{2713}'} / ${'\u{2715}'} teach Mapr what you like -- not sure yet? Skip it without saying either way.`
+          ? `${origin ? 'Near you right now. ' : region ? '' : 'Most-visited across every city. Turn on location or pick a city for picks near you. '}Tap a card to go there. ${'\u{2713}'} / ${'\u{2715}'} teach Mapr what you like -- not sure yet? Skip it without saying either way.`
           : "Rate a place directly, or check in somewhere to start getting picks."}
       </p>
       <div className="mapr-picks-track" ref={trackRef} onScroll={onScroll}>
