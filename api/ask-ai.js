@@ -46,15 +46,15 @@ const APP_HELP =
   `- Mapr chat plans for the time you're asking about, not the time you're typing: say "Saturday night" or "lunch tomorrow" and it favors ` +
   `nightlife or food for that slot on top of your learned taste; with no time given, it plans for right now.\n` +
   `- Mapr Picks (on Profile): up to 10 landmarks Mapr thinks you'll love next at once, for the city you're in right now. Every rating updates a ` +
-  `per-city score for that landmark's category ("I loved it" +10, "It was okay" +2, "Not for me" -15, capped at 100, fading by half every 90 days; after a category's first 5 ` +
+  `per-city score for that landmark's category ("I loved it" +10, "It was okay" +2, "Not for me" -15, kept between -100 and 100, fading by half every 90 days; after a category's first 5 ` +
   `ratings, each new one counts half). ` +
   `Mapr shortlists that city's 30 best-scoring places (no more than 12 from any one category, so one favorite can't crowd out the rest) and then picks the final ones with your recent ratings and own words in mind. A few of the 30 are ` +
   `deliberate wildcards from categories you've barely rated, so Mapr can find new interests; a wildcard shows as "🎲 Something new" on its card. ` +
   `In a new city, Mapr starts from 40% of your scores from other cities and phases that out by your 15th rating there. With no ratings ` +
-  `anywhere yet, it starts from your signup interests, most-visited places first. A pick shown on 3 different days that you never visit, ` +
-  `rate or vote on lowers that category a little (much less than "Not for me"); checking in later resets that count. When a category hits the cap, a one-time pop-up asks "You really ` +
+  `anywhere yet, it starts from your signup interests, most-visited places first. A pick you actually scrolled to and looked at on 3 different days, ` +
+  `without visiting, rating or voting on it, lowers that category a little (much less than "Not for me"); checking in later resets that count. When a category hits the cap, a one-time pop-up asks "You really ` +
   `love [category]. Want us to lean more into it?" -- Yes tilts picks toward it and lets it take up to 18 of the 30 shortlist spots (other categories still show up), No leaves it as is, and the ` +
-  `optional comment box tells Mapr what you want more of there. It never asks again for that category in that city. Swipe to browse them. Only meant to hold things you'd clearly go to or clearly skip. Tap ✓ "I'd go" or ✗ "not for me" for a real, ` +
+  `optional comment box tells Mapr what you want more of there. It asks once per category, not once per city, and your answer applies in every city. Swipe to browse them. Only meant to hold things you'd clearly go to or clearly skip. Tap ✓ "I'd go" or ✗ "not for me" for a real, ` +
   `conclusive verdict -- that landmark won't be offered again. "🤷 Not sure" is different: it means "I genuinely don't know yet" (not a hidden ` +
   `dislike), drops that landmark out of the current row, but leaves it eligible to be recommended again later once the picks refresh. Voting on ` +
   `one pulls in a fresh pick to replace it, keeping the row at 10; swiping alone doesn't load more.\n` +

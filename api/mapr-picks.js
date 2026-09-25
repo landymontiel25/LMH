@@ -93,12 +93,13 @@ export default async function handler(req, res) {
           .slice(0, 40)
           .map(([k, v]) => [str(k, 40), numMap(v)])
       );
-    const tagNotes = strMap(body.tagNotes, 500);
+    // At-cap prompt answers and notes, one per tag across every region.
+    const tagNotes = strMap(body.capNotes, 500);
     const profile = {
       tagScores: nestedNumMap(body.tagScores),
       tagScoresAt: nestedNumMap(body.tagScoresAt),
       tagCounts: nestedNumMap(body.tagCounts),
-      tagBoosts: { [region]: strMap(body.tagBoosts, 3) },
+      capAnswers: strMap(body.capAnswers, 3),
     };
     const checkinCounts = numMap(
       Object.fromEntries(Object.entries(body.checkinCounts && typeof body.checkinCounts === 'object' ? body.checkinCounts : {}).slice(0, 2000))
