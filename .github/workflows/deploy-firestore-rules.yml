@@ -42,7 +42,15 @@ jobs:
             exit 1
           fi
           echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
-      - name: Deploy Firestore and Storage rules
+      - name: Deploy Firestore rules
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
-        run: npx firebase-tools@13 deploy --only firestore:rules,storage --non-interactive
+        run: npx firebase-tools@13 deploy --only firestore:rules --non-interactive
+      # Separate step so a Storage permission problem can never hold back the
+      # Firestore rules above. Needs the service account to have the
+      # "Service Usage Consumer" and "Firebase Rules Admin" roles in Google
+      # Cloud IAM; without them this step fails (red) after Firestore deploys.
+      - name: Deploy Storage rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+        run: npx firebase-tools@13 deploy --only storage --non-interactive
