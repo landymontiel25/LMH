@@ -84,7 +84,7 @@ export default async function handler(req, res) {
     });
     return;
   }
-  if (!(await guardAiRequest(req, res, { key: 'verify-landmark', units: 2, limit: 15, windowMs: 10 * 60 * 1000, account }))) return;
+  if (!(await guardAiRequest(req, res, { key: 'verify-landmark', limit: 15, windowMs: 10 * 60 * 1000, account }))) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};

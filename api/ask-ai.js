@@ -21,8 +21,7 @@ import { guardAiRequest } from './_lib/aiGuard.js';
 const APP_HELP =
   `HOW LANDMARK HUNTERS WORKS (for questions about the app itself, not a landmark):\n` +
   `- Navigation: 5 tabs — Map, Landmarks, Mapr, Itinerary, Profile.\n` +
-  `- AI features (Mapr chat, Mapr Picks, Ask AI, custom-interest matching) need you to be signed in. Each account has a daily AI allowance ` +
-  `(roughly 30 Mapr chat replies); once it's used up, AI answers pause until it resets at midnight UTC.\n` +
+  `- AI features (Mapr chat, Mapr Picks, Ask AI, custom-interest matching) need you to be signed in. There's no daily limit.\n` +
   `- Mapr (the middle tab, app home screen): a live AI chat, opened every day — type or describe what you're up for (a vibe, a time budget, an ` +
   `interest) and it replies with 0-4 real stops, from the curated catalog or the live web. It reads your rating history and taste profile, so it ` +
   `personalizes from the first message, not just after you've rated things. It also weighs the CURRENT message's timing/mood ("Saturday night in the ` +
@@ -127,7 +126,7 @@ export default async function handler(req, res) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
     return;
   }
-  if (!(await guardAiRequest(req, res, { key: 'ask-ai', units: 1, limit: 20, windowMs: 10 * 60 * 1000 }))) return;
+  if (!(await guardAiRequest(req, res, { key: 'ask-ai', limit: 20, windowMs: 10 * 60 * 1000 }))) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
