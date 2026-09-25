@@ -21,6 +21,7 @@ import {
   TAG_SCORES_VERSION,
 } from '../lib/tagScores';
 import RateLandmarkSearch from './RateLandmarkSearch';
+import { Check as CheckIcon, CircleHelp as CircleHelpIcon, Dices as DicesIcon, Flame as FlameIcon, MapPin as MapPinIcon, X as XIcon } from 'lucide-react';
 
 // "Your Mapr Picks": landmarks Mapr thinks you'll love next, as a
 // swipeable card row under the taste card. Capped at RESERVE (10) on
@@ -345,7 +346,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   return (
     <div className="mapr-picks">
       <div className="taste-card-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span>{'\u{1F525}'} Your Mapr Picks</span>
+        <span><FlameIcon aria-hidden="true" /> Your Mapr Picks</span>
         <button
           type="button"
           className="tag"
@@ -358,7 +359,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       </div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>
         {picks.length > 0
-          ? `${origin ? 'Near you right now. ' : region ? '' : 'Most-visited across every city. Turn on location or pick a city for picks near you. '}Tap a card to go there. ${'\u{2713}'} / ${'\u{2715}'} teach Mapr what you like -- not sure yet? Skip it without saying either way.`
+          ? <>{origin ? 'Near you right now. ' : region ? '' : 'Most-visited across every city. Turn on location or pick a city for picks near you. '}Tap a card to go there. <CheckIcon aria-hidden="true" /> / <XIcon aria-hidden="true" /> teach Mapr what you like -- not sure yet? Skip it without saying either way.</>
           : "Rate a place directly, or check in somewhere to start getting picks."}
       </p>
       <div className="mapr-picks-track" ref={trackRef} onScroll={onScroll}>
@@ -370,10 +371,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
                 {p.image ? (
                   <img className="mapr-pick-img" src={p.image} alt="" loading="lazy" />
                 ) : (
-                  <div className="mapr-pick-img mapr-pick-img-blank">{'\u{1F4CD}'}</div>
+                  <div className="mapr-pick-img mapr-pick-img-blank"><MapPinIcon aria-hidden="true" /></div>
                 )}
                 <span className="mapr-pick-match">
-                  {p.wildcard ? `${'\u{1F3B2}'} Something new · ` : `${'\u{1F525}'} `}
+                  {p.wildcard ? <><DicesIcon aria-hidden="true" /> Something new · </> : <><FlameIcon aria-hidden="true" /> </>}
                   {p.matchPercentage}% match
                 </span>
                 <span className="mapr-pick-name">{p.name}</span>
@@ -381,7 +382,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
               </button>
               <div className="mapr-pick-actions">
                 <button type="button" className="mapr-pick-vote no" onClick={() => vote(p, 'no')} title="Not for me">
-                  {'\u{2715}'} Not for me
+                  <XIcon aria-hidden="true" /> Not for me
                 </button>
                 <button
                   type="button"
@@ -389,10 +390,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
                   onClick={() => vote(p, 'unsure')}
                   title="Not sure -- doesn't count as a like or a dislike, we'll just ask again later"
                 >
-                  {'\u{1F937}'} Not sure
+                  <CircleHelpIcon aria-hidden="true" /> Not sure
                 </button>
                 <button type="button" className="mapr-pick-vote yes" onClick={() => vote(p, 'yes')} title="I'd go">
-                  {'\u{2713}'} I'd go
+                  <CheckIcon aria-hidden="true" /> I'd go
                 </button>
               </div>
             </div>

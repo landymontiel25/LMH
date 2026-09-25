@@ -33,6 +33,7 @@ import RegionSearch from '../components/RegionSearch';
 import MaprPicksCarousel from '../components/MaprPicksCarousel';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
+import { ChartColumn as ChartColumnIcon, Check as CheckIcon, CircleCheck as CircleCheckIcon, Flame as FlameIcon, MapPin as MapPinIcon, PartyPopper as PartyPopperIcon, Settings as SettingsIcon, Target as TargetIcon, TriangleAlert as TriangleAlertIcon, Trophy as TrophyIcon, Users as UsersIcon, X as XIcon } from 'lucide-react';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -67,7 +68,7 @@ function InviteButton({ myUsername }) {
   };
   return (
     <button className="btn btn-primary btn-block" onClick={share}>
-      {copied ? '✓ Invite copied!' : '\u{1F465} Invite Friends to Compete'}
+      {copied ? <><CheckIcon aria-hidden="true" /> Invite copied!</> : <><UsersIcon aria-hidden="true" /> Invite Friends to Compete</>}
     </button>
   );
 }
@@ -79,7 +80,7 @@ function OnboardingPreferences({ onDone }) {
   return (
     <div>
       <h1 className="screen-title">
-        <span>{'\u{1F389}'}</span> Welcome!
+        <span><PartyPopperIcon aria-hidden="true" /></span> Welcome!
       </h1>
       <p className="screen-subtitle">
         What are you usually into? Save it now and Setup can fill it in for you on every trip from here on.
@@ -155,13 +156,13 @@ function FirstCheckInStep({ onDone }) {
   return (
     <div>
       <h1 className="screen-title">
-        <span>{'\u{1F4CD}'}</span> Your First Check-In
+        <span><MapPinIcon aria-hidden="true" /></span> Your First Check-In
       </h1>
       <p className="screen-subtitle">One tap to earn your first point.</p>
 
       {saveError && (
         <p className="screen-subtitle" style={{ color: 'var(--color-error, #b3503f)' }}>
-          {'⚠️'} {saveError}
+          <TriangleAlertIcon aria-hidden="true" /> {saveError}
         </p>
       )}
 
@@ -397,7 +398,7 @@ export default function Profile() {
       {closestRival && (
         <div className="card section">
           <p style={{ margin: 0 }}>
-            {'\u{1F3AF}'} Closest rival: <strong>{cleanName(closestRival.userName)}</strong> —{' '}
+            <TargetIcon aria-hidden="true" /> Closest rival: <strong>{cleanName(closestRival.userName)}</strong> —{' '}
             {(closestRival.points - myPoints).toLocaleString()} pts ahead
           </p>
         </div>
@@ -406,7 +407,7 @@ export default function Profile() {
       {/* Points/leaderboard are secondary now (item 7) -- a lighter heading
           than the Discovery card above it gets, not the page's headline. */}
       <h2 className="screen-title" style={{ fontSize: '1.1rem', opacity: 0.75 }}>
-        <span>{'\u{1F3C6}'}</span> Ranks
+        <span><TrophyIcon aria-hidden="true" /></span> Ranks
       </h2>
 
       <div className="tabs" style={{ justifyContent: 'center', marginBottom: 14 }}>
@@ -469,7 +470,7 @@ export default function Profile() {
       <div className="section">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ margin: 0 }}>
-            {'\u{1F3C6}'} {leaderboardLabel}
+            <TrophyIcon aria-hidden="true" /> {leaderboardLabel}
           </h3>
           {!loading && entries.length > 0 && scope === 'global' && globalMode === 'global' && (
             <button
@@ -547,7 +548,7 @@ export default function Profile() {
       {/* 4 — Your stats */}
       <div className="card section">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0 }}>{'\u{1F4CA}'} Your Stats</h3>
+          <h3 style={{ margin: 0 }}><ChartColumnIcon aria-hidden="true" /> Your Stats</h3>
           <button type="button" className="btn btn-ghost btn-tight" onClick={() => navigate('/stats')}>
             See Full Stats ›
           </button>
@@ -577,7 +578,7 @@ export default function Profile() {
               onClick={() => setStreakInfoOpen((v) => !v)}
               aria-expanded={streakInfoOpen}
             >
-              <span className="profile-stat-num">{streakDays}{streakDays > 0 ? ' \u{1F525}' : ''}</span>
+              <span className="profile-stat-num">{streakDays}{streakDays > 0 ? <> <FlameIcon aria-hidden="true" /></> : ''}</span>
               <span className="profile-stat-label">day streak {streakInfoOpen ? '\u{25BE}' : '\u{25B8}'}</span>
             </button>
             {streakInfoOpen && (
@@ -586,7 +587,7 @@ export default function Profile() {
                 <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
                   <li>Check in at any landmark, or</li>
                   <li>
-                    Vote {'\u{2713}'}/{'\u{2715}'} or rate {actionsToday}/{PICKS_STREAK_THRESHOLD} landmarks
+                    Vote <CheckIcon aria-hidden="true" />/<XIcon aria-hidden="true" /> or rate {actionsToday}/{PICKS_STREAK_THRESHOLD} landmarks
                     below — even without checking in anywhere
                   </li>
                 </ul>
@@ -624,20 +625,20 @@ export default function Profile() {
 
         {streakAtRisk && (
           <p className="tag tag-error" style={{ display: 'block', marginTop: 14 }}>
-            {'\u{26A0}\u{FE0F}'} Check in, or vote/rate {actionsToday}/{PICKS_STREAK_THRESHOLD} landmarks
+            <TriangleAlertIcon aria-hidden="true" /> Check in, or vote/rate {actionsToday}/{PICKS_STREAK_THRESHOLD} landmarks
             today — or your {streakDays}-day streak breaks!
           </p>
         )}
         {streakDays > 0 && checkedInToday && (
           <p className="tag tag-free" style={{ display: 'block', marginTop: 14 }}>
-            {'\u{2705}'} Your {streakDays}-day streak is safe today
+            <CircleCheckIcon aria-hidden="true" /> Your {streakDays}-day streak is safe today
           </p>
         )}
 
       </div>
 
       <Link to="/settings" className="btn btn-ghost btn-block" style={{ marginTop: 20 }}>
-        {'\u{2699}\u{FE0F}'} Settings
+        <SettingsIcon aria-hidden="true" /> Settings
       </Link>
     </div>
   );

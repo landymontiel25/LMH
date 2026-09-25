@@ -10,6 +10,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useRatings } from '../lib/RatingsContext';
 import { authErrorMessage } from '../lib/authErrors';
 import { isRateable, diversityHint } from '../lib/ratingFlow';
+import { Check as CheckIcon, Lightbulb as LightbulbIcon, Star as StarIcon } from 'lucide-react';
 
 // The first card in "Your Mapr Picks" -- a big "+" tile the same size and
 // shape as a real pick card, so rating something isn't a separate feature
@@ -222,19 +223,19 @@ export default function RateLandmarkSearch() {
         createPortal(
           <div className="modal-backdrop" onClick={() => !creating && close()}>
             <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ marginTop: 0 }}>{'⭐'} Rate a Landmark</h3>
+              <h3 style={{ marginTop: 0 }}><StarIcon aria-hidden="true" /> Rate a Landmark</h3>
               <p className="screen-subtitle" style={{ marginTop: 0 }}>
                 Search for a place you've been and rate it directly — no need to wait for it to show up as a pick.
               </p>
               {diversityTip && (
                 <p className="screen-subtitle" style={{ marginTop: -10, fontSize: '0.78rem' }}>
-                  {'\u{1F4A1}'} {diversityTip}
+                  <LightbulbIcon aria-hidden="true" /> {diversityTip}
                 </p>
               )}
               <div className="field" style={{ marginBottom: 0 }}>
                 <input
                   type="text"
-                  placeholder={'\u{1F50D} Search landmarks or any place…'}
+                  placeholder="Search landmarks or any place…"
                   value={term}
                   onChange={(e) => {
                     setTerm(e.target.value);
@@ -258,7 +259,7 @@ export default function RateLandmarkSearch() {
                       >
                         <span className="autocomplete-primary">{l.name}</span>
                         <span className="autocomplete-secondary">
-                          {alreadyRated ? `${'\u{2713}'} Already rated` : getRegion(l.regionId)?.name}
+                          {alreadyRated ? <><CheckIcon aria-hidden="true" /> Already rated</> : getRegion(l.regionId)?.name}
                         </span>
                       </button>
                     );

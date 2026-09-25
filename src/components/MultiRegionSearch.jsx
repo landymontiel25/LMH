@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PICKABLE_REGIONS } from '../data/regions';
 import { matchesSearch } from '../lib/search';
+import { Check as CheckIcon, X as XIcon } from 'lucide-react';
 
 // Same type-to-search box as RegionSearch, but for picking SEVERAL cities at
 // once ("Philly or NYC this weekend") instead of one -- built as its own
@@ -56,7 +57,7 @@ export default function MultiRegionSearch({ selectedIds, onToggle, onClearAll, p
                   onClick={() => onToggle(r)}
                 >
                   <span className="autocomplete-primary">
-                    {isSelected ? `${'\u{2713}'} ` : ''}
+                    {isSelected ? <><CheckIcon aria-hidden="true" /> </> : ''}
                     {r.name}
                   </span>
                   {r.tagline && <span className="autocomplete-secondary">{r.tagline}</span>}
@@ -77,7 +78,7 @@ export default function MultiRegionSearch({ selectedIds, onToggle, onClearAll, p
               onClick={() => onToggle(r)}
               title="Remove"
             >
-              {r.name} {'\u{2715}'}
+              {r.name} <XIcon aria-hidden="true" />
             </button>
           ))}
           <button

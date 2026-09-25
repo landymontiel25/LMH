@@ -3,6 +3,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useBadges } from '../lib/BadgesContext';
 import { levelProgress } from '../lib/level';
 import ConfettiBurst from './ConfettiBurst';
+import { Flame as FlameIcon, Medal as MedalIcon } from 'lucide-react';
 
 const LEVEL_KEY_PREFIX = 'lh-last-level-';
 const AUTO_DISMISS_MS = 3200;
@@ -61,7 +62,7 @@ export default function CelebrationOverlay() {
         <div className="celebration-enter" key={badge.id}>
           <div className="celebration-float">
             <ConfettiBurst />
-            <p className="celebration-eyebrow">{'\u{1F3C5}'} Badge Earned</p>
+            <p className="celebration-eyebrow"><MedalIcon aria-hidden="true" /> Badge Earned</p>
             <span className="celebration-icon">{badge.icon}</span>
             <p className="celebration-title">{badge.label}</p>
             <p className="celebration-subtitle">{badge.description}</p>
@@ -78,7 +79,7 @@ export default function CelebrationOverlay() {
           <div className="celebration-float">
             <ConfettiBurst />
             <p className="celebration-eyebrow">Level Up</p>
-            <span className="celebration-icon flame">{'\u{1F525}'}</span>
+            <span className="celebration-icon flame"><FlameIcon aria-hidden="true" /></span>
             <p className="celebration-title">Level {levelUp}</p>
             <p className="celebration-subtitle">Keep exploring to reach the next one.</p>
           </div>

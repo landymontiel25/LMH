@@ -23,6 +23,7 @@ import TagCapPrompt from './components/TagCapPrompt';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import AdminModeBadge from './components/AdminModeBadge';
+import { Compass as CompassIcon } from 'lucide-react';
 
 // Lazy so each screen (and, critically, Leaflet + its cluster plugin --
 // only pulled in by MapExplore/AddLandmark) ships as its own chunk instead
@@ -56,7 +57,7 @@ function AppRoutes() {
   const location = useLocation();
   return (
     <ErrorBoundary key={location.pathname}>
-      <Suspense fallback={<div className="app-loading">{'\u{1F9ED}'}</div>}>
+      <Suspense fallback={<div className="app-loading"><CompassIcon aria-hidden="true" /></div>}>
         <Routes>
           <Route path="/" element={<MapExplore />} />
           <Route path="/add-landmark" element={<AddLandmark />} />

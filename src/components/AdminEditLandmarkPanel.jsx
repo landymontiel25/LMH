@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateCustomLandmark, deleteCustomLandmark } from '../lib/customLandmarks';
 import CategorySelect from './CategorySelect';
+import { Trash2 as Trash2Icon, Wrench as WrenchIcon } from 'lucide-react';
 
 // Admin Mode's edit tool for a user-submitted landmark -- shown on its own
 // page (LandmarkDetail) when Settings -> Admin Mode is on. Every field here
@@ -66,7 +67,7 @@ export default function AdminEditLandmarkPanel({ landmark, onSaved }) {
 
   return (
     <div className="card section" style={{ borderColor: 'var(--color-rust)' }}>
-      <h3 style={{ marginTop: 0 }}>{'\u{1F6E0}\u{FE0F}'} Admin Mode — Edit Landmark</h3>
+      <h3 style={{ marginTop: 0 }}><WrenchIcon aria-hidden="true" /> Admin Mode — Edit Landmark</h3>
       <p className="screen-subtitle" style={{ marginTop: -6 }}>
         Changes here are live for everyone the moment you tap Save.
       </p>
@@ -145,7 +146,7 @@ export default function AdminEditLandmarkPanel({ landmark, onSaved }) {
         disabled={saving || deleting}
         onClick={remove}
       >
-        {deleting ? 'Deleting…' : `${'\u{1F5D1}'} Delete This Landmark`}
+        {deleting ? 'Deleting…' : <><Trash2Icon aria-hidden="true" /> Delete This Landmark</>}
       </button>
     </div>
   );

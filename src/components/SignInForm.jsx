@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
+import { Eye as EyeIcon, EyeOff as EyeOffIcon, LogIn as LogInIcon, Mail as MailIcon } from 'lucide-react';
 
 export default function SignInForm({ onSignedUp }) {
   const { signUpEmail, signInEmail, resetPassword } = useAuth();
@@ -70,7 +71,7 @@ export default function SignInForm({ onSignedUp }) {
   return (
     <div>
       <h1 className="screen-title">
-        <span>{'\u{1F6C2}'}</span> Sign In
+        <span><LogInIcon aria-hidden="true" /></span> Sign In
       </h1>
       <p className="screen-subtitle">Sign in to check in, rate places, add friends, and hit the leaderboard.</p>
 
@@ -129,13 +130,13 @@ export default function SignInForm({ onSignedUp }) {
                 color: 'var(--color-parchment-dim)',
               }}
             >
-              {showPassword ? '\u{1F648}' : '\u{1F441}\u{FE0F}'}
+              {showPassword ? <EyeOffIcon aria-hidden="true" /> : <EyeIcon aria-hidden="true" />}
             </button>
           </div>
         </div>
         {resetSent && (
           <p className="tag tag-free" style={{ display: 'block', marginBottom: 14 }}>
-            {'\u{1F4E7}'} If an account exists for that email, a password reset link is on its way — check your inbox
+            <MailIcon aria-hidden="true" /> If an account exists for that email, a password reset link is on its way — check your inbox
             (and spam folder).
           </p>
         )}

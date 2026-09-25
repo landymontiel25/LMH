@@ -6,12 +6,14 @@ import { INTERESTS } from '../data/regions';
 import { nearestRegionId } from '../lib/geo';
 import LocationAutocomplete from './LocationAutocomplete';
 import MultiRegionSearch from './MultiRegionSearch';
+import { Coffee as CoffeeIcon, Compass as CompassIcon, Globe as GlobeIcon, MapPin as MapPinIcon, Sparkles as SparklesIcon, Star as StarIcon, User as UserIcon, Users as UsersIcon, X as XIcon, Zap as ZapIcon } from 'lucide-react';
+import { CategoryIcon } from './icons';
 
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
 
 const MOODS = [
-  { id: 'energized', icon: '\u{26A1}', label: 'Energized & Active', hint: 'upbeat, on your feet, go-go-go' },
-  { id: 'easygoing', icon: '\u{1F634}', label: 'Easygoing & Chill', hint: 'relaxed, slower pace, low-key' },
+  { id: 'energized', icon: <ZapIcon aria-hidden="true" />, label: 'Energized & Active', hint: 'upbeat, on your feet, go-go-go' },
+  { id: 'easygoing', icon: <CoffeeIcon aria-hidden="true" />, label: 'Easygoing & Chill', hint: 'relaxed, slower pace, low-key' },
 ];
 
 // The card version of TripSetup's form, dropped right into Mapr instead of
@@ -97,14 +99,14 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
   return (
     <div className="card section trip-planner-card">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <h3 style={{ margin: 0 }}>{'\u{1F9ED}'} Plan Your Trip</h3>
+        <h3 style={{ margin: 0 }}><CompassIcon aria-hidden="true" /> Plan Your Trip</h3>
         <button type="button" className="tag" style={{ cursor: 'pointer', fontFamily: 'inherit', appearance: 'none' }} onClick={onClose}>
-          {'\u{2715}'} Close
+          <XIcon aria-hidden="true" /> Close
         </button>
       </div>
 
       <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={() => navigate('/')}>
-        {'\u{1F310}'} Just Browse the Map
+        <GlobeIcon aria-hidden="true" /> Just Browse the Map
       </button>
 
       <div className="field" style={{ marginTop: 14 }}>
@@ -116,7 +118,7 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
           onClick={useCurrentLocation}
           disabled={locating}
         >
-          {'\u{1F4CD}'} {locating ? 'Locating…' : trip.startingLocation === CURRENT_LOCATION_LABEL ? 'Using Your Current Location' : 'Use My Current Location'}
+          <MapPinIcon aria-hidden="true" /> {locating ? 'Locating…' : trip.startingLocation === CURRENT_LOCATION_LABEL ? 'Using Your Current Location' : 'Use My Current Location'}
         </button>
         <LocationAutocomplete
           id="planner-start"
@@ -148,7 +150,7 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
         {(trip.savedInterests.length > 0 || trip.savedCustomInterests.length > 0) && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
             <button type="button" className={`chip ${preferencesSelected ? 'selected' : ''}`} onClick={togglePreferences}>
-              <span className="chip-icon">{'⭐'}</span>
+              <span className="chip-icon"><StarIcon aria-hidden="true" /></span>
               <span>Use My Preferences</span>
             </button>
           </div>
@@ -161,7 +163,9 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
               className={`chip ${trip.interests.includes(i.id) ? 'selected' : ''}`}
               onClick={() => toggleInterest(i.id)}
             >
-              <span className="chip-icon">{i.icon}</span>
+              <span className="chip-icon">
+                <CategoryIcon id={i.id} />
+              </span>
               <span>{i.label}</span>
             </button>
           ))}
@@ -193,16 +197,16 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
         <label>Trip Type</label>
         <div className="tabs" style={{ justifyContent: 'center' }}>
           <button type="button" className={`tab-btn ${tripMode === 'solo' ? 'active' : ''}`} onClick={() => setTripMode('solo')}>
-            {'\u{1F464}'} Solo
+            <UserIcon aria-hidden="true" /> Solo
           </button>
           <button type="button" className={`tab-btn ${tripMode === 'group' ? 'active' : ''}`} onClick={() => setTripMode('group')}>
-            {'\u{1F465}'} Group
+            <UsersIcon aria-hidden="true" /> Group
           </button>
         </div>
       </div>
 
       <button type="button" className="btn btn-primary btn-block" style={{ marginTop: 4 }} onClick={planTrip}>
-        {'\u{2728}'} Plan My Trip {'\u{2192}'}
+        <SparklesIcon aria-hidden="true" /> Plan My Trip {'\u{2192}'}
       </button>
     </div>
   );

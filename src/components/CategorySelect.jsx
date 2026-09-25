@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { INTERESTS } from '../data/regions';
 import { matchesSearch } from '../lib/search';
+import { CategoryIcon } from './icons';
 
 // Type-to-search category picker for Add Landmark, the same control as the
 // city picker (RegionSearch). One category per landmark. `value` is the
@@ -27,7 +28,7 @@ export default function CategorySelect({ value, onSelect, placeholder = 'Search 
       <input
         type="text"
         placeholder={placeholder}
-        value={open ? query : selected ? `${selected.icon} ${selected.label}` : ''}
+        value={open ? query : selected ? selected.label : ''}
         onFocus={() => {
           setQuery('');
           setOpen(true);
@@ -49,7 +50,7 @@ export default function CategorySelect({ value, onSelect, placeholder = 'Search 
               }}
             >
               <span className="autocomplete-primary">
-                {i.icon} {i.label}
+                <CategoryIcon id={i.id} /> {i.label}
               </span>
             </button>
           ))}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { downloadRegionTiles, isRegionDownloaded } from '../lib/offlineMap';
+import { Check as CheckIcon, Download as DownloadIcon } from 'lucide-react';
 
 export default function OfflineDownloadButton({ region }) {
   const [downloaded, setDownloaded] = useState(() => isRegionDownloaded(region.id));
@@ -23,13 +24,13 @@ export default function OfflineDownloadButton({ region }) {
 
   return (
     <div className="card section">
-      <h3 style={{ marginTop: 0 }}>{'\u{1F4E5}'} Offline Map</h3>
+      <h3 style={{ marginTop: 0 }}><DownloadIcon aria-hidden="true" /> Offline Map</h3>
       <p className="screen-subtitle" style={{ marginTop: 0 }}>
         Cache {region.name}'s map tiles now so the map still works with no signal.
       </p>
       {downloaded && !downloading && (
         <p className="tag tag-free" style={{ display: 'inline-block', marginBottom: 8 }}>
-          Downloaded for offline {'✓'}
+          Downloaded for offline <CheckIcon aria-hidden="true" />
         </p>
       )}
       {downloading && (

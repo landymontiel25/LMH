@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { subscribeLeaderboard } from '../lib/leaderboard';
 import { subscribeMyNotifications } from '../lib/notifications';
+import { Bell as BellIcon, Trophy as TrophyIcon } from 'lucide-react';
 
 // Header identity control. Shows who you're signed in as; hovering (desktop)
 // or tapping (mobile) reveals this week's rank/points, a "Notifications"
@@ -68,7 +69,7 @@ function ProfileMenu() {
   if (!user) {
     return (
       <Link to="/profile" className="score-chip score-chip-join" title="Sign in to compete">
-        {'\u{1F3C6}'} Compete
+        <TrophyIcon aria-hidden="true" /> Compete
       </Link>
     );
   }
@@ -86,7 +87,7 @@ function ProfileMenu() {
         <div className="points-popover">
           <div className="points-popover-joined">This Week</div>
           <div>
-            {'\u{1F3C6}'} {me?.rank ? `#${me.rank}` : '—'} {'·'} {me ? me.points.toLocaleString() : 0} pts
+            <TrophyIcon aria-hidden="true" /> {me?.rank ? `#${me.rank}` : '—'} {'·'} {me ? me.points.toLocaleString() : 0} pts
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <button
@@ -98,7 +99,7 @@ function ProfileMenu() {
                 navigate('/notifications');
               }}
             >
-              {'\u{1F514}'} Notifications
+              <BellIcon aria-hidden="true" /> Notifications
               {notificationCount > 0 && (
                 <span
                   aria-label={`${notificationCount} notifications`}

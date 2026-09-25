@@ -3,6 +3,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { getUserProfile, sendFriendRequest, hasPendingRequestTo } from '../lib/friends';
 import FriendStatsModal from './FriendStatsModal';
+import { Check as CheckIcon, Plus as PlusIcon } from 'lucide-react';
 
 // Wraps a name (leaderboard, full-list page, wherever) so tapping it goes
 // straight to that person's stats if you're already friends -- the same
@@ -115,7 +116,7 @@ export default function FriendPopoverName({ userId, fallbackName, children }) {
               disabled={!profile || status === 'sending' || status === 'sent'}
               onClick={addFriend}
             >
-              {status === 'sent' ? `${'\u{2713}'} Sent` : status === 'sending' ? '…' : `${'\u{2795}'} Add Friend`}
+              {status === 'sent' ? <><CheckIcon aria-hidden="true" /> Sent</> : status === 'sending' ? '…' : <><PlusIcon aria-hidden="true" /> Add Friend</>}
             </button>
           )}
           {status && status !== 'sending' && status !== 'sent' && <p className="user-popover-note">{status}</p>}

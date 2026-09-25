@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { POINTS_PER_CHECKIN } from '../lib/leaderboard';
+import { Share2 as Share2Icon } from 'lucide-react';
 
 // A shareable "wrapped"-style summary of one city's trip so far -- how many
 // of the planned stops got visited and the points earned doing it. Flat
@@ -66,7 +67,7 @@ export default function TripRecapCard({ regionName, visitedLandmarks, onClose })
         </div>
 
         <button className="btn btn-primary btn-block" style={{ marginTop: 16 }} onClick={share}>
-          {'\u{1F4E4}'} Share
+          <Share2Icon aria-hidden="true" /> Share
         </button>
         {shareMsg && (
           <p className="screen-subtitle" style={{ textAlign: 'center', marginTop: 8, marginBottom: 0 }}>

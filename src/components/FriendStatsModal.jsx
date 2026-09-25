@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserStats, getUserCheckins, isRealCheckin } from '../lib/leaderboard';
 import { getRegion } from '../data/regions';
+import { User as UserIcon } from 'lucide-react';
 
 // A friend's quick summary -- points/check-ins/cities/last check-in -- as a
 // popup modal. Check-ins and Cities are buttons that navigate to their own
@@ -34,7 +35,7 @@ export default function FriendStatsModal({ uid, name, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <h3 style={{ marginTop: 0 }}>
-          {'\u{1F464}'} @{name}
+          <UserIcon aria-hidden="true" /> @{name}
         </h3>
         {state.loading && <p className="screen-subtitle">Loading…</p>}
         {state.error && <p className="screen-subtitle">Could not load their stats — try again.</p>}

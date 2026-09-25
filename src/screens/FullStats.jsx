@@ -6,6 +6,7 @@ import { useBadges } from '../lib/BadgesContext';
 import { ALL_BADGES, RARITY_ORDER } from '../lib/streaks';
 import { levelProgress } from '../lib/level';
 import CheckinsGallery from '../components/CheckinsGallery';
+import { Award as AwardIcon, Medal as MedalIcon, Star as StarIcon } from 'lucide-react';
 
 const SORTS = [
   { id: 'oldest', label: 'Oldest' },
@@ -80,7 +81,7 @@ export default function FullStats() {
   return (
     <div ref={gridRef}>
       <h1 className="screen-title">
-        <span>{'\u{2B50}'}</span> Full Stats
+        <span><StarIcon aria-hidden="true" /></span> Full Stats
       </h1>
       <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 24 }} onClick={() => navigate('/profile')}>
         {'\u{2190}'} Back to Profile
@@ -88,7 +89,7 @@ export default function FullStats() {
 
       <div className="card section">
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0 }}>{'\u{1F396}\u{FE0F}'} Level {level}</h3>
+          <h3 style={{ margin: 0 }}><AwardIcon aria-hidden="true" /> Level {level}</h3>
           <span className="screen-subtitle" style={{ margin: 0 }}>
             {pointsIntoLevel.toLocaleString()} / {pointsForNextLevel.toLocaleString()} pts
           </span>
@@ -99,7 +100,7 @@ export default function FullStats() {
       </div>
 
       <div className="card section">
-        <h3 style={{ marginTop: 0 }}>{'\u{1F3C5}'} All Badges</h3>
+        <h3 style={{ marginTop: 0 }}><MedalIcon aria-hidden="true" /> All Badges</h3>
         <p className="screen-subtitle" style={{ marginTop: 0 }}>
           {badges.length} of {ALL_BADGES.length} earned
         </p>

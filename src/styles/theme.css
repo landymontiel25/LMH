@@ -165,17 +165,18 @@ textarea {
   max-width: 720px;
   margin: 0 auto;
   padding: 24px 20px calc(var(--nav-h) + 40px);
-  animation: page-in 0.24s var(--ease) both;
+  /* Fade only: a transform here (even a finished one) would make this box
+     the containing block for position: fixed children like the full-screen
+     map and bottom sheets. */
+  animation: page-in 0.22s var(--ease);
 }
 
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
@@ -4316,4 +4317,47 @@ body.lightbox-open .ask-landmark-panel {
 
 [data-theme='light'] .tag {
   background: rgba(43, 38, 32, 0.05);
+}
+
+/* ---------- Icons (Lucide) ---------- */
+
+/* Inline icons sit at text size next to their label; places with their own
+   size (nav, chip tiles) override below. */
+.lucide {
+  width: 1.15em;
+  height: 1.15em;
+  stroke-width: 1.75;
+  flex-shrink: 0;
+  vertical-align: -0.2em;
+}
+
+.chip-icon {
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+
+.chip-icon .lucide {
+  width: 22px;
+  height: 22px;
+}
+
+.chip.selected .chip-icon {
+  color: var(--mapr-blue);
+}
+
+.lr-category-icons {
+  display: inline-flex;
+  gap: 2px;
+  color: var(--text-secondary);
+}
+
+.bottom-nav .nav-icon .lucide {
+  width: 24px;
+  height: 24px;
+  vertical-align: 0;
+}
+
+.landmark-thumb-fallback .lucide {
+  width: 1em;
+  height: 1em;
 }

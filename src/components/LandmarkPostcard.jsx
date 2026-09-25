@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { paletteFor, iconFor } from '../lib/landmarkVisuals';
+import { paletteFor } from '../lib/landmarkVisuals';
+import { CategoryIcon } from './icons';
 
 // swipeable: renders a horizontal scroll-snap gallery with dot indicators
 // when the landmark has more than one photo. Non-swipeable contexts (list
@@ -12,7 +13,6 @@ import { paletteFor, iconFor } from '../lib/landmarkVisuals';
 // a photo full-screen instead of just displaying it inline.
 export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', swipeable = false, myPhotos, onImageClick }) {
   const palette = paletteFor(landmark.id);
-  const icon = iconFor(landmark.categories);
   const dims =
     size === 'sm' ? { width: 150, height: 105 } : size === 'lg' ? { width: 320, height: 220 } : { width: 220, height: 150 };
   const allImages = [...(myPhotos || []), ...(landmark.images || [])];
@@ -72,7 +72,9 @@ export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', 
           background: `linear-gradient(135deg, ${palette[0]}, ${palette[1]})`,
         }}
       >
-        <span style={{ fontSize: size === 'lg' ? '2.6rem' : '1.8rem', filter: 'grayscale(0.15)' }}>{icon}</span>
+        <span style={{ fontSize: size === 'lg' ? '2.6rem' : '1.8rem', color: 'rgba(255, 255, 255, 0.85)', display: 'flex' }}>
+          <CategoryIcon id={landmark.categories?.[0]} />
+        </span>
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import { TriangleAlert as TriangleAlertIcon } from 'lucide-react';
 
 // Catches a render-time crash in whatever screen is mounted inside it (this
 // wraps just <Routes>, not Header/BottomNav -- see App.jsx) so one bad
@@ -24,7 +25,7 @@ export default class ErrorBoundary extends Component {
     if (!this.state.error) return this.props.children;
     return (
       <div style={{ padding: '24px 20px' }}>
-        <h1 className="screen-title">{'\u{26A0}\u{FE0F}'} Something went wrong</h1>
+        <h1 className="screen-title"><TriangleAlertIcon aria-hidden="true" /> Something went wrong</h1>
         <p className="screen-subtitle">
           This screen hit an unexpected error. Try again, or head back to the map.
         </p>

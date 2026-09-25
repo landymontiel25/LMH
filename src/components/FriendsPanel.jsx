@@ -4,6 +4,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { findUserByUsername, sendFriendRequest, acceptRequest, declineRequest, listFriends } from '../lib/friends';
 import { listBlockedUsers, unblockUser } from '../lib/blocks';
 import FriendStatsModal from './FriendStatsModal';
+import { Users as UsersIcon } from 'lucide-react';
 
 export default function FriendsPanel() {
   const { user } = useAuth();
@@ -99,7 +100,7 @@ export default function FriendsPanel() {
 
   return (
     <div className="card section">
-      <h3 style={{ marginTop: 0 }}>{'\u{1F465}'} Friends</h3>
+      <h3 style={{ marginTop: 0 }}><UsersIcon aria-hidden="true" /> Friends</h3>
 
       {/* Username — always visible and editable (pre-filled with your current one) */}
       <div style={{ marginBottom: 16 }}>

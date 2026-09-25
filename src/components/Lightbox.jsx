@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X as XIcon } from 'lucide-react';
 
 // Full-screen photo viewer: solid black, above everything (header and nav
 // hidden), and the page behind it can't scroll while it's open. Tap the
@@ -34,7 +35,7 @@ export default function Lightbox({ src, alt = 'Photo', onClose }) {
     <div className="lightbox" onClick={onClose} onTouchMove={(e) => e.preventDefault()} role="dialog" aria-modal="true">
       <img src={src} alt={alt} onClick={(e) => e.stopPropagation()} />
       <button type="button" className="lightbox-close" onClick={onClose} aria-label="Close">
-        {'\u{2715}'}
+        <XIcon aria-hidden="true" />
       </button>
     </div>,
     document.body
