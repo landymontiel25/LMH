@@ -7,6 +7,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { useGeo } from '../lib/GeoContext';
 import { useBadges } from '../lib/BadgesContext';
 import { coarseLocation, localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
+import { composeTasteIntro, baselineToSyntheticReviews } from '../lib/tasteQuestions';
 import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import RateLandmarkSearch from './RateLandmarkSearch';
 
@@ -61,14 +62,20 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // repeat visits (see LoveReasonPrompt) -- so trait matching reads them
   // the same way it reads a rating's own comment.
   const commentWithLoveNotes = (r) => [r.comment, ...(r.loveNotes || [])].filter(Boolean).join('. ');
-  const localReviews = orderedReviews.map((r) => ({
-    tier: r.ratingTier,
-    categories: r.categories || [],
-    name: r.landmarkName,
-    comment: commentWithLoveNotes(r),
-    highlights: r.highlights || [],
-    updatedAt: r.updatedAt,
-  }));
+  // Baseline picks (TasteNudgeCard) feed the local affinity scorer too, as
+  // synthetic category-level reviews -- so the offline fallback (no API)
+  // still reflects a filled-in baseline, not just the AI-path prompt.
+  const localReviews = [
+    ...orderedReviews.map((r) => ({
+      tier: r.ratingTier,
+      categories: r.categories || [],
+      name: r.landmarkName,
+      comment: commentWithLoveNotes(r),
+      highlights: r.highlights || [],
+      updatedAt: r.updatedAt,
+    })),
+    ...baselineToSyntheticReviews(myProfile?.tasteBaseline),
+  ];
 
   useEffect(() => {
     if (!user) {
@@ -116,7 +123,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
               comment: commentWithLoveNotes(r),
             })),
             interests,
-            tasteIntro: myProfile?.tasteIntro || '',
+            tasteIntro: composeTasteIntro(myProfile),
             checkedInIds: excludeIds,
             weakCheckedInIds,
             regionIds,

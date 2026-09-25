@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeTasteConfidence, hasInsiderMode, INSIDER_MODE_CONFIDENCE } from './tasteProfile';
+import { baselineToSyntheticReviews } from './tasteQuestions';
 
 const review = (tier, categories, overrides = {}) => ({
   tier,
@@ -69,6 +70,23 @@ describe('computeTasteConfidence', () => {
     const { confidence } = computeTasteConfidence(reviews);
     expect(confidence).toBeGreaterThanOrEqual(0);
     expect(confidence).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('computeTasteConfidence with a filled-in taste baseline', () => {
+  it('answering the baseline (no landmark ratings at all) produces real, non-zero signal', () => {
+    // Exactly what filling out TasteNudgeCard's quick-pick questions across
+    // several categories produces, with no ratings behind it at all -- this
+    // is the "answering it should move the Taste Profile Score" behavior.
+    const baseline = {
+      food: { Steak: 'like', Sushi: 'dislike' },
+      'history-culture': { Museums: 'like' },
+      'parks-nature': { 'Hiking trails': 'like', Beaches: 'dislike' },
+      entertainment: { 'Live music': 'like' },
+    };
+    const result = computeTasteConfidence(baselineToSyntheticReviews(baseline));
+    expect(result.sampleCount).toBeGreaterThan(0);
+    expect(result.confidence).toBeGreaterThan(0);
   });
 });
 

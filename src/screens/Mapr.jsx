@@ -9,6 +9,7 @@ import { useTrip } from '../lib/TripContext';
 import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
 import { mapsDeepLink } from '../lib/routing';
 import { computeTasteConfidence, hasInsiderMode } from '../lib/tasteProfile';
+import { composeTasteIntro, baselineToSyntheticReviews } from '../lib/tasteQuestions';
 import { logPlanningEvent } from '../lib/timeSaved';
 import { useVoiceInput } from '../lib/useVoiceInput';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
@@ -63,7 +64,8 @@ export default function Mapr() {
   const regionBoxRef = useRef(null);
   const { listening, toggleListening } = useVoiceInput((spoken) => setDraft((prev) => (prev ? `${prev} ${spoken}` : spoken)));
 
-  const showTasteNudge = !!user && !myProfile?.tasteIntro && !nudgeDismissed && !isTasteNudgeDismissed(user.uid);
+  const hasTasteInfo = !!(myProfile?.tasteIntro || (myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length));
+  const showTasteNudge = !!user && !hasTasteInfo && !nudgeDismissed && !isTasteNudgeDismissed(user.uid);
   const dismissNudge = () => {
     if (user) dismissTasteNudge(user.uid);
     setNudgeDismissed(true);
@@ -121,8 +123,10 @@ export default function Mapr() {
       // leave-one-out predictions are actually confident about this
       // traveler's taste -- see computeTasteConfidence for what "confident"
       // means here. Recomputed per-send rather than read from a stored
-      // value, so it's never stale.
-      const insiderMode = hasInsiderMode(computeTasteConfidence(reviews).confidence);
+      // value, so it's never stale. Includes the taste baseline picks
+      // alongside real ratings, same as TasteProfileCard's own score.
+      const confidenceInputs = [...reviews, ...baselineToSyntheticReviews(myProfile?.tasteBaseline)];
+      const insiderMode = hasInsiderMode(computeTasteConfidence(confidenceInputs).confidence);
       const startedAt = performance.now();
       const r = await fetch('/api/plan-ai', {
         method: 'POST',
@@ -132,7 +136,7 @@ export default function Mapr() {
           regionId: region.id,
           reviews,
           interests: trip.savedInterests || [],
-          tasteIntro: myProfile?.tasteIntro || '',
+          tasteIntro: composeTasteIntro(myProfile),
           insiderMode,
         }),
       });

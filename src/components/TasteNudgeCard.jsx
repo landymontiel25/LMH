@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
-import { saveTasteIntro } from '../lib/friends';
+import { saveTasteBaseline } from '../lib/friends';
 import { TASTE_QUESTIONS } from '../lib/tasteQuestions';
 import VoiceInputButton from './VoiceInputButton';
 
@@ -15,11 +15,22 @@ import VoiceInputButton from './VoiceInputButton';
 // further with specific reasons ("no pepper on my steak") as they come in,
 // same as always. Typing or speaking directly into the chat below still
 // works too and satisfies this exactly the same (see Mapr.jsx's send()).
-export default function TasteNudgeCard({ onDone, onDismiss }) {
+//
+// Also doubles as the edit flow: TasteProfileCard's Edit button reopens
+// this same card pre-filled from the saved baseline (initialBaseline/
+// initialNotes), so resubmitting after a change replaces the old answers
+// rather than piling a new sentence on top of them (see saveTasteBaseline).
+export default function TasteNudgeCard({ onDone, onDismiss, initialBaseline, initialNotes, editing = false }) {
   const { user } = useAuth();
-  const { myProfile, reload: reloadFriends } = useFriends();
-  const [picked, setPicked] = useState({}); // { [categoryId]: { [example]: 'like' | 'dislike' } }
-  const [extra, setExtra] = useState('');
+  const { reload: reloadFriends } = useFriends();
+  // Deep-copy the initial baseline into per-category Sets-as-objects so
+  // editing here never mutates the profile's own object by reference.
+  const [picked, setPicked] = useState(() => {
+    const init = {};
+    for (const [catId, cat] of Object.entries(initialBaseline || {})) init[catId] = { ...cat };
+    return init;
+  });
+  const [extra, setExtra] = useState(initialNotes || '');
   const [saving, setSaving] = useState(false);
 
   const cycleChip = (categoryId, example) => {
@@ -38,18 +49,7 @@ export default function TasteNudgeCard({ onDone, onDismiss }) {
   const save = async () => {
     setSaving(true);
     try {
-      const byCategory = TASTE_QUESTIONS.filter((q) => picked[q.id] && Object.keys(picked[q.id]).length).map((q) => {
-        const cat = picked[q.id];
-        const likes = Object.keys(cat).filter((k) => cat[k] === 'like');
-        const dislikes = Object.keys(cat).filter((k) => cat[k] === 'dislike');
-        const parts = [];
-        if (likes.length) parts.push(`likes ${likes.join(', ')}`);
-        if (dislikes.length) parts.push(`dislikes ${dislikes.join(', ')}`);
-        return `${q.label}: ${parts.join('; ')}`;
-      });
-      const sentence = [...byCategory, extra.trim()].filter(Boolean).join('. ');
-      const combined = [myProfile?.tasteIntro, sentence].filter(Boolean).join('. ');
-      await saveTasteIntro(user.uid, combined);
+      await saveTasteBaseline(user.uid, { baseline: picked, notes: extra });
       await reloadFriends();
     } catch {
       // Best-effort -- never block dismissing the nudge on this write failing.
@@ -62,10 +62,13 @@ export default function TasteNudgeCard({ onDone, onDismiss }) {
     <div className="card section taste-nudge-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F44B}'} Tell Mapr what you like — and don't</h3>
+          <h3 style={{ margin: 0, fontSize: '0.95rem' }}>
+            {'\u{1F44B}'} {editing ? 'Edit what you told Mapr' : "Tell Mapr what you like — and don't"}
+          </h3>
           <p className="screen-subtitle" style={{ margin: '4px 0 0' }}>
-            Or just say it in the chat — either way counts and you won't see this again. This becomes your baseline;
-            rating actual landmarks fills in the specifics later.
+            {editing
+              ? 'Change any pick, add notes, then save — this replaces your saved baseline.'
+              : "Or just say it in the chat — either way counts and you won't see this again. This becomes your baseline; rating actual landmarks fills in the specifics later."}
           </p>
         </div>
         <button type="button" className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={onDismiss} aria-label="Dismiss">
@@ -128,7 +131,7 @@ export default function TasteNudgeCard({ onDone, onDismiss }) {
         type="button"
         className="btn btn-primary btn-block"
         style={{ marginTop: 14 }}
-        disabled={saving || (totalPicked === 0 && !extra.trim())}
+        disabled={saving || (!editing && totalPicked === 0 && !extra.trim())}
         onClick={save}
       >
         {saving ? 'Saving…' : totalPicked > 0 ? `Save (${totalPicked} picked)` : 'Save'}
