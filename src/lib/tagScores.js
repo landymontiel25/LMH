@@ -364,6 +364,25 @@ export function localTagPicks({ profile, region, limit = 10, now = Date.now(), .
   }));
 }
 
+// No region to score in (no location, no ratings, no saved cities): the
+// most-checked-into landmarks across every region combined, ties broken by
+// the catalog's editorial popularity.
+export function globalPopularPicks({ excludeIds = [], checkinCounts = {}, limit = 10 }) {
+  const exclude = new Set(excludeIds);
+  return ALL_LANDMARKS.filter((l) => !exclude.has(l.id) && !(l.categories || []).every((c) => UNRATEABLE.has(c)))
+    .sort(byDemand(checkinCounts))
+    .slice(0, limit)
+    .map((l) => ({
+      id: l.id,
+      region: l.regionId,
+      name: l.name,
+      image: l.images?.[0] || null,
+      categories: l.categories || [],
+      matchPercentage: 62,
+      oneLineSummary: (l.summary || '').split(/[.!?]/)[0].slice(0, 90),
+    }));
+}
+
 // Step 13. Settles picks shown on an earlier day: a visit (or a vote, or a
 // rating) clears the landmark's ignore count; otherwise that day counts as
 // one ignore, and the IGNORE_LIMIT-th one nudges its tag down by
