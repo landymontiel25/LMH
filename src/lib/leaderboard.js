@@ -36,6 +36,11 @@ export const CHECKIN_RADIUS_METERS = 30;
 // custom landmark, like a water tower, next door). The visit still logs in
 // full either way; only the payout is zeroed.
 export const HOME_RADIUS_METERS = 804.672; // 0.5 miles
+// Toggled off for now (turned out not worth it in practice) -- the radius
+// math and the `insideHomeRadius` field on every check-in stay in place
+// (still useful data for Mapr either way), this just stops it from zeroing
+// anyone's payout. Flip back to true to re-enable the exclusion.
+export const HOME_RADIUS_EXCLUSION_ENABLED = false;
 
 // Payout taper for repeat visits to the same landmark: full the first time,
 // a light nudge for a handful of return trips, then nothing -- repeat
@@ -85,11 +90,11 @@ export const PERIODS = ['weekly', 'monthly', 'yearly'];
  * check-in that predates this change stays valid untouched; visit #2
  * onward is uid_landmarkId_<visitNumber>), so re-checking in somewhere is
  * always allowed and always logged with its own timestamp. What pays out
- * is a separate question from what gets logged: payout is 0 inside the
- * user's home radius (see HOME_RADIUS_METERS) and tapers with repeat
- * visits outside it (see taperedPoints) -- but the visit itself is always
- * recorded in full regardless, since Mapr should learn from every visit
- * whether or not it paid out.
+ * is a separate question from what gets logged: payout tapers with repeat
+ * visits (see taperedPoints), and would also be 0 inside the user's home
+ * radius if HOME_RADIUS_EXCLUSION_ENABLED were on (it's currently off) --
+ * but the visit itself is always recorded in full regardless, since Mapr
+ * should learn from every visit whether or not it paid out.
  * Returns { claimed, alreadyClaimed, visitNumber?, payout?, checkinId? }.
  */
 export async function claimCheckIn({
@@ -121,7 +126,8 @@ export async function claimCheckIn({
     !!homeCoords &&
     !!landmarkCoords &&
     distanceMeters(homeCoords.lat, homeCoords.lng, landmarkCoords.lat, landmarkCoords.lng) <= HOME_RADIUS_METERS;
-  const payout = ratingOnly || insideHomeRadius ? 0 : taperedPoints(points, visitNumber);
+  const payout =
+    ratingOnly || (HOME_RADIUS_EXCLUSION_ENABLED && insideHomeRadius) ? 0 : taperedPoints(points, visitNumber);
 
   const result = await runTransaction(db, async (tx) => {
     const existing = await tx.get(checkinRef);

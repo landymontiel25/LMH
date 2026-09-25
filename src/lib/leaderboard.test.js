@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { periodKeys, taperedPoints, isRealCheckin, HOME_RADIUS_METERS, shouldPromptLoveReason } from './leaderboard';
+import {
+  periodKeys,
+  taperedPoints,
+  isRealCheckin,
+  HOME_RADIUS_METERS,
+  HOME_RADIUS_EXCLUSION_ENABLED,
+  shouldPromptLoveReason,
+} from './leaderboard';
 
 describe('periodKeys', () => {
   it('computes matching weekly/monthly/yearly keys for a known date', () => {
@@ -42,6 +49,10 @@ describe('taperedPoints', () => {
 describe('HOME_RADIUS_METERS', () => {
   it('is 0.5 miles', () => {
     expect(HOME_RADIUS_METERS).toBeCloseTo(804.672, 2);
+  });
+
+  it('exclusion is currently toggled off', () => {
+    expect(HOME_RADIUS_EXCLUSION_ENABLED).toBe(false);
   });
 });
 
