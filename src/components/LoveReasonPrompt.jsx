@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { appendLoveNote, getLoveNote } from '../lib/reviews';
+import VoiceInputButton from './VoiceInputButton';
 
 // Fires after the 3rd check-in at a landmark, then every 10th after that
 // (13th, 23rd, ...) -- see shouldPromptLoveReason in leaderboard.js. Text or
@@ -9,23 +10,16 @@ import { appendLoveNote, getLoveNote } from '../lib/reviews';
 // via the review's loveNotes, so future picks match the SPECIFIC reason, not
 // just the landmark's category. A repeat trigger offers a one-tap shortcut
 // if the last answer is still true, instead of making someone retype it.
-const SpeechRecognition =
-  typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
-
 export default function LoveReasonPrompt() {
   const { loveReasonPrompt, clearLoveReasonPrompt } = useCheckIn();
   const { user } = useAuth();
   const [text, setText] = useState('');
   const [previousNote, setPreviousNote] = useState(null);
-  const [listening, setListening] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [speechError, setSpeechError] = useState(null);
-  const recognitionRef = useRef(null);
 
   useEffect(() => {
     setText('');
     setPreviousNote(null);
-    setSpeechError(null);
     if (!loveReasonPrompt || !user) return;
     let cancelled = false;
     getLoveNote(user.uid, loveReasonPrompt.landmark.id).then((note) => {
@@ -36,36 +30,7 @@ export default function LoveReasonPrompt() {
     };
   }, [loveReasonPrompt, user]);
 
-  useEffect(() => {
-    return () => recognitionRef.current?.stop();
-  }, []);
-
   if (!loveReasonPrompt) return null;
-
-  const toggleListening = () => {
-    if (!SpeechRecognition) {
-      setSpeechError("Voice input isn't supported on this browser -- type it instead.");
-      return;
-    }
-    if (listening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onresult = (e) => {
-      const spoken = e.results[0]?.[0]?.transcript || '';
-      setText((prev) => (prev ? `${prev} ${spoken}` : spoken));
-    };
-    recognition.onerror = () => setSpeechError("Didn't catch that -- try again or type it.");
-    recognition.onend = () => setListening(false);
-    recognitionRef.current = recognition;
-    setSpeechError(null);
-    setListening(true);
-    recognition.start();
-  };
 
   const save = async (note) => {
     if (!note.trim()) return;
@@ -111,21 +76,9 @@ export default function LoveReasonPrompt() {
           disabled={saving}
         />
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          <button
-            type="button"
-            className={`btn btn-sm ${listening ? 'btn-danger' : 'btn-ghost'}`}
-            onClick={toggleListening}
-            disabled={saving}
-          >
-            {listening ? `${'\u{1F534}'} Listening… tap to stop` : `${'\u{1F3A4}'} Speak instead`}
-          </button>
+        <div style={{ marginTop: 10 }}>
+          <VoiceInputButton onText={(spoken) => setText((prev) => (prev ? `${prev} ${spoken}` : spoken))} disabled={saving} />
         </div>
-        {speechError && (
-          <p className="tag tag-error" style={{ display: 'block', marginTop: 8 }}>
-            {speechError}
-          </p>
-        )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <button

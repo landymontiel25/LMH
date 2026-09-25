@@ -3578,6 +3578,46 @@ body.lightbox-open .ask-landmark-panel {
   box-shadow: none;
 }
 
+.chatlab-mic {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--chatlab-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--chatlab-text);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.chatlab-mic.listening {
+  background: var(--color-rust, #e04b4b);
+  color: #fff;
+  border-color: transparent;
+  animation: chatlab-mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes chatlab-mic-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgba(224, 75, 75, 0.25);
+  }
+}
+
+.chatlab-mic:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.chatlab .taste-nudge-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--chatlab-border);
+  color: var(--chatlab-text);
+  margin-bottom: 18px;
+}
+
 /* iOS Safari zooms the whole page when you tap a field whose text is under
    16px, and every fixed / sticky bar (bottom nav, Build Itinerary) then
    drifts mid-screen because Safari pins them to the unzoomed page. The
