@@ -78,6 +78,15 @@ export default function TasteNudgeCard({
       );
       await saveTasteBaseline(user.uid, { baseline: picked, notes: extra, categoryNotes: cleanCategoryNotes });
       await reloadFriends();
+      setSaving(false);
+      // Hand the just-saved values back directly instead of making the
+      // caller wait on reloadFriends()'s own state update to land -- see
+      // TasteProfileCard's justSaved, which is exactly this bridging the
+      // gap between "the write is done" and "the FriendsContext re-render
+      // carrying it has actually happened" so the confidence score doesn't
+      // flash the wrong thing (or stay wrong) right after Save.
+      onDone({ baseline: picked, notes: extra, categoryNotes: cleanCategoryNotes });
+      return;
     } catch (e) {
       // Used to swallow this and close anyway -- which silently threw away
       // whatever you'd just picked/typed the moment the write failed for
@@ -88,10 +97,7 @@ export default function TasteNudgeCard({
       console.error('[TasteNudgeCard] saveTasteBaseline failed:', e);
       setSaving(false);
       setSaveError(e?.message || "Couldn't save — check your connection and try again.");
-      return;
     }
-    setSaving(false);
-    onDone();
   };
 
   return (
