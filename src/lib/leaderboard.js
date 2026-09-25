@@ -47,6 +47,14 @@ export function taperedPoints(basePoints, visitNumber) {
   return 0;
 }
 
+// "Why do you love this place" fires on the 3rd visit, then every 10th
+// visit after that (13th, 23rd, 33rd, ...) -- frequent enough to build a
+// real picture of what keeps someone coming back, not so often it feels
+// like an interrogation every time they check in.
+export function shouldPromptLoveReason(visitNumber) {
+  return visitNumber === 3 || (visitNumber > 3 && (visitNumber - 3) % 10 === 0);
+}
+
 function pad(n) {
   return String(n).padStart(2, '0');
 }

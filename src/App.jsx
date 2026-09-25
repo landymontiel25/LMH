@@ -17,6 +17,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
 import StreakWarningBanner from './components/StreakWarningBanner';
 import CheckInReview from './components/CheckInReview';
+import LoveReasonPrompt from './components/LoveReasonPrompt';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import AdminModeBadge from './components/AdminModeBadge';
@@ -103,6 +104,7 @@ export default function App() {
           </main>
           <BottomNav />
           <CheckInReview />
+          <LoveReasonPrompt />
           <AskLandmarkWidget />
           <CelebrationOverlay />
           <AdminModeBadge />

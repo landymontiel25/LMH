@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { periodKeys, taperedPoints, isRealCheckin, HOME_RADIUS_METERS } from './leaderboard';
+import { periodKeys, taperedPoints, isRealCheckin, HOME_RADIUS_METERS, shouldPromptLoveReason } from './leaderboard';
 
 describe('periodKeys', () => {
   it('computes matching weekly/monthly/yearly keys for a known date', () => {
@@ -59,5 +59,28 @@ describe('isRealCheckin', () => {
   it('falls back to the points heuristic for legacy data with neither field', () => {
     expect(isRealCheckin({ points: 100 })).toBe(true);
     expect(isRealCheckin({ points: 0 })).toBe(false);
+  });
+});
+
+describe('shouldPromptLoveReason', () => {
+  it('fires on the 3rd visit', () => {
+    expect(shouldPromptLoveReason(3)).toBe(true);
+  });
+
+  it('never fires before the 3rd visit', () => {
+    expect(shouldPromptLoveReason(1)).toBe(false);
+    expect(shouldPromptLoveReason(2)).toBe(false);
+  });
+
+  it('repeats every 10th visit after the 3rd (13th, 23rd, 33rd)', () => {
+    expect(shouldPromptLoveReason(13)).toBe(true);
+    expect(shouldPromptLoveReason(23)).toBe(true);
+    expect(shouldPromptLoveReason(33)).toBe(true);
+  });
+
+  it('stays quiet on every other visit', () => {
+    expect(shouldPromptLoveReason(4)).toBe(false);
+    expect(shouldPromptLoveReason(12)).toBe(false);
+    expect(shouldPromptLoveReason(14)).toBe(false);
   });
 });

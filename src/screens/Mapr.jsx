@@ -70,7 +70,9 @@ export default function Mapr() {
           tier: r.ratingTier,
           categories: r.categories || [],
           highlights: r.highlights || [],
-          comment: r.comment || '',
+          // Folds in loveNotes -- the "why do you love this place" answers
+          // from repeat visits -- alongside the rating's own comment.
+          comment: [r.comment, ...(r.loveNotes || [])].filter(Boolean).join('. '),
         }));
       const r = await fetch('/api/plan-ai', {
         method: 'POST',

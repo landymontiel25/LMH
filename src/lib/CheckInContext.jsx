@@ -1,7 +1,13 @@
 import { createContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useFriends } from './FriendsContext';
-import { claimCheckIn, getUserCheckedInLandmarkIds, subscribeLeaderboard, POINTS_PER_CHECKIN } from './leaderboard';
+import {
+  claimCheckIn,
+  getUserCheckedInLandmarkIds,
+  subscribeLeaderboard,
+  shouldPromptLoveReason,
+  POINTS_PER_CHECKIN,
+} from './leaderboard';
 
 // Shared check-in state so there's ONE source of truth and a single place to
 // trigger the "rate + post" prompt, no matter which screen you checked in
@@ -24,6 +30,10 @@ export function CheckInProvider({ children }) {
   const [checkInOptions, setCheckInOptions] = useState({});
   // The "+100! You passed Eduardo — now #1 👑" payoff shown after posting.
   const [celebration, setCelebration] = useState(null);
+  // Set right after a real (non-ratingOnly) check-in lands on visit 3, 13,
+  // 23, ... -- see shouldPromptLoveReason. The landmark + visit number is
+  // all LoveReasonPrompt needs; it looks up any earlier answer itself.
+  const [loveReasonPrompt, setLoveReasonPrompt] = useState(null);
 
   // Keep this week's standings warm so we can detect an overtake the instant a
   // check-in lands (compare where you were vs where +100 puts you).
@@ -130,6 +140,12 @@ export function CheckInProvider({ children }) {
       if (result.claimed && result.payout > 0) {
         setCelebration(buildCelebration(result.payout));
       }
+      // Only a brand-new claim has a visitNumber worth checking -- a repeat
+      // tap on an already-claimed check-in (result.alreadyClaimed) never
+      // re-fires this, since nothing new was actually logged.
+      if (!ratingOnly && result.claimed && shouldPromptLoveReason(result.visitNumber)) {
+        setLoveReasonPrompt({ landmark, visitNumber: result.visitNumber });
+      }
       return result;
     } finally {
       setCheckingIn(null);
@@ -144,6 +160,8 @@ export function CheckInProvider({ children }) {
     setCheckInOptions({});
   };
 
+  const clearLoveReasonPrompt = () => setLoveReasonPrompt(null);
+
   return (
     <CheckInContext.Provider
       value={{
@@ -157,6 +175,8 @@ export function CheckInProvider({ children }) {
         checkInOptions,
         celebration,
         clearJustCheckedIn,
+        loveReasonPrompt,
+        clearLoveReasonPrompt,
       }}
     >
       {children}

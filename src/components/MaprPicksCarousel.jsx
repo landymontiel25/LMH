@@ -55,11 +55,15 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // category for the base affinity math, name/comment/highlights so it can
   // parse out the traveler's stated REASON, updatedAt so a recent rating
   // outweighs an old one instead of everything counting equally forever.
+  // Fold in loveNotes -- the "why do you love this place" answers from
+  // repeat visits (see LoveReasonPrompt) -- so trait matching reads them
+  // the same way it reads a rating's own comment.
+  const commentWithLoveNotes = (r) => [r.comment, ...(r.loveNotes || [])].filter(Boolean).join('. ');
   const localReviews = orderedReviews.map((r) => ({
     tier: r.ratingTier,
     categories: r.categories || [],
     name: r.landmarkName,
-    comment: r.comment || '',
+    comment: commentWithLoveNotes(r),
     highlights: r.highlights || [],
     updatedAt: r.updatedAt,
   }));
@@ -107,7 +111,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
               tier: r.ratingTier,
               categories: r.categories || [],
               highlights: r.highlights || [],
-              comment: r.comment || '',
+              comment: commentWithLoveNotes(r),
             })),
             interests,
             checkedInIds: excludeIds,
