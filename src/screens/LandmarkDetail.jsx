@@ -33,6 +33,7 @@ import CheckInButton from '../components/CheckInButton';
 import RatingStars from '../components/RatingStars';
 import DirectionsButton from '../components/DirectionsButton';
 import { pickPhoto } from '../lib/imageUtils';
+import { authHeaders } from '../lib/apiAuth';
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
 
@@ -181,7 +182,7 @@ export default function LandmarkDetail() {
     try {
       const r = await fetch('/api/ask-ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({ landmark: landmark?.name, city: region?.name, question: q }),
       });
       const data = await r.json();

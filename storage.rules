@@ -1,38 +1,41 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email in ['landymontiel25@gmail.com'];
+    }
+
+    // Every upload path ends in a file name that starts with the uploader's
+    // uid: {uid}.jpg, {uid}_{n}.jpg or {uid}_{timestamp}.jpg (see
+    // reviews.js, leaderboard.js, customLandmarks.js). Before, any signed-in
+    // account could overwrite or delete anyone's photo at the same path.
+    function ownsFile(fileName) {
+      return request.auth != null && fileName.matches(request.auth.uid + '(_[0-9]+)?[.]jpg');
+    }
+
+    // Real raster image types only, under 8 MB. No SVG (it can carry
+    // script), no HTML, nothing executable.
+    function isImageUpload() {
+      return request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|gif|heic|heif)');
+    }
+
     match /review_photos/{landmarkId}/{fileName} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && request.resource.size < 8 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
-      // `write` alone would also have to satisfy request.resource.size /
-      // contentType on a delete, where request.resource is null -- meaning
-      // no delete could ever succeed. Split out so deletes (used by account
-      // deletion, item b3) actually work.
-      allow delete: if request.auth != null;
+      allow create, update: if ownsFile(fileName) && isImageUpload();
+      // Split from create/update: request.resource is null on a delete.
+      allow delete: if ownsFile(fileName) || isAdmin();
     }
     match /checkin_photos/{landmarkId}/{fileName} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && request.resource.size < 8 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
-      // `write` alone would also have to satisfy request.resource.size /
-      // contentType on a delete, where request.resource is null -- meaning
-      // no delete could ever succeed. Split out so deletes (used by account
-      // deletion, item b3) actually work.
-      allow delete: if request.auth != null;
+      allow create, update: if ownsFile(fileName) && isImageUpload();
+      allow delete: if ownsFile(fileName) || isAdmin();
     }
     match /landmark_photos/{landmarkId}/{fileName} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && request.resource.size < 8 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
-      // `write` alone would also have to satisfy request.resource.size /
-      // contentType on a delete, where request.resource is null -- meaning
-      // no delete could ever succeed. Split out so deletes (used by account
-      // deletion, item b3) actually work.
-      allow delete: if request.auth != null;
+      allow create, update: if ownsFile(fileName) && isImageUpload();
+      allow delete: if ownsFile(fileName) || isAdmin();
     }
   }
 }

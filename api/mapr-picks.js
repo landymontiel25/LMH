@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { buildShortlist } from '../src/lib/tagScores.js';
-import { isRateLimited } from './_lib/rateLimit.js';
+import { guardAiRequest } from './_lib/aiGuard.js';
 
 // "Your Mapr Picks" on Profile. The internal tag scorer (src/lib/tagScores.js)
 // ranks the traveler's current region down to a 30-landmark shortlist from
@@ -59,10 +59,7 @@ export default async function handler(req, res) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
     return;
   }
-  if (isRateLimited(req, 'mapr-picks', { limit: 12, windowMs: 10 * 60 * 1000 })) {
-    res.status(429).json({ error: 'Too many requests in a row — take a short break and try again.' });
-    return;
-  }
+  if (!(await guardAiRequest(req, res, { key: 'mapr-picks', units: 4, limit: 12, windowMs: 10 * 60 * 1000 }))) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};

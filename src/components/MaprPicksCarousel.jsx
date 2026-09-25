@@ -21,6 +21,7 @@ import {
   TAG_SCORES_VERSION,
 } from '../lib/tagScores';
 import RateLandmarkSearch from './RateLandmarkSearch';
+import { authHeaders } from '../lib/apiAuth';
 
 // "Your Mapr Picks": landmarks Mapr thinks you'll love next, as a
 // swipeable card row under the taste card. Capped at RESERVE (10) on
@@ -185,7 +186,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       try {
         const r = await fetch('/api/mapr-picks', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
           body: JSON.stringify({
             region,
             // Every region's scores: the warm start borrows from the others.

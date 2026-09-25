@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { isRateLimited } from './_lib/rateLimit.js';
+import { guardAiRequest } from './_lib/aiGuard.js';
 import { verifyIdToken } from './_lib/verifyAuth.js';
 import { enrichLandmark, reverseGeocode } from './_lib/enrichLandmark.js';
 
@@ -84,10 +84,7 @@ export default async function handler(req, res) {
     });
     return;
   }
-  if (isRateLimited(req, 'verify-landmark', { limit: 15, windowMs: 10 * 60 * 1000 })) {
-    res.status(429).json({ error: 'Too many submissions in a row — take a short break and try again.' });
-    return;
-  }
+  if (!(await guardAiRequest(req, res, { key: 'verify-landmark', units: 2, limit: 15, windowMs: 10 * 60 * 1000, account }))) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};

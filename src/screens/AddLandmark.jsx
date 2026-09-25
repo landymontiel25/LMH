@@ -10,6 +10,7 @@ import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
+import { auth } from '../lib/firebase';
 import { useTrip } from '../lib/TripContext';
 import { addCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
 import { fileToSmallDataUrl, pickPhoto } from '../lib/imageUtils';
@@ -122,7 +123,10 @@ export default function AddLandmark() {
     try {
       setStage('verifying');
       const imageDataUrl = photo ? await fileToSmallDataUrl(photo) : '';
-      const idToken = await user.getIdToken();
+      // Forced refresh: right after verifying their email, a cached token
+      // still says unverified for up to an hour, and firestore.rules checks
+      // the token's email_verified before accepting the new landmark.
+      const idToken = await (auth.currentUser || user).getIdToken(true);
       const finalName = name.trim() || addressText.trim() || 'New Landmark';
       const verifyRes = await fetch('/api/verify-landmark', {
         method: 'POST',

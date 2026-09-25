@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS } from '../src/data/regions.js';
-import { isRateLimited } from './_lib/rateLimit.js';
+import { guardAiRequest } from './_lib/aiGuard.js';
 
 // ONE unified AI assistant for Landmark Hunters. It knows the whole catalog
 // AND how the app itself works, so it can do any of three things:
@@ -21,6 +21,8 @@ import { isRateLimited } from './_lib/rateLimit.js';
 const APP_HELP =
   `HOW LANDMARK HUNTERS WORKS (for questions about the app itself, not a landmark):\n` +
   `- Navigation: 5 tabs — Map, Landmarks, Mapr, Itinerary, Profile.\n` +
+  `- AI features (Mapr chat, Mapr Picks, Ask AI, custom-interest matching) need you to be signed in. Each account has a daily AI allowance ` +
+  `(roughly 30 Mapr chat replies); once it's used up, AI answers pause until it resets at midnight UTC.\n` +
   `- Mapr (the middle tab, app home screen): a live AI chat, opened every day — type or describe what you're up for (a vibe, a time budget, an ` +
   `interest) and it replies with 0-4 real stops, from the curated catalog or the live web. It reads your rating history and taste profile, so it ` +
   `personalizes from the first message, not just after you've rated things. It also weighs the CURRENT message's timing/mood ("Saturday night in the ` +
@@ -92,8 +94,8 @@ const APP_HELP =
   `if you're planning from far away it shows the leg from the previous stop instead. "Refresh from Here" re-routes from where you are ` +
   `now, and "Open in Maps App" hands off to Google or Apple Maps.\n` +
   `- Group Trips: a shared itinerary a few friends can all see and edit together (only the trip's owner can change who's a member).\n` +
-  `- Adding a landmark that's missing (Add Landmark screen): anyone can submit one; it stays pending until an admin approves it before it appears for ` +
-  `everyone.\n` +
+  `- Adding a landmark that's missing (Add Landmark screen): any signed-in account with a verified email can submit one (verify it from the ` +
+  `link emailed at sign-up; Settings can resend it). It shows up on the map for everyone right away.\n` +
   `- "Nearby Now" (on the map screen): an expandable panel showing landmarks close to your current location right now.\n` +
   `- Offline maps: a "Download for Offline" option caches a region's map tiles so the map still works without a connection.\n` +
   `- Settings: switch dark/light mode, switch units between imperial (mi/ft) and metric (km/m), toggle your profile between public (reviews/photos ` +
@@ -125,10 +127,7 @@ export default async function handler(req, res) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
     return;
   }
-  if (isRateLimited(req, 'ask-ai', { limit: 20, windowMs: 10 * 60 * 1000 })) {
-    res.status(429).json({ error: 'Too many questions in a row — take a short break and try again.' });
-    return;
-  }
+  if (!(await guardAiRequest(req, res, { key: 'ask-ai', units: 1, limit: 20, windowMs: 10 * 60 * 1000 }))) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
