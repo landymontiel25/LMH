@@ -12,7 +12,7 @@ import LocationAutocomplete from '../components/LocationAutocomplete';
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, firebaseEnabled, signOutUser, deleteAccount, resendVerification, refreshUser } = useAuth();
+  const { user, firebaseEnabled, signOutUser, resendVerification, refreshUser } = useAuth();
   const { myProfile, reload: reloadFriends } = useFriends();
   const { theme, toggleTheme } = useTheme();
   const { units, mode, setMode, autoCountry } = useUnits();
@@ -27,10 +27,6 @@ export default function Settings() {
   const [tasteMsg, setTasteMsg] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
-  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteBusy, setDeleteBusy] = useState(false);
-  const [deleteError, setDeleteError] = useState('');
 
   // Catches "verified in another tab, then came back to Settings" without
   // requiring a full sign-out/sign-in.
@@ -314,17 +310,6 @@ export default function Settings() {
           <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
             Sign Out
           </button>
-          <button
-            className="btn btn-ghost btn-block"
-            style={{ marginTop: 8, color: 'var(--color-error, #b3503f)' }}
-            onClick={() => {
-              setDeleteError('');
-              setDeletePassword('');
-              setShowDeleteAccount(true);
-            }}
-          >
-            Delete Account
-          </button>
           {user.metadata?.creationTime && (
             <p style={{ textAlign: 'center', marginTop: 12, marginBottom: 0, fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
               Joined{' '}
@@ -345,57 +330,6 @@ export default function Settings() {
           >
             {user.emailVerified ? '\u{2705} Your email has been verified.' : "\u{274C} Your email isn't verified yet."}
           </p>
-        </div>
-      )}
-
-      {showDeleteAccount && (
-        <div className="modal-backdrop" onClick={() => !deleteBusy && setShowDeleteAccount(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Delete your account?</h3>
-            <p className="screen-subtitle">
-              This permanently removes your sign-in, profile, reviews, and friend connections. Check-ins stay on the
-              leaderboard for scoring integrity but are stripped of your name and photo. This can't be undone.
-            </p>
-            <input
-              type="password"
-              className="friend-email-input"
-              placeholder="Confirm your password"
-              value={deletePassword}
-              onChange={(e) => setDeletePassword(e.target.value)}
-              style={{ width: '100%', marginBottom: 10 }}
-            />
-            {deleteError && (
-              <p className="tag tag-error" style={{ display: 'block', marginBottom: 10 }}>
-                {deleteError}
-              </p>
-            )}
-            <button
-              className="btn btn-block"
-              style={{ background: 'var(--color-error, #b3503f)', color: '#fff' }}
-              disabled={deleteBusy || !deletePassword}
-              onClick={async () => {
-                setDeleteBusy(true);
-                setDeleteError('');
-                try {
-                  await deleteAccount(deletePassword);
-                  navigate('/');
-                } catch (e) {
-                  setDeleteError(authErrorMessage(e));
-                  setDeleteBusy(false);
-                }
-              }}
-            >
-              {deleteBusy ? 'Deleting…' : 'Permanently Delete My Account'}
-            </button>
-            <button
-              className="btn btn-ghost btn-block"
-              style={{ marginTop: 8 }}
-              disabled={deleteBusy}
-              onClick={() => setShowDeleteAccount(false)}
-            >
-              Cancel
-            </button>
-          </div>
         </div>
       )}
     </div>
