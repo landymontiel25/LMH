@@ -100,6 +100,21 @@ export async function saveTasteIntro(uid, text) {
   await setDoc(doc(db, 'users', uid), { tasteIntro: (text || '').trim().slice(0, 600), updatedAt: serverTimestamp() }, { merge: true });
 }
 
+// The structured like/dislike answers from TasteNudgeCard -- separate from
+// the free-text tasteIntro above so re-editing it (see TasteProfileCard's
+// Edit button) cleanly REPLACES the old picks instead of appending onto a
+// growing sentence. { [categoryId]: { [example]: 'like' | 'dislike' } };
+// setDoc with merge:true replaces this whole field's value (it's a single
+// top-level key), so an edit-and-resubmit never leaves stale picks behind.
+export async function saveTasteBaseline(uid, { baseline, notes }) {
+  if (!db || !uid) return;
+  await setDoc(
+    doc(db, 'users', uid),
+    { tasteBaseline: baseline || {}, tasteBaselineNotes: (notes || '').trim().slice(0, 300), updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
 // Home address + coords, used to zero out points for check-ins within
 // HOME_RADIUS_METERS (see src/lib/leaderboard.js) -- also closes the
 // self-submitted-landmark-near-home exploit. Same users/{uid} doc
