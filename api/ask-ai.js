@@ -69,9 +69,8 @@ const APP_HELP =
   `- Offline maps: a "Download for Offline" option caches a region's map tiles so the map still works without a connection.\n` +
   `- Settings: switch dark/light mode, switch units between imperial (mi/ft) and metric (km/m), toggle your profile between public (reviews/photos ` +
   `visible to everyone) and private (friends only), set a home address (used for taste learning), edit the taste baseline described above, and (at ` +
-  `the very bottom) Request a Feature, Privacy Policy & Terms of Service, Sign Out, Delete Account, and the date you joined. All account-level ` +
-  `actions live in Settings now, not on Profile.\n` +
-  `- Account deletion: available from the bottom of Settings — permanently erases your account and its data.\n\n`;
+  `the very bottom) Request a Feature, Privacy Policy & Terms of Service, Sign Out, and the date you joined. All account-level actions live in ` +
+  `Settings now, not on Profile. There's no self-serve account deletion right now.\n\n`;
 
 const INSTRUCTIONS =
   `You are the friendly AI assistant inside the app "Landmark Hunters". You have the app's full catalog of real landmarks (below, one per line as ` +
