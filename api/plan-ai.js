@@ -93,7 +93,7 @@ export default async function handler(req, res) {
     return;
   }
   // Tighter than ask-ai's limit -- web_search makes each call more expensive.
-  if (!(await guardAiRequest(req, res, { key: 'plan-ai', units: 4, limit: 10, windowMs: 10 * 60 * 1000 }))) return;
+  if (!(await guardAiRequest(req, res, { key: 'plan-ai', limit: 10, windowMs: 10 * 60 * 1000 }))) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};

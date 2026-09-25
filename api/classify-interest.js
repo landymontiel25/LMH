@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
     return;
   }
-  if (!(await guardAiRequest(req, res, { key: 'classify-interest', units: 2, limit: 30, windowMs: 10 * 60 * 1000 }))) return;
+  if (!(await guardAiRequest(req, res, { key: 'classify-interest', limit: 30, windowMs: 10 * 60 * 1000 }))) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
