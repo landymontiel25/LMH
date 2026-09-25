@@ -141,7 +141,7 @@ export default async function handler(req, res) {
     // Told directly at onboarding or from Settings (src/screens/TasteIntroStep.jsx,
     // src/screens/Settings.jsx) -- free-form, in the traveler's own words, not
     // tied to any rating. Read as prose, same as the rest of the profile.
-    const tasteIntro = str(body.tasteIntro, 600);
+    const tasteIntro = str(body.tasteIntro, 4000);
     // Insider Mode -- unlocked client-side once Mapr's own predictions are
     // confidently right about this traveler (src/lib/tasteProfile.js). The
     // client decides the unlock and just tells us the flag; this only

@@ -97,7 +97,7 @@ export async function setProfileVisibility(uid, isPublic) {
 // reads better than any keyword list could.
 export async function saveTasteIntro(uid, text) {
   if (!db || !uid) return;
-  await setDoc(doc(db, 'users', uid), { tasteIntro: (text || '').trim().slice(0, 600), updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(doc(db, 'users', uid), { tasteIntro: (text || '').trim().slice(0, 2000), updatedAt: serverTimestamp() }, { merge: true });
 }
 
 // The structured like/dislike answers from TasteNudgeCard -- separate from
@@ -115,7 +115,7 @@ export async function saveTasteBaseline(uid, { baseline, notes, categoryNotes })
     doc(db, 'users', uid),
     {
       tasteBaseline: baseline || {},
-      tasteBaselineNotes: (notes || '').trim().slice(0, 300),
+      tasteBaselineNotes: (notes || '').trim().slice(0, 2000),
       tasteBaselineCategoryNotes: categoryNotes || {},
       updatedAt: serverTimestamp(),
     },
