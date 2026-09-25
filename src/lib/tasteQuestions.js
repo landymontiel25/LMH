@@ -56,44 +56,52 @@ export const TASTE_QUESTIONS = [
 ];
 
 // `baseline` is { [categoryId]: { [example]: 'like' | 'dislike' } }, as
-// TasteNudgeCard/TasteProfileCard's edit flow build it. Turned into plain
-// prose ("Food: likes Steak, Fine dining; dislikes Sushi") so the AI reads
-// it exactly like a typed answer -- see api/plan-ai.js and
-// api/mapr-picks.js's IN THEIR OWN WORDS section.
-export function baselineToSentence(baseline) {
+// TasteNudgeCard/TasteProfileCard's edit flow build it. `categoryNotes`
+// ({ [categoryId]: string }) is the per-category "Comment" field next to
+// each question. Turned into plain prose ("Food: likes Steak, Fine dining;
+// dislikes Sushi (note: no pepper on my steak)") so the AI reads it exactly
+// like a typed answer -- see api/plan-ai.js and api/mapr-picks.js's IN
+// THEIR OWN WORDS section.
+export function baselineToSentence(baseline, categoryNotes) {
   if (!baseline) return '';
-  return TASTE_QUESTIONS.filter((q) => baseline[q.id] && Object.keys(baseline[q.id]).length)
+  return TASTE_QUESTIONS.filter((q) => (baseline[q.id] && Object.keys(baseline[q.id]).length) || categoryNotes?.[q.id])
     .map((q) => {
-      const cat = baseline[q.id];
+      const cat = baseline[q.id] || {};
       const likes = Object.keys(cat).filter((k) => cat[k] === 'like');
       const dislikes = Object.keys(cat).filter((k) => cat[k] === 'dislike');
       const parts = [];
       if (likes.length) parts.push(`likes ${likes.join(', ')}`);
       if (dislikes.length) parts.push(`dislikes ${dislikes.join(', ')}`);
+      const note = categoryNotes?.[q.id]?.trim();
+      if (note) parts.push(`note: ${note}`);
       return `${q.label}: ${parts.join('; ')}`;
     })
     .join('. ');
 }
 
 // Turns the same structured baseline into synthetic review-shaped objects
-// (tier/categories/name), so it can feed the leave-one-out prediction
-// confidence in tasteProfile.js exactly like a real rating would -- a
+// (tier/categories/name/comment), so it can feed the leave-one-out
+// prediction confidence in tasteProfile.js AND Mapr Picks' trait matching
+// (maprPicks.js's keywordsIn) exactly like a real rating would -- a
 // baseline "like" behaves like a highly-recommend, a "dislike" like a
-// probably-skip, at the category level. This is how filling in the taste
-// baseline actually moves the Taste Profile Score, not just a side effect
-// of the free-text prompt reaching the AI.
-export function baselineToSyntheticReviews(baseline) {
+// probably-skip, at the category level, and the category's Comment carries
+// over as the comment text every pick in that category shares. This is how
+// filling in the taste baseline actually moves the Taste Profile Score AND
+// shapes Mapr's picks, not just a side effect of the free-text prompt
+// reaching the AI.
+export function baselineToSyntheticReviews(baseline, categoryNotes) {
   if (!baseline) return [];
   const out = [];
   for (const q of TASTE_QUESTIONS) {
     const cat = baseline[q.id];
     if (!cat) continue;
+    const comment = categoryNotes?.[q.id] || '';
     for (const [example, state] of Object.entries(cat)) {
       out.push({
         tier: state === 'like' ? 'highly-recommend' : 'probably-skip',
         categories: [q.id],
         name: example,
-        comment: '',
+        comment,
         highlights: [],
       });
     }
@@ -102,12 +110,17 @@ export function baselineToSyntheticReviews(baseline) {
 }
 
 // The full text sent to the AI as this traveler's taste profile -- free-form
-// tasteIntro (onboarding/Settings), the structured baseline as prose, and
-// any notes typed alongside it in the edit/nudge card, combined at read
-// time so editing the baseline later never means hunting through
-// previously-saved sentences to avoid duplicating them.
+// tasteIntro (onboarding/Settings), the structured baseline as prose
+// (including per-category comments), and any notes typed alongside it in
+// the edit/nudge card, combined at read time so editing the baseline later
+// never means hunting through previously-saved sentences to avoid
+// duplicating them.
 export function composeTasteIntro(myProfile) {
-  return [myProfile?.tasteIntro, baselineToSentence(myProfile?.tasteBaseline), myProfile?.tasteBaselineNotes]
+  return [
+    myProfile?.tasteIntro,
+    baselineToSentence(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
+    myProfile?.tasteBaselineNotes,
+  ]
     .filter(Boolean)
     .join('. ');
 }

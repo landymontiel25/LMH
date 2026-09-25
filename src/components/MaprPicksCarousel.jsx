@@ -74,7 +74,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       highlights: r.highlights || [],
       updatedAt: r.updatedAt,
     })),
-    ...baselineToSyntheticReviews(myProfile?.tasteBaseline),
+    ...baselineToSyntheticReviews(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
   ];
 
   useEffect(() => {

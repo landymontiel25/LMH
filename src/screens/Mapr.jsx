@@ -11,7 +11,6 @@ import { mapsDeepLink } from '../lib/routing';
 import { computeTasteConfidence, hasInsiderMode } from '../lib/tasteProfile';
 import { composeTasteIntro, baselineToSyntheticReviews } from '../lib/tasteQuestions';
 import { logPlanningEvent } from '../lib/timeSaved';
-import { useVoiceInput } from '../lib/useVoiceInput';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
 import TasteNudgeCard from '../components/TasteNudgeCard';
@@ -64,9 +63,6 @@ export default function Mapr() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const feedEndRef = useRef(null);
   const regionBoxRef = useRef(null);
-  const { listening, error: voiceError, toggleListening } = useVoiceInput((spoken) =>
-    setDraft((prev) => (prev ? `${prev} ${spoken}` : spoken))
-  );
 
   const hasTasteInfo = !!(myProfile?.tasteIntro || (myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length));
   const showTasteNudge = !!user && !hasTasteInfo && !nudgeDismissed && !isTasteNudgeDismissed(user.uid);
@@ -86,17 +82,6 @@ export default function Mapr() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // The mic button otherwise fails completely silently -- unsupported
-  // browser, denied mic permission, no network for recognition, whatever --
-  // with nothing to show for it. Surface it the same way any other error
-  // shows up here: right in the conversation, not a fixed-position toast
-  // that has to fight the composer bar for the same screen real estate.
-  useEffect(() => {
-    if (voiceError) {
-      setMessages((cur) => [...cur, { role: 'assistant', text: voiceError, stops: [], error: true }]);
-    }
-  }, [voiceError]);
 
   const toggleRegion = (r) => {
     setRegions((cur) => (cur.some((c) => c.id === r.id) ? cur.filter((c) => c.id !== r.id) : [...cur, r]));
@@ -144,7 +129,10 @@ export default function Mapr() {
       // means here. Recomputed per-send rather than read from a stored
       // value, so it's never stale. Includes the taste baseline picks
       // alongside real ratings, same as TasteProfileCard's own score.
-      const confidenceInputs = [...reviews, ...baselineToSyntheticReviews(myProfile?.tasteBaseline)];
+      const confidenceInputs = [
+        ...reviews,
+        ...baselineToSyntheticReviews(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
+      ];
       const insiderMode = hasInsiderMode(computeTasteConfidence(confidenceInputs).confidence);
       const startedAt = performance.now();
       const r = await fetch('/api/plan-ai', {
@@ -288,21 +276,11 @@ export default function Mapr() {
             type="text"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder={listening ? 'Listening…' : "Tell it what you're up for… (or tap the mic)"}
+            placeholder="Tell it what you're up for…"
             maxLength={500}
             autoComplete="off"
             autoCapitalize="off"
           />
-          <button
-            type="button"
-            className={`chatlab-mic ${listening ? 'listening' : ''}`}
-            onClick={toggleListening}
-            disabled={busy}
-            aria-label={listening ? 'Stop listening' : 'Speak instead'}
-            title={listening ? 'Stop listening' : 'Speak instead — faster than typing'}
-          >
-            {'\u{1F3A4}'}
-          </button>
           <button type="submit" className="chatlab-send" disabled={busy || !draft.trim()} aria-label="Send">
             {'\u{27A4}'}
           </button>

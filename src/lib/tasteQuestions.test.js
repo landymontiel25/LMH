@@ -24,6 +24,16 @@ describe('baselineToSentence', () => {
   it('skips a category with no picks left in it', () => {
     expect(baselineToSentence({ food: {} })).toBe('');
   });
+
+  it('appends a per-category comment as a note', () => {
+    const sentence = baselineToSentence({ food: { Steak: 'like' } }, { food: 'No pepper on my steak' });
+    expect(sentence).toBe('Food: likes Steak; note: No pepper on my steak');
+  });
+
+  it('includes a category with only a comment and no picks', () => {
+    const sentence = baselineToSentence({}, { food: 'Allergic to shellfish' });
+    expect(sentence).toBe('Food: note: Allergic to shellfish');
+  });
 });
 
 describe('baselineToSyntheticReviews', () => {
@@ -41,6 +51,11 @@ describe('baselineToSyntheticReviews', () => {
       ])
     );
     expect(reviews).toHaveLength(2);
+  });
+
+  it('carries the category comment onto every synthetic review in that category', () => {
+    const reviews = baselineToSyntheticReviews({ food: { Steak: 'like', Sushi: 'dislike' } }, { food: 'No pepper' });
+    expect(reviews.every((r) => r.comment === 'No pepper')).toBe(true);
   });
 });
 
@@ -60,6 +75,14 @@ describe('composeTasteIntro', () => {
   it('handles a completely empty profile without throwing', () => {
     expect(composeTasteIntro(null)).toBe('');
     expect(composeTasteIntro({})).toBe('');
+  });
+
+  it('folds per-category comments in too', () => {
+    const combined = composeTasteIntro({
+      tasteBaseline: { food: { Steak: 'like' } },
+      tasteBaselineCategoryNotes: { food: 'No pepper on my steak' },
+    });
+    expect(combined).toContain('note: No pepper on my steak');
   });
 });
 
