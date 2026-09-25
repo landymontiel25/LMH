@@ -2401,6 +2401,31 @@ textarea {
   background: var(--color-bg-raised);
 }
 
+/* The same panel as a bottom sheet over the full-screen Map tab. */
+.map-nav-sheet {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--nav-h) + 10px);
+  z-index: 1001;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.map-nav-sheet .turn-panel {
+  margin: 0;
+  background: rgb(var(--color-bg-rgb));
+  box-shadow: var(--shadow-card);
+}
+
+.map-nav-open .ask-landmark-fab {
+  display: none;
+}
+
+.map-nav-sheet .turn-steps {
+  max-height: 150px;
+}
+
 /* In-app turn-by-turn under the itinerary map (TurnByTurnPanel). */
 .turn-panel {
   margin: -6px 0 18px;

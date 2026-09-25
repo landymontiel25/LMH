@@ -42,7 +42,7 @@ export default function TurnByTurnPanel({ stop, loading, error, data, onRefresh,
             <button type="button" className="btn btn-ghost btn-sm" onClick={onRefresh}>
               Try Again
             </button>
-            <DirectionsButton name={stop.name} lat={stop.lat} lng={stop.lng} className="btn btn-ghost btn-sm">
+            <DirectionsButton name={stop.name} lat={stop.lat} lng={stop.lng} className="btn btn-ghost btn-sm" external>
               Open in Maps App
             </DirectionsButton>
           </div>
@@ -83,7 +83,7 @@ export default function TurnByTurnPanel({ stop, loading, error, data, onRefresh,
             <button type="button" className="btn btn-ghost btn-sm" onClick={onRefresh}>
               {'\u{1F504}'} Refresh from Here
             </button>
-            <DirectionsButton name={stop.name} lat={stop.lat} lng={stop.lng} className="btn btn-ghost btn-sm">
+            <DirectionsButton name={stop.name} lat={stop.lat} lng={stop.lng} className="btn btn-ghost btn-sm" external>
               Open in Maps App
             </DirectionsButton>
           </div>
