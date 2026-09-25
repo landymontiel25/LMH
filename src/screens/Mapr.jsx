@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import LandmarkThumb from '../components/LandmarkThumb';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
@@ -14,6 +14,7 @@ import { logPlanningEvent } from '../lib/timeSaved';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
 import TasteNudgeCard from '../components/TasteNudgeCard';
+import TripPlannerCard from '../components/TripPlannerCard';
 
 // "You haven't told Mapr what you like yet" nudge -- shown once (per
 // device/account) until either dismissed outright or satisfied by actually
@@ -47,6 +48,7 @@ const GREETING =
 // at a traveler's taste from nothing when it already knows.
 export default function Mapr() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { myProfile } = useFriends();
   const { myPhotos } = useMyPhotos();
@@ -56,6 +58,10 @@ export default function Mapr() {
   // "any city", same meaning ANY_REGION used to carry as a single value.
   const [regions, setRegions] = useState([]);
   const [regionOpen, setRegionOpen] = useState(false);
+  // Opened automatically when Itinerary's "Use Mapr" button sends you here
+  // -- "Plan Your Trip" is ready the moment you land, no extra tap needed.
+  // Otherwise it's a click away via the banner below.
+  const [showPlanner, setShowPlanner] = useState(() => !!location.state?.openTripPlanner);
   const [messages, setMessages] = useState([{ role: 'assistant', text: GREETING, stops: [] }]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -75,6 +81,13 @@ export default function Mapr() {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, busy]);
 
+  // Consume the "open the planner" nav state once so it doesn't reopen on
+  // every re-render or if you navigate back to Mapr again later.
+  useEffect(() => {
+    if (location.state?.openTripPlanner) navigate(location.pathname, { replace: true, state: {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     function handleClickOutside(e) {
       if (regionBoxRef.current && !regionBoxRef.current.contains(e.target)) setRegionOpen(false);
@@ -87,9 +100,11 @@ export default function Mapr() {
     setRegions((cur) => (cur.some((c) => c.id === r.id) ? cur.filter((c) => c.id !== r.id) : [...cur, r]));
   };
 
-  const send = async (e) => {
-    e.preventDefault();
-    const text = draft.trim();
+  // overrideText lets the trip planner card (or anything else) send a
+  // message programmatically without going through the composer input.
+  const send = async (e, overrideText) => {
+    e?.preventDefault();
+    const text = (overrideText ?? draft).trim();
     if (!text || busy) return;
 
     // Actually talking to Mapr about what you're into satisfies the taste
@@ -202,6 +217,23 @@ export default function Mapr() {
           {totalCost > 0 && <span className="chatlab-cost">{'⚡'} ${totalCost.toFixed(4)}</span>}
         </div>
       </div>
+
+      {showPlanner ? (
+        <TripPlannerCard
+          regions={regions}
+          onToggleRegion={toggleRegion}
+          onClearRegions={() => setRegions([])}
+          onClose={() => setShowPlanner(false)}
+          onPlan={(message) => {
+            setShowPlanner(false);
+            send(null, message);
+          }}
+        />
+      ) : (
+        <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 12 }} onClick={() => setShowPlanner(true)}>
+          {'\u{1F9ED}'} Plan Your Trip
+        </button>
+      )}
 
       {showTasteNudge && <TasteNudgeCard onDone={dismissNudge} onDismiss={dismissNudge} />}
 

@@ -326,7 +326,13 @@ export default function Itinerary() {
     return (
       <div className="empty-state">
         <p>No itineraries yet. Create a trip to start one.</p>
-        <button className="btn btn-primary" onClick={() => setShowCreateTrip(true)}>
+        <button
+          className="btn btn-primary"
+          onClick={() => navigate('/mapr', { state: { openTripPlanner: true } })}
+        >
+          {'\u{1F9ED}'} Use Mapr (recommended)
+        </button>
+        <button className="btn btn-ghost" style={{ marginTop: 10 }} onClick={() => setShowCreateTrip(true)}>
           {'\u{2795}'} Create New Trip
         </button>
         {showCreateTrip && <CreateTripModal onClose={() => setShowCreateTrip(false)} />}
@@ -380,7 +386,14 @@ export default function Itinerary() {
             </button>
           );
         })}
-        <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => setShowCreateTrip(true)}>
+        <button
+          className="btn btn-primary btn-block"
+          style={{ marginTop: 16 }}
+          onClick={() => navigate('/mapr', { state: { openTripPlanner: true } })}
+        >
+          {'\u{1F9ED}'} Use Mapr (recommended)
+        </button>
+        <button className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={() => setShowCreateTrip(true)}>
           {'\u{2795}'} Create New Trip
         </button>
         {showCreateTrip && <CreateTripModal onClose={() => setShowCreateTrip(false)} />}

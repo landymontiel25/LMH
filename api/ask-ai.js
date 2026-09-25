@@ -25,7 +25,10 @@ const APP_HELP =
   `interest) and it replies with 0-4 real stops, from the curated catalog or the live web. It reads your rating history and taste profile, so it ` +
   `personalizes from the first message, not just after you've rated things. It also weighs the CURRENT message's timing/mood ("Saturday night in the ` +
   `city") over a blanket favorite category — loving hiking doesn't mean it suggests a trail when you're clearly asking for nightlife. The city pill in ` +
-  `its header supports picking several cities at once, not just one.\n` +
+  `its header supports picking several cities at once, not just one. A "🧭 Plan Your Trip" card (open it any time, or land on it automatically via ` +
+  `Itinerary's "Use Mapr" button) lets you set a starting location, region, interests, mood (energized/active vs. easygoing/chill — the same ` +
+  `place can be a yes on a lazy morning and a no on a Saturday night out), and solo/group in one place, then turns it into a normal chat message ` +
+  `Mapr answers like any other.\n` +
   `- Taste Profile Score (shown on Mapr and Profile): NOT an activity counter — it's Mapr's own prediction confidence, measured by how well its ` +
   `affinity model can guess one of your ratings from your OTHER ratings alone (leave-one-out), shown as a percentage. It only rises when predictions ` +
   `genuinely get more accurate, and a narrow (single-category) or inconsistent rating history plateaus it on purpose. Personal-only, never on any ` +
@@ -43,8 +46,9 @@ const APP_HELP =
   `- Onboarding: right after creating an account, a one-time flow — pick your usual interests (or skip), an optional "tell Mapr what you like" taste ` +
   `step (or skip), then the nearest real landmark to your GPS with a one-tap check-in. Reaching that final step — whether or not you check in — ` +
   `completes onboarding and awards the "Welcome" badge plus 10 bonus points.\n` +
-  `- Trip Setup: no longer its own tab — it's a "Create New Trip" modal opened from the Itinerary tab. Choose a starting location, a region/city, and ` +
-  `interests, and it builds a route.\n` +
+  `- Trip Setup: no longer its own tab. The Itinerary tab's empty/overview state leads with "🧭 Use Mapr (recommended)", which jumps straight to ` +
+  `Mapr's Plan Your Trip card (see above) — a "➕ Create New Trip" modal (same starting location/region/interests form, plus a full solo-vs-group ` +
+  `flow with friend invites) is still there underneath it for anyone who wants the old non-chat form instead.\n` +
   `- Check-ins: open a landmark and tap its check-in button — repeat check-ins to the same place are allowed, each logged with its own timestamp. ` +
   `Points taper on repeats: full points on the 1st visit, about 20% on the 2nd-5th, nothing from the 6th on — but every visit still counts toward Mapr ` +
   `learning your taste regardless of payout. At the 3rd visit to a place (then every 10th after) you're asked why you love it, feeding that specific ` +
