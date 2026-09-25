@@ -270,7 +270,7 @@ export const coarseLocation = (origin) => (origin ? `${origin.lat.toFixed(1)},${
 // than possibly keep serving a list built under the old rules until the
 // TTL or ratingsCount happens to change. Old-prefixed entries are simply
 // never read again -- harmless dead keys, not worth cleaning up.
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 // tasteFP (tasteQuestions.js's tasteFingerprint) covers everything a
 // traveler has told Mapr that ISN'T a landmark rating -- the onboarding/
 // Settings taste intro and the taste baseline's like/dislike picks +

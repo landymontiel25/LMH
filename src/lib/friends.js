@@ -2,6 +2,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   deleteDoc,
   getDocs,
   collection,
@@ -138,6 +139,30 @@ export async function saveContextPreferences(uid, prefs) {
     clean[key] = (prefs?.[key] || '').trim().slice(0, 1000);
   }
   await setDoc(doc(db, 'users', uid), { contextPreferences: clean, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+// Answer to "You really love [tag]. Want us to lean more into it?" (see
+// TagCapPrompt). Either answer is stored, which is what stops it re-asking.
+export async function answerTagCapPrompt(uid, region, tag, answer, note) {
+  if (!db || !uid || !region || !tag) return;
+  const text = (note || '').trim().slice(0, 500);
+  await setDoc(
+    doc(db, 'users', uid),
+    {
+      tagBoosts: { [region]: { [tag]: answer === 'yes' ? 'yes' : 'no' } },
+      ...(text ? { tagNotes: { [region]: { [tag]: text } } } : {}),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+// One-time replay of ratings saved before tagScores existed. Replaces both
+// maps whole (updateDoc, not a deep merge) since the replay covers every
+// review the user has.
+export async function saveRebuiltTagScores(uid, { tagScores, tagScoresAt }, version) {
+  if (!db || !uid) return;
+  await updateDoc(doc(db, 'users', uid), { tagScores, tagScoresAt, tagScoresVersion: version });
 }
 
 // The structured like/dislike answers from TasteNudgeCard -- separate from
