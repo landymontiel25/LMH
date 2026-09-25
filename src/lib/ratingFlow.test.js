@@ -4,6 +4,7 @@ import {
   isRateable,
   ratingCategory,
   TIERS,
+  tierById,
   tierStars,
   chipsFor,
   chipLabel,
@@ -116,6 +117,12 @@ describe('tier -> stars (feeds the landmark_ratings aggregate)', () => {
   it('exposes exactly three tiers with unique ids', () => {
     expect(TIERS).toHaveLength(3);
     expect(new Set(TIERS.map((t) => t.id)).size).toBe(3);
+  });
+
+  it('labels the tiers as a plain personal verdict, not a star rating', () => {
+    expect(tierById('highly-recommend').label).toBe('I loved it');
+    expect(tierById('worth-trying').label).toBe('It was okay');
+    expect(tierById('probably-skip').label).toBe('Not for me');
   });
 });
 

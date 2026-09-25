@@ -5,7 +5,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { getUserCheckins } from '../lib/leaderboard';
 import { deleteMyReview } from '../lib/reviews';
 import { getRegion } from '../data/regions';
-import { TIERS, chipLabel } from '../lib/ratingFlow';
+import { TIERS, tierById, chipLabel } from '../lib/ratingFlow';
 
 // Everything rated through "Rate a Landmark" on Mapr Picks -- separate from
 // the check-ins list, since these are ratings-only claims (0 points, never
@@ -103,7 +103,7 @@ export default function MyMaprRatings() {
 
       {!loading && shown.length === 0 && (
         <div className="empty-state">
-          <p>Nothing rated {tab === 'highly-recommend' ? 'Highly recommend' : tab === 'worth-trying' ? 'Worth trying' : 'Probably skip'} yet.</p>
+          <p>Nothing rated {tierById(tab)?.label} yet.</p>
         </div>
       )}
 

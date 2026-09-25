@@ -35,10 +35,13 @@ export function ratingCategory(landmark) {
 // running avg (and the Top Rated sort, every card's star display) is built on
 // a 1-5 scale, so keeping a numeric value flowing into that aggregate means
 // nothing downstream had to change when the 5-star picker went away.
+// Labels are what shows; ids are the stable storage/lookup key everywhere
+// else (Firestore reviews, Mapr's scoring, this file's own functions) --
+// relabeling here never touches saved data.
 export const TIERS = [
-  { id: 'highly-recommend', label: 'Highly recommend', emoji: '\u{2764}\u{FE0F}', stars: 5 },
-  { id: 'worth-trying', label: 'Worth trying', emoji: '\u{1F610}', stars: 3 },
-  { id: 'probably-skip', label: 'Probably skip', emoji: '\u{1F44E}', stars: 1 },
+  { id: 'highly-recommend', label: 'I loved it', emoji: '\u{2764}\u{FE0F}', stars: 5 },
+  { id: 'worth-trying', label: 'It was okay', emoji: '\u{1F610}', stars: 3 },
+  { id: 'probably-skip', label: 'Not for me', emoji: '\u{1F44E}', stars: 1 },
 ];
 
 export function tierById(id) {

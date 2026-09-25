@@ -39,10 +39,10 @@ function withTimeout(promise, ms) {
  */
 export async function submitReview({ userId, userName, landmark, rating, photoFiles, photoFile }) {
   const landmarkId = landmark.id;
-  // Two ways in: the tier flow (Highly recommend / Worth trying / Probably
-  // skip) derives its stars from the tier, or a plain 1-5 star tap sets
-  // stars directly with no tier at all. Whichever was used last is what
-  // wins -- rating.tier is only ever set by one or the other, never both.
+  // stars is derived from the tier (I loved it / It was okay / Not for me)
+  // for the landmark_ratings aggregate's math -- the UI only ever picks a
+  // tier now. The plain rating.stars fallback below is just for any
+  // leftover pre-tier data, not a live input path.
   const stars = rating?.tier ? tierStars(rating.tier) : Number(rating?.stars) || 0;
   if (!stars) throw new Error('Pick a rating first.');
 
