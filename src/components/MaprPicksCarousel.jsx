@@ -295,9 +295,6 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
                 <span className="mapr-pick-sub">{p.oneLineSummary}</span>
               </button>
               <div className="mapr-pick-actions">
-                <button type="button" className="mapr-pick-vote yes" onClick={() => vote(p, 'yes')} title="I'd go">
-                  {'\u{2713}'} I'd go
-                </button>
                 <button type="button" className="mapr-pick-vote no" onClick={() => vote(p, 'no')} title="Not for me">
                   {'\u{2715}'} Not for me
                 </button>
@@ -308,6 +305,9 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
                   title="Not sure -- won't show this one again, but it won't count against it either"
                 >
                   {'\u{1F937}'} Not sure
+                </button>
+                <button type="button" className="mapr-pick-vote yes" onClick={() => vote(p, 'yes')} title="I'd go">
+                  {'\u{2713}'} I'd go
                 </button>
               </div>
             </div>

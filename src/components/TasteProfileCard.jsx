@@ -23,6 +23,20 @@ export default function TasteProfileCard() {
   const { myReviews } = useRatings();
   const [editing, setEditing] = useState(false);
   const migratedRef = useRef(false);
+  // Set the instant the Edit card is opened, and checked again right before
+  // the migration below actually writes anything. Without this, opening
+  // Edit and saving fresh picks could race an in-flight migration -- the
+  // migration's write (old picks recovered from legacy tasteIntro text)
+  // could land AFTER the user's own save and silently clobber it back to
+  // the old values, which is exactly the "my picks aren't saving" bug this
+  // guard exists to prevent. Once the user is actively managing their own
+  // baseline, the one-time recovery isn't needed anyway.
+  const suppressMigrationRef = useRef(false);
+
+  const startEditing = () => {
+    suppressMigrationRef.current = true;
+    setEditing(true);
+  };
 
   // One-time recovery for accounts that answered the taste nudge before the
   // structured tasteBaseline field existed -- back then, picks were baked
@@ -32,7 +46,7 @@ export default function TasteProfileCard() {
   // reads tasteBaseline, so they looked lost. Runs once per load; once
   // tasteBaseline is populated the guard clause below skips it for good.
   useEffect(() => {
-    if (!user || migratedRef.current) return;
+    if (!user || migratedRef.current || suppressMigrationRef.current) return;
     if (myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length) return;
     if (!myProfile?.tasteIntro) return;
     const { baseline, remainingIntro } = extractLegacyBaselineFromIntro(myProfile.tasteIntro);
@@ -40,6 +54,12 @@ export default function TasteProfileCard() {
     migratedRef.current = true;
     (async () => {
       try {
+        // Re-check right before writing -- the user may have opened Edit
+        // and started saving their own picks while this was in flight.
+        if (suppressMigrationRef.current) {
+          migratedRef.current = false;
+          return;
+        }
         await saveTasteBaseline(user.uid, { baseline, notes: '' });
         await saveTasteIntro(user.uid, remainingIntro);
         await reloadFriends();
@@ -89,7 +109,7 @@ export default function TasteProfileCard() {
       <div className="card section taste-profile-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile</h3>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}>
             {hasBaseline ? `${'\u{270F}\u{FE0F}'} Edit` : `${'\u{2795}'} Answer a few quick picks`}
           </button>
         </div>
@@ -111,7 +131,7 @@ export default function TasteProfileCard() {
               {'\u{1F511}'} Insider Mode
             </span>
           )}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}>
             {'\u{270F}\u{FE0F}'} Edit
           </button>
         </div>
