@@ -106,13 +106,24 @@ export default async function handler(req, res) {
       return;
     }
 
-    const regionId = body.regionId ? String(body.regionId).slice(0, 40) : '';
-    const region = regionId ? getRegion(regionId) : null;
-    const pool = region ? ALL_LANDMARKS.filter((l) => l.regionId === regionId) : ALL_LANDMARKS;
+    // Multiple cities at once (e.g. "Philly or NYC this weekend") -- accepts
+    // the new regionIds array, plus the old singular regionId for anything
+    // that hasn't been updated to send the array.
+    const regionIds = [
+      ...(Array.isArray(body.regionIds) ? body.regionIds : []),
+      ...(body.regionId ? [body.regionId] : []),
+    ]
+      .map((id) => String(id).slice(0, 40))
+      .filter(Boolean);
+    const uniqueRegionIds = [...new Set(regionIds)];
+    const regions = uniqueRegionIds.map((id) => getRegion(id)).filter(Boolean);
+    const pool = regions.length ? ALL_LANDMARKS.filter((l) => uniqueRegionIds.includes(l.regionId)) : ALL_LANDMARKS;
 
     const validIds = new Set(pool.map((l) => `${l.regionId}/${l.id}`));
     const catalog =
-      (region ? `The traveler wants stops in ${region.name} only.\n\n` : 'The traveler has not picked a city, so any city is fair game.\n\n') +
+      (regions.length
+        ? `The traveler wants stops in ${regions.map((r) => r.name).join(' or ')} only.\n\n`
+        : 'The traveler has not picked a city, so any city is fair game.\n\n') +
       'CATALOG (region/id | name | description):\n' +
       pool.map((l) => `${l.regionId}/${l.id} | ${l.name} | ${(l.summary || '').slice(0, 140)}`).join('\n');
 

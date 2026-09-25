@@ -6,7 +6,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useTrip } from '../lib/TripContext';
-import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
+import MultiRegionSearch from '../components/MultiRegionSearch';
 import { mapsDeepLink } from '../lib/routing';
 import { computeTasteConfidence, hasInsiderMode } from '../lib/tasteProfile';
 import { composeTasteIntro, baselineToSyntheticReviews } from '../lib/tasteQuestions';
@@ -53,7 +53,9 @@ export default function Mapr() {
   const { myPhotos } = useMyPhotos();
   const { myReviews } = useRatings();
   const { trip } = useTrip();
-  const [region, setRegion] = useState(ANY_REGION);
+  // Several cities at once ("Philly or NYC this weekend") -- empty means
+  // "any city", same meaning ANY_REGION used to carry as a single value.
+  const [regions, setRegions] = useState([]);
   const [regionOpen, setRegionOpen] = useState(false);
   const [messages, setMessages] = useState([{ role: 'assistant', text: GREETING, stops: [] }]);
   const [draft, setDraft] = useState('');
@@ -82,6 +84,10 @@ export default function Mapr() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const toggleRegion = (r) => {
+    setRegions((cur) => (cur.some((c) => c.id === r.id) ? cur.filter((c) => c.id !== r.id) : [...cur, r]));
+  };
 
   const send = async (e) => {
     e.preventDefault();
@@ -133,7 +139,7 @@ export default function Mapr() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: payload,
-          regionId: region.id,
+          regionIds: regions.map((r) => r.id),
           reviews,
           interests: trip.savedInterests || [],
           tasteIntro: composeTasteIntro(myProfile),
@@ -174,18 +180,20 @@ export default function Mapr() {
         <div className="chatlab-header-right">
           <div className="chatlab-region" ref={regionBoxRef}>
             <button type="button" className="chatlab-region-pill" onClick={() => setRegionOpen((o) => !o)}>
-              {'\u{1F30D}'} {region.id ? region.name : 'Any city'}
+              {'\u{1F30D}'}{' '}
+              {regions.length === 0
+                ? 'Any city'
+                : regions.length === 1
+                ? regions[0].name
+                : `${regions[0].name} +${regions.length - 1}`}
             </button>
             {regionOpen && (
               <div className="chatlab-region-popover">
-                <RegionSearch
-                  region={region}
-                  onSelect={(r) => {
-                    setRegion(r);
-                    setRegionOpen(false);
-                  }}
-                  includeAny
-                  placeholder="Narrow to a city…"
+                <MultiRegionSearch
+                  selectedIds={regions.map((r) => r.id)}
+                  onToggle={toggleRegion}
+                  onClearAll={() => setRegions([])}
+                  placeholder="Add a city…"
                 />
               </div>
             )}
