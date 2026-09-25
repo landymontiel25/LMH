@@ -159,7 +159,8 @@ export function composeTasteIntro(myProfile, now = new Date()) {
 export function tasteFingerprint(myProfile) {
   // Answers to the "lean into [tag]?" prompt change Mapr Picks' ranking too.
   const text =
-    composeTasteIntro(myProfile) + JSON.stringify(myProfile?.tagBoosts || {}) + JSON.stringify(myProfile?.tagNotes || {});
+    composeTasteIntro(myProfile) +
+    JSON.stringify([myProfile?.capAnswers, myProfile?.capNotes, myProfile?.tagBoosts, myProfile?.tagNotes]);
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
     hash = (hash * 31 + text.charCodeAt(i)) | 0;

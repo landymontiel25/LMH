@@ -4,12 +4,11 @@ import { useFriends } from '../lib/FriendsContext';
 import { answerTagCapPrompt } from '../lib/friends';
 import { pendingCapPrompt } from '../lib/tagScores';
 import { categoryLabel } from '../lib/ratingFlow';
-import { getRegion } from '../data/regions';
 
-// Shows once per region/tag, the first time a rating pushes that tag's
-// score to the cap (see tagScores.js). "Yes" adds a 1.5x ranking boost for
-// that tag; the comment goes to Mapr Picks as TAG NOTES. Answering either
-// way stores tagBoosts[region][tag], which is what stops it asking again.
+// Shows once per tag, the first time a rating pushes that tag's score to
+// the cap in any region (see tagScores.js). "Yes" adds a 1.5x ranking boost
+// for that tag everywhere; the comment goes to Mapr Picks as TAG NOTES.
+// Answering either way stores capAnswers[tag], which stops it asking again.
 export default function TagCapPrompt() {
   const { user } = useAuth();
   const { myProfile, profileFresh } = useFriends();
@@ -21,19 +20,16 @@ export default function TagCapPrompt() {
 
   if (!user || !profileFresh) return null;
   const pending = pendingCapPrompt(myProfile);
-  if (!pending || answered.has(`${pending.region}/${pending.tag}`)) return null;
-
-  const tagName = categoryLabel(pending.tag);
-  const regionName = getRegion(pending.region)?.name;
+  if (!pending || answered.has(pending.tag)) return null;
 
   const answer = async (choice) => {
     setSaving(true);
     try {
-      await answerTagCapPrompt(user.uid, pending.region, pending.tag, choice, note);
+      await answerTagCapPrompt(user.uid, pending.tag, choice, note);
     } catch {
       // Best-effort: if the write fails, the prompt comes back next session.
     }
-    setAnswered((cur) => new Set(cur).add(`${pending.region}/${pending.tag}`));
+    setAnswered((cur) => new Set(cur).add(pending.tag));
     setNote('');
     setSaving(false);
   };
@@ -42,11 +38,10 @@ export default function TagCapPrompt() {
     <div className="modal-backdrop">
       <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby="tag-cap-title">
         <h3 id="tag-cap-title" style={{ marginTop: 0 }}>
-          {'\u{1F525}'} You really love {tagName}.
+          {'\u{1F525}'} You really love {categoryLabel(pending.tag)}.
         </h3>
         <p className="screen-subtitle" style={{ marginTop: 0 }}>
-          Want us to lean more into it{regionName ? ` in ${regionName}` : ''}, even if it means slightly fewer other
-          picks?
+          Want us to lean more into it, even if it means slightly fewer other picks?
         </p>
 
         <textarea

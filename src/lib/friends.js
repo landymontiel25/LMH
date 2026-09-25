@@ -142,15 +142,16 @@ export async function saveContextPreferences(uid, prefs) {
 }
 
 // Answer to "You really love [tag]. Want us to lean more into it?" (see
-// TagCapPrompt). Either answer is stored, which is what stops it re-asking.
-export async function answerTagCapPrompt(uid, region, tag, answer, note) {
-  if (!db || !uid || !region || !tag) return;
+// TagCapPrompt). One answer per tag, applied in every region. Either answer
+// is stored, which is what stops it asking again.
+export async function answerTagCapPrompt(uid, tag, answer, note) {
+  if (!db || !uid || !tag) return;
   const text = (note || '').trim().slice(0, 500);
   await setDoc(
     doc(db, 'users', uid),
     {
-      tagBoosts: { [region]: { [tag]: answer === 'yes' ? 'yes' : 'no' } },
-      ...(text ? { tagNotes: { [region]: { [tag]: text } } } : {}),
+      capAnswers: { [tag]: answer === 'yes' ? 'yes' : 'no' },
+      ...(text ? { capNotes: { [tag]: text } } : {}),
       updatedAt: serverTimestamp(),
     },
     { merge: true }

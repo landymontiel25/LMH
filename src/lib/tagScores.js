@@ -9,8 +9,10 @@ import { ALL_LANDMARKS } from '../data/regions.js';
 //   tagScores[region][tag]   = score as of tagScoresAt (never above TAG_CAP)
 //   tagScoresAt[region][tag] = ms timestamp that score was last written
 //   tagCounts[region][tag]   = ratings behind that score (keeps climbing past the cap)
-//   tagBoosts[region][tag]   = 'yes' | 'no' -- answer to the at-cap prompt
-//   tagNotes[region][tag]    = free-text comment from that prompt
+//   capAnswers[tag]          = 'yes' | 'no' -- answer to the at-cap prompt, one per tag for all regions
+//   capNotes[tag]            = free-text comment from that prompt
+//   (tagBoosts[region][tag] / tagNotes[region][tag] are the older per-region
+//   form of those two; capAnswer/capNote still read them.)
 //   picksShown[region][id]   = 'YYYY-MM-DD' a pick was last on screen, not yet settled
 //   timesShownNotVisited[region][id] = days it was shown and ignored
 //
@@ -22,6 +24,7 @@ import { ALL_LANDMARKS } from '../data/regions.js';
 export const TAG_DELTAS = { 'highly-recommend': 10, 'worth-trying': 2, 'probably-skip': -15 };
 export const HALF_LIFE_DAYS = 90;
 export const TAG_CAP = 100;
+export const TAG_FLOOR = -100;
 export const BOOST_MULTIPLIER = 1.5;
 export const SHORTLIST_SIZE = 30;
 // Most shortlist slots one tag can take, so a top category can't fill all
@@ -49,6 +52,8 @@ export const TAG_SCORES_VERSION = 2;
 const DAY_MS = 86400000;
 const UNRATEABLE = new Set(['dorms', 'campus-life']);
 
+const clampScore = (v) => Math.max(TAG_FLOOR, Math.min(TAG_CAP, v));
+
 export function decayFactor(fromMs, nowMs) {
   if (!fromMs) return 1;
   const ageDays = Math.max(0, nowMs - fromMs) / DAY_MS;
@@ -64,7 +69,7 @@ export function applyRating({ scores = {}, at = {}, counts = {} }, tags, tier, n
   for (const tag of new Set(tags || [])) {
     const prior = counts[tag] || 0;
     const step = prior >= FULL_VALUE_RATINGS ? delta / 2 : delta;
-    const value = Math.min(TAG_CAP, (scores[tag] || 0) * decayFactor(at[tag], nowMs) + step);
+    const value = clampScore((scores[tag] || 0) * decayFactor(at[tag], nowMs) + step);
     next.scores[tag] = value;
     next.at[tag] = nowMs;
     next.counts[tag] = prior + 1;
@@ -100,7 +105,7 @@ function decayedRegion(profile, region, nowMs) {
   const at = profile?.tagScoresAt?.[region] || {};
   const out = {};
   for (const [tag, raw] of Object.entries(scores)) {
-    out[tag] = Math.min(TAG_CAP, Number(raw) || 0) * decayFactor(at[tag], nowMs);
+    out[tag] = clampScore(Number(raw) || 0) * decayFactor(at[tag], nowMs);
   }
   return out;
 }
@@ -134,22 +139,53 @@ export function effectiveTagScores(profile, region, nowMs = Date.now()) {
     }
     for (const tag of Object.keys(sums)) borrowed[tag] = (sums[tag] / seen[tag]) * w;
   }
-  const boosts = profile?.tagBoosts?.[region] || {};
   const out = {};
   for (const tag of new Set([...Object.keys(local), ...Object.keys(borrowed)])) {
-    const v = Math.min(TAG_CAP, (local[tag] || 0) + (borrowed[tag] || 0));
-    out[tag] = boosts[tag] === 'yes' ? v * BOOST_MULTIPLIER : v;
+    const v = clampScore((local[tag] || 0) + (borrowed[tag] || 0));
+    out[tag] = v > 0 && capAnswer(profile, tag) === 'yes' ? v * BOOST_MULTIPLIER : v;
   }
   return out;
 }
 
-// The first region/tag sitting at the cap that the user hasn't answered the
-// "lean into it?" prompt for yet. Null when there's nothing to ask.
+// The at-cap prompt is asked once per tag, whatever region hit the cap, and
+// its answer applies in every region.
+export function capAnswer(profile, tag) {
+  const flat = profile?.capAnswers?.[tag];
+  if (flat) return flat;
+  for (const byTag of Object.values(profile?.tagBoosts || {})) if (byTag?.[tag]) return byTag[tag];
+  return null;
+}
+
+export function capNote(profile, tag) {
+  const flat = profile?.capNotes?.[tag];
+  if (flat) return flat;
+  for (const byTag of Object.values(profile?.tagNotes || {})) if (byTag?.[tag]) return byTag[tag];
+  return '';
+}
+
+// Every answered tag, merged across the new and older storage.
+export function capMaps(profile) {
+  const tags = new Set([
+    ...Object.keys(profile?.capAnswers || {}),
+    ...Object.keys(profile?.capNotes || {}),
+    ...Object.values(profile?.tagBoosts || {}).flatMap((m) => Object.keys(m || {})),
+    ...Object.values(profile?.tagNotes || {}).flatMap((m) => Object.keys(m || {})),
+  ]);
+  const answers = {};
+  const notes = {};
+  for (const tag of tags) {
+    if (capAnswer(profile, tag)) answers[tag] = capAnswer(profile, tag);
+    if (capNote(profile, tag)) notes[tag] = capNote(profile, tag);
+  }
+  return { answers, notes };
+}
+
+// The first tag sitting at the cap in any region that the user hasn't
+// answered the "lean into it?" prompt for yet. Null when there's nothing to ask.
 export function pendingCapPrompt(profile) {
-  const all = profile?.tagScores || {};
-  for (const [region, tags] of Object.entries(all)) {
+  for (const [region, tags] of Object.entries(profile?.tagScores || {})) {
     for (const [tag, score] of Object.entries(tags || {})) {
-      if (score >= TAG_CAP && !profile?.tagBoosts?.[region]?.[tag]) return { region, tag };
+      if (score >= TAG_CAP && !capAnswer(profile, tag)) return { region, tag };
     }
   }
   return null;
@@ -285,8 +321,8 @@ export function coldStartShortlist({
   return takeWithTagLimit(ranked, limit, () => PER_TAG_LIMIT).map(({ l }) => ({ ...l, tagScore: 0, tagRatings: 0 }));
 }
 
-const boostedTagsFor = (profile, region) =>
-  Object.entries(profile?.tagBoosts?.[region] || {})
+const boostedTagsFor = (profile) =>
+  Object.entries(capMaps(profile).answers)
     .filter(([, answer]) => answer === 'yes')
     .map(([tag]) => tag);
 
@@ -300,11 +336,32 @@ export function buildShortlist({ profile, region, now = Date.now(), ...rest }) {
           scores,
           region,
           tagCounts: profile?.tagCounts?.[region] || {},
-          boostedTags: boostedTagsFor(profile, region),
+          boostedTags: boostedTagsFor(profile),
           ...rest,
         })
       : coldStartShortlist({ region, ...rest }),
   };
+}
+
+// On-device picks from the same shortlist the server hands Claude, for
+// replacement cards after a vote and for when the AI call fails. Takes the
+// shortlist in order and slots in one wildcard; match % comes from the score.
+export function localTagPicks({ profile, region, limit = 10, now = Date.now(), ...rest }) {
+  if (!region) return [];
+  const { coldStart, shortlist } = buildShortlist({ profile, region, now, ...rest });
+  const main = shortlist.filter((l) => !l.wildcard);
+  const wild = shortlist.find((l) => l.wildcard);
+  const chosen = wild && limit > 1 ? [...main.slice(0, limit - 1), wild] : main.slice(0, limit);
+  return chosen.map((l) => ({
+    id: l.id,
+    region: l.regionId,
+    name: l.name,
+    image: l.images?.[0] || null,
+    categories: l.categories || [],
+    matchPercentage: l.wildcard || coldStart ? 62 : Math.round(Math.max(50, Math.min(97, 62 + l.tagScore * 0.33))),
+    oneLineSummary: (l.summary || '').split(/[.!?]/)[0].slice(0, 90),
+    ...(l.wildcard ? { wildcard: true } : {}),
+  }));
 }
 
 // Step 13. Settles picks shown on an earlier day: a visit (or a vote, or a
@@ -349,7 +406,7 @@ export function settleShownPicks(profile, { engagedIds = [], today, nowMs = Date
     scorePatch[key] = {
       region,
       tag,
-      value: Math.min(TAG_CAP, cur.value * decayFactor(cur.at, nowMs) + IGNORE_DELTA),
+      value: clampScore(cur.value * decayFactor(cur.at, nowMs) + IGNORE_DELTA),
       at: nowMs,
     };
   }

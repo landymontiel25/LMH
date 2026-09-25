@@ -2,6 +2,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  setDoc,
   runTransaction,
   collection,
   query,
@@ -174,6 +175,10 @@ export async function claimCheckIn({
     return { claimed: true, alreadyClaimed: false, visitNumber, payout, checkinId };
   });
 
+  // Outside the transaction on purpose: a failed counter write must never
+  // block the check-in itself.
+  if (result.claimed && !ratingOnly) bumpRegionCheckinCount(region, landmarkId).catch(() => {});
+
   return result;
 }
 
@@ -305,6 +310,10 @@ export async function getVisitCount(userId, landmarkId) {
 /**
  * Real check-ins per landmark across every user in one region, as
  * { [landmarkId]: count }. Repeat visits count: they're real demand too.
+ * Reads one running counter doc, region_stats/{region}, that claimCheckIn
+ * bumps on every real visit. The first read for a region with no
+ * backfilled counter counts its check-ins once and saves the totals;
+ * two clients racing that both write the same totals, so it's safe.
  * Cached for 10 minutes per region.
  */
 const regionCountsCache = new Map();
@@ -312,14 +321,31 @@ export async function getRegionCheckinCounts(region) {
   if (!db || !region) return {};
   const hit = regionCountsCache.get(region);
   if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.counts;
-  const snap = await getDocs(query(collection(db, 'checkins'), where('region', '==', region)));
-  const counts = {};
-  for (const d of snap.docs) {
-    const x = d.data();
-    if (isRealCheckin(x)) counts[x.landmarkId] = (counts[x.landmarkId] || 0) + 1;
+  const statsRef = doc(db, 'region_stats', region);
+  const stats = await getDoc(statsRef).catch(() => null);
+  let counts;
+  if (stats?.exists() && stats.data().backfilled) {
+    counts = stats.data().counts || {};
+  } else {
+    const snap = await getDocs(query(collection(db, 'checkins'), where('region', '==', region)));
+    counts = {};
+    for (const d of snap.docs) {
+      const x = d.data();
+      if (isRealCheckin(x)) counts[x.landmarkId] = (counts[x.landmarkId] || 0) + 1;
+    }
+    setDoc(statsRef, { counts, backfilled: true, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
   }
   regionCountsCache.set(region, { at: Date.now(), counts });
   return counts;
+}
+
+async function bumpRegionCheckinCount(region, landmarkId) {
+  if (!db || !region || !landmarkId) return;
+  await setDoc(
+    doc(db, 'region_stats', region),
+    { counts: { [landmarkId]: increment(1) }, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
 }
 
 /**

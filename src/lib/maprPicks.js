@@ -1,12 +1,8 @@
-import { ALL_LANDMARKS } from '../data/regions';
-import { isRateable, chipLabel } from './ratingFlow';
-import { distanceMeters } from './geo';
+import { chipLabel } from './ratingFlow';
 
-// Local stand-in for /api/mapr-picks when the AI isn't reachable (no key,
-// offline, rate-limited): a simple affinity score from the same inputs.
-// Loved categories count for, skipped ones against, saved interests a
-// little, plus a nudge from the crowd's rating and the editors' popularity.
-const NEARBY_KM = 150;
+// The taste model behind the Taste Profile Score's leave-one-out
+// prediction check (tasteProfile.js), plus the Mapr Picks cache helpers.
+// Mapr Picks' ranking itself lives in tagScores.js.
 
 // Category alone is too coarse to learn from fast: a zoo and a hiking trail
 // both read as "parks-nature", a cemetery and a historic mansion both read
@@ -117,141 +113,6 @@ export function predictedAffinityScore(review, model) {
   }
   const catAffinity = model.affinity[cat] || 0;
   return catAffinity + traitScore + (hardNegative ? -3 : 0);
-}
-
-export function localMaprPicks({
-  reviews = [],
-  interests = [],
-  checkedInIds = [],
-  // Checked in but never rated -- a real visit is worth something (you
-  // didn't hate it enough to skip rating out of spite), but nowhere near
-  // as much as an actual verdict. Distinct from checkedInIds, which this
-  // function also uses to exclude anywhere already visited from the pool.
-  weakCheckedInIds = [],
-  regionIds = [],
-  origin = null,
-  ratings = {},
-  feedback = [],
-  passedIds = [],
-  limit = 4,
-  now = Date.now(),
-}) {
-  const nowSec = now / 1000;
-  const affinity = {};
-  // keyword -> summed (recency-weighted) strength of "loved it for this".
-  const positiveTraits = new Map();
-  // keyword -> hard-exclude candidates naming it (recent/strong enough).
-  const negativeTraits = new Set();
-  // keyword -> summed (decayed) strength of an older/weaker dislike --
-  // still counts against a match, just doesn't rule it out outright.
-  const softNegativeTraits = new Map();
-
-  // A single clear "probably skip" now counts for noticeably more than a
-  // single loved rating pulls the other way -- taste should snap toward a
-  // stated dislike fast, not need several repeats to overcome how many
-  // things the traveler has loved overall. The comment (and the chip
-  // tapped) is the actual REASON, so it's parsed for traits above and
-  // beyond the plain category/tier math here.
-  for (const r of reviews) {
-    const rw = recencyWeight(r.updatedAt?.seconds, nowSec);
-    const w = (r.tier === 'highly-recommend' ? 3 : r.tier === 'probably-skip' ? -3 : 1) * rw;
-    for (const c of r.categories || []) affinity[c] = (affinity[c] || 0) + w;
-
-    const text = [r.name, r.comment, ...(r.highlights || []).map(chipLabel)].filter(Boolean).join(' ');
-    for (const kw of keywordsIn(text)) {
-      if (r.tier === 'highly-recommend') {
-        positiveTraits.set(kw, (positiveTraits.get(kw) || 0) + rw);
-      } else if (r.tier === 'probably-skip') {
-        if (rw >= 0.35) negativeTraits.add(kw);
-        else softNegativeTraits.set(kw, (softNegativeTraits.get(kw) || 0) + rw);
-      }
-    }
-  }
-  for (const c of interests) affinity[c] = (affinity[c] || 0) + 1;
-  // A plain check-in with no rating at all: a weak signal, not neutral and
-  // not an endorsement either -- a small nudge, well under even a single
-  // "worth trying".
-  for (const id of weakCheckedInIds) {
-    const lm = ALL_LANDMARKS.find((l) => l.id === id);
-    for (const c of lm?.categories || []) affinity[c] = (affinity[c] || 0) + 0.5;
-  }
-  // ✓ / ✗ on earlier picks: a lighter nudge than a rating (±1 per category).
-  // A vote carries no comment, so only its landmark's own name can surface
-  // a trait -- weaker evidence, so it takes two ✗'s naming the same thing
-  // (not one) to rule it out, same as before.
-  const noVotesByType = {};
-  for (const f of feedback) {
-    // "Not sure" carries no taste signal either way -- not a like, not a
-    // dislike, just "I don't know yet". Unlike ✓/✗ it's deliberately left
-    // OUT of passedIds (see votedIds in pickFeedback.js), so it isn't
-    // blacklisted here either -- it can be re-offered on a future call.
-    if (f.verdict !== 'yes' && f.verdict !== 'no') continue;
-    const rw = recencyWeight(f.at ? f.at / 1000 : null, nowSec);
-    const w = (f.verdict === 'yes' ? 1 : -1) * rw;
-    for (const c of f.categories || []) affinity[c] = (affinity[c] || 0) + w;
-    if (f.verdict !== 'no') continue;
-    for (const kw of keywordsIn(f.name)) {
-      noVotesByType[kw] = (noVotesByType[kw] || 0) + 1;
-      if (noVotesByType[kw] >= 2) negativeTraits.add(kw);
-    }
-  }
-
-  const visited = new Set([...checkedInIds, ...passedIds]);
-  const cities = new Set(regionIds);
-  let pool = ALL_LANDMARKS.filter((l) => {
-    if (visited.has(l.id) || !isRateable(l)) return false;
-    const kws = keywordsIn(`${l.name} ${l.summary || ''}`);
-    return !kws.some((k) => negativeTraits.has(k));
-  });
-  // Near you first: everything within NEARBY_KM of your fix (or, if that's
-  // too few, the closest 40). Only without a fix do visited cities apply.
-  if (origin) {
-    pool = pool
-      .map((l) => ({ ...l, km: distanceMeters(origin.lat, origin.lng, l.lat, l.lng) / 1000 }))
-      .sort((a, b) => a.km - b.km);
-    const near = pool.filter((l) => l.km <= NEARBY_KM);
-    pool = near.length >= 4 ? near : pool.slice(0, 40);
-  } else if (cities.size) {
-    const inCities = pool.filter((l) => cities.has(l.regionId));
-    if (inCities.length >= 8) pool = inCities;
-  }
-
-  const scored = pool.map((l) => {
-    const cat = l.categories?.[0];
-    const crowd = ratings[l.id]?.avg || 0;
-    // Closer is better: full bonus at 0 km fading out by NEARBY_KM.
-    const near = l.km != null ? Math.max(0, 1 - l.km / NEARBY_KM) * 3 : 0;
-    const traitText = `${l.name} ${l.summary || ''}`;
-    const kws = keywordsIn(traitText);
-    let traitScore = 0;
-    for (const kw of kws) {
-      if (positiveTraits.has(kw)) traitScore += positiveTraits.get(kw) * 2;
-      if (softNegativeTraits.has(kw)) traitScore -= softNegativeTraits.get(kw) * 2;
-    }
-    // affinity[cat] drives which of these are worth showing at all --
-    // ranked by the full score (distance/crowd/popularity as tie-breakers),
-    // but see matchPercentage below for why it isn't what sets the %.
-    const score = (affinity[cat] || 0) * 2 + crowd * 0.8 + (l.popularity || 0) * 0.15 + near + traitScore;
-    return { l, cat, score };
-  });
-  return scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map(({ l, cat }) => ({
-      id: l.id,
-      region: l.regionId,
-      name: l.name,
-      image: l.images?.[0] || null,
-      categories: l.categories || [],
-      // Reflects actual affinity for this category, not rank within
-      // whatever happened to be nearby -- rescaling against the pool's own
-      // min/max (as this used to) always gave the top of the pool ~98%
-      // even when every nearby option was a category the traveler
-      // disliked. No signal for the category at all lands at a neutral
-      // 65%, not "should still be nearly perfect."
-      matchPercentage: Math.round(Math.min(97, Math.max(45, 65 + (affinity[cat] || 0) * 6))),
-      oneLineSummary: (l.summary || '').split(/[.!?]/)[0].slice(0, 90),
-    }));
 }
 
 // Picks are cached per user, keyed on how many ratings they had at the

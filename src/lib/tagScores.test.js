@@ -11,6 +11,9 @@ import {
   rebuildTagScores,
   scoreShortlist,
   settleShownPicks,
+  localTagPicks,
+  capMaps,
+  TAG_FLOOR,
   timeSlotFor,
   applyTimeSlot,
   TAG_CAP,
@@ -104,6 +107,55 @@ describe('decay and boosts', () => {
       tagCounts: { miami: { 'art-museums': 15 } },
     };
     expect(effectiveTagScores(profile, 'miami', T0)).toEqual({ 'art-museums': 10 });
+  });
+});
+
+describe('score floor', () => {
+  it('never drops below -100', () => {
+    let state = { scores: {}, at: {}, counts: {} };
+    for (let i = 0; i < 20; i++) {
+      const next = applyRating(state, ['food'], 'probably-skip', T0);
+      state = { scores: next.scores, at: next.at, counts: next.counts };
+    }
+    expect(state.scores.food).toBe(TAG_FLOOR);
+  });
+});
+
+describe('global cap answers', () => {
+  it('asks once per tag, whichever region hit the cap', () => {
+    const profile = { tagScores: { milan: { food: 100 }, miami: { food: 100 } }, capAnswers: { food: 'no' } };
+    expect(pendingCapPrompt(profile)).toBeNull();
+  });
+
+  it('applies a yes in every region', () => {
+    const profile = {
+      tagScores: { milan: { food: 60 }, miami: { food: 100 } },
+      tagScoresAt: { milan: { food: T0 }, miami: { food: T0 } },
+      tagCounts: { milan: { food: 15 } },
+      capAnswers: { food: 'yes' },
+    };
+    expect(effectiveTagScores(profile, 'milan', T0).food).toBeCloseTo(90);
+  });
+
+  it('still reads answers saved in the older per-region form', () => {
+    const profile = { tagBoosts: { miami: { food: 'yes' } }, tagNotes: { miami: { food: 'more tacos' } } };
+    expect(capMaps(profile)).toEqual({ answers: { food: 'yes' }, notes: { food: 'more tacos' } });
+    expect(pendingCapPrompt({ ...profile, tagScores: { milan: { food: 100 } } })).toBeNull();
+  });
+});
+
+describe('localTagPicks', () => {
+  it('follows the shortlist order and slots in one wildcard', () => {
+    const profile = { tagScores: { milan: { food: 60 } }, tagScoresAt: { milan: { food: Date.now() } } };
+    const picks = localTagPicks({ profile, region: 'milan', limit: 10 });
+    expect(picks).toHaveLength(10);
+    expect(picks[0].categories[0]).toBe('food');
+    expect(picks.filter((p) => p.wildcard)).toHaveLength(1);
+    expect(picks.every((p) => p.region === 'milan')).toBe(true);
+  });
+
+  it('returns nothing without a region', () => {
+    expect(localTagPicks({ profile: {}, region: null })).toEqual([]);
   });
 });
 

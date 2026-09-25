@@ -3,16 +3,22 @@ import { getPickFeedback, readLocalFeedback, votedIds, setPickFeedback } from '.
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
-import { useRatings } from '../lib/RatingsContext';
 import { useGeo } from '../lib/GeoContext';
 import { useBadges } from '../lib/BadgesContext';
-import { coarseLocation, localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
-import { composeTasteIntro, baselineToSyntheticReviews, tasteFingerprint } from '../lib/tasteQuestions';
+import { coarseLocation, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
+import { composeTasteIntro, tasteFingerprint } from '../lib/tasteQuestions';
 import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { useTrip } from '../lib/TripContext';
 import { getRegionCheckinCounts } from '../lib/leaderboard';
 import { recordShownPicks, saveRebuiltTagScores, saveSettledPicks } from '../lib/friends';
-import { pickRegion, rebuildTagScores, settleShownPicks, TAG_SCORES_VERSION } from '../lib/tagScores';
+import {
+  capMaps,
+  localTagPicks,
+  pickRegion,
+  rebuildTagScores,
+  settleShownPicks,
+  TAG_SCORES_VERSION,
+} from '../lib/tagScores';
 import RateLandmarkSearch from './RateLandmarkSearch';
 
 // "Your Mapr Picks": landmarks Mapr thinks you'll love next, as a
@@ -20,12 +26,11 @@ import RateLandmarkSearch from './RateLandmarkSearch';
 // screen at once -- swiping alone never loads more; only voting (✓/✗/not
 // sure) on one pulls in a replacement, so the deck only grows once you've
 // actually weighed in. Asks /api/mapr-picks for 8 (its tag scorer
-// shortlists 30 in your current region, Claude picks from those); the local affinity scorer tops
-// the queue back up for free once the API response runs low (and fills
-// everything if the API is unavailable). A local-scorer pass also paints
-// the very first frame instantly, before either the cache read or the API
-// call would otherwise land. Cached for a day per user, rating count and
-// coarse location.
+// shortlists 30 in your current region, Claude picks from those).
+// Replacement cards, the instant first paint, and the fallback when the API
+// is unavailable all come from the same tag scorer on-device (localTagPicks),
+// so every card follows one set of rules. Cached per user, rating count,
+// taste fingerprint and coarse location.
 const RESERVE = 10;
 
 const localDayKey = () => new Date().toLocaleDateString('en-CA');
@@ -34,7 +39,6 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   const { user } = useAuth();
   const { myProfile, profileFresh } = useFriends();
   const { trip } = useTrip();
-  const { ratings } = useRatings();
   const { coords } = useGeo();
   const { reload: reloadBadges, actionsToday } = useBadges();
   const navigate = useNavigate();
@@ -51,8 +55,8 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // it out of the immediate refill in vote() below) but, unlike ✓/✗, is
   // never permanently blacklisted -- see votedIds in pickFeedback.js.
   const [feedback, setFeedback] = useState({});
-  // Same votes with their categories, for the local top-up scorer.
-  const fbListRef = useRef([]);
+  // Region check-in counts once fetched, for on-device picks after that.
+  const countsRef = useRef({});
   const trackRef = useRef(null);
   const ratingsCount = reviews?.length || 0;
   // Everything a traveler has told Mapr that ISN'T a landmark rating --
@@ -67,40 +71,28 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // it never shows up there even though you've clearly already weighed in.
   const reviewedIds = new Set(reviews.map((r) => r.landmarkId).filter(Boolean));
   const excludeIds = [...new Set([...checkedInIds, ...reviewedIds])];
-  // Checked in for real but never rated -- a weak positive signal for the
-  // local scorer (see maprPicks.js), distinct from a real "worth trying".
-  const weakCheckedInIds = checkedInIds.filter((id) => !reviewedIds.has(id));
   // Oldest -> newest, so the server prompt (which is told this ordering) can
   // actually weigh a recent change of taste over a large pile of older
   // ratings, instead of averaging everything together as if said at once.
   const orderedReviews = [...reviews].sort((a, b) => (a.updatedAt?.seconds || 0) - (b.updatedAt?.seconds || 0));
-  // Same fields the local scorer (maprPicks.js) actually reads: tier/
-  // category for the base affinity math, name/comment/highlights so it can
-  // parse out the traveler's stated REASON, updatedAt so a recent rating
-  // outweighs an old one instead of everything counting equally forever.
   // Fold in loveNotes -- the "why do you love this place" answers from
-  // repeat visits (see LoveReasonPrompt) -- so trait matching reads them
-  // the same way it reads a rating's own comment.
+  // repeat visits (see LoveReasonPrompt) -- alongside a rating's comment.
   const commentWithLoveNotes = (r) => [r.comment, ...(r.loveNotes || [])].filter(Boolean).join('. ');
-  // Baseline picks (TasteNudgeCard) feed the local affinity scorer too, as
-  // synthetic category-level reviews -- so the offline fallback (no API)
-  // still reflects a filled-in baseline, not just the AI-path prompt.
   const region = pickRegion({
     origin,
     fallbackRegions: [orderedReviews.at(-1)?.region, ...[...regionIds].reverse()],
   });
   const customMatchIds = (trip.savedCustomInterests || []).flatMap((t) => trip.customInterestMatches?.[t] || []);
-  const localReviews = [
-    ...orderedReviews.map((r) => ({
-      tier: r.ratingTier,
-      categories: r.categories || [],
-      name: r.landmarkName,
-      comment: commentWithLoveNotes(r),
-      highlights: r.highlights || [],
-      updatedAt: r.updatedAt,
-    })),
-    ...baselineToSyntheticReviews(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
-  ];
+  const localPicks = (exclude, checkinCounts) =>
+    localTagPicks({
+      profile: myProfile,
+      region,
+      excludeIds: exclude,
+      checkinCounts,
+      interests,
+      customMatchIds,
+      limit: RESERVE,
+    });
 
   // Ratings saved before per-region tag scores existed: replay them once so
   // those travelers don't restart from zero. Waits for a server-fresh
@@ -148,20 +140,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       setQueue(cachedInstant.filter((p) => !instantPassed.includes(p.id) && !excludeIds.includes(p.id)));
     } else {
       try {
-        setQueue(
-          localMaprPicks({
-            reviews: localReviews,
-            interests,
-            checkedInIds: excludeIds,
-            weakCheckedInIds,
-            regionIds,
-            origin,
-            ratings,
-            feedback: Object.values(instantFb).map((f) => ({ name: f.name, region: f.region, categories: f.categories, verdict: f.verdict, at: f.at })),
-            passedIds: instantPassed,
-            limit: RESERVE,
-          })
-        );
+        setQueue(localPicks([...excludeIds, ...instantPassed], countsRef.current));
       } catch {
         /* the async path below still runs and will fill the queue */
       }
@@ -172,30 +151,18 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       if (cancelled) return;
       setFeedback(Object.fromEntries(Object.values(fb).map((f) => [f.landmarkId, f.verdict])));
       const passedIds = votedIds(fb);
-      const fbList = Object.values(fb).map((f) => ({ name: f.name, region: f.region, categories: f.categories, verdict: f.verdict, at: f.at }));
-      fbListRef.current = fbList;
       const cached = readPicksCache(key);
       if (cached) {
         setQueue(cached.filter((p) => !passedIds.includes(p.id) && !excludeIds.includes(p.id)));
         return;
       }
-      const fallback = () =>
-        localMaprPicks({
-          reviews: localReviews,
-          interests,
-          checkedInIds: excludeIds,
-          weakCheckedInIds,
-          regionIds,
-          origin,
-          ratings,
-          feedback: fbList,
-          passedIds,
-          limit: RESERVE,
-        });
+      const checkinCounts = region ? await getRegionCheckinCounts(region).catch(() => ({})) : {};
+      if (cancelled) return;
+      countsRef.current = checkinCounts;
+      const fallback = () => localPicks([...excludeIds, ...passedIds], checkinCounts);
+      const caps = capMaps(myProfile);
       let next = null;
       try {
-        const checkinCounts = region ? await getRegionCheckinCounts(region).catch(() => ({})) : {};
-        if (cancelled) return;
         const r = await fetch('/api/mapr-picks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -205,8 +172,8 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
             tagScores: myProfile?.tagScores || {},
             tagScoresAt: myProfile?.tagScoresAt || {},
             tagCounts: myProfile?.tagCounts || {},
-            tagBoosts: myProfile?.tagBoosts?.[region] || {},
-            tagNotes: myProfile?.tagNotes?.[region] || {},
+            capAnswers: caps.answers,
+            capNotes: caps.notes,
             checkinCounts,
             interests,
             customMatchIds,
@@ -225,10 +192,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         const data = await r.json().catch(() => null);
         if (r.ok && data?.picks?.length) next = data.picks;
       } catch {
-        /* offline -- fall through to the local scorer */
+        /* offline -- fall through to on-device picks */
       }
       if (cancelled) return;
-      // Drop anything checked into since the picks were made. The local
+      // Drop anything checked into since the picks were made. The on-device
       // scorer is a pure function and shouldn't throw, but this section had
       // previously been the one un-guarded step in an otherwise all-caught
       // chain -- if it ever did, the queue was left stuck at null forever
@@ -253,21 +220,62 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, ratingsCount, locKey, tasteFP, region]);
 
-  // Marks today's picks as seen, after the day's settle pass has gone out
-  // (Firestore applies one client's writes in order, so the settle's
-  // whole-map replace can't clobber these).
+  // A pick counts as shown (for ignored-pick tracking) only once at least
+  // half of its card has been on screen for a full second, like an ad
+  // impression; cards off to the side that you never scrolled to don't count.
+  // Only records after the day's settle pass has gone out (Firestore
+  // applies one client's writes in order, so the settle's whole-map
+  // replace can't clobber these).
   const recordedRef = useRef(new Set());
+  const pendingSeenRef = useRef(new Map());
+  const flushTimerRef = useRef(null);
   useEffect(() => {
-    if (!user || !profileFresh || !queue?.length) return;
-    const today = localDayKey();
-    if (settledDayRef.current !== today) return;
-    const fresh = queue.filter((p) => {
+    const track = trackRef.current;
+    if (!user || !profileFresh || !track || !queue?.length || typeof IntersectionObserver === 'undefined') return undefined;
+    const byKey = new Map(queue.map((p) => [`${p.region}/${p.id}`, p]));
+    const markSeen = (p) => {
+      const today = localDayKey();
+      if (settledDayRef.current !== today) return;
       const key = `${today}:${p.region}/${p.id}`;
-      return myProfile?.picksShown?.[p.region]?.[p.id] !== today && !recordedRef.current.has(key);
-    });
-    if (!fresh.length) return;
-    for (const p of fresh) recordedRef.current.add(`${today}:${p.region}/${p.id}`);
-    recordShownPicks(user.uid, fresh, today).catch(() => {});
+      if (recordedRef.current.has(key) || myProfile?.picksShown?.[p.region]?.[p.id] === today) return;
+      recordedRef.current.add(key);
+      pendingSeenRef.current.set(key, p);
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = setTimeout(() => {
+        const batch = [...pendingSeenRef.current.values()];
+        pendingSeenRef.current.clear();
+        recordShownPicks(user.uid, batch, today).catch(() => {});
+      }, 1500);
+    };
+    const timers = new Map();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const key = e.target.dataset.pickKey;
+          if (e.isIntersecting) {
+            if (!timers.has(key)) {
+              timers.set(
+                key,
+                setTimeout(() => {
+                  timers.delete(key);
+                  const p = byKey.get(key);
+                  if (p) markSeen(p);
+                }, 1000)
+              );
+            }
+          } else {
+            clearTimeout(timers.get(key));
+            timers.delete(key);
+          }
+        }
+      },
+      { threshold: 0.5 }
+    );
+    track.querySelectorAll('[data-pick-key]').forEach((el) => io.observe(el));
+    return () => {
+      io.disconnect();
+      timers.forEach(clearTimeout);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue, profileFresh, user?.uid, myProfile?.tagScoresVersion]);
 
@@ -283,13 +291,12 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   };
 
   // Either vote records your taste and swaps the card for the next pick
-  // in the reserve. When the reserve runs dry, the local scorer (no API
-  // call, no cost) tops the queue back up, skipping everything you've
+  // in the reserve. When the reserve runs dry, the on-device tag scorer (no
+  // API call, no cost) tops the queue back up, skipping everything you've
   // already seen, voted on or checked into.
   const vote = (p, verdict) => {
     const nextFeedback = { ...feedback, [p.id]: verdict };
     setFeedback(nextFeedback);
-    fbListRef.current = [...fbListRef.current, { name: p.name, region: p.region, categories: p.categories || [], verdict, at: Date.now() }];
     setPickFeedback({ uid: user.uid, landmark: { id: p.id, region: p.region, name: p.name, categories: p.categories || [] }, verdict, origin });
     // setPickFeedback writes localStorage synchronously before its own first
     // await, so this always sees today's just-added vote -- refreshes the
@@ -300,17 +307,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       let next = (cur || []).filter((x) => x.id !== p.id);
       if (next.length < RESERVE) {
         const seen = new Set([...next.map((x) => x.id), ...Object.keys(nextFeedback), ...excludeIds]);
-        const extra = localMaprPicks({
-          reviews: localReviews,
-          interests,
-          checkedInIds: [...seen],
-          weakCheckedInIds,
-          regionIds,
-          origin,
-          ratings,
-          feedback: fbListRef.current,
-          limit: RESERVE,
-        }).filter((x) => !seen.has(x.id));
+        const extra = localPicks([...seen], countsRef.current).filter((x) => !seen.has(x.id));
         next = [...next, ...extra].slice(0, RESERVE);
       }
       writePicksCache(picksCacheKey(user.uid, ratingsCount, origin, tasteFP), next);
@@ -348,7 +345,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         <RateLandmarkSearch />
         {picks.map((p) => {
           return (
-            <div key={`${p.region}/${p.id}`} className="mapr-pick">
+            <div key={`${p.region}/${p.id}`} className="mapr-pick" data-pick-key={`${p.region}/${p.id}`}>
               <button type="button" className="mapr-pick-main" onClick={() => navigate(`/landmarks/${p.region}/${p.id}`)}>
                 {p.image ? (
                   <img className="mapr-pick-img" src={p.image} alt="" loading="lazy" />

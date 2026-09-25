@@ -232,6 +232,13 @@ service cloud.firestore {
         && request.resource.data.minutesSaved >= 0;
       allow update, delete: if false;
     }
+    // Running per-landmark check-in counts for one region (Mapr Picks' cold
+    // start ranks by these). Same trust level as landmark_ratings below.
+    match /region_stats/{region} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.data.keys().hasOnly(['counts', 'backfilled', 'updatedAt']);
+    }
     match /landmark_ratings/{id} {
       allow read: if true;
       allow write: if request.auth != null;
