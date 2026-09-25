@@ -1,191 +1,335 @@
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import LandmarkThumb from '../components/LandmarkThumb';
+import { useAuth } from '../lib/AuthContext';
+import { useFriends } from '../lib/FriendsContext';
+import { useMyPhotos } from '../lib/MyPhotosContext';
+import { useRatings } from '../lib/RatingsContext';
+import { useTrip } from '../lib/TripContext';
+import MultiRegionSearch from '../components/MultiRegionSearch';
+import { mapsDeepLink } from '../lib/routing';
+import { computeTasteConfidence, hasInsiderMode } from '../lib/tasteProfile';
+import { composeTasteIntro, baselineToSyntheticReviews } from '../lib/tasteQuestions';
+import { logPlanningEvent } from '../lib/timeSaved';
+import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
+import TasteProfileCard from '../components/TasteProfileCard';
+import TasteNudgeCard from '../components/TasteNudgeCard';
+import TripPlannerCard from '../components/TripPlannerCard';
 import '../styles/maprTest.css';
 
-// A pure visual preview of a redesign concept for the Mapr home screen --
-// static markup only, nothing wired to the AI, real search, or routing.
-// Lives on its own throwaway tab (see BottomNav/App) so it can be looked
-// at side by side with the real Mapr screen without touching it. Remove
-// this file, its route, its nav entry, and maprTest.css once the design
-// question is settled either way.
-const TRY_CARDS = [
-  {
-    title: 'Best dinner spots tonight',
-    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Bayside%2C%20Miami%2C%20Florida%20June%202021%20-%2001.jpg?width=600',
-  },
-  {
-    title: 'A full day in Miami',
-    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/South%20Beach%2020080315.jpg?width=600',
-  },
-  {
-    title: 'Hidden gems near me',
-    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Wynwood_Walls_Miami_Florida_October_2013.jpg/800px-Wynwood_Walls_Miami_Florida_October_2013.jpg',
-  },
-  {
-    title: 'Rooftop bars and drinks',
-    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/1111%20Lincoln%20Road%20at%20night.jpg?width=600',
-  },
-  {
-    title: 'Something outdoors',
-    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Coco%20Grove%20FL%20Vizcaya%20mansion%20and%20barge%20pano01.jpg?width=600',
-  },
+// A visual-design preview of a Mapr redesign concept, on its own throwaway
+// tab so it can sit next to the real Mapr screen without touching it. This
+// is NOT a mockup -- every hook, handler, and shared component below
+// (send(), the taste nudge, DiscoveryStatsCard, TasteProfileCard,
+// TripPlannerCard, the region picker) is copied verbatim from Mapr.jsx.
+// Only the JSX layout and maprTest.css's styling differ. Remove this file,
+// its route, its BottomNav entry, and maprTest.css once the design
+// question is settled either way -- at that point either fold this markup
+// into Mapr.jsx for real, or delete all of it.
+
+const TASTE_NUDGE_DISMISSED_PREFIX = 'landmarkhunters.tasteNudgeDismissed.';
+function isTasteNudgeDismissed(uid) {
+  try {
+    return localStorage.getItem(`${TASTE_NUDGE_DISMISSED_PREFIX}${uid}`) === '1';
+  } catch {
+    return false;
+  }
+}
+function dismissTasteNudge(uid) {
+  try {
+    localStorage.setItem(`${TASTE_NUDGE_DISMISSED_PREFIX}${uid}`, '1');
+  } catch {
+    /* storage full/disabled -- non-fatal, nudge just won't stay dismissed */
+  }
+}
+
+const GREETING =
+  "Hey — I'm Mapr. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
+
+// The quick-ask pills from the reference design -- each just fires a real
+// send() with a canned prompt, the same way TripPlannerCard's "Plan My
+// Trip" already sends a programmatic message.
+const QUICK_PROMPTS = [
+  { icon: '\u{1F37D}\u{FE0F}', label: 'Dinner tonight', text: "What's good for dinner tonight?" },
+  { icon: '\u{1F5FA}\u{FE0F}', label: 'A full day itinerary', text: 'Plan a full day for me today.' },
+  { icon: '\u{1F333}', label: 'Outdoors', text: 'Suggest something outdoors nearby.' },
+  { icon: '✨', label: 'Hidden gems', text: "Show me some hidden gems, nothing touristy." },
+  { icon: '\u{1F3F7}\u{FE0F}', label: 'Under $50', text: 'Suggest something fun under $50.' },
+  { icon: '\u{1F90D}', label: 'Keep it lowkey', text: 'I want something relaxed and lowkey right now.' },
 ];
 
-const RECENT_CHATS = [
-  { icon: '\u{1F334}', title: 'Plan a weekend in Miami' },
-  { icon: '\u{1F37D}\u{FE0F}', title: 'Great coffee shops near Wynwood' },
-  { icon: '\u{1F5FA}\u{FE0F}', title: 'A 3-day itinerary (food, beach, culture)' },
-];
-
-const POPULAR = [
-  {
-    title: 'Waterfront dining',
-    sub: 'Top picks by Mapr',
-    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Bayside%2C%20Miami%2C%20Florida%20June%202021%20-%2003.jpg?width=200',
-  },
-  {
-    title: 'Hidden gems',
-    sub: 'Local favorites',
-    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/April_7%2C_2015_-_Wynwood_Miami_-_03.jpg/400px-April_7%2C_2015_-_Wynwood_Miami_-_03.jpg',
-  },
-  {
-    title: 'Rooftop bars',
-    sub: 'Skyline views',
-    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/1111%20Lincoln%20Road%20interior%20at%20night.jpg?width=200',
-  },
-  {
-    title: 'Beach days',
-    sub: 'Sun, sand, and more',
-    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Ocean_drive_day_2009j.JPG/400px-Ocean_drive_day_2009j.JPG',
-  },
-  {
-    title: 'Art & culture',
-    sub: 'Museums, galleries, more',
-    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Miami%20Art%20Museum.jpg?width=200',
-  },
+const SIDEBAR_LINKS = [
+  { to: '/landmarks', label: 'Landmarks', icon: '\u{1F4CD}' },
+  { to: '/', label: 'Map', icon: '\u{1F5FA}\u{FE0F}' },
+  { to: '/itinerary', label: 'Itinerary', icon: '\u{1F4C5}' },
+  { to: '/profile', label: 'Profile', icon: '\u{1F464}' },
 ];
 
 export default function MaprTest() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { myProfile, profileFresh, myUsername } = useFriends();
+  const { myPhotos } = useMyPhotos();
+  const { myReviews } = useRatings();
+  const { trip } = useTrip();
+  const [regions, setRegions] = useState([]);
+  const [regionOpen, setRegionOpen] = useState(false);
+  const [showPlanner, setShowPlanner] = useState(false);
+  const [messages, setMessages] = useState([{ role: 'assistant', text: GREETING, stops: [] }]);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [totalCost, setTotalCost] = useState(0);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const feedEndRef = useRef(null);
+  const regionBoxRef = useRef(null);
+
+  const hasTasteInfo = !!(myProfile?.tasteIntro || (myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length));
+  const showTasteNudge = !!user && profileFresh && !hasTasteInfo && !nudgeDismissed && !isTasteNudgeDismissed(user.uid);
+  const dismissNudge = () => {
+    if (user) dismissTasteNudge(user.uid);
+    setNudgeDismissed(true);
+  };
+
+  useEffect(() => {
+    feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, busy]);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (regionBoxRef.current && !regionBoxRef.current.contains(e.target)) setRegionOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleRegion = (r) => {
+    setRegions((cur) => (cur.some((c) => c.id === r.id) ? cur.filter((c) => c.id !== r.id) : [...cur, r]));
+  };
+
+  const send = async (e, overrideText) => {
+    e?.preventDefault();
+    const text = (overrideText ?? draft).trim();
+    if (!text || busy) return;
+
+    if (showTasteNudge) dismissNudge();
+
+    const history = [...messages, { role: 'user', text }];
+    setMessages(history);
+    setDraft('');
+    setBusy(true);
+
+    try {
+      const payload = history
+        .filter((m) => m.role === 'user' || m.raw)
+        .map((m) => ({ role: m.role, content: m.role === 'assistant' ? m.raw : m.text }));
+
+      const reviews = Object.values(myReviews)
+        .filter((r) => r.ratingTier)
+        .map((r) => ({
+          name: r.landmarkName,
+          tier: r.ratingTier,
+          categories: r.categories || [],
+          highlights: r.highlights || [],
+          comment: [r.comment, ...(r.loveNotes || [])].filter(Boolean).join('. '),
+        }));
+      const confidenceInputs = [
+        ...reviews,
+        ...baselineToSyntheticReviews(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
+      ];
+      const insiderMode = hasInsiderMode(computeTasteConfidence(confidenceInputs).confidence);
+      const startedAt = performance.now();
+      const r = await fetch('/api/plan-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: payload,
+          regionIds: regions.map((r) => r.id),
+          reviews,
+          interests: trip.savedInterests || [],
+          tasteIntro: composeTasteIntro(myProfile),
+          insiderMode,
+        }),
+      });
+      const generationMs = performance.now() - startedAt;
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data) throw new Error(data?.error || 'Something went wrong.');
+      if (user && data.stops?.length) {
+        logPlanningEvent(user.uid, { generationMs, stopsCount: data.stops.length }).catch(() => {});
+      }
+
+      const stops = data.stops || [];
+      const raw = data.reply + (stops.length ? `\n(Suggested: ${stops.map((s) => s.name).join(', ')})` : '');
+      setMessages((cur) => [...cur, { role: 'assistant', text: data.reply, stops, raw }]);
+      if (data.cost) setTotalCost((c) => c + data.cost);
+    } catch (err) {
+      setMessages((cur) => [...cur, { role: 'assistant', text: err.message || 'Signal lost — try again?', stops: [], error: true }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const greetingName = myUsername || user?.displayName?.split(' ')[0] || 'there';
+  const initials = (myUsername || user?.displayName || user?.email || '?').slice(0, 2).toUpperCase();
+
   return (
     <div className="mtest">
       <div className="mtest-banner">
-        {'\u{1F9EA}'} Test tab — visual preview only, nothing here is wired up yet
+        {'\u{1F9EA}'} Test tab — the real Mapr chat, new visual skin. Nothing else has changed.
       </div>
       <header className="mtest-header">
         <div className="mtest-logo">Mapr</div>
-        <button type="button" className="mtest-location-pill">
-          {'\u{1F4CD}'} Miami {'\u{25BE}'}
-        </button>
+        <div className="mtest-region" ref={regionBoxRef}>
+          <button type="button" className="mtest-location-pill" onClick={() => setRegionOpen((o) => !o)}>
+            {'\u{1F4CD}'}{' '}
+            {regions.length === 0
+              ? 'Any city'
+              : regions.length === 1
+              ? regions[0].name
+              : `${regions[0].name} +${regions.length - 1}`}{' '}
+            {'▾'}
+          </button>
+          {regionOpen && (
+            <div className="mtest-region-popover">
+              <MultiRegionSearch
+                selectedIds={regions.map((r) => r.id)}
+                onToggle={toggleRegion}
+                onClearAll={() => setRegions([])}
+                placeholder="Add a city…"
+              />
+            </div>
+          )}
+        </div>
         <div className="mtest-header-spacer" />
-        <div className="mtest-avatar">LM</div>
+        {totalCost > 0 && <span className="mtest-cost">{'⚡'} ${totalCost.toFixed(4)}</span>}
+        <div className="mtest-avatar">{initials}</div>
       </header>
 
       <div className="mtest-body">
         <nav className="mtest-sidebar">
           <span className="mtest-nav-item active">{'\u{1F9ED}'} Plan</span>
-          <span className="mtest-nav-item">{'\u{1F4CD}'} Landmarks</span>
-          <span className="mtest-nav-item">{'\u{1F5FA}\u{FE0F}'} Map</span>
-          <span className="mtest-nav-item">{'\u{1F4C5}'} Itinerary</span>
-          <span className="mtest-nav-item">{'\u{1F464}'} Profile</span>
-          <div className="mtest-sidebar-footer">
-            <div className="mtest-sidebar-loc-label">Current location</div>
-            <div className="mtest-sidebar-loc">
-              <span>{'\u{1F4CD}'} Miami, FL</span>
-              <span>{'\u{203A}'}</span>
-            </div>
-          </div>
+          {SIDEBAR_LINKS.map((l) => (
+            <button key={l.to} type="button" className="mtest-nav-item" onClick={() => navigate(l.to)}>
+              {l.icon} {l.label}
+            </button>
+          ))}
+          <div className="mtest-sidebar-footer">Test tab — real navigation, new look.</div>
         </nav>
 
         <main className="mtest-main">
-          <div
-            className="mtest-hero"
-            style={{
-              backgroundImage:
-                "url('https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Ocean_drive_day_2009j.JPG/1280px-Ocean_drive_day_2009j.JPG')",
-            }}
-          >
-            <div className="mtest-hero-content">
-              <div className="mtest-orb" />
-              <h1>Hey Landy,</h1>
-              <p className="mtest-hero-sub">What are you in the mood for?</p>
-              <div className="mtest-search">
-                <span>{'✨'}</span>
-                <input type="text" placeholder="Tell Mapr what you're looking for…" readOnly />
-                <button type="button" className="mtest-send" aria-label="Send">
-                  {'\u{2191}'}
+          <div className="mtest-hero">
+            <div className="mtest-orb" />
+            <h1>Hey {greetingName},</h1>
+            <p className="mtest-hero-sub">What are you in the mood for?</p>
+            <form className="mtest-search" onSubmit={send}>
+              <span>{'✨'}</span>
+              <input
+                type="text"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Tell Mapr what you're looking for…"
+                maxLength={500}
+                autoComplete="off"
+                autoCapitalize="off"
+              />
+              <button type="submit" className="mtest-send" disabled={busy || !draft.trim()} aria-label="Send">
+                {'\u{2191}'}
+              </button>
+            </form>
+            <div className="mtest-pills">
+              {QUICK_PROMPTS.map((p) => (
+                <button key={p.label} type="button" disabled={busy} onClick={() => send(null, p.text)}>
+                  {p.icon} {p.label}
                 </button>
-              </div>
-              <div className="mtest-pills">
-                <button type="button">{'\u{1F37D}\u{FE0F}'} Dinner tonight</button>
-                <button type="button">{'\u{1F5FA}\u{FE0F}'} A full day itinerary</button>
-                <button type="button">{'\u{1F333}'} Outdoors</button>
-                <button type="button">{'✨'} Hidden gems</button>
-                <button type="button">{'\u{1F3F7}\u{FE0F}'} Under $50</button>
-                <button type="button">{'\u{1F90D}'} Keep it lowkey</button>
-              </div>
+              ))}
             </div>
           </div>
 
+          {showPlanner ? (
+            <TripPlannerCard
+              regions={regions}
+              onToggleRegion={toggleRegion}
+              onClearRegions={() => setRegions([])}
+              onClose={() => setShowPlanner(false)}
+              onPlan={(message) => {
+                setShowPlanner(false);
+                send(null, message);
+              }}
+            />
+          ) : (
+            <button type="button" className="mtest-plan-btn" onClick={() => setShowPlanner(true)}>
+              {'\u{1F9ED}'} Plan Your Trip
+            </button>
+          )}
+
+          {showTasteNudge && <TasteNudgeCard onDone={dismissNudge} onDismiss={dismissNudge} />}
+
+          <DiscoveryStatsCard />
+          <TasteProfileCard />
+
           <div className="mtest-section">
-            <div className="mtest-section-title">Try asking about… {'›'}</div>
-            <div className="mtest-cards-row">
-              {TRY_CARDS.map((c) => (
-                <div key={c.title} className="mtest-try-card" style={{ backgroundImage: `url('${c.img}')` }}>
-                  <div className="mtest-try-card-label">
-                    <span>{c.title}</span>
-                    <span className="mtest-try-arrow">{'→'}</span>
+            <div className="mtest-section-title">Conversation</div>
+            <div className="chatlab-feed">
+              {messages.map((m, i) => (
+                <div key={i} className={`chatlab-msg ${m.role}`}>
+                  {m.role === 'assistant' && <div className="chatlab-avatar" />}
+                  <div className={`chatlab-bubble ${m.error ? 'error' : ''}`}>
+                    <p>{m.text}</p>
+                    {m.stops?.length > 0 && (
+                      <div className="chatlab-stops">
+                        {m.stops.map((stop) =>
+                          stop.external ? (
+                            <div key={`ext-${stop.url}`} className="chatlab-stop chatlab-stop-external">
+                              <div className="chatlab-stop-globe">{'\u{1F310}'}</div>
+                              <div className="chatlab-stop-text">
+                                <strong>
+                                  {stop.name}
+                                  {stop.place ? ` — ${stop.place}` : ''}
+                                </strong>
+                                <span>{stop.reason}</span>
+                                <div className="chatlab-stop-links">
+                                  <a href={mapsDeepLink(`${stop.name} ${stop.place}`)} target="_blank" rel="noreferrer">
+                                    Directions
+                                  </a>
+                                  <a href={stop.url} target="_blank" rel="noreferrer">
+                                    Source {'↗'}
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              key={`${stop.region}/${stop.id}`}
+                              type="button"
+                              className="chatlab-stop"
+                              onClick={() => navigate(`/landmarks/${stop.region}/${stop.id}`)}
+                            >
+                              <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
+                              <div className="chatlab-stop-text">
+                                <strong>{stop.name}</strong>
+                                <span>{stop.reason}</span>
+                              </div>
+                            </button>
+                          )
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="mtest-section">
-            <div className="mtest-section-title">Your recent chats {'›'}</div>
-            <div className="mtest-recent-list">
-              {RECENT_CHATS.map((r) => (
-                <div key={r.title} className="mtest-recent-row">
-                  <span className="mtest-recent-icon">{r.icon}</span>
-                  <span className="mtest-recent-title">{r.title}</span>
-                  <span className="mtest-recent-arrow">{'›'}</span>
+              {busy && (
+                <div className="chatlab-msg assistant">
+                  <div className="chatlab-avatar" />
+                  <div className="chatlab-bubble chatlab-typing">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
                 </div>
-              ))}
+              )}
+              <div ref={feedEndRef} />
             </div>
           </div>
         </main>
-
-        <aside className="mtest-right">
-          <div className="mtest-section-title">Popular in Miami</div>
-          <div className="mtest-popular-list">
-            {POPULAR.map((p) => (
-              <div key={p.title} className="mtest-popular-row">
-                <img src={p.img} alt="" />
-                <div>
-                  <div className="mtest-popular-title">{p.title}</div>
-                  <div className="mtest-popular-sub">{p.sub}</div>
-                </div>
-                <span className="mtest-popular-arrow">{'›'}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mtest-section-title" style={{ marginTop: 22 }}>
-            Current location
-          </div>
-          <div className="mtest-minimap">
-            <span className="mtest-minimap-expand">{'⤢'}</span>
-            <span className="mtest-minimap-label" style={{ top: '18%', left: '54%' }}>
-              WYNWOOD
-            </span>
-            <span className="mtest-minimap-label" style={{ top: '24%', right: '8%' }}>
-              MIAMI BEACH
-            </span>
-            <span className="mtest-minimap-pin">
-              {'\u{1F535}'} MIAMI
-            </span>
-            <span className="mtest-minimap-label" style={{ bottom: '14%', left: '10%' }}>
-              BRICKELL
-            </span>
-          </div>
-        </aside>
       </div>
     </div>
   );
