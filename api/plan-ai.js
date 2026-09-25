@@ -43,14 +43,16 @@ const INSTRUCTIONS =
   `- If you already have enough to go on (a vibe, a time budget, an interest, or a rating history to lean on -- doesn't need to be much), recommend 2-4 real stops in a sensible order, mixing catalog and web-found places as needed, with one short reason each tied to what they said or to their known taste.\n` +
   `- If their ask is too vague to suggest anything useful yet AND you have no rating history to lean on either, ask ONE short clarifying question instead of guessing -- but don't stall forever; after any clarification, go ahead and suggest something. With a rating history, a vague ask ("something fun today") is enough to go on -- use their taste instead of asking them to repeat it.\n` +
   `- Repeat check-ins are a real, encouraged feature here (see the app's own rules), so it's fine to bring back a spot they've already loved alongside something new -- if it's genuinely unclear which they want, ask in plain words, never a bare "new or repeat?" fragment: something like "Want me to stick to places you haven't been, or is it fine to bring back a favorite too?"\n` +
+  `- Whenever you ask a clarifying question that has a small set of short, natural answers (new vs. a repeat favorite, indoor vs. outdoor, morning vs. evening, etc.), ALSO fill "quickReplies" with 2-4 of those answers verbatim, each just a few words, in the exact words a traveler would tap rather than type -- the app shows these as tappable buttons under your message. Leave "quickReplies" empty whenever you're not asking that kind of question (recommending stops, just chatting, an open-ended "what are you into?" with no short-answer shape).\n` +
   `- If they're just chatting (thanks, small talk, a question about a place you already suggested, or a question about their own taste/interests), reply naturally with no stops.\n` +
   `- When they push back or ask to adjust ("more nightlife", "skip the museum", "somewhere closer"), revise the picks accordingly.\n` +
   `- Never invent a place. Catalog stops must be real region/id values from the catalog below. Web-found stops must be real places you actually found via search, and must include the source URL.\n\n` +
   `Once you're done -- searching or not -- your ENTIRE visible reply must be ONLY a single JSON object. No narration before or after it, not even a note that you're searching:\n` +
-  `{"reply": "<your conversational reply, 1-4 sentences>", "stops": [<catalog stop> | <web stop>, ...]}\n` +
+  `{"reply": "<your conversational reply, 1-4 sentences>", "stops": [<catalog stop> | <web stop>, ...], "quickReplies": [<short tappable answer>, ...]}\n` +
   `- Catalog stop: {"match": "<region/id from the catalog>", "reason": "<why this stop, 1 short sentence>"}\n` +
   `- Web stop: {"name": "<real place name>", "place": "<city or neighborhood>", "url": "<source URL you found it from>", "reason": "<why this stop, 1 short sentence>"}\n` +
-  `- "stops" can be an empty array. Only use region/id values that actually appear in the catalog -- for anything else, use the web stop shape instead of inventing a match id.`;
+  `- "stops" can be an empty array. Only use region/id values that actually appear in the catalog -- for anything else, use the web stop shape instead of inventing a match id.\n` +
+  `- "quickReplies" can be an empty array -- see the rule above for when to fill it in.`;
 
 // claude-haiku-4-5 per-token pricing (USD per token, i.e. price-per-MTok / 1e6),
 // plus $10/1,000 web searches -- used to report a running cost estimate to the
@@ -246,9 +248,22 @@ export default async function handler(req, res) {
       .filter(Boolean)
       .slice(0, 4);
 
+    // Short tappable answers to whatever clarifying question "reply" just
+    // asked (see the quickReplies rule above) -- e.g. ["Something new",
+    // "Repeat a favorite"] instead of making the traveler type one out.
+    // Only meaningful alongside an actual question, so it's dropped
+    // whenever there are real stops to look at instead.
+    const quickReplies = stops.length
+      ? []
+      : (Array.isArray(parsed.quickReplies) ? parsed.quickReplies : [])
+          .map((q) => String(q || '').trim().slice(0, 40))
+          .filter(Boolean)
+          .slice(0, 4);
+
     res.status(200).json({
       reply: String(parsed.reply || '').slice(0, 500) || "Here's what I found:",
       stops,
+      quickReplies,
       cost: costUsd,
     });
   } catch (err) {
