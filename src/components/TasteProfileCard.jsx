@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useRatings } from '../lib/RatingsContext';
+import { saveTasteBaseline, saveTasteIntro } from '../lib/friends';
 import { computeTasteConfidence, hasInsiderMode, INSIDER_MODE_CONFIDENCE } from '../lib/tasteProfile';
-import { baselineToSyntheticReviews } from '../lib/tasteQuestions';
+import { baselineToSyntheticReviews, extractLegacyBaselineFromIntro } from '../lib/tasteQuestions';
 import TasteNudgeCard from './TasteNudgeCard';
 
 // Taste Profile Score -- Mapr's own leave-one-out prediction confidence
@@ -21,6 +22,33 @@ export default function TasteProfileCard() {
   const { myProfile, reload: reloadFriends } = useFriends();
   const { myReviews } = useRatings();
   const [editing, setEditing] = useState(false);
+  const migratedRef = useRef(false);
+
+  // One-time recovery for accounts that answered the taste nudge before the
+  // structured tasteBaseline field existed -- back then, picks were baked
+  // straight into the free-text tasteIntro (see extractLegacyBaselineFromIntro
+  // for the exact format this recognizes). Those answers never went away,
+  // but the Edit button above has nothing to prefill from since it only
+  // reads tasteBaseline, so they looked lost. Runs once per load; once
+  // tasteBaseline is populated the guard clause below skips it for good.
+  useEffect(() => {
+    if (!user || migratedRef.current) return;
+    if (myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length) return;
+    if (!myProfile?.tasteIntro) return;
+    const { baseline, remainingIntro } = extractLegacyBaselineFromIntro(myProfile.tasteIntro);
+    if (!baseline) return;
+    migratedRef.current = true;
+    (async () => {
+      try {
+        await saveTasteBaseline(user.uid, { baseline, notes: '' });
+        await saveTasteIntro(user.uid, remainingIntro);
+        await reloadFriends();
+      } catch {
+        migratedRef.current = false;
+      }
+    })();
+  }, [user, myProfile?.tasteIntro, myProfile?.tasteBaseline, reloadFriends]);
+
   if (!user) return null;
 
   const reviews = [

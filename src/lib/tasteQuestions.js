@@ -111,3 +111,48 @@ export function composeTasteIntro(myProfile) {
     .filter(Boolean)
     .join('. ');
 }
+
+// One-time recovery for accounts that answered the taste nudge BEFORE the
+// structured tasteBaseline field existed (it used to bake baselineToSentence
+// straight into the free-text tasteIntro, appended on every save -- see
+// TasteNudgeCard's history). Those answers never went away, but the new
+// Edit button has nothing to prefill its chips from since it only reads
+// tasteBaseline, so they looked lost. This recognizes our own
+// exact-format-generated sentences ("Food: likes Steak; dislikes Sushi")
+// inside an old tasteIntro string, pulls them back out into a real
+// baseline object, and returns whatever's left as the intro's remaining
+// free text -- called once from TasteProfileCard, which then saves both
+// fields and never needs to run this again (tasteBaseline stops being empty).
+export function extractLegacyBaselineFromIntro(tasteIntro) {
+  if (!tasteIntro) return { baseline: null, remainingIntro: tasteIntro || '' };
+  const segments = tasteIntro.split('. ');
+  const baseline = {};
+  const leftover = [];
+  let found = false;
+  for (const seg of segments) {
+    const trimmed = seg.trim();
+    const q = TASTE_QUESTIONS.find((c) => trimmed.startsWith(`${c.label}: `));
+    if (!q) {
+      leftover.push(seg);
+      continue;
+    }
+    const body = trimmed.slice(`${q.label}: `.length);
+    const cat = {};
+    for (const clause of body.split('; ')) {
+      const likeMatch = clause.match(/^likes (.+)$/i);
+      const dislikeMatch = clause.match(/^dislikes (.+)$/i);
+      if (likeMatch) {
+        for (const ex of likeMatch[1].split(', ')) cat[ex.trim()] = 'like';
+      } else if (dislikeMatch) {
+        for (const ex of dislikeMatch[1].split(', ')) cat[ex.trim()] = 'dislike';
+      }
+    }
+    if (Object.keys(cat).length) {
+      baseline[q.id] = cat;
+      found = true;
+    } else {
+      leftover.push(seg);
+    }
+  }
+  return { baseline: found ? baseline : null, remainingIntro: leftover.join('. ').trim() };
+}

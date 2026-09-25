@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { baselineToSentence, baselineToSyntheticReviews, composeTasteIntro } from './tasteQuestions';
+import {
+  baselineToSentence,
+  baselineToSyntheticReviews,
+  composeTasteIntro,
+  extractLegacyBaselineFromIntro,
+} from './tasteQuestions';
 
 describe('baselineToSentence', () => {
   it('returns empty string for no baseline', () => {
@@ -55,5 +60,32 @@ describe('composeTasteIntro', () => {
   it('handles a completely empty profile without throwing', () => {
     expect(composeTasteIntro(null)).toBe('');
     expect(composeTasteIntro({})).toBe('');
+  });
+});
+
+describe('extractLegacyBaselineFromIntro', () => {
+  it('finds nothing in an empty or plain intro', () => {
+    expect(extractLegacyBaselineFromIntro('')).toEqual({ baseline: null, remainingIntro: '' });
+    expect(extractLegacyBaselineFromIntro('I love racing and steak.').baseline).toBeNull();
+  });
+
+  it('recovers a baseline that was previously baked into tasteIntro', () => {
+    // Exactly the format the old (pre-tasteBaseline-field) TasteNudgeCard
+    // used to generate and append to tasteIntro on every save.
+    const legacy = baselineToSentence({
+      food: { Steak: 'like', Sushi: 'dislike' },
+      'parks-nature': { 'Hiking trails': 'like' },
+    });
+    const { baseline, remainingIntro } = extractLegacyBaselineFromIntro(legacy);
+    expect(baseline.food).toEqual({ Steak: 'like', Sushi: 'dislike' });
+    expect(baseline['parks-nature']).toEqual({ 'Hiking trails': 'like' });
+    expect(remainingIntro).toBe('');
+  });
+
+  it('keeps a typed sentence the user added alongside the picks as leftover text', () => {
+    const legacy = ['I really love a good view.', baselineToSentence({ food: { Steak: 'like' } })].join('. ');
+    const { baseline, remainingIntro } = extractLegacyBaselineFromIntro(legacy);
+    expect(baseline.food).toEqual({ Steak: 'like' });
+    expect(remainingIntro).toBe('I really love a good view.');
   });
 });

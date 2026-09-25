@@ -76,14 +76,14 @@ export default function TasteNudgeCard({ onDone, onDismiss, initialBaseline, ini
         </button>
       </div>
 
-      <p
+      <ul
         className="screen-subtitle"
-        style={{ margin: '10px 0 0', fontSize: '0.75rem', display: 'flex', gap: 12, flexWrap: 'wrap' }}
+        style={{ margin: '10px 0 0', fontSize: '0.75rem', display: 'flex', gap: 12, flexWrap: 'wrap', padding: 0, listStyle: 'none' }}
       >
-        <span>{'\u{1F446}'} Tap once: {'\u{1F44D}'} like</span>
-        <span>Tap the SAME chip again: {'\u{1F44E}'} dislike</span>
-        <span>Tap a third time to clear it</span>
-      </p>
+        <li>Tap 1x for {'\u{1F44D}'} like</li>
+        <li>Tap 2x for {'\u{1F44E}'} dislike</li>
+        <li>Tap 3x to clear</li>
+      </ul>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
         {TASTE_QUESTIONS.map((q) => (

@@ -64,7 +64,9 @@ export default function Mapr() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const feedEndRef = useRef(null);
   const regionBoxRef = useRef(null);
-  const { listening, toggleListening } = useVoiceInput((spoken) => setDraft((prev) => (prev ? `${prev} ${spoken}` : spoken)));
+  const { listening, error: voiceError, toggleListening } = useVoiceInput((spoken) =>
+    setDraft((prev) => (prev ? `${prev} ${spoken}` : spoken))
+  );
 
   const hasTasteInfo = !!(myProfile?.tasteIntro || (myProfile?.tasteBaseline && Object.keys(myProfile.tasteBaseline).length));
   const showTasteNudge = !!user && !hasTasteInfo && !nudgeDismissed && !isTasteNudgeDismissed(user.uid);
@@ -84,6 +86,17 @@ export default function Mapr() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // The mic button otherwise fails completely silently -- unsupported
+  // browser, denied mic permission, no network for recognition, whatever --
+  // with nothing to show for it. Surface it the same way any other error
+  // shows up here: right in the conversation, not a fixed-position toast
+  // that has to fight the composer bar for the same screen real estate.
+  useEffect(() => {
+    if (voiceError) {
+      setMessages((cur) => [...cur, { role: 'assistant', text: voiceError, stops: [], error: true }]);
+    }
+  }, [voiceError]);
 
   const toggleRegion = (r) => {
     setRegions((cur) => (cur.some((c) => c.id === r.id) ? cur.filter((c) => c.id !== r.id) : [...cur, r]));
