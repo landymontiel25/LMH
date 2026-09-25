@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles as SparklesIcon, X as XIcon } from 'lucide-react';
 
 // Global AI helper, available from anywhere in the app (not just a landmark's
 // own detail page): identifies a place from a vague description, answers
@@ -57,9 +56,9 @@ export default function AskLandmarkWidget() {
       {open && (
         <div className="ask-landmark-panel card section ai-box">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong><SparklesIcon aria-hidden="true" /> Ask AI</strong>
+            <strong>{'✨'} Ask AI</strong>
             <button type="button" className="btn btn-ghost btn-tight" onClick={() => setOpen(false)}>
-              <XIcon aria-hidden="true" />
+              {'✕'}
             </button>
           </div>
           <p className="screen-subtitle" style={{ marginTop: 6 }}>
@@ -99,7 +98,7 @@ export default function AskLandmarkWidget() {
                     padding: 6,
                   }}
                 >
-                  <XIcon aria-hidden="true" />
+                  {'✕'}
                 </button>
               )}
             </div>
@@ -132,7 +131,7 @@ export default function AskLandmarkWidget() {
         onClick={() => setOpen((o) => !o)}
         aria-label="Ask what a landmark is called"
       >
-        <SparklesIcon aria-hidden="true" />
+        {'✨'}
       </button>
     </>
   );

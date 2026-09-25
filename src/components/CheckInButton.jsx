@@ -1,6 +1,5 @@
 import { useGeo } from '../lib/GeoContext';
 import { CHECKIN_RADIUS_METERS, POINTS_PER_CHECKIN, distanceMeters } from '../lib/leaderboard';
-import { MapPin as MapPinIcon } from 'lucide-react';
 
 // Opens the rate + post prompt (CheckInReview) — the check-in itself isn't
 // registered until Post is tapped there. Gated on GPS: you must be within
@@ -44,15 +43,8 @@ export default function CheckInButton({ landmark, user, firebaseEnabled, claimed
     : tooFar
     ? 'Get closer to check in'
     : alreadyVisited
-    ? (
-      <>
-        <MapPinIcon aria-hidden="true" /> Check In Again (+{landmark.points ?? POINTS_PER_CHECKIN})
-      </>
-    ) : (
-      <>
-        <MapPinIcon aria-hidden="true" /> Check In
-      </>
-    );
+    ? `\u{1F4CD} Check In Again (+${landmark.points ?? POINTS_PER_CHECKIN})`
+    : "\u{1F4CD} Check In";
 
   return (
     <button

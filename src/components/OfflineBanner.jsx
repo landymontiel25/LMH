@@ -1,5 +1,4 @@
 import { useOnlineStatus } from '../lib/useOnlineStatus';
-import { WifiOff as WifiOffIcon } from 'lucide-react';
 
 export default function OfflineBanner() {
   const online = useOnlineStatus();
@@ -17,7 +16,7 @@ export default function OfflineBanner() {
         padding: '8px 12px',
       }}
     >
-      <WifiOffIcon aria-hidden="true" /> You're offline — some lists may look empty or out of date until you're back online.
+      {'\u{1F4F6}'} You're offline — some lists may look empty or out of date until you're back online.
     </div>
   );
 }

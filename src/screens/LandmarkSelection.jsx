@@ -17,16 +17,16 @@ import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } 
 import { getCustomLandmarks } from '../lib/customLandmarks';
 import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
 import { matchesSearch } from '../lib/search';
-import { Building2 as Building2Icon, Check as CheckIcon, Flame as FlameIcon, Hourglass as HourglassIcon, MapPin as MapPinIcon, Plus as PlusIcon, Sparkles as SparklesIcon, Star as StarIcon } from 'lucide-react';
-import { CategoryIcon } from '../components/icons';
+
+const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
 
 // How close a city center has to be to count as "where you are".
 const NEAR_CITY_KM = 80;
 
 const SORT_OPTIONS = [
-  { id: 'nearMe', label: 'Near Me', Icon: MapPinIcon },
-  { id: 'popularity', label: 'Popularity', Icon: FlameIcon },
-  { id: 'topRated', label: 'Top Rated', Icon: StarIcon },
+  { id: 'nearMe', label: '\u{1F4CD} Near Me' },
+  { id: 'popularity', label: '\u{1F525} Popularity' },
+  { id: 'topRated', label: '\u{2B50} Top Rated' },
 ];
 
 // Searchable city picker -- a plain multi-city tab row gets unwieldy once
@@ -60,14 +60,14 @@ function CityDropdown({ value, onChange }) {
   return (
     <div className="city-dropdown" ref={boxRef}>
       <button type="button" className="city-dropdown-toggle" onClick={() => setOpen((o) => !o)}>
-        <span><Building2Icon aria-hidden="true" /> {selectedLabel}</span>
+        <span>{'\u{1F3D9}\u{FE0F}'} {selectedLabel}</span>
         <span className="city-dropdown-caret">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
         <div className="city-dropdown-panel">
           <input
             type="text"
-            placeholder="Search cities…"
+            placeholder={'\u{1F50D} Search cities…'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             autoFocus
@@ -343,7 +343,7 @@ export default function LandmarkSelection() {
   return (
     <div>
       <h1 className="screen-title">
-        <span><MapPinIcon aria-hidden="true" /></span> Choose Landmarks
+        <span>{'\u{1F4CD}'}</span> Choose Landmarks
       </h1>
       <p className="screen-subtitle">
         {activeCategories.length
@@ -378,13 +378,13 @@ export default function LandmarkSelection() {
         style={{ marginBottom: 12 }}
         onClick={() => navigate('/add-landmark')}
       >
-        <PlusIcon aria-hidden="true" /> Add a Landmark
+        {'\u{2795}'} Add a Landmark
       </button>
 
       <div className="field" style={{ marginBottom: 12 }}>
         <input
           type="text"
-          placeholder="Search landmarks…"
+          placeholder={'\u{1F50D} Search landmarks…'}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -392,7 +392,7 @@ export default function LandmarkSelection() {
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
         <button className={`btn btn-sm ${suggestedSnapshot ? 'btn-primary' : 'btn-ghost'}`} onClick={suggestForMe}>
-          <SparklesIcon aria-hidden="true" /> {suggestedSnapshot ? <>Suggested <CheckIcon aria-hidden="true" /></> : 'Suggest For Me'}
+          {'✨'} {suggestedSnapshot ? 'Suggested ✓' : 'Suggest For Me'}
         </button>
         {scopeCount > 0 && (
           <button
@@ -435,14 +435,14 @@ export default function LandmarkSelection() {
             <option value="">All categories</option>
             {sortInterests(INTERESTS).map((i) => (
             <option key={i.id} value={i.id}>
-              <CategoryIcon id={i.id} /> {i.label}
+              {i.icon} {i.label}
             </option>
           ))}
           {trip.customInterests.map((text) => {
             const pending = trip.customInterestMatches[text] === undefined;
             return (
               <option key={text} value={text} disabled={pending}>
-                {pending ? <HourglassIcon aria-hidden="true" /> : <SparklesIcon aria-hidden="true" />} 
+                {pending ? '\u{23F3} ' : '\u{2728} '}
                 {text}
               </option>
             );
@@ -458,7 +458,7 @@ export default function LandmarkSelection() {
             className={`tab-btn ${sortBy === s.id ? 'active' : ''}`}
             onClick={() => setSortBy((cur) => (cur === s.id ? null : s.id))}
           >
-            <s.Icon aria-hidden="true" /> {s.label}
+            {s.label}
           </button>
         ))}
       </div>
@@ -491,7 +491,7 @@ export default function LandmarkSelection() {
                     }
                   }}
                 >
-                  {isSelected ? <CheckIcon aria-hidden="true" /> : ''}
+                  {isSelected ? '✓' : ''}
                 </div>
                 <div onClick={() => handleToggle(l)} style={{ flexShrink: 0 }}>
                   {(myPhotos[l.id]?.[0] || l.images?.[0]) ? (
@@ -512,21 +512,19 @@ export default function LandmarkSelection() {
                 </div>
                 <div className="lr-main" onClick={() => handleToggle(l)}>
                   <h4>
-                    <span className="lr-category-icons">{l.categories.map((c) => (
-                        <CategoryIcon key={c} id={c} />
-                      ))}</span>
+                    <span className="lr-category-icons">{l.categories.map((c) => CATEGORY_ICON[c]).join('')}</span>
                     {l.name}
                     <QuickRateButton landmark={l} />
                   </h4>
                   <div className="lr-meta">
                     <span className={`tag ${l.free ? 'tag-free' : ''}`}>{l.free ? 'Free' : 'Ticketed'}</span>
-                    {typeof l.popularity === 'number' && <span className="tag popularity-tag"><FlameIcon aria-hidden="true" /> {l.popularity}/10</span>}
+                    {typeof l.popularity === 'number' && <span className="tag popularity-tag">{'\u{1F525}'} {l.popularity}/10</span>}
                     {ratings[l.id]?.count > 0 && (
-                      <span className="tag rating-tag"><StarIcon aria-hidden="true" /> {ratings[l.id].avg.toFixed(1)} ({ratings[l.id].count})</span>
+                      <span className="tag rating-tag">{'⭐'} {ratings[l.id].avg.toFixed(1)} ({ratings[l.id].count})</span>
                     )}
                     {coords && (
                       <span className="tag distance-tag">
-                        <MapPinIcon aria-hidden="true" /> {formatDistance(distanceMeters(coords.lat, coords.lng, l.lat, l.lng), units)} away
+                        {'\u{1F4CD}'} {formatDistance(distanceMeters(coords.lat, coords.lng, l.lat, l.lng), units)} away
                       </span>
                     )}
                   </div>

@@ -23,7 +23,6 @@ import TurnByTurnPanel from '../components/TurnByTurnPanel';
 import DirectionsButton from '../components/DirectionsButton';
 import { useRatings } from '../lib/RatingsContext';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
-import { CircleCheck as CircleCheckIcon, Clapperboard as ClapperboardIcon, Compass as CompassIcon, Footprints as FootprintsIcon, List as ListIcon, Map as MapIcon, MapPin as MapPinIcon, Plus as PlusIcon, Target as TargetIcon, Timer as TimerIcon, Trash2 as Trash2Icon, Users as UsersIcon, X as XIcon } from 'lucide-react';
 
 const ROUTE_BLUE = '#2b7fff';
 
@@ -40,7 +39,7 @@ function CreateTripModal({ onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 12 }} onClick={onClose}>
-          <XIcon aria-hidden="true" /> Close
+          {'\u{2715}'} Close
         </button>
         <Suspense fallback={<p className="screen-subtitle">Loading…</p>}>
           <TripSetup />
@@ -176,7 +175,7 @@ function ItineraryMap({ origin, stops, onDetails, onInApp, navPoints, navStopId,
                     className="btn btn-primary btn-sm"
                     onInApp={onInApp ? () => onInApp(s) : undefined}
                   >
-                    <CompassIcon aria-hidden="true" /> Get Directions
+                    {'\u{1F9ED}'} Get Directions
                   </DirectionsButton>
                   {onDetails && (
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDetails(s)}>
@@ -391,10 +390,10 @@ export default function Itinerary() {
           className="btn btn-primary"
           onClick={() => navigate('/mapr', { state: { openTripPlanner: true } })}
         >
-          <CompassIcon aria-hidden="true" /> Use Mapr (recommended)
+          {'\u{1F9ED}'} Use Mapr (recommended)
         </button>
         <button className="btn btn-ghost" style={{ marginTop: 10 }} onClick={() => setShowCreateTrip(true)}>
-          <PlusIcon aria-hidden="true" /> Create New Trip
+          {'\u{2795}'} Create New Trip
         </button>
         {showCreateTrip && <CreateTripModal onClose={() => setShowCreateTrip(false)} />}
       </div>
@@ -406,11 +405,11 @@ export default function Itinerary() {
     return (
       <div>
         <h1 className="screen-title">
-          <span><MapIcon aria-hidden="true" /></span> Your Itineraries
+          <span>{'\u{1F5FA}\u{FE0F}'}</span> Your Itineraries
         </h1>
         {groupTrips.length > 0 && (
           <div style={{ marginBottom: 18 }}>
-            <h3 style={{ margin: '0 0 8px' }}><UsersIcon aria-hidden="true" /> Group Trips</h3>
+            <h3 style={{ margin: '0 0 8px' }}>{'\u{1F465}'} Group Trips</h3>
             {groupTrips.map((t) => (
               <button
                 key={t.id}
@@ -452,10 +451,10 @@ export default function Itinerary() {
           style={{ marginTop: 16 }}
           onClick={() => navigate('/mapr', { state: { openTripPlanner: true } })}
         >
-          <CompassIcon aria-hidden="true" /> Use Mapr (recommended)
+          {'\u{1F9ED}'} Use Mapr (recommended)
         </button>
         <button className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={() => setShowCreateTrip(true)}>
-          <PlusIcon aria-hidden="true" /> Create New Trip
+          {'\u{2795}'} Create New Trip
         </button>
         {showCreateTrip && <CreateTripModal onClose={() => setShowCreateTrip(false)} />}
       </div>
@@ -465,7 +464,7 @@ export default function Itinerary() {
   if (geocoding) {
     return (
       <div className="empty-state">
-        <p><CompassIcon aria-hidden="true" /> Mapping your {region.name} route…</p>
+        <p>{'\u{1F9ED}'} Mapping your {region.name} route…</p>
       </div>
     );
   }
@@ -476,7 +475,7 @@ export default function Itinerary() {
         {'←'} My Itineraries
       </button>
       <h1 className="screen-title">
-        <span><MapIcon aria-hidden="true" /></span> {region.name}
+        <span>{'\u{1F5FA}\u{FE0F}'}</span> {region.name}
       </h1>
       <p className="screen-subtitle">
         {SORT_OPTIONS.find((o) => o.id === sort)?.label}
@@ -488,14 +487,14 @@ export default function Itinerary() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
         <span className="tag">
-          <MapPinIcon aria-hidden="true" /> {selectedLandmarks.length} landmark{selectedLandmarks.length !== 1 ? 's' : ''} in {region.name}
+          {'\u{1F4CD}'} {selectedLandmarks.length} landmark{selectedLandmarks.length !== 1 ? 's' : ''} in {region.name}
         </span>
         <span className="tag">
-          <CircleCheckIcon aria-hidden="true" /> {visitedCount} of {selectedLandmarks.length} visited
+          {'\u{2705}'} {visitedCount} of {selectedLandmarks.length} visited
         </span>
         {visitedCount > 0 && (
           <button type="button" className="btn btn-ghost btn-tight" onClick={() => setShowRecap(true)}>
-            <ClapperboardIcon aria-hidden="true" /> Trip Recap
+            {'\u{1F3AC}'} Trip Recap
           </button>
         )}
       </div>
@@ -533,7 +532,7 @@ export default function Itinerary() {
             }
           }}
         >
-          <UsersIcon aria-hidden="true" /> {groupBusy ? 'Starting…' : 'Start a Group Trip With Friends'}
+          {'\u{1F465}'} {groupBusy ? 'Starting…' : 'Start a Group Trip With Friends'}
         </button>
       )}
 
@@ -552,14 +551,14 @@ export default function Itinerary() {
             className={`tab-btn ${view === 'list' ? 'active' : ''}`}
             onClick={() => setView('list')}
           >
-            <ListIcon aria-hidden="true" /> List
+            {'\u{1F5D2}\u{FE0F}'} List
           </button>
           <button
             type="button"
             className={`tab-btn ${view === 'map' ? 'active' : ''}`}
             onClick={() => setView('map')}
           >
-            <MapIcon aria-hidden="true" /> Map
+            {'\u{1F5FA}\u{FE0F}'} Map
           </button>
         </div>
         <label className="itin-sort">
@@ -604,12 +603,12 @@ export default function Itinerary() {
             {idx === 0
               ? stop.distanceFromPrevMeters <= 80000 && (
                   <div className="route-travel">
-                    <MapPinIcon aria-hidden="true" /> {formatDistance(stop.distanceFromPrevMeters, units)} from you
+                    {'\u{1F4CD}'} {formatDistance(stop.distanceFromPrevMeters, units)} from you
                   </div>
                 )
               : (
                 <div className="route-travel">
-                  <FootprintsIcon aria-hidden="true" /> {formatDistance(stop.distanceFromPrevMeters, units)} to next stop
+                  {'\u{1F6B6}'} {formatDistance(stop.distanceFromPrevMeters, units)} to next stop
                 </div>
               )}
             <div className="route-step">
@@ -627,14 +626,14 @@ export default function Itinerary() {
                     title="Remove from itinerary"
                     onClick={() => setPendingRemove(stop)}
                   >
-                    <Trash2Icon aria-hidden="true" />
+                    {'\u{1F5D1}\u{FE0F}'}
                   </button>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                   <span className={`tag ${stop.free ? 'tag-free' : ''}`}>
                     {stop.free ? 'Free to Visit' : 'Ticketed'}
                   </span>
-                  <span className="tag"><TimerIcon aria-hidden="true" /> ~{stop.typicalMinutes} min there</span>
+                  <span className="tag">{'\u{23F1}\u{FE0F}'} ~{stop.typicalMinutes} min there</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <DirectionsButton
@@ -674,13 +673,13 @@ export default function Itinerary() {
       </div>
 
       <button type="button" className="btn btn-primary btn-block" onClick={() => navigate('/')}>
-        <TargetIcon aria-hidden="true" /> Start Checking In on the Map
+        {'\u{1F3AF}'} Start Checking In on the Map
       </button>
 
       {pendingRemove && (
         <div className="modal-backdrop" onClick={() => setPendingRemove(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}><Trash2Icon aria-hidden="true" /> Remove this stop?</h3>
+            <h3 style={{ marginTop: 0 }}>{'\u{1F5D1}\u{FE0F}'} Remove this stop?</h3>
             <p className="screen-subtitle" style={{ marginTop: 0 }}>
               Take <strong>{pendingRemove.name}</strong> off your {region?.name} itinerary? You can always add it back later.
             </p>

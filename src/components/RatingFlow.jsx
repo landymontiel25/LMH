@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { TIERS, MAX_CHIPS, MAX_ASPECTS, chipsFor, aspectsFor, aspectLabel } from '../lib/ratingFlow';
-import { TierIcon } from './icons';
 
 // The three-step rating: tier -> chips -> ranked aspects. Shared by the
 // check-in popup and the landmark page's "Rate your visit" card so both
@@ -91,9 +90,7 @@ export default function RatingFlow({ landmark, onChange, initial = null, require
             className={`chip rating-tier ${tier === t.id ? 'selected' : ''}`}
             onClick={() => pickTier(t.id)}
           >
-            <span className="chip-icon">
-              <TierIcon id={t.id} />
-            </span>
+            <span className="chip-icon">{t.emoji}</span>
             <span>{t.label}</span>
           </button>
         ))}

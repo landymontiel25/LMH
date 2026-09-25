@@ -18,7 +18,6 @@ import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
 import TasteNudgeCard from '../components/TasteNudgeCard';
 import TripPlannerCard from '../components/TripPlannerCard';
-import { Compass as CompassIcon, Globe as GlobeIcon, SendHorizontal as SendHorizontalIcon, Zap as ZapIcon } from 'lucide-react';
 
 // "You haven't told Mapr what you like yet" nudge -- shown once (per
 // device/account) until either dismissed outright or satisfied by actually
@@ -246,7 +245,7 @@ export default function Mapr() {
         <div className="chatlab-header-right">
           <div className="chatlab-region" ref={regionBoxRef}>
             <button type="button" className="chatlab-region-pill" onClick={() => setRegionOpen((o) => !o)}>
-              <GlobeIcon aria-hidden="true" />{' '}
+              {'\u{1F30D}'}{' '}
               {regions.length === 0
                 ? 'Any city'
                 : regions.length === 1
@@ -264,7 +263,7 @@ export default function Mapr() {
               </div>
             )}
           </div>
-          {totalCost > 0 && <span className="chatlab-cost"><ZapIcon aria-hidden="true" /> ${totalCost.toFixed(4)}</span>}
+          {totalCost > 0 && <span className="chatlab-cost">{'⚡'} ${totalCost.toFixed(4)}</span>}
         </div>
       </div>
 
@@ -281,7 +280,7 @@ export default function Mapr() {
         />
       ) : (
         <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 12 }} onClick={() => setShowPlanner(true)}>
-          <CompassIcon aria-hidden="true" /> Plan Your Trip
+          {'\u{1F9ED}'} Plan Your Trip
         </button>
       )}
 
@@ -301,7 +300,7 @@ export default function Mapr() {
                   {m.stops.map((stop) =>
                     stop.external ? (
                       <div key={`ext-${stop.url}`} className="chatlab-stop chatlab-stop-external">
-                        <div className="chatlab-stop-globe"><GlobeIcon aria-hidden="true" /></div>
+                        <div className="chatlab-stop-globe">{'\u{1F310}'}</div>
                         <div className="chatlab-stop-text">
                           <strong>
                             {stop.name}
@@ -376,7 +375,7 @@ export default function Mapr() {
             autoCapitalize="off"
           />
           <button type="submit" className="chatlab-send" disabled={busy || !draft.trim()} aria-label="Send">
-            <SendHorizontalIcon aria-hidden="true" />
+            {'\u{27A4}'}
           </button>
         </div>
       </form>

@@ -4,7 +4,6 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { subscribeLeaderboard, cleanName } from '../lib/leaderboard';
 import FriendPopoverName from '../components/FriendPopoverName';
-import { Trophy as TrophyIcon } from 'lucide-react';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -47,7 +46,7 @@ export default function FullLeaderboard() {
       </button>
 
       <h1 className="screen-title">
-        <span><TrophyIcon aria-hidden="true" /></span> Full Leaderboard
+        <span>{'\u{1F3C6}'}</span> Full Leaderboard
       </h1>
 
       <div className="tabs" style={{ marginBottom: 18, flexWrap: 'wrap' }}>

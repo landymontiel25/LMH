@@ -1,23 +1,26 @@
 :root {
   /* Mapr design system */
-  --bg-primary: #080a0d;
-  --bg-secondary: #0d1014;
-  --bg-elevated: #12161c;
-  --bg-card: #14181e;
-  --bg-card-hover: #191e25;
-  --bg-input: #11161d;
-  --mapr-blue: #5b8cff;
-  --mapr-blue-hover: #70a0ff;
-  --mapr-blue-active: #4778ea;
-  --mapr-blue-soft: rgba(91, 140, 255, 0.14);
-  --mapr-blue-border: rgba(91, 140, 255, 0.35);
-  --text-primary: #f5f6f7;
-  --text-secondary: #a6acb5;
-  --text-tertiary: #747b86;
+  --bg-primary: #05070d;
+  --bg-secondary: #0a0d16;
+  --bg-elevated: #0c1020;
+  --bg-card: #0d111d;
+  --bg-card-hover: #131a2c;
+  --bg-input: #0a0d16;
+  --mapr-blue: #4d7fff;
+  --mapr-blue-hover: #6690ff;
+  --mapr-blue-active: #3d6ce8;
+  --mapr-violet: #9b5cf6;
+  --mapr-blue-soft: rgba(77, 127, 255, 0.18);
+  --mapr-blue-border: rgba(77, 127, 255, 0.45);
+  --mapr-gradient: linear-gradient(135deg, #4d7fff, #9b5cf6);
+  --surface-gradient: linear-gradient(160deg, #0e1730, #070a14 70%);
+  --text-primary: #eef1f8;
+  --text-secondary: #a3aabd;
+  --text-tertiary: #8991a6;
   --text-disabled: #515762;
-  --border-subtle: rgba(255, 255, 255, 0.07);
-  --border-default: rgba(255, 255, 255, 0.11);
-  --border-strong: rgba(255, 255, 255, 0.17);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
   --success: #55c987;
   --warning: #f2b84b;
   --danger: #f06a6a;
@@ -33,7 +36,7 @@
      surface tone most controls and panels sit on; the page itself uses
      --color-bg. */
   --color-bg: var(--bg-primary);
-  --color-bg-rgb: 20, 24, 30;
+  --color-bg-rgb: 12, 16, 32;
   --color-bg-raised: var(--bg-elevated);
   --color-bg-card: var(--bg-card);
   --color-brass: var(--mapr-blue);
@@ -47,7 +50,7 @@
 
   --font-body: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
   --font-heading: var(--font-body);
-  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-display: Georgia, 'Times New Roman', serif;
 
   --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.22);
   --shadow-float: 0 16px 50px rgba(0, 0, 0, 0.38);
@@ -56,7 +59,8 @@
      to blur (and iOS Safari under Low Power Mode skips it anyway). */
   --glass-blur: none;
   --header-h: 76px;
-  --nav-h: 78px;
+  /* Floating tab bar: 66px tall, 12px off the bottom edge, plus room. */
+  --nav-h: 92px;
 }
 
 /* iOS (Safari and the installed app): native SF Pro instead of Inter. */
@@ -4319,45 +4323,242 @@ body.lightbox-open .ask-landmark-panel {
   background: rgba(43, 38, 32, 0.05);
 }
 
-/* ---------- Icons (Lucide) ---------- */
+/* ==========================================================================
+   Modern skin, matching the Test tab (maprTest.css): deep navy canvas,
+   navy-gradient cards, serif titles, pill controls, blue glow on focus,
+   floating tab bar. Visual only.
+   ========================================================================== */
 
-/* Inline icons sit at text size next to their label; places with their own
-   size (nav, chip tiles) override below. */
-.lucide {
-  width: 1.15em;
-  height: 1.15em;
-  stroke-width: 1.75;
-  flex-shrink: 0;
-  vertical-align: -0.2em;
+h1,
+h2,
+.screen-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
-.chip-icon {
-  display: inline-flex;
-  color: var(--text-secondary);
+.card,
+.discovery-stats-card,
+.taste-profile-card,
+.chatlab .discovery-stats-card,
+.chatlab .taste-profile-card {
+  background: var(--surface-gradient);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
 }
 
-.chip-icon .lucide {
-  width: 22px;
-  height: 22px;
+.btn {
+  border-radius: var(--radius-pill);
 }
 
-.chip.selected .chip-icon {
-  color: var(--mapr-blue);
+.btn-sm,
+.btn-tight {
+  border-radius: var(--radius-pill);
 }
 
-.lr-category-icons {
-  display: inline-flex;
-  gap: 2px;
-  color: var(--text-secondary);
+.btn-primary {
+  background: var(--mapr-blue);
+  box-shadow: 0 6px 24px rgba(77, 127, 255, 0.35);
 }
 
-.bottom-nav .nav-icon .lucide {
-  width: 24px;
-  height: 24px;
-  vertical-align: 0;
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: var(--border-default);
 }
 
-.landmark-thumb-fallback .lucide {
-  width: 1em;
-  height: 1em;
+.btn-ghost:hover:not(:disabled),
+.btn:hover:not(:disabled):not(.btn-primary) {
+  border-color: var(--mapr-blue-border);
+}
+
+.tab-btn,
+.chip,
+.tag {
+  border-radius: var(--radius-pill);
+}
+
+.tab-btn {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: var(--border-default);
+}
+
+.tab-btn.active,
+.chip.selected {
+  background: rgba(77, 127, 255, 0.22);
+  border-color: var(--mapr-blue);
+  color: var(--text-primary);
+}
+
+.chip {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: var(--border-default);
+}
+
+.field input[type='text'],
+.field input[type='email'],
+.field input[type='password'],
+.field select,
+.field textarea,
+.autocomplete-chip-input,
+.city-dropdown-panel input[type='text'],
+.friend-email-input,
+.map-search-input,
+.radius-select {
+  background: rgba(10, 13, 22, 0.9);
+  border-color: rgba(77, 127, 255, 0.3);
+  border-radius: var(--radius-pill);
+}
+
+.field textarea,
+.rating-comment,
+.review-comment-input {
+  border-radius: var(--radius-md);
+}
+
+.field input[type='text']:focus,
+.field input[type='email']:focus,
+.field input[type='password']:focus,
+.field select:focus,
+.field textarea:focus,
+.rating-comment:focus,
+.autocomplete-chip-input:focus,
+.city-dropdown-panel input[type='text']:focus,
+.review-comment-input:focus,
+.friend-email-input:focus,
+.map-search-input:focus,
+.radius-select:focus {
+  border-color: var(--mapr-blue);
+  box-shadow: 0 0 0 4px rgba(77, 127, 255, 0.12);
+}
+
+.level-bar-fill {
+  background: var(--mapr-gradient);
+}
+
+.app-header {
+  background: rgba(10, 13, 22, 0.92);
+  border-color: var(--border-default);
+}
+
+.app-header .brand-text {
+  font-size: 1.3rem;
+}
+
+.modal-card,
+.points-popover,
+.streak-info-popover,
+.user-popover-card,
+.chatlab-region-popover {
+  background: #0a0d16;
+  border-color: var(--border-default);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.fixed-action-bar {
+  max-width: 720px;
+  margin: 0 auto;
+  background: rgba(10, 13, 22, 0.94);
+  border-color: var(--border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.chatlab-header {
+  background: var(--surface-gradient);
+  border-color: var(--border-default);
+  border-radius: var(--radius-lg);
+}
+
+.chatlab-orb,
+.chatlab-avatar {
+  box-shadow: 0 0 46px rgba(120, 130, 255, 0.45);
+}
+
+.chatlab-composer {
+  background: rgba(10, 13, 22, 0.94);
+  border-color: rgba(77, 127, 255, 0.4);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 0 0 4px rgba(77, 127, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.chatlab-composer input {
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--radius-pill);
+}
+
+.chatlab-composer input:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.chatlab-send {
+  border-radius: 50%;
+}
+
+.chatlab-quick-replies button,
+.chatlab-region-pill {
+  background: rgba(10, 13, 22, 0.85);
+  border-color: var(--border-default);
+  border-radius: var(--radius-pill);
+}
+
+.chatlab-msg.user .chatlab-bubble {
+  background: rgba(77, 127, 255, 0.18);
+  border: 1px solid rgba(77, 127, 255, 0.4);
+}
+
+.chatlab-msg.user .chatlab-bubble p {
+  color: var(--text-primary);
+}
+
+.chatlab-msg.assistant .chatlab-bubble {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: var(--border-default);
+}
+
+/* Floating tab bar: lifted off the bottom edge, fully rounded, same tabs. */
+.bottom-nav {
+  left: 12px;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  height: 66px;
+  padding-bottom: 0;
+  max-width: 560px;
+  background: rgba(10, 13, 22, 0.96);
+  border: 1px solid var(--border-default);
+  border-radius: 26px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(77, 127, 255, 0.06);
+}
+
+.bottom-nav a {
+  border-radius: 20px;
+  margin: 6px 2px;
+}
+
+.bottom-nav a.active {
+  color: var(--text-primary);
+  background: rgba(77, 127, 255, 0.18);
+}
+
+.bottom-nav .nav-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+[data-theme='light'] .card,
+[data-theme='light'] .discovery-stats-card,
+[data-theme='light'] .taste-profile-card {
+  background: var(--bg-card);
+}
+
+[data-theme='light'] .bottom-nav,
+[data-theme='light'] .app-header,
+[data-theme='light'] .fixed-action-bar {
+  background: rgba(255, 250, 240, 0.96);
+}
+
+[data-theme='light'] .bottom-nav a.active {
+  color: var(--color-brass-bright);
+  background: rgba(156, 122, 52, 0.14);
 }

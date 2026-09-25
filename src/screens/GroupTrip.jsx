@@ -10,7 +10,6 @@ import {
   removeGroupMember,
   deleteGroupTrip,
 } from '../lib/groupTrips';
-import { Map as MapIcon, Plus as PlusIcon, Square as SquareIcon, SquareCheck as SquareCheckIcon, Users as UsersIcon } from 'lucide-react';
 
 // One trip a few friends build together (item i6) -- a single shared
 // landmark list, live-updated for every member via subscribeGroupTrip.
@@ -52,7 +51,7 @@ export default function GroupTrip() {
         {'← Itineraries'}
       </button>
       <h1 className="screen-title">
-        <span><UsersIcon aria-hidden="true" /></span> {trip.name}
+        <span>{'\u{1F465}'}</span> {trip.name}
       </h1>
       <p className="screen-subtitle">{region?.name} — a trip you're building together</p>
 
@@ -84,7 +83,7 @@ export default function GroupTrip() {
                   className="btn btn-ghost btn-tight"
                   onClick={() => addGroupMember(trip, f.friend, f.friendName)}
                 >
-                  <PlusIcon aria-hidden="true" /> {f.friendName}
+                  {'\u{2795}'} {f.friendName}
                 </button>
               ))}
             </div>
@@ -94,14 +93,14 @@ export default function GroupTrip() {
 
       <div className="card section">
         <h3 style={{ marginTop: 0 }}>
-          <MapIcon aria-hidden="true" /> Shared Landmarks ({trip.landmarkIds.length})
+          {'\u{1F5FA}\u{FE0F}'} Shared Landmarks ({trip.landmarkIds.length})
         </h3>
         {(region?.landmarks || []).map((l) => {
           const selected = trip.landmarkIds.includes(l.id);
           return (
             <label key={l.id} className="friend-row" style={{ cursor: 'pointer' }}>
               <span>
-                {selected ? <SquareCheckIcon aria-hidden="true" /> : <SquareIcon aria-hidden="true" />} {l.name}
+                {selected ? '\u{2705}' : '\u{2B1C}'} {l.name}
               </span>
               <input
                 type="checkbox"
