@@ -122,8 +122,7 @@ export default function Settings() {
         <div className="card section">
           <h3 style={{ marginTop: 0 }}>{'\u{1F3E0}'} Home Address</h3>
           <p className="screen-subtitle" style={{ marginTop: 0 }}>
-            Check-ins within half a mile of home don't earn points — they still count toward your
-            taste profile.
+            Helps Mapr learn your taste around where you actually live.
           </p>
           <LocationAutocomplete
             id="home-address"
