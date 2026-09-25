@@ -366,21 +366,28 @@ export function localTagPicks({ profile, region, limit = 10, now = Date.now(), .
 
 // No region to score in (no location, no ratings, no saved cities): the
 // most-checked-into landmarks across every region combined, ties broken by
-// the catalog's editorial popularity.
-export function globalPopularPicks({ excludeIds = [], checkinCounts = {}, limit = 10 }) {
+// the catalog's editorial popularity. With signup interests, landmarks in
+// those interests (built-in category ids, plus landmarks custom interests
+// matched) rank first; the rest only fill slots the interests can't. With
+// no interests it's pure popularity.
+export function globalPopularPicks({ excludeIds = [], checkinCounts = {}, interests = [], customMatchIds = [], limit = 10 }) {
   const exclude = new Set(excludeIds);
-  return ALL_LANDMARKS.filter((l) => !exclude.has(l.id) && !(l.categories || []).every((c) => UNRATEABLE.has(c)))
-    .sort(byDemand(checkinCounts))
-    .slice(0, limit)
-    .map((l) => ({
-      id: l.id,
-      region: l.regionId,
-      name: l.name,
-      image: l.images?.[0] || null,
-      categories: l.categories || [],
-      matchPercentage: 62,
-      oneLineSummary: (l.summary || '').split(/[.!?]/)[0].slice(0, 90),
-    }));
+  const wanted = new Set(interests);
+  const custom = new Set(customMatchIds);
+  const fits = (l) => custom.has(`${l.regionId}/${l.id}`) || (l.categories || []).some((c) => wanted.has(c));
+  const pool = ALL_LANDMARKS.filter(
+    (l) => !exclude.has(l.id) && !(l.categories || []).every((c) => UNRATEABLE.has(c))
+  ).sort(byDemand(checkinCounts));
+  const ranked = wanted.size || custom.size ? [...pool.filter(fits), ...pool.filter((l) => !fits(l))] : pool;
+  return ranked.slice(0, limit).map((l) => ({
+    id: l.id,
+    region: l.regionId,
+    name: l.name,
+    image: l.images?.[0] || null,
+    categories: l.categories || [],
+    matchPercentage: 62,
+    oneLineSummary: (l.summary || '').split(/[.!?]/)[0].slice(0, 90),
+  }));
 }
 
 // Step 13. Settles picks shown on an earlier day: a visit (or a vote, or a

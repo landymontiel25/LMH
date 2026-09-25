@@ -336,6 +336,26 @@ describe('globalPopularPicks', () => {
     expect(picks).toHaveLength(10);
   });
 
+  it('ranks signup-interest landmarks first, by check-ins across all cities', () => {
+    const history = ALL_LANDMARKS.filter((l) => l.categories[0] === 'history-culture');
+    const busiestFood = ALL_LANDMARKS.find((l) => l.categories[0] === 'food');
+    const busiestHistory = history.at(-1);
+    const picks = globalPopularPicks({
+      interests: ['history-culture'],
+      checkinCounts: { [busiestFood.id]: 99, [busiestHistory.id]: 7 },
+      limit: 10,
+    });
+    expect(picks[0].id).toBe(busiestHistory.id);
+    expect(picks.every((p) => p.categories[0] === 'history-culture')).toBe(true);
+  });
+
+  it('fills slots the interests cannot with overall popularity', () => {
+    const benches = ALL_LANDMARKS.filter((l) => l.categories[0] === 'benches');
+    const picks = globalPopularPicks({ interests: ['benches'], limit: 10 });
+    expect(picks).toHaveLength(10);
+    expect(picks.slice(0, benches.length).every((p) => p.categories[0] === 'benches')).toBe(true);
+  });
+
   it('still fills the row before any check-ins exist', () => {
     expect(globalPopularPicks({ limit: 10 })).toHaveLength(10);
   });
