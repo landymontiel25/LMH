@@ -51,6 +51,14 @@ export async function setPickFeedback({ uid, landmark, verdict, origin }) {
   return entry;
 }
 
+// Synchronous (localStorage only, no Firestore round trip) -- for painting
+// something instantly on mount instead of waiting on getPickFeedback's
+// network read. getPickFeedback below still runs right after and reconciles
+// with Firestore for the authoritative copy.
+export function readLocalFeedback(uid) {
+  return readLocal(uid);
+}
+
 export async function getPickFeedback(uid) {
   const map = readLocal(uid);
   if (db) {
