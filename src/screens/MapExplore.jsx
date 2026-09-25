@@ -26,6 +26,8 @@ import TurnByTurnPanel from '../components/TurnByTurnPanel';
 import { fetchDirections } from '../lib/routing';
 import LandmarkThumb from '../components/LandmarkThumb';
 import QuickRateButton from '../components/QuickRateButton';
+import { Check as CheckIcon, Compass as CompassIcon, MapPin as MapPinIcon, Plus as PlusIcon, Radar as RadarIcon, Search as SearchIcon, SlidersHorizontal as SlidersHorizontalIcon, Trash2 as Trash2Icon, X as XIcon } from 'lucide-react';
+import { CategoryIcon } from '../components/icons';
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
 
@@ -564,10 +566,10 @@ export default function MapExplore() {
                     className={`btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'}`}
                     onClick={() => handleAdd(landmark)}
                   >
-                    {isSelected ? '✓ Added to Itinerary' : 'Add to Itinerary'}
+                    {isSelected ? <><CheckIcon aria-hidden="true" /> Added to Itinerary</> : 'Add to Itinerary'}
                   </button>
                   <DirectionsButton name={landmark.name} lat={position[0]} lng={position[1]} className="btn btn-ghost btn-sm">
-                    {'\u{1F9ED}'} Directions
+                    <CompassIcon aria-hidden="true" /> Directions
                   </DirectionsButton>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={goToDetails}>
                     Details
@@ -678,10 +680,10 @@ export default function MapExplore() {
                     className={`btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'}`}
                     onClick={() => handleAdd(landmark)}
                   >
-                    {isSelected ? '✓ Added to Itinerary' : 'Add to Itinerary'}
+                    {isSelected ? <><CheckIcon aria-hidden="true" /> Added to Itinerary</> : 'Add to Itinerary'}
                   </button>
                   <DirectionsButton name={l.name} lat={l.lat} lng={l.lng} className="btn btn-ghost btn-sm">
-                    {'\u{1F9ED}'} Directions
+                    <CompassIcon aria-hidden="true" /> Directions
                   </DirectionsButton>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={goToDetails}>
                     Details
@@ -705,7 +707,7 @@ export default function MapExplore() {
                     style={{ marginTop: 8 }}
                     onClick={() => removeCustomLandmark(l.docId)}
                   >
-                    {'\u{1F5D1}'} Remove Pin
+                    <Trash2Icon aria-hidden="true" /> Remove Pin
                   </button>
                 )}
               </div>
@@ -827,7 +829,7 @@ export default function MapExplore() {
                       className="btn btn-primary btn-sm"
                       onClick={() => navigate('/add-landmark', { state: pinDrop })}
                     >
-                      {'\u{2795}'} Add Landmark
+                      <PlusIcon aria-hidden="true" /> Add Landmark
                     </button>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPinDrop(null)}>
                       Cancel
@@ -864,7 +866,7 @@ export default function MapExplore() {
       {!placingPin && (
         <>
           <button type="button" className="map-search-btn" title="Search landmarks" onClick={toggleSearch}>
-            {searchOpen ? '\u{2715}' : '\u{1F50D}'}
+            {searchOpen ? <XIcon aria-hidden="true" /> : <SearchIcon aria-hidden="true" />}
           </button>
           <button
             type="button"
@@ -873,7 +875,7 @@ export default function MapExplore() {
             title="Add a landmark — long-press the map to pin an exact spot"
             onClick={startPlacingPin}
           >
-            {'\u{2795}'}
+            <PlusIcon aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -886,7 +888,7 @@ export default function MapExplore() {
               setEditMode(false);
             }}
           >
-            {filterOpen ? '\u{2715}' : '\u{1F5C2}\u{FE0F}'}
+            {filterOpen ? <XIcon aria-hidden="true" /> : <SlidersHorizontalIcon aria-hidden="true" />}
           </button>
           {filterOpen && (
             <div className="map-search-panel">
@@ -897,7 +899,7 @@ export default function MapExplore() {
                   className={`chip ${filterCats.size === 0 ? 'selected' : ''}`}
                   onClick={() => setFilterCats(new Set())}
                 >
-                  <span className="chip-icon">{'\u{1F4CD}'}</span>
+                  <span className="chip-icon"><MapPinIcon aria-hidden="true" /></span>
                   <span>All landmarks</span>
                 </button>
                 {INTERESTS.map((i) => (
@@ -907,7 +909,9 @@ export default function MapExplore() {
                     className={`chip ${filterCats.has(i.id) ? 'selected' : ''}`}
                     onClick={() => toggleFilterCat(i.id)}
                   >
-                    <span className="chip-icon">{i.icon}</span>
+                    <span className="chip-icon">
+                      <CategoryIcon id={i.id} />
+                    </span>
                     <span>{i.label}</span>
                   </button>
                 ))}
@@ -923,7 +927,7 @@ export default function MapExplore() {
               onClick={toggleEditMode}
             >
               {editMode ? (
-                '\u{2715}'
+                <XIcon aria-hidden="true" />
               ) : (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                   <line x1="5" y1="6.5" x2="19" y2="6.5" />
@@ -945,13 +949,13 @@ export default function MapExplore() {
                 type="text"
                 autoFocus
                 className="map-search-input"
-                placeholder={'\u{1F50D} Search landmarks, states, countries…'}
+                placeholder="Search landmarks, states, countries…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               {!searchTerm.trim() && coords && (
                 <div className="map-search-results">
-                  <div className="map-search-heading">{'\u{1F4E1}'} Nearby now</div>
+                  <div className="map-search-heading"><RadarIcon aria-hidden="true" /> Nearby now</div>
                   {nearbyList.length === 0 && <div className="map-search-empty">Nothing nearby yet.</div>}
                   {nearbyList.map((l) => (
                     <button
@@ -1013,7 +1017,7 @@ export default function MapExplore() {
           </div>
           <p className="map-pin-target-hint">Pan the map to line up your spot</p>
           <button type="button" className="map-search-btn map-pin-cancel-btn" title="Cancel" onClick={() => setPlacingPin(false)}>
-            {'\u{2715}'}
+            <XIcon aria-hidden="true" />
           </button>
           <button type="button" className="btn btn-primary map-pin-done-btn" onClick={confirmPinPlacement}>
             Done

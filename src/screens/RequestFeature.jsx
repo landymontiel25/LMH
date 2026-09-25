@@ -9,6 +9,7 @@ import {
   approveFeatureRequest,
   rejectFeatureRequest,
 } from '../lib/featureRequests';
+import { Check as CheckIcon, Lightbulb as LightbulbIcon, PartyPopper as PartyPopperIcon, X as XIcon } from 'lucide-react';
 
 // Admin-only: the live queue of everything sitting in "pending", with
 // Approve/Reject buttons -- same shape as Profile's PendingLandmarksPanel.
@@ -77,7 +78,7 @@ function ReviewPanel() {
               disabled={busyId === r.id}
               onClick={() => approve(r.id)}
             >
-              {'\u{2713}'} Approve
+              <CheckIcon aria-hidden="true" /> Approve
             </button>
             <button
               type="button"
@@ -85,7 +86,7 @@ function ReviewPanel() {
               disabled={busyId === r.id}
               onClick={() => reject(r.id)}
             >
-              {'\u{2715}'} Reject
+              <XIcon aria-hidden="true" /> Reject
             </button>
           </div>
         </div>
@@ -197,7 +198,7 @@ export default function RequestFeature() {
       </button>
 
       <h1 className="screen-title">
-        <span>{'\u{1F4A1}'}</span> Request a Feature
+        <span><LightbulbIcon aria-hidden="true" /></span> Request a Feature
       </h1>
 
       {admin && (
@@ -219,7 +220,7 @@ export default function RequestFeature() {
         <ReviewPanel />
       ) : justSubmitted ? (
         <div className="card section" style={{ textAlign: 'center' }}>
-          <h3 style={{ marginTop: 0 }}>{'\u{1F389}'} Thanks!</h3>
+          <h3 style={{ marginTop: 0 }}><PartyPopperIcon aria-hidden="true" /> Thanks!</h3>
           <p className="screen-subtitle" style={{ margin: 0 }}>Your request is in — we read every one.</p>
           <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 12 }} onClick={() => setJustSubmitted(false)}>
             Submit another

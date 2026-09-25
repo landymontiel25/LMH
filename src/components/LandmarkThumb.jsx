@@ -1,4 +1,5 @@
-import { paletteFor, iconFor } from '../lib/landmarkVisuals';
+import { paletteFor } from '../lib/landmarkVisuals';
+import { CategoryIcon } from './icons';
 
 // Compact, non-swipeable thumbnail for dense contexts (list rows, itinerary
 // stops, map popups) where the decorative postcard frame doesn't fit.
@@ -21,7 +22,9 @@ export default function LandmarkThumb({ landmark, size = 52, width, height, myPh
       className="landmark-thumb landmark-thumb-fallback"
       style={{ ...style, background: `linear-gradient(135deg, ${palette[0]}, ${palette[1]})` }}
     >
-      <span style={{ fontSize: Math.min(w, h) * 0.4 }}>{iconFor(landmark.categories)}</span>
+      <span style={{ fontSize: Math.min(w, h) * 0.4, color: 'rgba(255, 255, 255, 0.85)', display: 'flex' }}>
+        <CategoryIcon id={landmark.categories?.[0]} />
+      </span>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { saveLandmarkEdit, clearLandmarkEdit } from '../lib/landmarkOverrides';
 import CategorySelect from './CategorySelect';
+import { Wrench as WrenchIcon } from 'lucide-react';
 
 // Admin Mode's edit tool for a BUILT-IN (static catalog) landmark. There's
 // no Firestore doc for the landmark itself to update -- src/data/landmarks.*.js
@@ -72,7 +73,7 @@ export default function AdminEditBuiltInPanel({ landmark, onSaved }) {
 
   return (
     <div className="card section" style={{ borderColor: 'var(--color-rust)' }}>
-      <h3 style={{ marginTop: 0 }}>{'\u{1F6E0}\u{FE0F}'} Admin Mode — Edit Built-In Landmark</h3>
+      <h3 style={{ marginTop: 0 }}><WrenchIcon aria-hidden="true" /> Admin Mode — Edit Built-In Landmark</h3>
       <p className="screen-subtitle" style={{ marginTop: -6 }}>
         This is catalog data, not a submission — Save patches it live for everyone; the original stays in the app's
         source code and "Reset to Original" reverts to it.

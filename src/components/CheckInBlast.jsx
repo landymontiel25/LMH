@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { MapPin as MapPinIcon } from 'lucide-react';
 
 const COLORS = ['#ff3d71', '#ffb020', '#ffe94d', '#3ddc84', '#38bdf8', '#a78bfa', '#ff7ab6', '#ffffff'];
 const PIECES = 56;
@@ -49,7 +50,7 @@ export default function CheckInBlast({ landmarkName, points = 100, message, onDo
         ))}
       </span>
       <div className="blast-body">
-        <div className="blast-pin">{'\u{1F4CD}'}</div>
+        <div className="blast-pin"><MapPinIcon aria-hidden="true" /></div>
         <h1 className="blast-title">YOU CHECKED IN!</h1>
         <p className="blast-name">{landmarkName}</p>
         <p className="blast-points">+{points} pts</p>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { appendLoveNote, getLoveNote } from '../lib/reviews';
+import { Heart as HeartIcon, Repeat as RepeatIcon } from 'lucide-react';
 
 // Fires after the 3rd check-in at a landmark, then every 10th after that
 // (13th, 23rd, ...) -- see shouldPromptLoveReason in leaderboard.js. The
@@ -47,7 +48,7 @@ export default function LoveReasonPrompt() {
   return (
     <div className="modal-backdrop" onClick={() => !saving && clearLoveReasonPrompt()}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0 }}>{'\u{1F49B}'} Why do you love {loveReasonPrompt.landmark.name}?</h3>
+        <h3 style={{ marginTop: 0 }}><HeartIcon aria-hidden="true" /> Why do you love {loveReasonPrompt.landmark.name}?</h3>
         <p className="screen-subtitle" style={{ marginTop: 0 }}>
           You've been here {loveReasonPrompt.visitNumber} times now. Tell Mapr what keeps bringing you back — it
           helps us suggest places for the actual reason, not just the category.
@@ -61,7 +62,7 @@ export default function LoveReasonPrompt() {
             disabled={saving}
             onClick={() => save(previousNote)}
           >
-            {'\u{1F501}'} I still love it for the same reason: <em>"{previousNote}"</em>
+            <RepeatIcon aria-hidden="true" /> I still love it for the same reason: <em>"{previousNote}"</em>
           </button>
         )}
 

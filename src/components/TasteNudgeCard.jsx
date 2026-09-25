@@ -3,6 +3,8 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { saveTasteBaseline } from '../lib/friends';
 import { TASTE_QUESTIONS } from '../lib/tasteQuestions';
+import { Check as CheckIcon, Hand as HandIcon, MessageCircle as MessageCircleIcon, ThumbsDown as ThumbsDownIcon, ThumbsUp as ThumbsUpIcon, X as XIcon } from 'lucide-react';
+import { CategoryIcon } from './icons';
 
 // The "you haven't told Mapr what you like yet" nudge, expanded into
 // something answerable in a few taps instead of a blank box: one quick
@@ -123,7 +125,7 @@ export default function TasteNudgeCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
         <div>
           <h3 style={{ margin: 0, fontSize: '0.95rem' }}>
-            {'\u{1F44B}'} {editing ? 'Edit what you told Mapr' : "Tell Mapr what you like — and don't"}
+            <HandIcon aria-hidden="true" /> {editing ? 'Edit what you told Mapr' : "Tell Mapr what you like — and don't"}
           </h3>
           <p className="screen-subtitle" style={{ margin: '4px 0 0' }}>
             {editing
@@ -132,7 +134,7 @@ export default function TasteNudgeCard({
           </p>
         </div>
         <button type="button" className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={onDismiss} aria-label="Dismiss">
-          {'\u{2715}'}
+          <XIcon aria-hidden="true" />
         </button>
       </div>
 
@@ -140,8 +142,8 @@ export default function TasteNudgeCard({
         className="screen-subtitle"
         style={{ margin: '10px 0 0', fontSize: '0.75rem', display: 'flex', gap: 12, flexWrap: 'wrap', padding: 0, listStyle: 'none' }}
       >
-        <li>Tap 1x for {'\u{1F44D}'} like</li>
-        <li>Tap 2x for {'\u{1F44E}'} dislike</li>
+        <li>Tap 1x for <ThumbsUpIcon aria-hidden="true" /> like</li>
+        <li>Tap 2x for <ThumbsDownIcon aria-hidden="true" /> dislike</li>
         <li>Tap 3x to clear</li>
       </ul>
 
@@ -152,7 +154,7 @@ export default function TasteNudgeCard({
           return (
             <div key={q.id}>
               <p style={{ margin: '0 0 4px', fontSize: '0.82rem', fontWeight: 600 }}>
-                {q.icon} {q.label} — <span style={{ fontWeight: 400 }}>{q.prompt}</span>{' '}
+                <CategoryIcon id={q.id} /> {q.label} — <span style={{ fontWeight: 400 }}>{q.prompt}</span>{' '}
                 <button
                   type="button"
                   onClick={() => toggleComment(q.id)}
@@ -169,7 +171,7 @@ export default function TasteNudgeCard({
                     cursor: 'pointer',
                   }}
                 >
-                  {'\u{1F4AC}'} {hasComment ? 'Comment ✓' : 'Comment'}
+                  <MessageCircleIcon aria-hidden="true" /> {hasComment ? <>Comment <CheckIcon aria-hidden="true" /></> : 'Comment'}
                 </button>
               </p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -184,7 +186,7 @@ export default function TasteNudgeCard({
                       onClick={() => cycleChip(q.id, ex)}
                       disabled={saving}
                     >
-                      {state === 'like' ? `${'\u{1F44D}'} ` : state === 'dislike' ? `${'\u{1F44E}'} ` : ''}
+                      {state === 'like' ? <><ThumbsUpIcon aria-hidden="true" /> </> : state === 'dislike' ? <><ThumbsDownIcon aria-hidden="true" /> </> : ''}
                       {ex}
                     </button>
                   );

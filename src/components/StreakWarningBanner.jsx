@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useBadges } from '../lib/BadgesContext';
 import { msUntilStreakLapse, PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { notifyUser } from '../lib/notifications';
+import { Hourglass as HourglassIcon } from 'lucide-react';
 
 // Alert once 5 hours remain in the UTC day with the streak not yet secured
 // today (no check-in, and fewer than PICKS_STREAK_THRESHOLD landmarks
@@ -85,7 +86,7 @@ export default function StreakWarningBanner() {
         cursor: 'pointer',
       }}
     >
-      {'\u{23F3}'} Your {streakDays}-day streak expires in {formatCountdown(msLeft)} — check in, or vote/rate {PICKS_STREAK_THRESHOLD} landmarks, to keep it!
+      <HourglassIcon aria-hidden="true" /> Your {streakDays}-day streak expires in {formatCountdown(msLeft)} — check in, or vote/rate {PICKS_STREAK_THRESHOLD} landmarks, to keep it!
     </button>
   );
 }

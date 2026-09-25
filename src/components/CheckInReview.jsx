@@ -10,6 +10,7 @@ import { pickPhoto } from '../lib/imageUtils';
 import { isRateable, diversityHint } from '../lib/ratingFlow';
 import RatingFlow from './RatingFlow';
 import CheckInBlast from './CheckInBlast';
+import { Camera as CameraIcon, Check as CheckIcon, Lightbulb as LightbulbIcon, MapPin as MapPinIcon, Star as StarIcon, Target as TargetIcon } from 'lucide-react';
 
 // Pops up the moment "Check In" is tapped -- nothing is claimed yet. Tapping
 // Post is what actually registers the check-in (via commitCheckIn) and awards
@@ -143,7 +144,7 @@ export default function CheckInReview() {
         {posted ? (
           <>
             <h3 style={{ marginTop: 0 }}>
-              {ratingOnly ? `${'\u{2B50}'} Rated!` : `${'\u{1F3AF}'} Checked in! +${celebration?.points ?? justCheckedIn.points ?? 100} pts`}
+              {ratingOnly ? <><StarIcon aria-hidden="true" /> Rated!</> : <><TargetIcon aria-hidden="true" /> Checked in! +{celebration?.points ?? justCheckedIn.points ?? 100} pts</>}
             </h3>
             {!ratingOnly && celebration?.message && <div className="celebration-banner">{celebration.message}</div>}
             {msg && (
@@ -158,7 +159,7 @@ export default function CheckInReview() {
         ) : (
           <>
             <h3 style={{ marginTop: 0 }}>
-              {'\u{1F4CD}'} {requireComment ? `Rate ${justCheckedIn.name}` : `Check in to ${justCheckedIn.name}?`}
+              <MapPinIcon aria-hidden="true" /> {requireComment ? `Rate ${justCheckedIn.name}` : `Check in to ${justCheckedIn.name}?`}
             </h3>
             {rateable ? (
               <>
@@ -174,7 +175,7 @@ export default function CheckInReview() {
                   const hint = diversityHint(Object.values(myReviews));
                   return hint ? (
                     <p className="screen-subtitle" style={{ marginTop: -10, fontSize: '0.78rem' }}>
-                      {'\u{1F4A1}'} {hint}
+                      <LightbulbIcon aria-hidden="true" /> {hint}
                     </p>
                   ) : null;
                 })()}
@@ -218,7 +219,7 @@ export default function CheckInReview() {
             {photoFiles.length < 3 && (
               <div style={{ marginTop: 12 }}>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={onPhoto}>
-                  {'\u{1F4F8}'} Add photo ({photoFiles.length}/3)
+                  <CameraIcon aria-hidden="true" /> Add photo ({photoFiles.length}/3)
                 </button>
               </div>
             )}
@@ -235,7 +236,7 @@ export default function CheckInReview() {
                 disabled={saving || (rateable && !rating) || (rateable && requireComment && !rating?.comment?.trim())}
                 onClick={submit}
               >
-                {saving ? 'Posting…' : rateable ? 'Post' : 'Confirm check-in \u{2713}'}
+                {saving ? 'Posting…' : rateable ? 'Post' : <>Confirm check-in <CheckIcon aria-hidden="true" /></>}
               </button>
               <button className="btn btn-ghost" onClick={close} disabled={saving}>
                 Cancel

@@ -6,6 +6,7 @@ import { saveTasteBaseline, saveTasteIntro } from '../lib/friends';
 import { computeTasteConfidence } from '../lib/tasteProfile';
 import { baselineToSyntheticReviews, extractLegacyBaselineFromIntro } from '../lib/tasteQuestions';
 import TasteNudgeCard from './TasteNudgeCard';
+import { Pencil as PencilIcon, Plus as PlusIcon, Puzzle as PuzzleIcon } from 'lucide-react';
 
 // Taste Profile Score -- Mapr's own leave-one-out prediction confidence
 // (see computeTasteConfidence), NOT an activity counter. It only goes up
@@ -99,7 +100,7 @@ export default function TasteProfileCard() {
     return (
       <div className="card section taste-profile-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile</h3>
+          <h3 style={{ margin: 0, fontSize: '0.95rem' }}><PuzzleIcon aria-hidden="true" /> Taste Profile</h3>
           <span className="tag" style={{ fontSize: '0.65rem' }}>Loading…</span>
         </div>
         <p className="screen-subtitle" style={{ margin: '6px 0 0' }}>
@@ -156,9 +157,9 @@ export default function TasteProfileCard() {
     return (
       <div className="card section taste-profile-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile</h3>
+          <h3 style={{ margin: 0, fontSize: '0.95rem' }}><PuzzleIcon aria-hidden="true" /> Taste Profile</h3>
           <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}>
-            {hasBaseline ? `${'\u{270F}\u{FE0F}'} Edit` : `${'\u{2795}'} Answer a few quick picks`}
+            {hasBaseline ? <><PencilIcon aria-hidden="true" /> Edit</> : <><PlusIcon aria-hidden="true" /> Answer a few quick picks</>}
           </button>
         </div>
         <p className="screen-subtitle" style={{ margin: '6px 0 0' }}>
@@ -172,9 +173,9 @@ export default function TasteProfileCard() {
   return (
     <div className="card section taste-profile-card">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile — {confidence}% confident</h3>
+        <h3 style={{ margin: 0, fontSize: '0.95rem' }}><PuzzleIcon aria-hidden="true" /> Taste Profile — {confidence}% confident</h3>
         <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}>
-          {'\u{270F}\u{FE0F}'} Edit
+          <PencilIcon aria-hidden="true" /> Edit
         </button>
       </div>
       <div

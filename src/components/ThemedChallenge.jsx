@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { getFeaturedChallenge } from '../lib/challenges';
+import { CircleCheck as CircleCheckIcon, Target as TargetIcon } from 'lucide-react';
+import { CategoryIcon } from './icons';
 
 // One themed collection (e.g. "Every Food & Local Life Spot"), rotating
 // weekly per region -- see getFeaturedChallenge for how "featured" is picked.
@@ -13,12 +15,12 @@ export default function ThemedChallenge({ regionId, claimedMap, onAddAll }) {
 
   return (
     <div className="card section">
-      <h3 style={{ marginTop: 0 }}>{'\u{1F3AF}'} Themed Challenge</h3>
+      <h3 style={{ marginTop: 0 }}><TargetIcon aria-hidden="true" /> Themed Challenge</h3>
       <p className="screen-subtitle" style={{ marginTop: 0, marginBottom: 8 }}>
-        {featured.icon} {featured.label} — featured this week
+        <CategoryIcon id={featured.categoryId} /> {featured.label} — featured this week
       </p>
       <p style={{ margin: '0 0 10px', fontWeight: 700 }}>
-        {done} / {total} visited {complete ? '\u{2705}' : ''}
+        {done} / {total} visited {complete ? <CircleCheckIcon aria-hidden="true" /> : ''}
       </p>
       {!complete && (
         <button type="button" className="btn btn-ghost btn-block" onClick={() => onAddAll(featured.landmarks)}>

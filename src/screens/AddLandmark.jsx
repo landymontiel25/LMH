@@ -14,6 +14,7 @@ import { useTrip } from '../lib/TripContext';
 import { addCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
 import { fileToSmallDataUrl, pickPhoto } from '../lib/imageUtils';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import { Camera as CameraIcon, MapPin as MapPinIcon, Plus as PlusIcon, X as XIcon } from 'lucide-react';
 
 const SAT_TILE = {
   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -207,7 +208,7 @@ export default function AddLandmark() {
       </button>
 
       <h1 className="screen-title">
-        <span>{'\u{2795}'}</span> Add Landmark
+        <span><PlusIcon aria-hidden="true" /></span> Add Landmark
       </h1>
       <p className="screen-subtitle">
         Add a real place that's missing from the map. It goes live right away — we'll research it and fill in whatever
@@ -248,7 +249,7 @@ export default function AddLandmark() {
             setAddressText('');
           }}
         >
-          {'\u{1F4CD}'} {coords ? 'Use My Exact Location' : 'Locating…'}
+          <MapPinIcon aria-hidden="true" /> {coords ? 'Use My Exact Location' : 'Locating…'}
         </button>
         <div style={{ marginTop: 10 }}>
           <LocationAutocomplete
@@ -296,7 +297,7 @@ export default function AddLandmark() {
           >
             <span style={{ flex: 1 }}>{f}</span>
             <button type="button" className="btn btn-ghost btn-tight" onClick={() => removeFact(i)} aria-label="Remove fact">
-              ✕
+              <XIcon aria-hidden="true" />
             </button>
           </div>
         ))}
@@ -353,7 +354,7 @@ export default function AddLandmark() {
           </div>
         ) : (
           <button type="button" className="btn btn-ghost btn-block" onClick={onPhotoChange}>
-            {'\u{1F4F8}'} Add a photo
+            <CameraIcon aria-hidden="true" /> Add a photo
           </button>
         )}
       </div>

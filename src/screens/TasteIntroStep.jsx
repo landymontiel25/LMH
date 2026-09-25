@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { saveTasteIntro } from '../lib/friends';
+import { Puzzle as PuzzleIcon } from 'lucide-react';
 
 // Optional onboarding step: "tell Mapr what you already love," in your own
 // words -- "I love racing, steak, pickleball, the boat... I like fancy,
@@ -29,7 +30,7 @@ export default function TasteIntroStep({ onDone }) {
   return (
     <div>
       <h1 className="screen-title">
-        <span>{'\u{1F9E9}'}</span> Tell Mapr what you love
+        <span><PuzzleIcon aria-hidden="true" /></span> Tell Mapr what you love
       </h1>
       <p className="screen-subtitle">
         Optional, but it helps -- give Mapr a quick overview of your taste and it can start suggesting well before
