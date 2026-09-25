@@ -2,19 +2,26 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LandmarkThumb from '../components/LandmarkThumb';
 import { useMyPhotos } from '../lib/MyPhotosContext';
+import { useRatings } from '../lib/RatingsContext';
+import { useTrip } from '../lib/TripContext';
 import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
 import { mapsDeepLink } from '../lib/routing';
 
 const GREETING =
   "Hey — I'm Mapr. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
 
-// Prototype: a live chat instead of a form. You type what you want in your
-// own words, the AI replies conversationally, and it drops in real catalog
-// stops when it has enough to go on. Follow-ups ("more nightlife", "skip
-// that one") refine the same thread instead of starting over.
-export default function Test() {
+// The app's home screen -- the one thing people open every day. A live
+// chat instead of a form: you type what you want in your own words, the AI
+// replies conversationally, and it drops in real catalog stops when it has
+// enough to go on. Follow-ups ("more nightlife", "skip that one") refine
+// the same thread instead of starting over. Reads the same rating history
+// (myReviews) and saved interests Mapr Picks does, so it's never guessing
+// at a traveler's taste from nothing when it already knows.
+export default function Mapr() {
   const navigate = useNavigate();
   const { myPhotos } = useMyPhotos();
+  const { myReviews } = useRatings();
+  const { trip } = useTrip();
   const [region, setRegion] = useState(ANY_REGION);
   const [regionOpen, setRegionOpen] = useState(false);
   const [messages, setMessages] = useState([{ role: 'assistant', text: GREETING, stops: [] }]);
@@ -53,10 +60,27 @@ export default function Test() {
         .filter((m) => m.role === 'user' || m.raw)
         .map((m) => ({ role: m.role, content: m.role === 'assistant' ? m.raw : m.text }));
 
+      // Same rating history Mapr Picks reads (myReviews/savedInterests) --
+      // this chat should never have to say "I don't have any record of
+      // your interests" when Profile clearly does.
+      const reviews = Object.values(myReviews)
+        .filter((r) => r.ratingTier)
+        .map((r) => ({
+          name: r.landmarkName,
+          tier: r.ratingTier,
+          categories: r.categories || [],
+          highlights: r.highlights || [],
+          comment: r.comment || '',
+        }));
       const r = await fetch('/api/plan-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: payload, regionId: region.id }),
+        body: JSON.stringify({
+          messages: payload,
+          regionId: region.id,
+          reviews,
+          interests: trip.savedInterests || [],
+        }),
       });
       const data = await r.json().catch(() => null);
       if (!r.ok || !data) throw new Error(data?.error || 'Something went wrong.');

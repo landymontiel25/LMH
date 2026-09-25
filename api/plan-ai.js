@@ -2,9 +2,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS, getRegion } from '../src/data/regions.js';
 import { isRateLimited } from './_lib/rateLimit.js';
 
-// Backs the "Test" tab's chat interface -- a real back-and-forth instead of a
+// Backs the Mapr tab's chat interface -- the app's home screen, the one
+// thing people open every day -- a real back-and-forth instead of a
 // one-shot form. The client sends the whole conversation so far (its own
-// typed turns, plus each of the AI's previous replies) and gets one more
+// typed turns, plus each of the AI's previous replies), plus the same
+// rating history and saved interests Mapr Picks reads, and gets one more
 // assistant turn back: a short conversational reply, plus 0-4 real stops.
 // Stops can come from our own curated catalog (open inside the app, full
 // details, check-ins) OR, via the web_search tool below, from anywhere on the
@@ -12,16 +14,25 @@ import { isRateLimited } from './_lib/rateLimit.js';
 // music) our catalog doesn't model, or anything current -- so a request is
 // never limited to just the landmarks we happen to have data for.
 const INSTRUCTIONS =
-  `You are the AI trip-planning chat inside the app "Landmark Hunters". You talk like a sharp, upbeat concierge -- ` +
-  `short, natural sentences, no corporate fluff. You have a curated catalog of real landmarks (below, one per line as ` +
-  `"region/id | name | short description"), and a live web_search tool for anything the catalog doesn't cover. ` +
-  `A traveler is chatting with you about what they want to do. Reply to their latest message given the conversation so far.\n\n` +
+  `You are the AI trip-planning chat inside the app "Landmark Hunters" -- the app's home screen, the first thing a ` +
+  `traveler opens. You talk like a sharp, upbeat concierge -- short, natural sentences, no corporate fluff. You have ` +
+  `a curated catalog of real landmarks (below, one per line as "region/id | name | short description"), a live ` +
+  `web_search tool for anything the catalog doesn't cover, and -- when the traveler has rated or checked into ` +
+  `anything before -- their own rating history and saved interests. A traveler is chatting with you about what they ` +
+  `want to do. Reply to their latest message given the conversation so far.\n\n` +
   `Rules:\n` +
+  `- If a TRAVELER PROFILE is given below, you actually know this person -- use it to personalize suggestions ` +
+  `(same trait/category reasoning as Mapr Picks: weigh what they said in their own words and the reasons behind a ` +
+  `rating over the bare category, and never suggest a specific kind of place -- a zoo, a cemetery, a private club, ` +
+  `whatever it is -- they've clearly told you they skip). If they ask what you know about them or their interests, ` +
+  `answer directly and specifically from the profile -- name actual places and reasons, don't hedge or deflect to ` +
+  `a generic question when you genuinely have this data. If no profile is given (or it's empty), say plainly that ` +
+  `you don't have a rating history for them yet rather than pretending otherwise, and ask what they're into.\n` +
   `- Prefer the catalog when it has a genuinely good fit -- those stops open inside the app with full details and check-ins.\n` +
   `- Use web_search whenever the catalog doesn't cover what they're asking -- a city or neighborhood we don't track, a specific vibe (nightlife, racing, shopping, live music), or anything current -- so you're never limited to just the catalog.\n` +
-  `- If you already have enough to go on (a vibe, a time budget, an interest -- doesn't need to be much), recommend 2-4 real stops in a sensible order, mixing catalog and web-found places as needed, with one short reason each tied to what they said.\n` +
-  `- If their ask is too vague to suggest anything useful yet, ask ONE short clarifying question instead of guessing -- but don't stall forever; after any clarification, go ahead and suggest something.\n` +
-  `- If they're just chatting (thanks, small talk, a question about a place you already suggested), reply naturally with no stops.\n` +
+  `- If you already have enough to go on (a vibe, a time budget, an interest, or a rating history to lean on -- doesn't need to be much), recommend 2-4 real stops in a sensible order, mixing catalog and web-found places as needed, with one short reason each tied to what they said or to their known taste.\n` +
+  `- If their ask is too vague to suggest anything useful yet AND you have no rating history to lean on either, ask ONE short clarifying question instead of guessing -- but don't stall forever; after any clarification, go ahead and suggest something. With a rating history, a vague ask ("something fun today") is enough to go on -- use their taste instead of asking them to repeat it.\n` +
+  `- If they're just chatting (thanks, small talk, a question about a place you already suggested, or a question about their own taste/interests), reply naturally with no stops.\n` +
   `- When they push back or ask to adjust ("more nightlife", "skip the museum", "somewhere closer"), revise the picks accordingly.\n` +
   `- Never invent a place. Catalog stops must be real region/id values from the catalog below. Web-found stops must be real places you actually found via search, and must include the source URL.\n\n` +
   `Once you're done -- searching or not -- your ENTIRE visible reply must be ONLY a single JSON object. No narration before or after it, not even a note that you're searching:\n` +
@@ -41,6 +52,7 @@ const PRICE_PER_TOKEN = {
   cacheRead: 0.1 / 1_000_000,
 };
 const PRICE_PER_SEARCH = 10 / 1000;
+const str = (v, n) => String(v ?? '').trim().slice(0, n);
 
 function estimateCostUsd(usage) {
   if (!usage) return 0;
@@ -94,6 +106,32 @@ export default async function handler(req, res) {
       'CATALOG (region/id | name | description):\n' +
       pool.map((l) => `${l.regionId}/${l.id} | ${l.name} | ${(l.summary || '').slice(0, 140)}`).join('\n');
 
+    // Same rating history Mapr Picks reads -- this is the app's home
+    // screen now, so it should never have to say "I don't know you" when
+    // the traveler has clearly already told the app what they like.
+    const reviews = (Array.isArray(body.reviews) ? body.reviews : []).slice(0, 60).map((r) => ({
+      name: str(r.name, 80),
+      tier: str(r.tier, 30),
+      categories: (Array.isArray(r.categories) ? r.categories : []).map((c) => str(c, 30)).slice(0, 3),
+      highlights: (Array.isArray(r.highlights) ? r.highlights : []).map((h) => str(h, 40)).slice(0, 3),
+      comment: str(r.comment, 280),
+    }));
+    const interests = (Array.isArray(body.interests) ? body.interests : []).map((c) => str(c, 30)).slice(0, 20);
+    const profile = reviews.length
+      ? 'TRAVELER PROFILE (their real rating history -- use it; see the rules on how):\n' +
+        reviews
+          .map(
+            (r) =>
+              `- ${r.name} [${r.categories.join(', ') || '?'}]: ${r.tier || 'rated'}` +
+              (r.highlights.length ? ` — ${r.highlights.join(', ')}` : '') +
+              (r.comment ? ` — "${r.comment}"` : '')
+          )
+          .join('\n') +
+        (interests.length ? `\n\nSaved interests: ${interests.join(', ')}` : '')
+      : interests.length
+      ? `TRAVELER PROFILE: no ratings yet, but saved interests: ${interests.join(', ')}`
+      : '';
+
     const client = new Anthropic();
 
     const msg = await client.messages.create({
@@ -102,6 +140,7 @@ export default async function handler(req, res) {
       system: [
         { type: 'text', text: INSTRUCTIONS },
         { type: 'text', text: catalog, cache_control: { type: 'ephemeral' } },
+        ...(profile ? [{ type: 'text', text: profile }] : []),
       ],
       // Lets the AI look beyond our own catalog -- uncapped, so a request that
       // genuinely needs several searches isn't cut off. The client shows a
