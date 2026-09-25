@@ -3333,6 +3333,18 @@ body.lightbox-open .ask-landmark-panel {
   padding-bottom: 24px;
 }
 
+/* Discovery stats card sits inside .chatlab's own dark palette -- the
+   default .card/.section theme vars would render as a jarring light card. */
+.chatlab .discovery-stats-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--chatlab-border);
+  color: var(--chatlab-text);
+  margin-bottom: 18px;
+}
+.chatlab .discovery-stats-card .screen-subtitle {
+  color: var(--chatlab-text-dim);
+}
+
 .chatlab-msg {
   display: flex;
   gap: 10px;
