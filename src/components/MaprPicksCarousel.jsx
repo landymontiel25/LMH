@@ -7,7 +7,7 @@ import { useRatings } from '../lib/RatingsContext';
 import { useGeo } from '../lib/GeoContext';
 import { useBadges } from '../lib/BadgesContext';
 import { coarseLocation, localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
-import { composeTasteIntro, baselineToSyntheticReviews } from '../lib/tasteQuestions';
+import { composeTasteIntro, baselineToSyntheticReviews, tasteFingerprint } from '../lib/tasteQuestions';
 import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import RateLandmarkSearch from './RateLandmarkSearch';
 
@@ -41,6 +41,12 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   const fbListRef = useRef([]);
   const trackRef = useRef(null);
   const ratingsCount = reviews?.length || 0;
+  // Everything a traveler has told Mapr that ISN'T a landmark rating --
+  // taste intro + baseline picks + per-category comments (see
+  // tasteFingerprint) -- changing any of it must invalidate the picks
+  // cache immediately, the same as a new rating already does via
+  // ratingsCount, not wait on the TTL.
+  const tasteFP = tasteFingerprint(myProfile);
   // A landmark you've already left a rating for should never come back as
   // a "pick" -- checkedInIds alone misses this, since "Rate a Landmark"
   // deliberately claims its check-in for 0 points (not a real visit), so
@@ -83,7 +89,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       return;
     }
     let cancelled = false;
-    const key = picksCacheKey(user.uid, ratingsCount, origin);
+    const key = picksCacheKey(user.uid, ratingsCount, origin, tasteFP);
     (async () => {
       const fb = await getPickFeedback(user.uid);
       if (cancelled) return;
@@ -157,10 +163,11 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     return () => {
       cancelled = true;
     };
-    // Re-run when the user, their rating count, or their coarse location
-    // changes; the other inputs ride along with those.
+    // Re-run when the user, their rating count, their coarse location, or
+    // anything they've told Mapr about taste changes; the other inputs
+    // ride along with those.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, ratingsCount, locKey]);
+  }, [user?.uid, ratingsCount, locKey, tasteFP]);
 
   // Which card is in view, for the dots. The dots below only represent the
   // actual picks, but the "+ Rate a Landmark" card sits before them in the
@@ -204,7 +211,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         }).filter((x) => !seen.has(x.id));
         next = [...next, ...extra].slice(0, RESERVE);
       }
-      writePicksCache(picksCacheKey(user.uid, ratingsCount, origin), next);
+      writePicksCache(picksCacheKey(user.uid, ratingsCount, origin, tasteFP), next);
       return next;
     });
   };

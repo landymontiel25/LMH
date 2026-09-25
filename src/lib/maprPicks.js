@@ -265,9 +265,16 @@ export const coarseLocation = (origin) => (origin ? `${origin.lat.toFixed(1)},${
 // than possibly keep serving a list built under the old rules until the
 // TTL or ratingsCount happens to change. Old-prefixed entries are simply
 // never read again -- harmless dead keys, not worth cleaning up.
-const CACHE_VERSION = 'v2';
-export const picksCacheKey = (uid, ratingsCount, origin) =>
-  `lh-mapr-picks:${CACHE_VERSION}:${uid}:${ratingsCount}:${coarseLocation(origin)}`;
+const CACHE_VERSION = 'v3';
+// tasteFP (tasteQuestions.js's tasteFingerprint) covers everything a
+// traveler has told Mapr that ISN'T a landmark rating -- the onboarding/
+// Settings taste intro and the taste baseline's like/dislike picks +
+// per-category comments. Without it in the key, answering or editing the
+// baseline never changed ratingsCount, so Mapr Picks kept serving picks
+// computed before those answers existed until the 4-hour TTL happened to
+// expire -- exactly the "picks don't reflect what I just told Mapr" bug.
+export const picksCacheKey = (uid, ratingsCount, origin, tasteFP = '') =>
+  `lh-mapr-picks:${CACHE_VERSION}:${uid}:${ratingsCount}:${tasteFP}:${coarseLocation(origin)}`;
 
 export function readPicksCache(key) {
   try {

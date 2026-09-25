@@ -4,6 +4,7 @@ import {
   baselineToSyntheticReviews,
   composeTasteIntro,
   extractLegacyBaselineFromIntro,
+  tasteFingerprint,
 } from './tasteQuestions';
 
 describe('baselineToSentence', () => {
@@ -110,5 +111,31 @@ describe('extractLegacyBaselineFromIntro', () => {
     const { baseline, remainingIntro } = extractLegacyBaselineFromIntro(legacy);
     expect(baseline.food).toEqual({ Steak: 'like' });
     expect(remainingIntro).toBe('I really love a good view.');
+  });
+});
+
+describe('tasteFingerprint', () => {
+  it('is stable for the same profile', () => {
+    const profile = { tasteIntro: 'I love steak', tasteBaseline: { food: { Steak: 'like' } } };
+    expect(tasteFingerprint(profile)).toBe(tasteFingerprint({ ...profile }));
+  });
+
+  it('changes when a baseline pick is added, even with the exact same tasteIntro', () => {
+    const before = tasteFingerprint({ tasteIntro: 'hi', tasteBaseline: {} });
+    const after = tasteFingerprint({ tasteIntro: 'hi', tasteBaseline: { food: { Steak: 'like' } } });
+    expect(before).not.toBe(after);
+  });
+
+  it('changes when a category comment is added', () => {
+    const before = tasteFingerprint({ tasteBaseline: { food: { Steak: 'like' } } });
+    const after = tasteFingerprint({
+      tasteBaseline: { food: { Steak: 'like' } },
+      tasteBaselineCategoryNotes: { food: 'No pepper' },
+    });
+    expect(before).not.toBe(after);
+  });
+
+  it('is the same (empty) for two profiles with nothing set', () => {
+    expect(tasteFingerprint(null)).toBe(tasteFingerprint({}));
   });
 });

@@ -125,6 +125,22 @@ export function composeTasteIntro(myProfile) {
     .join('. ');
 }
 
+// Cheap, deterministic fingerprint of everything a profile has told Mapr
+// about taste (free-text intro, baseline picks, per-category comments) --
+// this is "the master Mapr memory" of stated preferences, and every
+// consumer of taste data should read it, not just the ones that happen to
+// also read ratingsCount. Used to invalidate Mapr Picks' cache the instant
+// any of it changes (see picksCacheKey in maprPicks.js), instead of only
+// noticing on the next landmark rating or after the multi-hour TTL expires.
+export function tasteFingerprint(myProfile) {
+  const text = composeTasteIntro(myProfile);
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash * 31 + text.charCodeAt(i)) | 0;
+  }
+  return hash.toString(36);
+}
+
 // One-time recovery for accounts that answered the taste nudge BEFORE the
 // structured tasteBaseline field existed (it used to bake baselineToSentence
 // straight into the free-text tasteIntro, appended on every save -- see
