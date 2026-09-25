@@ -3375,7 +3375,7 @@ body.lightbox-open .ask-landmark-panel {
   }
 }
 
-/* ---------- Test tab: futuristic AI chat ---------- */
+/* ---------- Mapr chat ---------- */
 /* Deliberately its own visual language -- everywhere else in the app is warm
    brass/parchment, but this is meant to feel like stepping into a different,
    more advanced piece of software: dark, glowing, monospaced. */
@@ -4324,7 +4324,7 @@ body.lightbox-open .ask-landmark-panel {
 }
 
 /* ==========================================================================
-   Modern skin, matching the Test tab (maprTest.css): deep navy canvas,
+   Modern skin: deep navy canvas,
    navy-gradient cards, serif titles, pill controls, blue glow on focus,
    floating tab bar. Visual only.
    ========================================================================== */
