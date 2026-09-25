@@ -2401,6 +2401,68 @@ textarea {
   background: var(--color-bg-raised);
 }
 
+/* In-app turn-by-turn under the itinerary map (TurnByTurnPanel). */
+.turn-panel {
+  margin: -6px 0 18px;
+}
+
+.turn-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.turn-panel-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+  color: var(--color-parchment-dim);
+  font-size: 0.9rem;
+}
+
+.turn-panel-eta {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-parchment);
+}
+
+.turn-steps {
+  margin: 0 0 14px;
+  padding-left: 22px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.turn-steps li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-parchment);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.turn-steps li:last-child {
+  border-bottom: none;
+}
+
+.turn-step-dist {
+  flex-shrink: 0;
+  color: var(--color-parchment-dim);
+  font-size: 0.8rem;
+}
+
+.turn-step-arrive {
+  font-weight: 700;
+}
+
 .route-map-num {
   width: 30px;
   height: 30px;
