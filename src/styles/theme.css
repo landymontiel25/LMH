@@ -3463,6 +3463,32 @@ body.lightbox-open .ask-landmark-panel {
   gap: 8px;
 }
 
+/* Tappable answers to a clarifying question (e.g. "Something new" /
+   "Repeat a favorite") -- tapping one sends that exact text, same as
+   typing it, so a one-word answer never has to be typed by hand. */
+.chatlab-quick-replies {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chatlab-quick-replies button {
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--chatlab-border);
+  background: rgba(94, 234, 212, 0.08);
+  color: var(--chatlab-text);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.chatlab-quick-replies button:hover {
+  border-color: var(--chatlab-cyan);
+  background: rgba(94, 234, 212, 0.16);
+}
+
 .chatlab-stop {
   display: flex;
   align-items: center;

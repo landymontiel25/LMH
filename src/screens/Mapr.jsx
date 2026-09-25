@@ -192,7 +192,11 @@ export default function Mapr() {
       // A compact record of what this reply actually said, fed back as this
       // turn's "content" next time so the AI remembers its own picks.
       const raw = data.reply + (stops.length ? `\n(Suggested: ${stops.map((s) => s.name).join(', ')})` : '');
-      setMessages((cur) => [...cur, { role: 'assistant', text: data.reply, stops, raw }]);
+      // Short tappable answers to a clarifying question ("Something new" /
+      // "Repeat a favorite") -- tapping one just sends that exact text, the
+      // same as typing it, so the traveler never has to type a one-word
+      // answer by hand.
+      setMessages((cur) => [...cur, { role: 'assistant', text: data.reply, stops, raw, quickReplies: data.quickReplies || [] }]);
       if (data.cost) setTotalCost((c) => c + data.cost);
     } catch (err) {
       setMessages((cur) => [...cur, { role: 'assistant', text: err.message || 'Signal lost — try again?', stops: [], error: true }]);
@@ -299,6 +303,18 @@ export default function Mapr() {
                       </button>
                     )
                   )}
+                </div>
+              )}
+              {/* Only on the latest message, and only while nothing else is
+                  in flight -- an older question's quick replies would be
+                  answering a turn the conversation has already moved past. */}
+              {m.quickReplies?.length > 0 && i === messages.length - 1 && !busy && (
+                <div className="chatlab-quick-replies">
+                  {m.quickReplies.map((qr) => (
+                    <button key={qr} type="button" onClick={() => send(null, qr)}>
+                      {qr}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
