@@ -11,6 +11,10 @@ const items = [
   { to: '/mapr', label: 'Mapr', icon: '\u{1F9E0}' },
   { to: '/itinerary', label: 'Itinerary', icon: '\u{1F5FA}\u{FE0F}' },
   { to: '/profile', label: 'Profile', icon: '\u{1F3C6}' },
+  // Throwaway tab for previewing a Mapr redesign concept -- see MaprTest.jsx.
+  // Remove this row (and its route in App.jsx) once the design question is
+  // settled either way.
+  { to: '/mapr-test', label: 'Test', icon: '\u{1F9EA}' },
 ];
 
 export default function BottomNav() {
