@@ -2872,6 +2872,23 @@ textarea {
   border-color: #1c2e21;
 }
 
+/* The zoom-distance scale bar (bottom-left) -- Leaflet redraws its length
+   and mi/km number on every zoom/pan on its own, so it already tracks the
+   current zoom live; this just clears the bottom nav and matches the
+   app's theme instead of Leaflet's default white box. */
+.leaflet-control-scale {
+  margin: 0 0 calc(var(--nav-h) + 16px) 10px !important;
+}
+.leaflet-control-scale-line {
+  background: rgb(var(--color-bg-rgb));
+  border-color: var(--color-brass-bright) !important;
+  color: var(--color-parchment);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
 .map-locate-btn {
   position: absolute;
   bottom: calc(var(--nav-h) + 16px);

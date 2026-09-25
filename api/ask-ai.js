@@ -40,9 +40,10 @@ const APP_HELP =
   `- Insider Mode: unlocks automatically once the Taste Profile Score is confident enough (75%+) — Mapr's chat then leans toward lesser-known, ` +
   `off-the-beaten-path stops instead of the obvious tourist picks. Nothing to turn on manually, it just activates.\n` +
   `- Mapr Picks (on Profile): up to 10 landmarks Mapr thinks you'll love next at once, ranked by your rating history/taste baseline and how close ` +
-  `you are; swipe to browse them. Tap ✓ "I'd go" or ✗ "not for me" to teach it more, or "🤷 Not sure" to skip one without it counting either way -- ` +
-  `either way that landmark won't be offered again. Voting on one pulls in a fresh pick to replace it, keeping the row at 10; swiping alone doesn't ` +
-  `load more.\n` +
+  `you are; swipe to browse them. Only meant to hold things you'd clearly go to or clearly skip. Tap ✓ "I'd go" or ✗ "not for me" for a real, ` +
+  `conclusive verdict -- that landmark won't be offered again. "🤷 Not sure" is different: it means "I genuinely don't know yet" (not a hidden ` +
+  `dislike), drops that landmark out of the current row, but leaves it eligible to be recommended again later once the picks refresh. Voting on ` +
+  `one pulls in a fresh pick to replace it, keeping the row at 10; swiping alone doesn't load more.\n` +
   `- Onboarding: right after creating an account, a one-time flow — pick your usual interests (or skip), an optional "tell Mapr what you like" taste ` +
   `step (or skip), then the nearest real landmark to your GPS with a one-tap check-in. Reaching that final step — whether or not you check in — ` +
   `completes onboarding and awards the "Welcome" badge plus 10 bonus points.\n` +

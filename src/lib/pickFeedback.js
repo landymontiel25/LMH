@@ -1,12 +1,16 @@
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 
-// ✓ / ✗ on a Mapr pick: "I'd go" / "not for me". A light, general-taste
-// signal -- lighter than a rating, and context-dependent (you might skip
-// a cathedral at night in Miami and still love cathedrals in Italy), so
-// it nudges category preferences rather than ruling anything out. Whichever
-// way you vote, that exact place is kept out of your picks for good --
-// once you've weighed in on it, Mapr doesn't need to ask again.
+// ✓ / ✗ / 🤷 on a Mapr pick: "I'd go" / "not for me" / "not sure". ✓ and ✗
+// are a light, general-taste signal -- lighter than a rating, and
+// context-dependent (you might skip a cathedral at night in Miami and still
+// love cathedrals in Italy), so they nudge category preferences rather than
+// ruling anything out; either way, that exact place is kept out of your
+// picks for good, since it's a real, conclusive verdict. "Not sure" is
+// different on purpose: it carries no taste signal at all and never
+// blacklists the place -- Mapr Picks is meant to hold only things you'd
+// clearly go to or clearly skip, so "not sure" just means "ask me again
+// later" (see votedIds below).
 //
 // Stored two ways: localStorage (instant, always works) and Firestore
 // pick_feedback/{uid}_{landmarkId} (best-effort; survives a new phone).
@@ -35,7 +39,7 @@ export async function setPickFeedback({ uid, landmark, verdict, origin }) {
     region: landmark.region,
     name: landmark.name,
     categories: landmark.categories || [],
-    verdict, // 'yes' | 'no'
+    verdict, // 'yes' | 'no' | 'unsure'
     at: Date.now(),
     near: origin ? { lat: Number(origin.lat.toFixed(2)), lng: Number(origin.lng.toFixed(2)) } : null,
   };
@@ -78,8 +82,17 @@ export async function getPickFeedback(uid) {
   return map;
 }
 
-// Every landmark you've ever voted ✓ or ✗ on -- once you vote on one, Mapr
-// never shows it again, whichever way you voted.
+// Every landmark you've given a REAL verdict on (✓ or ✗) -- once you vote
+// either way, Mapr never shows it again, that verdict is conclusive. "Not
+// sure" is deliberately excluded here: it means "I don't know yet", not "I
+// like/dislike this", and Mapr Picks is only meant to hold things you'd
+// clearly go to or clearly skip -- so an "unsure" place drops out of the
+// CURRENT deck (MaprPicksCarousel keeps it out of the immediate refill via
+// its own feedback state) but stays eligible to be offered again later,
+// once the current queue/cache moves on, instead of being blacklisted for
+// good like a real ✓/✗.
 export function votedIds(feedback) {
-  return Object.values(feedback || {}).map((f) => f.landmarkId);
+  return Object.values(feedback || {})
+    .filter((f) => f.verdict === 'yes' || f.verdict === 'no')
+    .map((f) => f.landmarkId);
 }

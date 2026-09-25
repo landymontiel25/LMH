@@ -39,8 +39,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   const [active, setActive] = useState(0);
   // { [landmarkId]: 'yes' | 'no' | 'unsure' } -- your ✓ / ✗ / "not sure" on
   // picks, for the buttons' state and as a light signal to Mapr next time.
-  // "unsure" carries no taste signal at all -- it just keeps that landmark
-  // from being offered again, for whenever you genuinely don't know yet.
+  // "unsure" carries no taste signal at all -- not a like, not a dislike,
+  // just "ask me again later". It drops out of THIS deck (this state keeps
+  // it out of the immediate refill in vote() below) but, unlike ✓/✗, is
+  // never permanently blacklisted -- see votedIds in pickFeedback.js.
   const [feedback, setFeedback] = useState({});
   // Same votes with their categories, for the local top-up scorer.
   const fbListRef = useRef([]);
@@ -302,7 +304,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
                   type="button"
                   className="mapr-pick-vote unsure"
                   onClick={() => vote(p, 'unsure')}
-                  title="Not sure -- won't show this one again, but it won't count against it either"
+                  title="Not sure -- doesn't count as a like or a dislike, we'll just ask again later"
                 >
                   {'\u{1F937}'} Not sure
                 </button>

@@ -181,9 +181,10 @@ export function localMaprPicks({
   // (not one) to rule it out, same as before.
   const noVotesByType = {};
   for (const f of feedback) {
-    // "Not sure" carries no taste signal either way -- it only means the
-    // landmark shouldn't be re-offered (handled via passedIds), not that it
-    // was disliked.
+    // "Not sure" carries no taste signal either way -- not a like, not a
+    // dislike, just "I don't know yet". Unlike ✓/✗ it's deliberately left
+    // OUT of passedIds (see votedIds in pickFeedback.js), so it isn't
+    // blacklisted here either -- it can be re-offered on a future call.
     if (f.verdict !== 'yes' && f.verdict !== 'no') continue;
     const rw = recencyWeight(f.at ? f.at / 1000 : null, nowSec);
     const w = (f.verdict === 'yes' ? 1 : -1) * rw;
