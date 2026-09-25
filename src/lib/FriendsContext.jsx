@@ -1,7 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { firebaseEnabled } from './firebase';
-import { upsertUserProfile, listFriends, listIncomingRequests, getUserProfile, claimUsername } from './friends';
+import {
+  upsertUserProfile,
+  listFriends,
+  listIncomingRequests,
+  getUserProfile,
+  subscribeUserProfile,
+  claimUsername,
+} from './friends';
 import { backfillUserName } from './leaderboard';
 
 // Current user's profile (incl. username), friend set (for deciding whose photos
@@ -111,15 +118,40 @@ export function FriendsProvider({ children }) {
   useEffect(() => {
     // Reset on every user change (including re-signing into the same
     // account) so the cache pre-fill below is never mistaken for this
-    // session's confirmed read -- reload() below is what flips it back on.
+    // session's confirmed read -- a real server snapshot is what flips it
+    // back on.
     setProfileFresh(false);
-    if (firebaseEnabled && user) {
-      // Show the cached username immediately, then refresh from the server.
-      const cached = loadCachedProfile(user.uid);
-      if (cached) setMyProfile(cached);
-      upsertUserProfile(user).catch(() => {});
+    if (!firebaseEnabled || !user) {
+      reload();
+      return undefined;
     }
+    // Show the cached username immediately, then let the live listener
+    // replace it the moment the server copy arrives.
+    const cached = loadCachedProfile(user.uid);
+    if (cached) setMyProfile(cached);
+    upsertUserProfile(user).catch(() => {});
+    // The profile rides a live listener, not the one-shot read in reload():
+    // on app open, a getDoc fired the instant auth restores could lose that
+    // race and then nothing asked again until something else happened to
+    // call reload() (the taste editor's close handler was the only thing
+    // that did -- which is exactly why picks only ever "loaded in" after
+    // Edit -> X). A listener can't miss: Firestore re-syncs it itself once
+    // auth/connection are ready, and every later save lands here on its
+    // own, app-wide, with no reload() needed.
+    const unsubscribe = subscribeUserProfile(
+      user.uid,
+      (profile, { fresh }) => {
+        setMyProfile(profile);
+        if (fresh) {
+          cacheProfile(user.uid, profile);
+          setProfileFresh(true);
+        }
+      },
+      (err) => console.error('[FriendsContext] profile listener failed:', err)
+    );
+    // Friends/requests (and a belt-and-braces profile read) still load here.
     reload();
+    return unsubscribe;
   }, [user, reload]);
 
   const setUsername = useCallback(

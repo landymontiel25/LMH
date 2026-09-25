@@ -10,6 +10,7 @@ import {
   writeBatch,
   runTransaction,
   serverTimestamp,
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -19,6 +20,25 @@ export async function getUserProfile(uid) {
   if (!db || !uid) return null;
   const snap = await getDoc(doc(db, 'users', uid));
   return snap.exists() ? snap.data() : null;
+}
+
+// Live subscription to your own users/{uid} doc. A one-shot getDoc fired
+// the instant auth restores on app open can lose that race (and then
+// nothing ever asks again); a listener can't -- Firestore re-syncs it on
+// its own once auth/connection are ready, and pushes every later write
+// (a taste baseline save, a username claim) the moment it lands, with no
+// manual reload() needed anywhere. `onProfile(data, { fresh })` -- fresh is
+// false only for a snapshot served purely from the local cache.
+export function subscribeUserProfile(uid, onProfile, onError) {
+  if (!db || !uid) return () => {};
+  return onSnapshot(
+    doc(db, 'users', uid),
+    (snap) => {
+      if (!snap.exists()) return;
+      onProfile(snap.data(), { fresh: !snap.metadata.fromCache });
+    },
+    (err) => onError?.(err)
+  );
 }
 
 // Claim a unique username. `usernames/{name}` doubles as the uniqueness lock.
