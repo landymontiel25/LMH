@@ -74,6 +74,51 @@ function recencyWeight(seconds, nowSec) {
   return Math.pow(0.5, ageDays / RECENCY_HALF_LIFE_DAYS);
 }
 
+// Builds the same category-affinity + trait-keyword model localMaprPicks
+// scores candidates against, but as its own reusable step -- so
+// tasteProfile.js's prediction-confidence check (predict a rating from
+// every OTHER rating, see how close it lands) runs the identical reasoning
+// Mapr Picks itself uses, not a separate approximation of it.
+export function buildTasteModel(reviews, nowSec = Date.now() / 1000) {
+  const affinity = {};
+  const positiveTraits = new Map();
+  const negativeTraits = new Set();
+  const softNegativeTraits = new Map();
+  for (const r of reviews || []) {
+    const rw = recencyWeight(r.updatedAt?.seconds, nowSec);
+    const w = (r.tier === 'highly-recommend' ? 3 : r.tier === 'probably-skip' ? -3 : 1) * rw;
+    for (const c of r.categories || []) affinity[c] = (affinity[c] || 0) + w;
+    const text = [r.name, r.comment, ...(r.highlights || []).map(chipLabel)].filter(Boolean).join(' ');
+    for (const kw of keywordsIn(text)) {
+      if (r.tier === 'highly-recommend') {
+        positiveTraits.set(kw, (positiveTraits.get(kw) || 0) + rw);
+      } else if (r.tier === 'probably-skip') {
+        if (rw >= 0.35) negativeTraits.add(kw);
+        else softNegativeTraits.set(kw, (softNegativeTraits.get(kw) || 0) + rw);
+      }
+    }
+  }
+  return { affinity, positiveTraits, negativeTraits, softNegativeTraits };
+}
+
+// The model's raw (unbounded) predicted affinity for one review's landmark,
+// from a taste model built on OTHER reviews -- category affinity plus
+// whatever traits the review's own text/highlights name.
+export function predictedAffinityScore(review, model) {
+  const cat = review.categories?.[0];
+  const text = [review.name, review.comment, ...(review.highlights || []).map(chipLabel)].filter(Boolean).join(' ');
+  const kws = keywordsIn(text);
+  let traitScore = 0;
+  let hardNegative = false;
+  for (const kw of kws) {
+    if (model.positiveTraits.has(kw)) traitScore += model.positiveTraits.get(kw);
+    if (model.softNegativeTraits.has(kw)) traitScore -= model.softNegativeTraits.get(kw);
+    if (model.negativeTraits.has(kw)) hardNegative = true;
+  }
+  const catAffinity = model.affinity[cat] || 0;
+  return catAffinity + traitScore + (hardNegative ? -3 : 0);
+}
+
 export function localMaprPicks({
   reviews = [],
   interests = [],

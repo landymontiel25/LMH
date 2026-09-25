@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LandmarkThumb from '../components/LandmarkThumb';
+import { useAuth } from '../lib/AuthContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useTrip } from '../lib/TripContext';
 import RegionSearch, { ANY_REGION } from '../components/RegionSearch';
 import { mapsDeepLink } from '../lib/routing';
+import { computeTasteConfidence, hasInsiderMode } from '../lib/tasteProfile';
+import { logPlanningEvent } from '../lib/timeSaved';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
+import TasteProfileCard from '../components/TasteProfileCard';
 
 const GREETING =
   "Hey — I'm Mapr. Tell me what you're up for: a vibe, a time budget, an interest, whatever. I'll line up real stops.";
@@ -20,6 +24,7 @@ const GREETING =
 // at a traveler's taste from nothing when it already knows.
 export default function Mapr() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { myPhotos } = useMyPhotos();
   const { myReviews } = useRatings();
   const { trip } = useTrip();
@@ -75,6 +80,13 @@ export default function Mapr() {
           // from repeat visits -- alongside the rating's own comment.
           comment: [r.comment, ...(r.loveNotes || [])].filter(Boolean).join('. '),
         }));
+      // Insider Mode (src/lib/tasteProfile.js): unlocked once Mapr's own
+      // leave-one-out predictions are actually confident about this
+      // traveler's taste -- see computeTasteConfidence for what "confident"
+      // means here. Recomputed per-send rather than read from a stored
+      // value, so it's never stale.
+      const insiderMode = hasInsiderMode(computeTasteConfidence(reviews).confidence);
+      const startedAt = performance.now();
       const r = await fetch('/api/plan-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,10 +95,18 @@ export default function Mapr() {
           regionId: region.id,
           reviews,
           interests: trip.savedInterests || [],
+          insiderMode,
         }),
       });
+      const generationMs = performance.now() - startedAt;
       const data = await r.json().catch(() => null);
       if (!r.ok || !data) throw new Error(data?.error || 'Something went wrong.');
+      // Time-saved tracking (src/lib/timeSaved.js): real generation time for
+      // this reply, logged only when it actually produced stops -- a plain
+      // back-and-forth reply with no stops didn't save anyone planning time.
+      if (user && data.stops?.length) {
+        logPlanningEvent(user.uid, { generationMs, stopsCount: data.stops.length }).catch(() => {});
+      }
 
       const stops = data.stops || [];
       // A compact record of what this reply actually said, fed back as this
@@ -133,6 +153,7 @@ export default function Mapr() {
       </div>
 
       <DiscoveryStatsCard />
+      <TasteProfileCard />
 
       <div className="chatlab-feed">
         {messages.map((m, i) => (
