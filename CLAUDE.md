@@ -15,3 +15,8 @@ iCloud, not any local folder.
 - Don't both work directly on `main` at the same time. Whoever starts second
   should branch off (`git checkout -b <name>`) and open a PR to merge back in,
   the same way PR #1 (Firebase security rules) was done.
+- Whenever a change adds, renames, or removes a user-facing feature or flow,
+  update `APP_HELP` in `api/ask-ai.js` in the same PR. That string is the only
+  thing the "Ask AI" widget knows about how the app works — it goes stale
+  fast if this is skipped, and the widget then confidently tells users a
+  shipped feature doesn't exist.

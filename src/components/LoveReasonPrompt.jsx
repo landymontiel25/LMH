@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { appendLoveNote, getLoveNote } from '../lib/reviews';
-import VoiceInputButton from './VoiceInputButton';
 
 // Fires after the 3rd check-in at a landmark, then every 10th after that
-// (13th, 23rd, ...) -- see shouldPromptLoveReason in leaderboard.js. Text or
-// voice, either works; the answer feeds Mapr's trait matching (maprPicks.js)
-// via the review's loveNotes, so future picks match the SPECIFIC reason, not
-// just the landmark's category. A repeat trigger offers a one-tap shortcut
-// if the last answer is still true, instead of making someone retype it.
+// (13th, 23rd, ...) -- see shouldPromptLoveReason in leaderboard.js. The
+// answer feeds Mapr's trait matching (maprPicks.js) via the review's
+// loveNotes, so future picks match the SPECIFIC reason, not just the
+// landmark's category. A repeat trigger offers a one-tap shortcut if the
+// last answer is still true, instead of making someone retype it.
 export default function LoveReasonPrompt() {
   const { loveReasonPrompt, clearLoveReasonPrompt } = useCheckIn();
   const { user } = useAuth();
@@ -75,10 +74,6 @@ export default function LoveReasonPrompt() {
           onChange={(e) => setText(e.target.value)}
           disabled={saving}
         />
-
-        <div style={{ marginTop: 10 }}>
-          <VoiceInputButton onText={(spoken) => setText((prev) => (prev ? `${prev} ${spoken}` : spoken))} disabled={saving} />
-        </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <button

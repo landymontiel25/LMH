@@ -60,7 +60,7 @@ export default function TasteProfileCard() {
       highlights: r.highlights || [],
       updatedAt: r.updatedAt,
     })),
-    ...baselineToSyntheticReviews(myProfile?.tasteBaseline),
+    ...baselineToSyntheticReviews(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
   ];
   const { confidence, sampleCount } = computeTasteConfidence(reviews);
   const unlocked = hasInsiderMode(confidence);
@@ -72,7 +72,16 @@ export default function TasteProfileCard() {
   };
 
   if (editing) {
-    return <TasteNudgeCard editing initialBaseline={myProfile?.tasteBaseline} initialNotes={myProfile?.tasteBaselineNotes} onDone={closeEditor} onDismiss={closeEditor} />;
+    return (
+      <TasteNudgeCard
+        editing
+        initialBaseline={myProfile?.tasteBaseline}
+        initialNotes={myProfile?.tasteBaselineNotes}
+        initialCategoryNotes={myProfile?.tasteBaselineCategoryNotes}
+        onDone={closeEditor}
+        onDismiss={closeEditor}
+      />
+    );
   }
 
   if (sampleCount < 2) {

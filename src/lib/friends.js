@@ -106,11 +106,19 @@ export async function saveTasteIntro(uid, text) {
 // growing sentence. { [categoryId]: { [example]: 'like' | 'dislike' } };
 // setDoc with merge:true replaces this whole field's value (it's a single
 // top-level key), so an edit-and-resubmit never leaves stale picks behind.
-export async function saveTasteBaseline(uid, { baseline, notes }) {
+// categoryNotes ({ [categoryId]: string }) is the per-category "Comment"
+// field next to each question -- e.g. "no pepper on my steak" under Food --
+// same replace-on-resubmit behavior as baseline itself.
+export async function saveTasteBaseline(uid, { baseline, notes, categoryNotes }) {
   if (!db || !uid) return;
   await setDoc(
     doc(db, 'users', uid),
-    { tasteBaseline: baseline || {}, tasteBaselineNotes: (notes || '').trim().slice(0, 300), updatedAt: serverTimestamp() },
+    {
+      tasteBaseline: baseline || {},
+      tasteBaselineNotes: (notes || '').trim().slice(0, 300),
+      tasteBaselineCategoryNotes: categoryNotes || {},
+      updatedAt: serverTimestamp(),
+    },
     { merge: true }
   );
 }

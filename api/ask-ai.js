@@ -20,21 +20,46 @@ import { isRateLimited } from './_lib/rateLimit.js';
 // these flows.
 const APP_HELP =
   `HOW LANDMARK HUNTERS WORKS (for questions about the app itself, not a landmark):\n` +
-  `- Onboarding: right after creating an account, you're shown a one-time flow: first pick your usual interests (or tap "Skip for now"), ` +
-  `then you're shown the nearest real landmark to your current GPS location with a one-tap check-in option. Reaching that final step — ` +
-  `whether or not you actually check in — completes onboarding automatically and awards the "Welcome" badge plus 10 bonus points.\n` +
-  `- Trip Setup (/setup): choose a starting location (address, or "Use My Current Location"), a region/city, and interests, then Setup builds a route.\n` +
-  `- Check-ins: open a landmark and tap its check-in button. You must be physically within its check-in radius (usually about 30 meters, wider for ` +
-  `large places like parks/malls) — a real GPS match is required, a photo alone doesn't count. Confirming a check-in (rate + post) earns 100 points.\n` +
-  `- Badges (Profile → "See your full stats" at /stats): earned automatically from your check-in history — total check-ins (First Steps, Explorer, ` +
-  `Adventurer, Legend), distinct cities visited (City Hopper, Globetrotter), daily check-in streaks (3/7/30-Day Streak), and the one-time Welcome badge ` +
-  `from onboarding. Full Stats lists every badge, earned ones in color and locked ones grayed out, sortable by recent/oldest/rarity.\n` +
-  `- Levels: your level rises with lifetime points and only ever goes up; a level-up shows a celebration popup.\n` +
-  `- Streaks: check in on consecutive days to build a streak; Profile shows a warning if an active streak is about to lapse because you haven't ` +
-  `checked in yet today.\n` +
-  `- Ranks / Leaderboard (/leaderboard, also the Profile tab): a Friends/Global toggle — Friends ranks you against people you follow, Global ranks ` +
-  `everyone and itself splits into Worldwide and Regional (one curated city). Each has Weekly/Monthly/Yearly views. Profile also shows your closest ` +
-  `unearned badge and your closest rival on the current board, right at the top.\n` +
+  `- Navigation: 5 tabs — Map, Landmarks, Mapr, Itinerary, Profile.\n` +
+  `- Mapr (the middle tab, app home screen): a live AI chat, opened every day — type or describe what you're up for (a vibe, a time budget, an ` +
+  `interest) and it replies with 0-4 real stops, from the curated catalog or the live web. It reads your rating history and taste profile, so it ` +
+  `personalizes from the first message, not just after you've rated things. It also weighs the CURRENT message's timing/mood ("Saturday night in the ` +
+  `city") over a blanket favorite category — loving hiking doesn't mean it suggests a trail when you're clearly asking for nightlife. The city pill in ` +
+  `its header supports picking several cities at once, not just one.\n` +
+  `- Taste Profile Score (shown on Mapr and Profile): NOT an activity counter — it's Mapr's own prediction confidence, measured by how well its ` +
+  `affinity model can guess one of your ratings from your OTHER ratings alone (leave-one-out), shown as a percentage. It only rises when predictions ` +
+  `genuinely get more accurate, and a narrow (single-category) or inconsistent rating history plateaus it on purpose. Personal-only, never on any ` +
+  `leaderboard. Has an Edit button that reopens the taste quick-pick questions pre-filled so you can change or add to your answers anytime.\n` +
+  `- Taste baseline / "tell Mapr what you like" (Mapr, Settings, and an onboarding step): quick per-category like/hate chips (tap once for like, ` +
+  `twice for dislike, three times to clear) plus an optional comment on each category and a free-text box — entirely optional, and typing/talking to ` +
+  `Mapr directly works just as well. This baseline is what Mapr leans on before you've rated much; an actual rating on a specific landmark is more ` +
+  `precise and wins if the two ever disagree.\n` +
+  `- Insider Mode: unlocks automatically once the Taste Profile Score is confident enough (75%+) — Mapr's chat then leans toward lesser-known, ` +
+  `off-the-beaten-path stops instead of the obvious tourist picks. Nothing to turn on manually, it just activates.\n` +
+  `- Mapr Picks (on Profile): a row of landmarks Mapr thinks you'll love next, ranked by your rating history/taste baseline and how close you are; ` +
+  `swipe or tap ✓/✗ to teach it more.\n` +
+  `- Onboarding: right after creating an account, a one-time flow — pick your usual interests (or skip), an optional "tell Mapr what you like" taste ` +
+  `step (or skip), then the nearest real landmark to your GPS with a one-tap check-in. Reaching that final step — whether or not you check in — ` +
+  `completes onboarding and awards the "Welcome" badge plus 10 bonus points.\n` +
+  `- Trip Setup: no longer its own tab — it's a "Create New Trip" modal opened from the Itinerary tab. Choose a starting location, a region/city, and ` +
+  `interests, and it builds a route.\n` +
+  `- Check-ins: open a landmark and tap its check-in button — repeat check-ins to the same place are allowed, each logged with its own timestamp. ` +
+  `Points taper on repeats: full points on the 1st visit, about 20% on the 2nd-5th, nothing from the 6th on — but every visit still counts toward Mapr ` +
+  `learning your taste regardless of payout. At the 3rd visit to a place (then every 10th after) you're asked why you love it, feeding that specific ` +
+  `reason back into future recommendations.\n` +
+  `- Rating: three plain tiers — "I loved it" / "It was okay" / "Not for me" — no star ratings anymore. A short "why" comment is encouraged since ` +
+  `that's what actually teaches Mapr, more than the tier alone.\n` +
+  `- Badges (Profile → "See your full stats"): earned automatically from your check-in history — total check-ins (First Steps, Explorer, Adventurer, ` +
+  `Legend), distinct cities visited (City Hopper, Globetrotter), daily check-in streaks (3/7/30-Day Streak), and the one-time Welcome badge from ` +
+  `onboarding.\n` +
+  `- Levels: your level rises with lifetime points and only ever goes up; a level-up shows a celebration popup. Points and the leaderboard are ` +
+  `intentionally de-emphasized in the UI now — Mapr and your taste profile are the headline, not the score.\n` +
+  `- Time saved / discovery: Mapr shows real, tracked numbers — minutes saved today, summed from actual Mapr chat replies that produced stops, each ` +
+  `compared against a stated manual-planning baseline (never a made-up estimate).\n` +
+  `- Streaks: check in on consecutive days, or rate a few things through Mapr Picks, to build a streak; Profile warns if an active streak is about to ` +
+  `lapse.\n` +
+  `- Ranks / Leaderboard (also a Profile section, now secondary to Mapr/taste stats): a Friends/Global toggle — Friends ranks you against people you ` +
+  `follow, Global splits into Worldwide and Regional (one curated city). Each has Weekly/Monthly/Yearly views.\n` +
   `- Inviting friends: Profile has an "Invite Friends" button that shares your username/link; once someone signs up through it, both of you get 50 ` +
   `bonus points.\n` +
   `- Group Trips: a shared itinerary a few friends can all see and edit together (only the trip's owner can change who's a member).\n` +
@@ -42,8 +67,8 @@ const APP_HELP =
   `everyone.\n` +
   `- "Nearby Now" (on the map screen): an expandable panel showing landmarks close to your current location right now.\n` +
   `- Offline maps: a "Download for Offline" option caches a region's map tiles so the map still works without a connection.\n` +
-  `- Settings (/settings): switch dark/light mode, switch units between imperial (mi/ft) and metric (km/m), and toggle your profile between ` +
-  `public (reviews/photos visible to everyone) and private (friends only).\n` +
+  `- Settings: switch dark/light mode, switch units between imperial (mi/ft) and metric (km/m), toggle your profile between public (reviews/photos ` +
+  `visible to everyone) and private (friends only), set a home address (used for taste learning), and edit the taste baseline described above.\n` +
   `- Account deletion: available from Profile — permanently erases your account and its data.\n\n`;
 
 const INSTRUCTIONS =

@@ -3,7 +3,6 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { saveTasteBaseline } from '../lib/friends';
 import { TASTE_QUESTIONS } from '../lib/tasteQuestions';
-import VoiceInputButton from './VoiceInputButton';
 
 // The "you haven't told Mapr what you like yet" nudge, expanded into
 // something answerable in a few taps instead of a blank box: one quick
@@ -13,14 +12,24 @@ import VoiceInputButton from './VoiceInputButton';
 // -- this is meant to become the BASELINE Mapr starts every suggestion
 // from, likes AND dislikes both; individual landmark ratings then refine it
 // further with specific reasons ("no pepper on my steak") as they come in,
-// same as always. Typing or speaking directly into the chat below still
-// works too and satisfies this exactly the same (see Mapr.jsx's send()).
+// same as always. Each category also has its own optional Comment field
+// (e.g. "no pepper on my steak") -- feeds Mapr's analysis alongside the
+// picks (see baselineToSyntheticReviews' comment field), not just a
+// separate note nobody reads.
 //
 // Also doubles as the edit flow: TasteProfileCard's Edit button reopens
 // this same card pre-filled from the saved baseline (initialBaseline/
-// initialNotes), so resubmitting after a change replaces the old answers
-// rather than piling a new sentence on top of them (see saveTasteBaseline).
-export default function TasteNudgeCard({ onDone, onDismiss, initialBaseline, initialNotes, editing = false }) {
+// initialNotes/initialCategoryNotes), so resubmitting after a change
+// replaces the old answers rather than piling a new sentence on top of
+// them (see saveTasteBaseline).
+export default function TasteNudgeCard({
+  onDone,
+  onDismiss,
+  initialBaseline,
+  initialNotes,
+  initialCategoryNotes,
+  editing = false,
+}) {
   const { user } = useAuth();
   const { reload: reloadFriends } = useFriends();
   // Deep-copy the initial baseline into per-category Sets-as-objects so
@@ -31,6 +40,10 @@ export default function TasteNudgeCard({ onDone, onDismiss, initialBaseline, ini
     return init;
   });
   const [extra, setExtra] = useState(initialNotes || '');
+  const [categoryNotes, setCategoryNotes] = useState(() => ({ ...(initialCategoryNotes || {}) }));
+  const [openComments, setOpenComments] = useState(
+    () => new Set(Object.keys(initialCategoryNotes || {}).filter((id) => initialCategoryNotes[id]))
+  );
   const [saving, setSaving] = useState(false);
 
   const cycleChip = (categoryId, example) => {
@@ -44,12 +57,24 @@ export default function TasteNudgeCard({ onDone, onDismiss, initialBaseline, ini
     });
   };
 
+  const toggleComment = (categoryId) => {
+    setOpenComments((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  };
+
   const totalPicked = Object.values(picked).reduce((n, cat) => n + Object.keys(cat).length, 0);
 
   const save = async () => {
     setSaving(true);
     try {
-      await saveTasteBaseline(user.uid, { baseline: picked, notes: extra });
+      const cleanCategoryNotes = Object.fromEntries(
+        Object.entries(categoryNotes).filter(([, v]) => v?.trim())
+      );
+      await saveTasteBaseline(user.uid, { baseline: picked, notes: extra, categoryNotes: cleanCategoryNotes });
       await reloadFriends();
     } catch {
       // Best-effort -- never block dismissing the nudge on this write failing.
@@ -86,31 +111,65 @@ export default function TasteNudgeCard({ onDone, onDismiss, initialBaseline, ini
       </ul>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
-        {TASTE_QUESTIONS.map((q) => (
-          <div key={q.id}>
-            <p style={{ margin: '0 0 4px', fontSize: '0.82rem', fontWeight: 600 }}>
-              {q.icon} {q.label} — <span style={{ fontWeight: 400 }}>{q.prompt}</span>
-            </p>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {q.examples.map((ex) => {
-                const state = picked[q.id]?.[ex];
-                return (
-                  <button
-                    key={ex}
-                    type="button"
-                    className={`tag ${state === 'like' ? 'tag-active' : ''} ${state === 'dislike' ? 'tag-dislike' : ''}`}
-                    style={{ cursor: 'pointer', fontFamily: 'inherit', appearance: 'none' }}
-                    onClick={() => cycleChip(q.id, ex)}
-                    disabled={saving}
-                  >
-                    {state === 'like' ? `${'\u{1F44D}'} ` : state === 'dislike' ? `${'\u{1F44E}'} ` : ''}
-                    {ex}
-                  </button>
-                );
-              })}
+        {TASTE_QUESTIONS.map((q) => {
+          const commentOpen = openComments.has(q.id);
+          const hasComment = !!categoryNotes[q.id]?.trim();
+          return (
+            <div key={q.id}>
+              <p style={{ margin: '0 0 4px', fontSize: '0.82rem', fontWeight: 600 }}>
+                {q.icon} {q.label} — <span style={{ fontWeight: 400 }}>{q.prompt}</span>{' '}
+                <button
+                  type="button"
+                  onClick={() => toggleComment(q.id)}
+                  disabled={saving}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    fontFamily: 'inherit',
+                    fontSize: '0.75rem',
+                    fontWeight: 400,
+                    color: hasComment ? 'var(--color-brass-bright, inherit)' : 'inherit',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {'\u{1F4AC}'} {hasComment ? 'Comment ✓' : 'Comment'}
+                </button>
+              </p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {q.examples.map((ex) => {
+                  const state = picked[q.id]?.[ex];
+                  return (
+                    <button
+                      key={ex}
+                      type="button"
+                      className={`tag ${state === 'like' ? 'tag-active' : ''} ${state === 'dislike' ? 'tag-dislike' : ''}`}
+                      style={{ cursor: 'pointer', fontFamily: 'inherit', appearance: 'none' }}
+                      onClick={() => cycleChip(q.id, ex)}
+                      disabled={saving}
+                    >
+                      {state === 'like' ? `${'\u{1F44D}'} ` : state === 'dislike' ? `${'\u{1F44E}'} ` : ''}
+                      {ex}
+                    </button>
+                  );
+                })}
+              </div>
+              {commentOpen && (
+                <textarea
+                  className="rating-comment"
+                  rows={2}
+                  maxLength={200}
+                  placeholder={`Anything specific about ${q.label.toLowerCase()}? e.g. "no pepper on my steak"`}
+                  value={categoryNotes[q.id] || ''}
+                  onChange={(e) => setCategoryNotes((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                  disabled={saving}
+                  style={{ marginTop: 6 }}
+                />
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <textarea
@@ -123,9 +182,6 @@ export default function TasteNudgeCard({ onDone, onDismiss, initialBaseline, ini
         disabled={saving}
         style={{ marginTop: 12 }}
       />
-      <div style={{ marginTop: 8 }}>
-        <VoiceInputButton onText={(spoken) => setExtra((prev) => (prev ? `${prev} ${spoken}` : spoken))} disabled={saving} />
-      </div>
 
       <button
         type="button"

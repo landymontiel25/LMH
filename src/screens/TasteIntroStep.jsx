@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { saveTasteIntro } from '../lib/friends';
-import VoiceInputButton from '../components/VoiceInputButton';
 
 // Optional onboarding step: "tell Mapr what you already love," in your own
 // words -- "I love racing, steak, pickleball, the boat... I like fancy,
@@ -34,7 +33,7 @@ export default function TasteIntroStep({ onDone }) {
       </h1>
       <p className="screen-subtitle">
         Optional, but it helps -- give Mapr a quick overview of your taste and it can start suggesting well before
-        your first rating. Talking is faster than typing -- tap the mic below.
+        your first rating.
       </p>
       <p className="screen-subtitle" style={{ marginTop: -10, fontSize: '0.78rem' }}>
         For example: "I love racing, steak, pickleball, the boat... I like fancy, luxurious things. I also love
@@ -51,10 +50,6 @@ export default function TasteIntroStep({ onDone }) {
         onChange={(e) => setText(e.target.value)}
         disabled={saving}
       />
-
-      <div style={{ marginTop: 10 }}>
-        <VoiceInputButton onText={(spoken) => setText((prev) => (prev ? `${prev} ${spoken}` : spoken))} disabled={saving} />
-      </div>
 
       <button
         type="button"
