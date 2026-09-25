@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTheme } from '../lib/useTheme';
 import { useUnits, countryName } from '../lib/UnitsContext';
-import { setProfileVisibility, getUserProfile, saveHomeLocation, saveTasteIntro } from '../lib/friends';
+import { setProfileVisibility, getUserProfile, saveHomeLocation, saveTasteIntro, saveContextPreferences } from '../lib/friends';
 import { useAdminMode } from '../lib/AdminModeContext';
 import { authErrorMessage } from '../lib/authErrors';
 import PreferenceChips from '../components/PreferenceChips';
@@ -25,6 +25,20 @@ export default function Settings() {
   const [tasteIntro, setTasteIntro] = useState(myProfile?.tasteIntro || '');
   const [tasteBusy, setTasteBusy] = useState(false);
   const [tasteMsg, setTasteMsg] = useState(null);
+  const [contextPrefs, setContextPrefs] = useState(() => ({
+    weekday: myProfile?.contextPreferences?.weekday || '',
+    weekend: myProfile?.contextPreferences?.weekend || '',
+    chill: myProfile?.contextPreferences?.chill || '',
+    active: myProfile?.contextPreferences?.active || '',
+  }));
+  const [contextBusy, setContextBusy] = useState(false);
+  const [contextMsg, setContextMsg] = useState(null);
+  // Tracks whether the traveler has touched a context-preference field yet
+  // this visit -- same reasoning as tasteIntro's sync-in-once effect below:
+  // myProfile loads asynchronously, so without this a field they've already
+  // started typing into would get silently overwritten the moment the real
+  // profile lands.
+  const contextTouchedRef = useRef(false);
   const [verifyMsg, setVerifyMsg] = useState(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
 
@@ -44,6 +58,17 @@ export default function Settings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myProfile?.tasteIntro]);
 
+  useEffect(() => {
+    if (contextTouchedRef.current || !myProfile?.contextPreferences) return;
+    setContextPrefs({
+      weekday: myProfile.contextPreferences.weekday || '',
+      weekend: myProfile.contextPreferences.weekend || '',
+      chill: myProfile.contextPreferences.chill || '',
+      active: myProfile.contextPreferences.active || '',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myProfile?.contextPreferences]);
+
   const saveTaste = async () => {
     setTasteBusy(true);
     setTasteMsg(null);
@@ -55,6 +80,20 @@ export default function Settings() {
       setTasteMsg(e.message || 'Could not save — try again.');
     } finally {
       setTasteBusy(false);
+    }
+  };
+
+  const saveContext = async () => {
+    setContextBusy(true);
+    setContextMsg(null);
+    try {
+      await saveContextPreferences(user.uid, contextPrefs);
+      await reloadFriends();
+      setContextMsg('Saved.');
+    } catch (e) {
+      setContextMsg(e.message || 'Could not save — try again.');
+    } finally {
+      setContextBusy(false);
     }
   };
 
@@ -182,6 +221,57 @@ export default function Settings() {
           {tasteMsg && (
             <p className="screen-subtitle" style={{ marginTop: 8 }}>
               {tasteMsg}
+            </p>
+          )}
+        </div>
+      )}
+
+      {firebaseEnabled && user && (
+        <div className="card section">
+          <h3 style={{ marginTop: 0 }}>{'\u{1F5D3}\u{FE0F}'} Preferences by Situation</h3>
+          <p className="screen-subtitle" style={{ marginTop: -6 }}>
+            The taste above is your general baseline. This is for when it actually depends -- you might want a bar or
+            a club on a Saturday night and nothing like that on a Tuesday. Fill in whichever apply; Mapr only uses
+            the one that fits the moment (today's actual day, or the mood you're clearly asking for), never all of
+            them at once.
+          </p>
+          {[
+            { key: 'weekday', icon: '\u{1F4C5}', label: 'On weekdays', placeholder: 'e.g. "Quiet dinners, coffee shops, nothing too late"' },
+            { key: 'weekend', icon: '\u{1F389}', label: 'On weekends', placeholder: 'e.g. "I\'m up for a bar or a club, later nights"' },
+            { key: 'chill', icon: '\u{1F634}', label: 'When I want something chill', placeholder: 'e.g. "A quiet walk, a museum, low-key cafes"' },
+            { key: 'active', icon: '⚡', label: 'When I want something active', placeholder: 'e.g. "Pickleball, hiking, anything with movement"' },
+          ].map((f) => (
+            <div key={f.key} className="field" style={{ marginTop: 12 }}>
+              <label htmlFor={`ctx-${f.key}`}>
+                {f.icon} {f.label}
+              </label>
+              <textarea
+                id={`ctx-${f.key}`}
+                className="rating-comment"
+                rows={2}
+                maxLength={1000}
+                placeholder={f.placeholder}
+                value={contextPrefs[f.key]}
+                onChange={(e) => {
+                  contextTouchedRef.current = true;
+                  setContextPrefs((cur) => ({ ...cur, [f.key]: e.target.value }));
+                }}
+                disabled={contextBusy}
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            style={{ marginTop: 10 }}
+            disabled={contextBusy}
+            onClick={saveContext}
+          >
+            {contextBusy ? 'Saving…' : 'Save'}
+          </button>
+          {contextMsg && (
+            <p className="screen-subtitle" style={{ marginTop: 8 }}>
+              {contextMsg}
             </p>
           )}
         </div>
