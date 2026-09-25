@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTheme } from '../lib/useTheme';
 import { useUnits, countryName } from '../lib/UnitsContext';
 import { setProfileVisibility, getUserProfile, saveHomeLocation, saveTasteIntro } from '../lib/friends';
 import { useAdminMode } from '../lib/AdminModeContext';
+import { authErrorMessage } from '../lib/authErrors';
 import PreferenceChips from '../components/PreferenceChips';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, firebaseEnabled } = useAuth();
+  const { user, firebaseEnabled, signOutUser, deleteAccount, resendVerification, refreshUser } = useAuth();
   const { myProfile, reload: reloadFriends } = useFriends();
   const { theme, toggleTheme } = useTheme();
   const { units, mode, setMode, autoCountry } = useUnits();
@@ -24,6 +25,19 @@ export default function Settings() {
   const [tasteIntro, setTasteIntro] = useState(myProfile?.tasteIntro || '');
   const [tasteBusy, setTasteBusy] = useState(false);
   const [tasteMsg, setTasteMsg] = useState(null);
+  const [verifyMsg, setVerifyMsg] = useState(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  // Catches "verified in another tab, then came back to Settings" without
+  // requiring a full sign-out/sign-in.
+  useEffect(() => {
+    if (user && !user.emailVerified) refreshUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // myProfile loads asynchronously (FriendsContext), so the field would
   // otherwise start permanently blank whenever this screen mounts before
@@ -251,6 +265,137 @@ export default function Settings() {
           >
             {adminMode ? `${'\u{2715}'} Turn Off Admin Mode` : `${'\u{1F6E0}\u{FE0F}'} Turn On Admin Mode`}
           </button>
+        </div>
+      )}
+
+      {/* Account -- moved here from Profile so that screen stays about your
+          taste/ranks, not account admin. Always last on the page. */}
+      {firebaseEnabled && user && (
+        <div className="card section">
+          <Link to="/request-feature" className="btn btn-ghost btn-block">
+            {'\u{1F4A1}'} Request a Feature
+          </Link>
+          {!user.emailVerified && (
+            <div style={{ marginTop: 12 }}>
+              <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>
+                Your email isn't verified yet — some actions (like adding a landmark) need it.
+              </p>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ marginTop: 8 }}
+                disabled={verifyBusy}
+                onClick={async () => {
+                  setVerifyBusy(true);
+                  setVerifyMsg(null);
+                  try {
+                    await resendVerification();
+                    setVerifyMsg('Verification email sent — check your inbox (and spam folder).');
+                  } catch (e) {
+                    setVerifyMsg(`Could not send it right now: ${authErrorMessage(e)}`);
+                  } finally {
+                    setVerifyBusy(false);
+                  }
+                }}
+              >
+                {verifyBusy ? 'Sending…' : 'Resend Verification Email'}
+              </button>
+              {verifyMsg && (
+                <p className="screen-subtitle" style={{ marginTop: 6, marginBottom: 0 }}>
+                  {verifyMsg}
+                </p>
+              )}
+            </div>
+          )}
+          <p style={{ textAlign: 'center', marginTop: 12, marginBottom: 0, fontSize: '0.78rem' }}>
+            <Link to="/legal" style={{ color: 'var(--color-parchment-dim)' }}>
+              Privacy Policy & Terms of Service
+            </Link>
+          </p>
+          <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
+            Sign Out
+          </button>
+          <button
+            className="btn btn-ghost btn-block"
+            style={{ marginTop: 8, color: 'var(--color-error, #b3503f)' }}
+            onClick={() => {
+              setDeleteError('');
+              setDeletePassword('');
+              setShowDeleteAccount(true);
+            }}
+          >
+            Delete Account
+          </button>
+          {user.metadata?.creationTime && (
+            <p style={{ textAlign: 'center', marginTop: 12, marginBottom: 0, fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
+              Joined{' '}
+              {new Date(user.metadata.creationTime).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </p>
+          )}
+          {/* Always visible (not just when unverified) -- so there's an
+              unambiguous, no-digging-required answer to "is my email really
+              verified or not," matching whatever refreshUser() last synced
+              from Firebase's live account state. */}
+          <p
+            className={`tag ${user.emailVerified ? 'tag-free' : 'tag-error'}`}
+            style={{ display: 'block', textAlign: 'center', marginTop: 12 }}
+          >
+            {user.emailVerified ? '\u{2705} Your email has been verified.' : "\u{274C} Your email isn't verified yet."}
+          </p>
+        </div>
+      )}
+
+      {showDeleteAccount && (
+        <div className="modal-backdrop" onClick={() => !deleteBusy && setShowDeleteAccount(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Delete your account?</h3>
+            <p className="screen-subtitle">
+              This permanently removes your sign-in, profile, reviews, and friend connections. Check-ins stay on the
+              leaderboard for scoring integrity but are stripped of your name and photo. This can't be undone.
+            </p>
+            <input
+              type="password"
+              className="friend-email-input"
+              placeholder="Confirm your password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              style={{ width: '100%', marginBottom: 10 }}
+            />
+            {deleteError && (
+              <p className="tag tag-error" style={{ display: 'block', marginBottom: 10 }}>
+                {deleteError}
+              </p>
+            )}
+            <button
+              className="btn btn-block"
+              style={{ background: 'var(--color-error, #b3503f)', color: '#fff' }}
+              disabled={deleteBusy || !deletePassword}
+              onClick={async () => {
+                setDeleteBusy(true);
+                setDeleteError('');
+                try {
+                  await deleteAccount(deletePassword);
+                  navigate('/');
+                } catch (e) {
+                  setDeleteError(authErrorMessage(e));
+                  setDeleteBusy(false);
+                }
+              }}
+            >
+              {deleteBusy ? 'Deleting…' : 'Permanently Delete My Account'}
+            </button>
+            <button
+              className="btn btn-ghost btn-block"
+              style={{ marginTop: 8 }}
+              disabled={deleteBusy}
+              onClick={() => setShowDeleteAccount(false)}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

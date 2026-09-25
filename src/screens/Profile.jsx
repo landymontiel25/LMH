@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTrip } from '../lib/TripContext';
@@ -13,14 +13,13 @@ import {
   backfillUserName,
   cleanName,
 } from '../lib/leaderboard';
-import { authErrorMessage } from '../lib/authErrors';
 import { getUserProfile } from '../lib/friends';
 import { useRatings } from '../lib/RatingsContext';
 import { RATING_GOAL } from '../lib/ratingFlow';
 import { getRegion, REGIONS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
 import { useBadges } from '../lib/BadgesContext';
-import { closestUnearnedBadge, PICKS_STREAK_THRESHOLD } from '../lib/streaks';
+import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
 import { completeOnboarding, hasCompletedOnboardingLocally, markOnboardingCompletedLocally } from '../lib/onboarding';
 import FriendsPanel from '../components/FriendsPanel';
@@ -31,7 +30,6 @@ import LandmarkThumb from '../components/LandmarkThumb';
 import FriendPopoverName from '../components/FriendPopoverName';
 import CheckInButton from '../components/CheckInButton';
 import RegionSearch from '../components/RegionSearch';
-import ProfileTasteCard from '../components/ProfileTasteCard';
 import MaprPicksCarousel from '../components/MaprPicksCarousel';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
@@ -197,79 +195,26 @@ function FirstCheckInStep({ onDone }) {
   );
 }
 
-// The "closest unearned badge" card at the top of Profile. Deliberately
-// stateless: it always renders whatever closestUnearnedBadge computes from
-// the LIVE badgeCounts, with no local "did this just complete" tracking of
-// its own. An earlier version tried to detect a completion locally (to
-// show a green/100% moment before handing off to the next badge) by
-// diffing the closest badge's id across renders -- but that heuristic
-// depended on render order and re-fetch timing it couldn't control (e.g.
-// refreshUser() creating a new `user` reference on every Profile visit,
-// which cascaded into unrelated re-fetches elsewhere), and it kept
-// mistaking "counts re-arrived from a refetch" for "just earned," making
-// already-earned badges re-celebrate. The actual "you just earned this"
-// moment is CelebrationOverlay's job, driven by BadgesContext's
-// server-anchored badgeEarnedAt comparison (the one authoritative source
-// for that) -- this card just always shows current progress.
-function ClosestBadgeCard({ badgeCounts, onboardingCompleted, onStartOnboarding }) {
-  const closestBadge = closestUnearnedBadge({
-    checkinsCount: badgeCounts.checkins,
-    citiesCount: badgeCounts.cities,
-    streakDays: badgeCounts.streak,
-    onboardingCompleted,
-    extra: badgeCounts,
-  });
-
-  if (!closestBadge) {
-    return (
-      <div className="card section">
-        <p style={{ margin: 0 }}>{'\u{1F389}'} You've completed all tasks. Check in tomorrow for new tasks!</p>
-      </div>
-    );
-  }
-
-  // Several of the newer badges are boolean ("reached top 10 once", not a
-  // count) -- Number(false) reads as 0 here rather than the literal word
-  // "false" showing up in "0/1 until Competitor".
-  const current = Number(badgeCounts[closestBadge.kind]) || 0;
-  const pct = Math.min(1, current / closestBadge.n);
-  const canStartOnboarding = closestBadge.kind === 'milestone' && !onboardingCompleted;
-
+// The only thing left of the old badge-progress teaser: if onboarding was
+// never finished, a plain (not badge-framed) nudge to go finish it --
+// badges themselves now live entirely on Full Stats, not on Profile.
+function FinishOnboardingCard({ onStartOnboarding }) {
   return (
     <div className="card section">
-      <p style={{ margin: '0 0 2px' }}>
-        {closestBadge.icon} {current}/{closestBadge.n} until <strong>{closestBadge.label}</strong>
-      </p>
-      <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: 'var(--color-parchment-dim)' }}>
-        {closestBadge.description}
-      </p>
-      <div className="level-bar-track">
-        <div className="level-bar-fill" style={{ width: `${pct * 100}%` }} />
-      </div>
-      {canStartOnboarding && (
-        <button type="button" className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 8 }} onClick={onStartOnboarding}>
-          Finish Onboarding {'→'}
-        </button>
-      )}
+      <p style={{ margin: '0 0 8px' }}>Finish setting up your account to unlock your Welcome bonus.</p>
+      <button type="button" className="btn btn-ghost btn-sm btn-block" onClick={onStartOnboarding}>
+        Finish Onboarding {'\u{2192}'}
+      </button>
     </div>
   );
 }
 
 export default function Profile() {
-  const { user, firebaseEnabled, signOutUser, deleteAccount, resendVerification, refreshUser } = useAuth();
-  const [verifyMsg, setVerifyMsg] = useState(null);
-  const [verifyBusy, setVerifyBusy] = useState(false);
-
-  // Catches "verified in another tab, then came back to Profile" without
-  // requiring a full sign-out/sign-in.
-  useEffect(() => {
-    if (user && !user.emailVerified) refreshUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { user, firebaseEnabled } = useAuth();
   const { myUsername, friendUids, myProfile } = useFriends();
   const { trip } = useTrip();
   const navigate = useNavigate();
-  const { stats, streakDays, checkedInToday, actionsToday, badges, badgeCounts: liveBadgeCounts } = useBadges();
+  const { stats, streakDays, checkedInToday, actionsToday } = useBadges();
   const { claimedMap } = useCheckIn();
 
   // Your own reviews come from RatingsContext (refreshed after every save),
@@ -287,56 +232,17 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [onboardingStep, setOnboardingStep] = useState(null); // null | 'preferences' | 'tasteIntro' | 'checkin'
   const healedRef = useRef(false);
-  // Which badge's description popover is open -- hover (desktop, with the
-  // same short grace period as the header's profile popover) or tap
-  // (mobile) both toggle it, same pattern as FriendPopoverName.
-  const [openBadgeId, setOpenBadgeId] = useState(null);
-  const badgesRef = useRef(null);
-  const closeBadgeTimer = useRef(null);
-  const openBadgeNow = (id) => {
-    clearTimeout(closeBadgeTimer.current);
-    setOpenBadgeId(id);
-  };
-  const closeBadgeSoon = () => {
-    closeBadgeTimer.current = setTimeout(() => setOpenBadgeId(null), 250);
-  };
-  useEffect(() => () => clearTimeout(closeBadgeTimer.current), []);
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (badgesRef.current && !badgesRef.current.contains(e.target)) setOpenBadgeId(null);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-  const [bonusPoints, setBonusPoints] = useState(0);
   const [streakInfoOpen, setStreakInfoOpen] = useState(false);
-  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteBusy, setDeleteBusy] = useState(false);
-  const [deleteError, setDeleteError] = useState('');
 
   const period = tab; // the board always tracks a period
 
   // Referral bonuses (item i8) -- claims anything owed (as the referred
-  // user, and/or as a referrer whose link brought in a new signup) once
-  // per Profile visit, then reads the resulting total back.
+  // user, and/or as a referrer whose link brought in a new signup) once per
+  // Profile visit. Fire-and-forget: the resulting points show up in myPoints
+  // via the normal leaderboard read, no separate display to keep in sync.
   useEffect(() => {
-    if (!firebaseEnabled || !user) {
-      setBonusPoints(0);
-      return;
-    }
-    let cancelled = false;
-    claimMyReferralBonuses(user.uid, myUsername || user.displayName || 'Explorer')
-      .then(() => getUserProfile(user.uid))
-      .then((profile) => {
-        if (!cancelled) setBonusPoints(profile?.bonusPoints || 0);
-      })
-      .catch(() => {
-        if (!cancelled) setBonusPoints(0);
-      });
-    return () => {
-      cancelled = true;
-    };
+    if (!firebaseEnabled || !user) return;
+    claimMyReferralBonuses(user.uid, myUsername || user.displayName || 'Explorer').catch(() => {});
     // myUsername only labels the leaderboard-entry write below, not
     // something that should re-run the whole claim flow when it changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -466,18 +372,10 @@ export default function Profile() {
     ? rivalCandidates.reduce((closest, e) => (e.points - myPoints < closest.points - myPoints ? e : closest))
     : null;
 
-  // Closest badge: whichever unearned badge needs the fewest more check-ins/
-  // cities/streak-days/onboarding steps to unlock -- see ClosestBadgeCard for
-  // how progress toward it is actually rendered. onboardingCompleted also
-  // checks the local guard (see FirstCheckInStep) so "Finish Onboarding"
-  // can't reappear on this device even on a load where myProfile hasn't
-  // picked up the Firestore flag.
+  // onboardingCompleted also checks the local guard (see FirstCheckInStep)
+  // so "Finish Onboarding" can't reappear on this device even on a load
+  // where myProfile hasn't picked up the Firestore flag.
   const onboardingDone = !!myProfile?.onboardingCompleted || hasCompletedOnboardingLocally(user.uid);
-  // Sourced from BadgesContext (the same object computeBadges itself used)
-  // rather than rebuilt here, so "closest badge" can reason about every
-  // badge -- not just the original 4 -- instead of keeping its own
-  // out-of-sync partial copy.
-  const badgeCounts = liveBadgeCounts;
 
   // Streak urgency: you have an active streak from a prior day, but haven't
   // checked in yet today -- it lapses if today passes with no check-in.
@@ -492,13 +390,7 @@ export default function Profile() {
 
   return (
     <div>
-      {/* 0.5 — At a glance: closest badge + closest rival, above everything
-          else so it's the first thing visible on the Profile screen. */}
-      <ClosestBadgeCard
-        badgeCounts={badgeCounts}
-        onboardingCompleted={onboardingDone}
-        onStartOnboarding={() => setOnboardingStep('checkin')}
-      />
+      {!onboardingDone && <FinishOnboardingCard onStartOnboarding={() => setOnboardingStep('checkin')} />}
       <DiscoveryStatsCard />
       <TasteProfileCard />
 
@@ -723,7 +615,6 @@ export default function Profile() {
             />
           </div>
         </div>
-        <ProfileTasteCard reviews={myReviews} />
         <MaprPicksCarousel
           reviews={myReviews}
           interests={trip.savedInterests}
@@ -743,174 +634,7 @@ export default function Profile() {
           </p>
         )}
 
-        {bonusPoints > 0 && (
-          <p className="tag" style={{ marginTop: 14 }}>
-            {'\u{1F381}'} {bonusPoints.toLocaleString()} referral bonus points
-          </p>
-        )}
-
-        {badges.length > 0 && (
-          <div ref={badgesRef} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-            {badges.map((b) => (
-              <span
-                key={b.id}
-                style={{ position: 'relative', display: 'inline-block' }}
-                onMouseEnter={() => openBadgeNow(b.id)}
-                onMouseLeave={closeBadgeSoon}
-              >
-                <button
-                  type="button"
-                  className="tag"
-                  style={{ cursor: 'pointer', fontFamily: 'inherit', appearance: 'none' }}
-                  onClick={() => setOpenBadgeId((cur) => (cur === b.id ? null : b.id))}
-                >
-                  {b.icon} {b.label}
-                </button>
-                {openBadgeId === b.id && (
-                  <div className="points-popover" style={{ right: 'auto', left: 0, whiteSpace: 'normal', width: 160, fontWeight: 400 }}>
-                    {b.description}
-                  </div>
-                )}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
-
-      {/* 5 — Account */}
-      <div className="card section">
-        <p className="screen-subtitle" style={{ margin: 0 }}>
-          Signed in as {myUsername ? `@${myUsername}` : user.displayName || user.email}
-        </p>
-        <Link to="/settings" className="btn btn-ghost btn-block" style={{ marginTop: 12 }}>
-          {'\u{2699}\u{FE0F}'} Settings
-        </Link>
-        <Link to="/request-feature" className="btn btn-ghost btn-block" style={{ marginTop: 8 }}>
-          {'\u{1F4A1}'} Request a Feature
-        </Link>
-        {!user.emailVerified && (
-          <div style={{ marginTop: 12 }}>
-            <p className="tag tag-error" style={{ display: 'block', margin: 0 }}>
-              Your email isn't verified yet — some actions (like adding a landmark) need it.
-            </p>
-            <button
-              className="btn btn-ghost btn-sm"
-              style={{ marginTop: 8 }}
-              disabled={verifyBusy}
-              onClick={async () => {
-                setVerifyBusy(true);
-                setVerifyMsg(null);
-                try {
-                  await resendVerification();
-                  setVerifyMsg('Verification email sent — check your inbox (and spam folder).');
-                } catch (e) {
-                  setVerifyMsg(`Could not send it right now: ${authErrorMessage(e)}`);
-                } finally {
-                  setVerifyBusy(false);
-                }
-              }}
-            >
-              {verifyBusy ? 'Sending…' : 'Resend Verification Email'}
-            </button>
-            {verifyMsg && (
-              <p className="screen-subtitle" style={{ marginTop: 6, marginBottom: 0 }}>
-                {verifyMsg}
-              </p>
-            )}
-          </div>
-        )}
-        <p style={{ textAlign: 'center', marginTop: 12, marginBottom: 0, fontSize: '0.78rem' }}>
-          <Link to="/legal" style={{ color: 'var(--color-parchment-dim)' }}>
-            Privacy Policy & Terms of Service
-          </Link>
-        </p>
-        <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
-          Sign Out
-        </button>
-        <button
-          className="btn btn-ghost btn-block"
-          style={{ marginTop: 8, color: 'var(--color-error, #b3503f)' }}
-          onClick={() => {
-            setDeleteError('');
-            setDeletePassword('');
-            setShowDeleteAccount(true);
-          }}
-        >
-          Delete Account
-        </button>
-        {user.metadata?.creationTime && (
-          <p style={{ textAlign: 'center', marginTop: 12, marginBottom: 0, fontSize: '0.72rem', color: 'var(--color-parchment-dim)' }}>
-            Joined{' '}
-            {new Date(user.metadata.creationTime).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-          </p>
-        )}
-        {/* Always visible (not just when unverified) -- so there's an
-            unambiguous, no-digging-required answer to "is my email really
-            verified or not," matching whatever refreshUser() last synced
-            from Firebase's live account state. */}
-        <p
-          className={`tag ${user.emailVerified ? 'tag-free' : 'tag-error'}`}
-          style={{ display: 'block', textAlign: 'center', marginTop: 12 }}
-        >
-          {user.emailVerified ? '\u{2705} Your email has been verified.' : "\u{274C} Your email isn't verified yet."}
-        </p>
-      </div>
-
-      {showDeleteAccount && (
-        <div className="modal-backdrop" onClick={() => !deleteBusy && setShowDeleteAccount(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Delete your account?</h3>
-            <p className="screen-subtitle">
-              This permanently removes your sign-in, profile, reviews, and friend connections. Check-ins stay on the
-              leaderboard for scoring integrity but are stripped of your name and photo. This can't be undone.
-            </p>
-            <input
-              type="password"
-              className="friend-email-input"
-              placeholder="Confirm your password"
-              value={deletePassword}
-              onChange={(e) => setDeletePassword(e.target.value)}
-              style={{ width: '100%', marginBottom: 10 }}
-            />
-            {deleteError && (
-              <p className="tag tag-error" style={{ display: 'block', marginBottom: 10 }}>
-                {deleteError}
-              </p>
-            )}
-            <button
-              className="btn btn-block"
-              style={{ background: 'var(--color-error, #b3503f)', color: '#fff' }}
-              disabled={deleteBusy || !deletePassword}
-              onClick={async () => {
-                setDeleteBusy(true);
-                setDeleteError('');
-                try {
-                  await deleteAccount(deletePassword);
-                  navigate('/');
-                } catch (e) {
-                  setDeleteError(authErrorMessage(e));
-                  setDeleteBusy(false);
-                }
-              }}
-            >
-              {deleteBusy ? 'Deleting…' : 'Permanently Delete My Account'}
-            </button>
-            <button
-              className="btn btn-ghost btn-block"
-              style={{ marginTop: 8 }}
-              disabled={deleteBusy}
-              onClick={() => setShowDeleteAccount(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
