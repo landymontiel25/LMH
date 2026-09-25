@@ -45,6 +45,7 @@ const FriendCities = lazy(() => import('./screens/FriendCities'));
 const Notifications = lazy(() => import('./screens/Notifications'));
 const RequestFeature = lazy(() => import('./screens/RequestFeature'));
 const Mapr = lazy(() => import('./screens/Mapr'));
+const MaprTest = lazy(() => import('./screens/MaprTest'));
 
 // Keyed by path so a crash's fallback UI clears itself on the next
 // navigation (React Router doesn't remount the boundary just because the
@@ -76,6 +77,7 @@ function AppRoutes() {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/request-feature" element={<RequestFeature />} />
           <Route path="/mapr" element={<Mapr />} />
+          <Route path="/mapr-test" element={<MaprTest />} />
         </Routes>
       </Suspense>
     </ErrorBoundary>
