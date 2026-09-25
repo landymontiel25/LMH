@@ -220,6 +220,18 @@ service cloud.firestore {
         && request.resource.data.verdict in ['yes', 'no'];
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
+    // One doc per real Mapr chat reply that produced stops -- backs the
+    // "time saved" stat (src/lib/timeSaved.js). Auto-id (many per user per
+    // day), private to its owner, write-once -- nothing about a logged
+    // generation time or stop count should ever be edited after the fact.
+    match /planning_events/{id} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.minutesSaved is number
+        && request.resource.data.minutesSaved >= 0;
+      allow update, delete: if false;
+    }
     match /landmark_ratings/{id} {
       allow read: if true;
       allow write: if request.auth != null;

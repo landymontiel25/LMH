@@ -33,6 +33,7 @@ import RegionSearch from '../components/RegionSearch';
 import ProfileTasteCard from '../components/ProfileTasteCard';
 import MaprPicksCarousel from '../components/MaprPicksCarousel';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
+import TasteProfileCard from '../components/TasteProfileCard';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -497,6 +498,7 @@ export default function Profile() {
         onStartOnboarding={() => setOnboardingStep('checkin')}
       />
       <DiscoveryStatsCard />
+      <TasteProfileCard />
 
       {closestRival && (
         <div className="card section">

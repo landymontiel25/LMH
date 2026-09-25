@@ -117,6 +117,11 @@ export default async function handler(req, res) {
       comment: str(r.comment, 280),
     }));
     const interests = (Array.isArray(body.interests) ? body.interests : []).map((c) => str(c, 30)).slice(0, 20);
+    // Insider Mode -- unlocked client-side once Mapr's own predictions are
+    // confidently right about this traveler (src/lib/tasteProfile.js). The
+    // client decides the unlock and just tells us the flag; this only
+    // changes how a request already this personalized gets phrased.
+    const insiderMode = body.insiderMode === true;
     const profile = reviews.length
       ? 'TRAVELER PROFILE (their real rating history -- use it; see the rules on how):\n' +
         reviews
@@ -141,6 +146,17 @@ export default async function handler(req, res) {
         { type: 'text', text: INSTRUCTIONS },
         { type: 'text', text: catalog, cache_control: { type: 'ephemeral' } },
         ...(profile ? [{ type: 'text', text: profile }] : []),
+        ...(insiderMode
+          ? [
+              {
+                type: 'text',
+                text:
+                  'INSIDER MODE is on for this traveler -- Mapr is confident it knows their taste. Favor ' +
+                  'lesser-known, off-the-beaten-path stops over the obvious tourist picks wherever the catalog or ' +
+                  'web search offers a good one; still use an obvious pick if nothing quieter genuinely fits.',
+              },
+            ]
+          : []),
       ],
       // Lets the AI look beyond our own catalog -- uncapped, so a request that
       // genuinely needs several searches isn't cut off. The client shows a
