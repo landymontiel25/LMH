@@ -415,6 +415,12 @@ textarea {
   color: #fff;
 }
 
+.tag-dislike {
+  background: var(--color-rust, #b0463c);
+  border-color: var(--color-rust, #b0463c);
+  color: #fff;
+}
+
 .tag-free {
   border-color: var(--color-green);
   color: #bfe0c8;
