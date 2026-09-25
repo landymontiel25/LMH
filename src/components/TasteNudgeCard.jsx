@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { saveTasteBaseline } from '../lib/friends';
@@ -46,8 +46,25 @@ export default function TasteNudgeCard({
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  // The initial props are snapshotted into state once on mount (above). If
+  // this opened before the profile's server read had landed, that snapshot
+  // is empty even though real picks exist -- so as long as the traveler
+  // hasn't touched anything yet, adopt the picks whenever they do arrive
+  // instead of leaving them staring at a blank editor. Any edit flips this
+  // and the seeded state is never overwritten from underneath them.
+  const dirtyRef = useRef(false);
+  useEffect(() => {
+    if (dirtyRef.current) return;
+    const init = {};
+    for (const [catId, cat] of Object.entries(initialBaseline || {})) init[catId] = { ...cat };
+    setPicked(init);
+    setExtra(initialNotes || '');
+    setCategoryNotes({ ...(initialCategoryNotes || {}) });
+    setOpenComments(new Set(Object.keys(initialCategoryNotes || {}).filter((id) => initialCategoryNotes[id])));
+  }, [initialBaseline, initialNotes, initialCategoryNotes]);
 
   const cycleChip = (categoryId, example) => {
+    dirtyRef.current = true;
     setPicked((prev) => {
       const cat = { ...(prev[categoryId] || {}) };
       const cur = cat[example];
@@ -59,6 +76,7 @@ export default function TasteNudgeCard({
   };
 
   const toggleComment = (categoryId) => {
+    dirtyRef.current = true;
     setOpenComments((prev) => {
       const next = new Set(prev);
       if (next.has(categoryId)) next.delete(categoryId);
@@ -179,7 +197,10 @@ export default function TasteNudgeCard({
                   maxLength={2000}
                   placeholder={`Anything specific about ${q.label.toLowerCase()}? e.g. "no pepper on my steak"`}
                   value={categoryNotes[q.id] || ''}
-                  onChange={(e) => setCategoryNotes((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                  onChange={(e) => {
+                    dirtyRef.current = true;
+                    setCategoryNotes((prev) => ({ ...prev, [q.id]: e.target.value }));
+                  }}
                   disabled={saving}
                   style={{ marginTop: 6 }}
                 />
@@ -195,7 +216,10 @@ export default function TasteNudgeCard({
         maxLength={2000}
         placeholder="Anything else, liked or hated? (optional)"
         value={extra}
-        onChange={(e) => setExtra(e.target.value)}
+        onChange={(e) => {
+          dirtyRef.current = true;
+          setExtra(e.target.value);
+        }}
         disabled={saving}
         style={{ marginTop: 12 }}
       />

@@ -74,32 +74,36 @@ export function FriendsProvider({ children }) {
       return;
     }
     // Load each independently — one failing query must never hide the others
-    // (a friends-rule hiccup should not wipe out your saved username).
-    const [p, f, r] = await Promise.allSettled([
-      fetchProfileWithRetry(user.uid),
-      listFriends(user.uid),
-      listIncomingRequests(user.uid),
-    ]);
-    if (p.status === 'fulfilled' && p.value) {
-      setMyProfile(p.value);
-      cacheProfile(user.uid, p.value);
-      setProfileFresh(true);
-    } else {
-      // Read failed (even after retrying) or the doc genuinely doesn't
-      // exist yet. Logged (not just swallowed) so a real read failure shows
-      // up somewhere instead of silently serving stale cached data forever.
-      if (p.status === 'rejected') {
-        console.error('[FriendsContext] getUserProfile failed on reload:', p.reason);
+    // (a friends-rule hiccup should not wipe out your saved username), and
+    // the profile lands the moment ITS read resolves rather than waiting
+    // for the friends/requests queries too: on a cold start those all
+    // compete with every other boot-time query, and the profile is what
+    // the Taste Profile card (and the taste nudge) are sitting on.
+    const profileDone = fetchProfileWithRetry(user.uid).then(
+      (profile) => {
+        if (profile) {
+          setMyProfile(profile);
+          cacheProfile(user.uid, profile);
+          setProfileFresh(true);
+          return;
+        }
+        // The doc genuinely doesn't exist yet -- only fall back to the
+        // localStorage snapshot when there's nothing better in memory.
+        setMyProfile((cur) => cur ?? loadCachedProfile(user.uid));
+      },
+      (err) => {
+        // Read failed even after retrying. Logged (not just swallowed) so
+        // a real read failure shows up somewhere instead of silently
+        // serving stale cached data forever. Only ever fall back to the
+        // localStorage snapshot when there's nothing better already in
+        // memory (the very first load) -- a LATER hiccup must never regress
+        // already-correct data back to an older cached copy that could be
+        // missing something saved since (a taste baseline edit, say).
+        console.error('[FriendsContext] getUserProfile failed on reload:', err);
+        setMyProfile((cur) => cur ?? loadCachedProfile(user.uid));
       }
-      // Only ever fall back to the localStorage snapshot when there's
-      // nothing better already in memory (the very first load, before any
-      // real read has landed this session) -- a LATER hiccup must never
-      // regress already-correct data back to an older cached copy that
-      // could be missing something saved since (a taste baseline edit,
-      // say), which used to make a transient failure here look identical
-      // to that save never having happened.
-      setMyProfile((cur) => cur ?? loadCachedProfile(user.uid));
-    }
+    );
+    const [, f, r] = await Promise.allSettled([profileDone, listFriends(user.uid), listIncomingRequests(user.uid)]);
     if (f.status === 'fulfilled') setFriendUids(new Set((f.value || []).map((x) => x.friend)));
     if (r.status === 'fulfilled') setRequests(r.value || []);
   }, [user]);
