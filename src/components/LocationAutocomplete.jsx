@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ALL_LANDMARKS, getRegion } from '../data/regions';
 import { searchPlaces, getPlaceDetails, makeSessionToken } from '../lib/places';
+import { matchesSearch } from '../lib/search';
 
 export default function LocationAutocomplete({ id, value, regionId, onChange, onSelect, placeholder }) {
   const [suggestions, setSuggestions] = useState([]);
@@ -28,9 +29,9 @@ export default function LocationAutocomplete({ id, value, regionId, onChange, on
     }
     setLoading(true);
     setSearchError('');
-    const q = value.trim().toLowerCase();
+    const q = value.trim();
     const handle = setTimeout(async () => {
-      const localMatches = ALL_LANDMARKS.filter((l) => l.name.toLowerCase().includes(q))
+      const localMatches = ALL_LANDMARKS.filter((l) => matchesSearch([l.name, getRegion(l.regionId)?.name].join(' '), q))
         .sort((a, b) => (a.regionId === regionId ? -1 : 0) - (b.regionId === regionId ? -1 : 0))
         .slice(0, 4)
         .map((l) => ({

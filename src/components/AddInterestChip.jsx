@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { matchesSearch } from '../lib/search';
 
 export const OTHER_INTERESTS = [
   'Shopping',
@@ -47,9 +48,7 @@ export default function AddInterestChip({ existing, onAdd }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
 
-  const suggestions = OTHER_INTERESTS.filter(
-    (s) => !existing.includes(s) && (!text.trim() || s.toLowerCase().includes(text.trim().toLowerCase()))
-  );
+  const suggestions = OTHER_INTERESTS.filter((s) => !existing.includes(s) && matchesSearch(s, text));
 
   if (!editing) {
     return (

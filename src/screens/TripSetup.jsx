@@ -8,6 +8,7 @@ import { INTERESTS, getRegion } from '../data/regions';
 import { nearestRegionId } from '../lib/geo';
 import { classifyInterest } from '../lib/interestClassifier';
 import { listFriends } from '../lib/friends';
+import { matchesSearch } from '../lib/search';
 import { createGroupTrip } from '../lib/groupTrips';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import AddInterestChip from '../components/AddInterestChip';
@@ -20,8 +21,8 @@ const CURRENT_LOCATION_LABEL = 'Your Current Location';
 // you invite friends to the group trip right at creation instead of adding
 // them one at a time after, from GroupTrip's own member list.
 function GroupFriendPicker({ friends, query, onQueryChange, selected, onToggle }) {
-  const q = query.trim().toLowerCase();
-  const filtered = q ? friends.filter((f) => (f.friendName || '').toLowerCase().includes(q)) : friends;
+  const q = query.trim();
+  const filtered = q ? friends.filter((f) => matchesSearch(f.friendName, q)) : friends;
 
   return (
     <div className="card section" style={{ marginTop: 10 }}>

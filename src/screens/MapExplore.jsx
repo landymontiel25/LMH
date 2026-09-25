@@ -19,6 +19,7 @@ import { getCustomLandmarks, deleteCustomLandmark, updateCustomLandmark } from '
 import { isAdmin } from '../lib/admins';
 import { useAdminMode } from '../lib/AdminModeContext';
 import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
+import { matchesSearch } from '../lib/search';
 import CheckInButton from '../components/CheckInButton';
 import DirectionsButton from '../components/DirectionsButton';
 import LandmarkThumb from '../components/LandmarkThumb';
@@ -346,9 +347,16 @@ export default function MapExplore() {
   const searchResults = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return [];
-    const landmarkMatches = ALL_LANDMARKS.filter(
-      (l) => l.name.toLowerCase().includes(term) || getRegion(l.regionId)?.name.toLowerCase().includes(term)
-    ).map((l) => {
+    // Includes the city/region name, category labels and facts too, joined
+    // into one haystack -- so a query like "Miami F1" finds the Miami
+    // International Autodrome even though no single field says "Miami F1"
+    // verbatim (see matchesSearch: every WORD in the query has to appear
+    // somewhere in the haystack, not the whole phrase in one field).
+    const landmarkMatches = ALL_LANDMARKS.filter((l) => {
+      const categoryLabels = l.categories?.map((c) => CATEGORY_LABEL[c]).filter(Boolean) ?? [];
+      const haystack = [l.name, l.summary, getRegion(l.regionId)?.name, ...categoryLabels, ...(l.facts ?? [])].join(' ');
+      return matchesSearch(haystack, term);
+    }).map((l) => {
       // A drag-to-fix correction (savedOverrides) has to win here too, or
       // jumping to a landmark via search flies you back to its original,
       // wrong spot -- right next to where the corrected pin actually sits,
@@ -373,7 +381,7 @@ export default function MapExplore() {
     // landmark's own id (from customLandmarks.js) is already globally
     // unique on its own.
     const customMatches = customLandmarks
-      .filter((l) => l.name.toLowerCase().includes(term))
+      .filter((l) => matchesSearch([l.name, l.summary, getRegion(l.region)?.name].join(' '), term))
       .map((l) => ({
         id: `custom-${l.docId}`,
         name: l.name,
@@ -382,7 +390,7 @@ export default function MapExplore() {
         lng: l.lng,
         zoom: 17,
       }));
-    const placeMatches = SEARCHABLE_PLACES.filter((p) => p.name.toLowerCase().includes(term));
+    const placeMatches = SEARCHABLE_PLACES.filter((p) => matchesSearch(p.name, term));
     return [...landmarkMatches, ...customMatches, ...placeMatches].slice(0, 8);
   }, [searchTerm, savedOverrides, customLandmarks]);
 

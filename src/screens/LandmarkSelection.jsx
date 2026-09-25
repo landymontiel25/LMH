@@ -16,6 +16,7 @@ import QuickRateButton from '../components/QuickRateButton';
 import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
 import { getCustomLandmarks } from '../lib/customLandmarks';
 import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
+import { matchesSearch } from '../lib/search';
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
 
@@ -44,8 +45,8 @@ function CityDropdown({ value, onChange }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const term = search.trim().toLowerCase();
-  const filtered = PICKABLE_REGIONS.filter((r) => r.city.toLowerCase().includes(term)).sort((a, b) =>
+  const term = search.trim();
+  const filtered = PICKABLE_REGIONS.filter((r) => matchesSearch(r.city, term)).sort((a, b) =>
     a.city.localeCompare(b.city)
   );
   const selectedLabel = value === 'all' ? 'All Cities' : getRegion(value)?.city ?? 'All Cities';
@@ -243,8 +244,13 @@ export default function LandmarkSelection() {
       if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
       if (activeCategories.length && !activeCategories.some((key) => landmarkMatchesCategory(l, key))) return false;
       if (term) {
-        const haystack = [l.name, l.summary, ...(l.facts ?? [])].join(' ').toLowerCase();
-        if (!haystack.includes(term)) return false;
+        // Includes the city/region name and category labels too -- so a
+        // query like "Miami F1" finds the Miami International Autodrome
+        // even though no single field says "Miami F1" verbatim (see
+        // matchesSearch).
+        const categoryLabels = l.categories?.map((c) => INTERESTS.find((i) => i.id === c)?.label).filter(Boolean) ?? [];
+        const haystack = [l.name, l.summary, getRegion(l.regionId)?.name, ...categoryLabels, ...(l.facts ?? [])].join(' ');
+        if (!matchesSearch(haystack, term)) return false;
       }
       if (visitFilter.length) {
         const visited = !!claimedMap[l.id];

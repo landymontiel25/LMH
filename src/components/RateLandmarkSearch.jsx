@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ALL_LANDMARKS, getRegion } from '../data/regions';
+import { ALL_LANDMARKS, INTERESTS, getRegion } from '../data/regions';
+import { matchesSearch } from '../lib/search';
 import { addCustomLandmark, getCustomLandmarks } from '../lib/customLandmarks';
 import { nearestAttributableRegionId } from '../lib/geo';
 import { searchPlaces, getPlaceDetails, makeSessionToken } from '../lib/places';
@@ -84,7 +85,7 @@ export default function RateLandmarkSearch() {
 
   const diversityTip = diversityHint(Object.values(myReviews));
 
-  const q = term.trim().toLowerCase();
+  const q = term.trim();
   const pool = [
     ...ALL_LANDMARKS,
     ...customLandmarks.map((l) => ({
@@ -96,8 +97,12 @@ export default function RateLandmarkSearch() {
   const results = q
     ? pool
         .filter((l) => {
-          const haystack = [l.name, l.summary, ...(l.facts ?? [])].join(' ').toLowerCase();
-          return haystack.includes(q);
+          // Includes the city/region name and category labels too -- so a
+          // query like "Miami F1" finds the Miami International Autodrome
+          // even though no single field says "Miami F1" verbatim.
+          const categoryLabels = l.categories?.map((c) => INTERESTS.find((i) => i.id === c)?.label).filter(Boolean) ?? [];
+          const haystack = [l.name, l.summary, getRegion(l.regionId)?.name, ...categoryLabels, ...(l.facts ?? [])].join(' ');
+          return matchesSearch(haystack, q);
         })
         .sort((a, b) => a.name.localeCompare(b.name))
         .slice(0, 8)
