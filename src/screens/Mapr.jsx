@@ -18,24 +18,6 @@ import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
 import TasteNudgeCard from '../components/TasteNudgeCard';
 import TripPlannerCard from '../components/TripPlannerCard';
-import { ProfileMenu } from '../components/Header';
-
-const Icon = ({ children }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {children}
-  </svg>
-);
-
-// Shortcuts under the text box: each one sends its prompt exactly as if it
-// were typed; "Full day itinerary" opens the trip planner (what the old
-// "Plan Your Trip" button did).
-const PROMPT_PILLS = [
-  { label: 'Dinner tonight', prompt: 'A dinner spot tonight', icon: <Icon><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1-3 3.5-3 6.5V13h3v8" /></Icon> },
-  { label: 'Full day itinerary', planner: true, icon: <Icon><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" /><path d="M9 4v14M15 6v14" /></Icon> },
-  { label: 'Outdoors', prompt: 'Something outdoors', icon: <Icon><path d="M12 3 5 15h14z" /><path d="M12 15v6M8 21h8" /></Icon> },
-  { label: 'Hidden gems', prompt: 'Hidden gems', icon: <Icon><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8zM19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" /></Icon> },
-  { label: 'Keep it lowkey', prompt: 'Keep it lowkey', icon: <Icon><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></Icon> },
-];
 
 // "You haven't told Mapr what you like yet" nudge -- shown once (per
 // device/account) until either dismissed outright or satisfied by actually
@@ -68,7 +50,7 @@ export default function Mapr() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { myProfile, profileFresh, myUsername } = useFriends();
+  const { myProfile, profileFresh } = useFriends();
   const { myPhotos } = useMyPhotos();
   const { myReviews } = useRatings();
   const { trip } = useTrip();
@@ -252,29 +234,23 @@ export default function Mapr() {
     }
   };
 
-  // The greeting headline stands in for the canned opening message, so the
-  // thread only shows once there's an actual conversation.
-  const firstName = (user?.displayName || '').trim().split(/\s+/)[0] || myUsername || '';
-  const conversationStarted = messages.length > 1 || busy;
-  const regionLabel =
-    regions.length === 0 ? 'Any city' : regions.length === 1 ? regions[0].name : `${regions[0].name} +${regions.length - 1}`;
-
   return (
-    <div className="chatlab plan">
-      <div className="plan-top">
-        <span className="plan-wordmark">Mapr</span>
-        <div className="plan-top-right">
-          {totalCost > 0 && <span className="plan-cost">{'⚡'} ${totalCost.toFixed(4)}</span>}
+    <div className="chatlab">
+      <div className="chatlab-header">
+        <div className="chatlab-orb" />
+        <div className="chatlab-header-text">
+          <h1 className="chatlab-title">Mapr</h1>
+          <p className="chatlab-tagline">Live trip planning</p>
+        </div>
+        <div className="chatlab-header-right">
           <div className="chatlab-region" ref={regionBoxRef}>
             <button type="button" className="chatlab-region-pill" onClick={() => setRegionOpen((o) => !o)}>
-              <Icon>
-                <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
-                <circle cx="12" cy="9.5" r="2.5" />
-              </Icon>
-              {regionLabel}
-              <Icon>
-                <path d="m6 9 6 6 6-6" />
-              </Icon>
+              {'\u{1F30D}'}{' '}
+              {regions.length === 0
+                ? 'Any city'
+                : regions.length === 1
+                ? regions[0].name
+                : `${regions[0].name} +${regions.length - 1}`}
             </button>
             {regionOpen && (
               <div className="chatlab-region-popover">
@@ -287,147 +263,122 @@ export default function Mapr() {
               </div>
             )}
           </div>
-          <ProfileMenu />
+          {totalCost > 0 && <span className="chatlab-cost">{'⚡'} ${totalCost.toFixed(4)}</span>}
         </div>
       </div>
 
-      <div className="plan-grid">
-        <div className="plan-hero">
-          <h1 className="plan-hello">Hey {firstName || 'there'},</h1>
-          <p className="plan-sub">What are you in the mood for?</p>
+      {showPlanner ? (
+        <TripPlannerCard
+          regions={regions}
+          onToggleRegion={toggleRegion}
+          onClearRegions={() => setRegions([])}
+          onClose={() => setShowPlanner(false)}
+          onPlan={(message) => {
+            setShowPlanner(false);
+            send(null, message);
+          }}
+        />
+      ) : (
+        <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 12 }} onClick={() => setShowPlanner(true)}>
+          {'\u{1F9ED}'} Plan Your Trip
+        </button>
+      )}
 
-          <form className="plan-composer" onSubmit={send}>
-            <Icon>
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </Icon>
-            <input
-              type="text"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Tell Mapr what you're looking for…"
-              maxLength={500}
-              autoComplete="off"
-              autoCapitalize="off"
-            />
-            <button type="submit" className="plan-send" disabled={busy || !draft.trim()} aria-label="Send">
-              <Icon>
-                <path d="M12 19V5M5 12l7-7 7 7" />
-              </Icon>
-            </button>
-          </form>
+      {showTasteNudge && <TasteNudgeCard onDone={dismissNudge} onDismiss={dismissNudge} />}
 
-          <div className="plan-pills">
-            {PROMPT_PILLS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                className={`plan-pill ${p.planner && showPlanner ? 'active' : ''}`}
-                disabled={!p.planner && busy}
-                onClick={() => (p.planner ? setShowPlanner(true) : send(null, p.prompt))}
-              >
-                {p.icon}
-                {p.label}
-              </button>
-            ))}
-          </div>
+      <DiscoveryStatsCard />
+      <TasteProfileCard />
 
-          {showPlanner && (
-            <TripPlannerCard
-              regions={regions}
-              onToggleRegion={toggleRegion}
-              onClearRegions={() => setRegions([])}
-              onClose={() => setShowPlanner(false)}
-              onPlan={(message) => {
-                setShowPlanner(false);
-                send(null, message);
-              }}
-            />
-          )}
-
-          {showTasteNudge && <TasteNudgeCard onDone={dismissNudge} onDismiss={dismissNudge} />}
-        </div>
-
-        {conversationStarted && (
-          <div className="chatlab-feed">
-            {messages.map((m, i) => (
-              <div key={i} className={`chatlab-msg ${m.role}`}>
-                {m.role === 'assistant' && <div className="chatlab-avatar" />}
-                <div className={`chatlab-bubble ${m.error ? 'error' : ''}`}>
-                  <p>{m.text}</p>
-                  {m.stops?.length > 0 && (
-                    <div className="chatlab-stops">
-                      {m.stops.map((stop) =>
-                        stop.external ? (
-                          <div key={`ext-${stop.url}`} className="chatlab-stop chatlab-stop-external">
-                            <div className="chatlab-stop-globe">{'\u{1F310}'}</div>
-                            <div className="chatlab-stop-text">
-                              <strong>
-                                {stop.name}
-                                {stop.place ? ` — ${stop.place}` : ''}
-                              </strong>
-                              <span>{stop.reason}</span>
-                              <div className="chatlab-stop-links">
-                                <a href={mapsDeepLink(`${stop.name} ${stop.place}`)} target="_blank" rel="noreferrer">
-                                  Directions
-                                </a>
-                                <a href={stop.url} target="_blank" rel="noreferrer">
-                                  Source {'↗'}
-                                </a>
-                              </div>
-                            </div>
+      <div className="chatlab-feed">
+        {messages.map((m, i) => (
+          <div key={i} className={`chatlab-msg ${m.role}`}>
+            {m.role === 'assistant' && <div className="chatlab-avatar" />}
+            <div className={`chatlab-bubble ${m.error ? 'error' : ''}`}>
+              <p>{m.text}</p>
+              {m.stops?.length > 0 && (
+                <div className="chatlab-stops">
+                  {m.stops.map((stop) =>
+                    stop.external ? (
+                      <div key={`ext-${stop.url}`} className="chatlab-stop chatlab-stop-external">
+                        <div className="chatlab-stop-globe">{'\u{1F310}'}</div>
+                        <div className="chatlab-stop-text">
+                          <strong>
+                            {stop.name}
+                            {stop.place ? ` — ${stop.place}` : ''}
+                          </strong>
+                          <span>{stop.reason}</span>
+                          <div className="chatlab-stop-links">
+                            <a href={mapsDeepLink(`${stop.name} ${stop.place}`)} target="_blank" rel="noreferrer">
+                              Directions
+                            </a>
+                            <a href={stop.url} target="_blank" rel="noreferrer">
+                              Source {'↗'}
+                            </a>
                           </div>
-                        ) : (
-                          <button
-                            key={`${stop.region}/${stop.id}`}
-                            type="button"
-                            className="chatlab-stop"
-                            onClick={() => navigate(`/landmarks/${stop.region}/${stop.id}`)}
-                          >
-                            <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
-                            <div className="chatlab-stop-text">
-                              <strong>{stop.name}</strong>
-                              <span>{stop.reason}</span>
-                            </div>
-                          </button>
-                        )
-                      )}
-                    </div>
-                  )}
-                  {/* Only on the latest message, and only while nothing else is
-                      in flight -- an older question's quick replies would be
-                      answering a turn the conversation has already moved past. */}
-                  {m.quickReplies?.length > 0 && i === messages.length - 1 && !busy && (
-                    <div className="chatlab-quick-replies">
-                      {m.quickReplies.map((qr) => (
-                        <button key={qr} type="button" onClick={() => send(null, qr)}>
-                          {qr}
-                        </button>
-                      ))}
-                    </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        key={`${stop.region}/${stop.id}`}
+                        type="button"
+                        className="chatlab-stop"
+                        onClick={() => navigate(`/landmarks/${stop.region}/${stop.id}`)}
+                      >
+                        <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
+                        <div className="chatlab-stop-text">
+                          <strong>{stop.name}</strong>
+                          <span>{stop.reason}</span>
+                        </div>
+                      </button>
+                    )
                   )}
                 </div>
-              </div>
-            ))}
-            {busy && (
-              <div className="chatlab-msg assistant">
-                <div className="chatlab-avatar" />
-                <div className="chatlab-bubble chatlab-typing">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+              )}
+              {/* Only on the latest message, and only while nothing else is
+                  in flight -- an older question's quick replies would be
+                  answering a turn the conversation has already moved past. */}
+              {m.quickReplies?.length > 0 && i === messages.length - 1 && !busy && (
+                <div className="chatlab-quick-replies">
+                  {m.quickReplies.map((qr) => (
+                    <button key={qr} type="button" onClick={() => send(null, qr)}>
+                      {qr}
+                    </button>
+                  ))}
                 </div>
-              </div>
-            )}
-            <div ref={feedEndRef} />
+              )}
+            </div>
+          </div>
+        ))}
+        {busy && (
+          <div className="chatlab-msg assistant">
+            <div className="chatlab-avatar" />
+            <div className="chatlab-bubble chatlab-typing">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </div>
         )}
-
-        <div className="plan-side">
-          <TasteProfileCard />
-          <DiscoveryStatsCard />
-        </div>
+        <div ref={feedEndRef} />
       </div>
+
+      <div className="action-bar-spacer" />
+      <form className="fixed-action-bar chatlab-composer" onSubmit={send}>
+        <div className="fixed-action-bar-inner chatlab-composer-inner">
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Tell it what you're up for…"
+            maxLength={500}
+            autoComplete="off"
+            autoCapitalize="off"
+          />
+          <button type="submit" className="chatlab-send" disabled={busy || !draft.trim()} aria-label="Send">
+            {'\u{27A4}'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

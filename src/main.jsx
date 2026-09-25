@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/theme.css';
-import './styles/redesign.css';
 import App from './App.jsx';
 import { capturePendingReferralFromUrl } from './lib/referrals';
 import { registerOfflineServiceWorker } from './lib/offlineMap';
