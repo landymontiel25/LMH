@@ -409,6 +409,12 @@ textarea {
   white-space: nowrap;
 }
 
+.tag-active {
+  background: var(--color-brass, #b08d57);
+  border-color: var(--color-brass, #b08d57);
+  color: #fff;
+}
+
 .tag-free {
   border-color: var(--color-green);
   color: #bfe0c8;

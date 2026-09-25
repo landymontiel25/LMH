@@ -13,6 +13,7 @@ import { logPlanningEvent } from '../lib/timeSaved';
 import { useVoiceInput } from '../lib/useVoiceInput';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
+import TasteNudgeCard from '../components/TasteNudgeCard';
 
 // "You haven't told Mapr what you like yet" nudge -- shown once (per
 // device/account) until either dismissed outright or satisfied by actually
@@ -189,25 +190,7 @@ export default function Mapr() {
         </div>
       </div>
 
-      {showTasteNudge && (
-        <div className="card section taste-nudge-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-            <p style={{ margin: 0 }}>
-              {'\u{1F44B}'} Hey — you haven't told Mapr what you like yet. Just say it in the chat below (like "I
-              love hiking and steak") and that counts — you won't see this again.
-            </p>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              style={{ flexShrink: 0 }}
-              onClick={dismissNudge}
-              aria-label="Dismiss"
-            >
-              {'\u{2715}'}
-            </button>
-          </div>
-        </div>
-      )}
+      {showTasteNudge && <TasteNudgeCard onDone={dismissNudge} onDismiss={dismissNudge} />}
 
       <DiscoveryStatsCard />
       <TasteProfileCard />
