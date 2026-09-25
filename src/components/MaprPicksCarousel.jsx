@@ -12,17 +12,17 @@ import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 import RateLandmarkSearch from './RateLandmarkSearch';
 
 // "Your Mapr Picks": landmarks Mapr thinks you'll love next, as a
-// swipeable card row under the taste card. All of them are on screen at
-// once (not just the first few) -- swiping right keeps revealing more
-// instead of dead-ending. Asks /api/mapr-picks (Claude, fed your ratings,
-// chips and comments) for RESERVE at once so a ✓/✗ or a swipe near the end
-// pulls from what's already loaded without another call; the local
-// affinity scorer tops the queue back up for free once that runs out (and
-// fills everything if the API is unavailable). A local-scorer pass also
-// paints the very first frame instantly, before either the cache read or
-// the API call would otherwise land. Cached for a day per user, rating
-// count and coarse location.
-const RESERVE = 8;
+// swipeable card row under the taste card. Capped at RESERVE (10) on
+// screen at once -- swiping alone never loads more; only voting (✓/✗/not
+// sure) on one pulls in a replacement, so the deck only grows once you've
+// actually weighed in. Asks /api/mapr-picks (Claude, fed your ratings,
+// chips and comments) for RESERVE at once; the local affinity scorer tops
+// the queue back up for free once the API response runs low (and fills
+// everything if the API is unavailable). A local-scorer pass also paints
+// the very first frame instantly, before either the cache read or the API
+// call would otherwise land. Cached for a day per user, rating count and
+// coarse location.
+const RESERVE = 10;
 
 export default function MaprPicksCarousel({ reviews, interests = [], checkedInIds = [], regionIds = [] }) {
   const { user } = useAuth();
@@ -35,15 +35,16 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // beat for one rather than answer for the wrong city.
   const origin = coords ? { lat: coords.lat, lng: coords.lng } : null;
   const locKey = coarseLocation(origin);
-  const [queue, setQueue] = useState(null); // every loaded pick; all shown, onScroll tops it up
+  const [queue, setQueue] = useState(null); // up to RESERVE picks; voting on one pulls in the next
   const [active, setActive] = useState(0);
-  // { [landmarkId]: 'yes' | 'no' } -- your ✓ / ✗ on picks, for the buttons'
-  // state and as a light signal to Mapr next time.
+  // { [landmarkId]: 'yes' | 'no' | 'unsure' } -- your ✓ / ✗ / "not sure" on
+  // picks, for the buttons' state and as a light signal to Mapr next time.
+  // "unsure" carries no taste signal at all -- it just keeps that landmark
+  // from being offered again, for whenever you genuinely don't know yet.
   const [feedback, setFeedback] = useState({});
   // Same votes with their categories, for the local top-up scorer.
   const fbListRef = useRef([]);
   const trackRef = useRef(null);
-  const toppedUpAtRef = useRef(-1);
   const ratingsCount = reviews?.length || 0;
   // Everything a traveler has told Mapr that ISN'T a landmark rating --
   // taste intro + baseline picks + per-category comments (see
@@ -94,7 +95,6 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     }
     let cancelled = false;
     const key = picksCacheKey(user.uid, ratingsCount, origin, tasteFP);
-    toppedUpAtRef.current = -1;
 
     // Paint something right away -- the cached list is already synchronous,
     // and the local scorer is free (no network), so neither should leave
@@ -215,31 +215,6 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     if (!el || !el.firstElementChild) return;
     const w = el.firstElementChild.getBoundingClientRect().width + 10;
     setActive(Math.max(0, Math.round(el.scrollLeft / w) - 1));
-    // Swiping close to the last loaded card tops the queue up for free (the
-    // local scorer, no API call) instead of leaving the last card as a dead
-    // end -- so swiping right keeps surfacing more to vote on.
-    if (el.scrollWidth - el.scrollLeft - el.clientWidth < w * 2) {
-      setQueue((cur) => {
-        if (!cur || cur.length === 0 || toppedUpAtRef.current === cur.length) return cur;
-        toppedUpAtRef.current = cur.length;
-        const seen = new Set([...cur.map((x) => x.id), ...Object.keys(feedback), ...excludeIds]);
-        const extra = localMaprPicks({
-          reviews: localReviews,
-          interests,
-          checkedInIds: [...seen],
-          weakCheckedInIds,
-          regionIds,
-          origin,
-          ratings,
-          feedback: fbListRef.current,
-          limit: RESERVE,
-        }).filter((x) => !seen.has(x.id));
-        if (extra.length === 0) return cur;
-        const next = [...cur, ...extra];
-        writePicksCache(picksCacheKey(user.uid, ratingsCount, origin, tasteFP), next);
-        return next;
-      });
-    }
   };
 
   // Either vote records your taste and swaps the card for the next pick
@@ -283,9 +258,6 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // (the picks themselves, their note, the dots) only makes sense once the
   // queue has something in it.
   if (!user) return null;
-  // The full queue is on screen, not just the first SHOWN -- swiping right
-  // keeps surfacing more instead of dead-ending after 4 (onScroll tops it
-  // back up before you run out).
   const picks = queue || [];
 
   return (
@@ -304,7 +276,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       </div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>
         {picks.length > 0
-          ? `${origin ? 'Near you right now. ' : ''}Tap a card to go there. ${'\u{2713}'} / ${'\u{2715}'} teach Mapr what you like.`
+          ? `${origin ? 'Near you right now. ' : ''}Tap a card to go there. ${'\u{2713}'} / ${'\u{2715}'} teach Mapr what you like -- not sure yet? Skip it without saying either way.`
           : "Rate a place directly, or check in somewhere to start getting picks."}
       </p>
       <div className="mapr-picks-track" ref={trackRef} onScroll={onScroll}>
@@ -328,6 +300,14 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
                 </button>
                 <button type="button" className="mapr-pick-vote no" onClick={() => vote(p, 'no')} title="Not for me">
                   {'\u{2715}'} Not for me
+                </button>
+                <button
+                  type="button"
+                  className="mapr-pick-vote unsure"
+                  onClick={() => vote(p, 'unsure')}
+                  title="Not sure -- won't show this one again, but it won't count against it either"
+                >
+                  {'\u{1F937}'} Not sure
                 </button>
               </div>
             </div>
