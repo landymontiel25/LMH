@@ -1,0 +1,696 @@
+/* Visual redesign layer (loaded after theme.css). Only changes how things
+   look: palette, type, cards, buttons, tabs, and the Plan (Mapr) screen's
+   layout. Phones get the blue accent from the mobile design, wide screens
+   the lime accent from the web design. */
+
+:root {
+  --accent: #3b82f6;
+  --accent-soft: #60a5fa;
+  --accent-contrast: #ffffff;
+  --accent-bar: linear-gradient(90deg, #818cf8, #60a5fa);
+  --font-display: 'DM Serif Display', Georgia, 'Times New Roman', serif;
+  --tag-bg: rgba(255, 255, 255, 0.06);
+  --match-green: #4ade80;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --accent: #d4f36b;
+    --accent-soft: #d4f36b;
+    --accent-contrast: #0b0d10;
+    --accent-bar: #d4f36b;
+  }
+}
+
+:root:not([data-theme='light']) {
+  --color-bg: #0a0c10;
+  --color-bg-rgb: 10, 12, 16;
+  --color-bg-raised: #0f1216;
+  --color-bg-card: #14171c;
+  --color-brass: var(--accent);
+  --color-brass-bright: var(--accent-soft);
+  --color-green: #22c55e;
+  --color-parchment: #f3f4f6;
+  --color-parchment-dim: #8e949d;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-soft: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-heading: var(--font-body);
+}
+
+[data-theme='light'] {
+  --tag-bg: rgba(43, 38, 32, 0.06);
+}
+
+body {
+  background-image: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--color-parchment);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.screen-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2rem;
+  letter-spacing: 0;
+}
+
+/* ---------- Buttons, cards, tags, chips ---------- */
+
+.btn {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--color-bg-card);
+  color: var(--color-parchment);
+}
+
+.btn-sm {
+  font-size: 0.8rem;
+}
+
+.btn-tight {
+  font-size: 0.75rem;
+  letter-spacing: 0;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: none;
+  filter: brightness(1.08);
+}
+
+.card {
+  background: var(--color-bg-card);
+  border-radius: 18px;
+  box-shadow: none;
+}
+
+.modal-card {
+  border-color: var(--glass-border);
+  border-radius: 20px;
+}
+
+.tag {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.74rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-color: var(--glass-border);
+  background: var(--tag-bg);
+  color: var(--color-parchment);
+}
+
+.chip {
+  border-radius: 14px;
+  background: var(--color-bg-card);
+}
+
+.chip.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--color-parchment);
+}
+
+.level-bar-track {
+  height: 6px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.level-bar-fill {
+  background: var(--accent-bar);
+  border-radius: 3px;
+}
+
+/* ---------- Header ---------- */
+
+.app-header {
+  background: var(--color-bg-card);
+  border-color: var(--glass-border);
+}
+
+.app-header .brand-text {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--color-parchment);
+}
+
+.profile-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  background: #1b1f25;
+  color: var(--color-parchment);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+[data-theme='light'] .profile-avatar {
+  background: var(--color-bg-card);
+}
+
+.points-popover {
+  background: var(--color-bg-card);
+  border-color: var(--glass-border);
+}
+
+.points-popover-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* ---------- Bottom tabs ---------- */
+
+.bottom-nav {
+  max-width: none;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  box-shadow: none;
+  background: var(--color-bg-raised);
+  justify-content: center;
+  height: calc(68px + env(safe-area-inset-bottom, 0px));
+}
+
+.bottom-nav a {
+  max-width: 128px;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.bottom-nav a.active {
+  color: var(--accent-soft);
+}
+
+.bottom-nav .nav-icon {
+  display: flex;
+  font-size: 0;
+}
+
+.bottom-nav .nav-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---------- Plan (Mapr) screen ---------- */
+
+.app-main:has(.plan) {
+  max-width: 1240px;
+}
+
+.chatlab.plan {
+  --chatlab-bg: transparent;
+  --chatlab-panel: var(--color-bg-card);
+  --chatlab-border: var(--glass-border);
+  --chatlab-cyan: var(--accent-soft);
+  --chatlab-violet: var(--accent);
+  --chatlab-pink: var(--accent);
+  --chatlab-text: var(--color-parchment);
+  --chatlab-text-dim: var(--color-parchment-dim);
+  font-family: var(--font-body);
+  background: none;
+  padding: 0;
+  min-height: 0;
+  border-radius: 0;
+}
+
+.plan-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.plan-wordmark {
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  line-height: 1;
+  color: var(--color-parchment);
+}
+
+.plan-top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plan .chatlab-region-pill {
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--color-parchment);
+  background: var(--color-bg-card);
+  border-color: var(--glass-border);
+}
+
+.plan .chatlab-region-pill svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.plan .chatlab-region-popover {
+  background: var(--color-bg-card);
+  border-color: var(--glass-border);
+}
+
+.plan .chatlab-region-popover .autocomplete-list {
+  background: var(--color-bg-card);
+}
+
+.plan .chatlab-region-popover .autocomplete-item:hover,
+.plan .chatlab-region-popover .autocomplete-item:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.plan-hello {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2.5rem;
+  line-height: 1.08;
+  letter-spacing: 0;
+  margin: 0 0 6px;
+}
+
+.plan-sub {
+  margin: 0 0 18px;
+  font-size: 1.15rem;
+  color: var(--color-parchment-dim);
+}
+
+.plan-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 62px;
+  padding: 0 8px 0 18px;
+  margin-bottom: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background: var(--color-bg-card);
+}
+
+.plan-composer:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.plan-composer > svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--color-parchment-dim);
+}
+
+.plan-composer input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-parchment);
+}
+
+.plan-composer input::placeholder {
+  color: var(--color-parchment-dim);
+}
+
+.plan-send {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.plan-send svg {
+  width: 20px;
+  height: 20px;
+}
+
+.plan-send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.plan-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 26px;
+}
+
+.plan-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--color-parchment);
+  font-family: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.plan-pill svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-parchment-dim);
+}
+
+.plan-pill:hover,
+.plan-pill.active {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.plan-pill:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.plan-cost {
+  font-size: 0.72rem;
+  color: var(--color-parchment-dim);
+  white-space: nowrap;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'hero'
+    'feed'
+    'side';
+}
+
+.plan-hero {
+  grid-area: hero;
+  min-width: 0;
+}
+
+.plan .chatlab-feed {
+  grid-area: feed;
+  min-width: 0;
+}
+
+.plan-side {
+  grid-area: side;
+  min-width: 0;
+}
+
+/* Section cards on the Plan screen (taste profile, stats, planner). */
+.plan .card,
+.plan .discovery-stats-card,
+.plan .taste-profile-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  box-shadow: none;
+  color: var(--color-parchment);
+}
+
+.plan .chatlab-avatar {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.plan .chatlab-bubble {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 18px;
+}
+
+.plan .chatlab-msg.user .chatlab-bubble {
+  background: var(--accent);
+  border-color: transparent;
+  border-bottom-right-radius: 6px;
+}
+
+.plan .chatlab-msg.user .chatlab-bubble p {
+  color: var(--accent-contrast);
+}
+
+.plan .chatlab-msg.assistant .chatlab-bubble {
+  border-bottom-left-radius: 6px;
+}
+
+.plan .chatlab-stop {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+}
+
+.plan .chatlab-stop:hover {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.plan .chatlab-stop-globe {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.plan .chatlab-quick-replies button {
+  background: transparent;
+  border-color: var(--glass-border);
+  font-size: 0.85rem;
+  padding: 8px 14px;
+}
+
+.plan .chatlab-quick-replies button:hover {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* ---------- Taste profile + stat cards (anywhere they appear) ---------- */
+
+.taste-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.taste-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-parchment);
+  font-family: inherit;
+  font-size: 1.15rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.taste-title svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-parchment-dim);
+}
+
+.taste-meter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 260px;
+}
+
+.taste-meter .level-bar-track {
+  flex: 1;
+}
+
+.taste-pct {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.05;
+}
+
+.taste-pct strong {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-parchment);
+}
+
+.taste-pct span {
+  font-size: 0.78rem;
+  color: var(--color-parchment-dim);
+}
+
+.taste-note {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  color: var(--color-parchment-dim);
+}
+
+.stat-label {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.stat-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stat-num {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.stat-unit {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.stat-sub {
+  margin-top: 6px;
+  font-size: 0.88rem;
+  color: var(--color-parchment-dim);
+}
+
+/* ---------- Web layout ---------- */
+
+@media (min-width: 1024px) {
+  .app-main:has(.plan) {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+
+  .plan-grid {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'hero side'
+      'feed side';
+    column-gap: 40px;
+  }
+
+  .plan-side {
+    align-self: start;
+    position: sticky;
+    top: 24px;
+  }
+
+  .plan-hello {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 3rem;
+    letter-spacing: -0.02em;
+  }
+
+  .plan-sub {
+    font-size: 1.4rem;
+    margin-bottom: 26px;
+  }
+
+  .plan-composer {
+    height: 72px;
+    padding-left: 24px;
+  }
+}
+
+/* ---------- Leftover old-style pieces ---------- */
+
+/* Buttons and toggles read in normal case, like the rest of the new look.
+   Small labels (field labels, eyebrows, stat captions) stay uppercase, the
+   same kicker style the design uses. */
+.tab-btn,
+.mapr-pick-vote,
+.score-chip-join {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+.tab-btn {
+  font-size: 0.85rem;
+  background: var(--color-bg-card);
+}
+
+.tab-btn.active {
+  border-color: var(--accent);
+  color: var(--color-parchment);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* Landmark photos: a clean rounded card instead of the tilted polaroid. */
+.postcard,
+.postcard.rot-r {
+  background: var(--color-bg-card);
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  overflow: hidden;
+  transform: none;
+  box-shadow: none;
+}
+
+.postcard::before,
+.postcard::after {
+  display: none;
+}
+
+.postcard-photo {
+  border-radius: 0;
+  background: #1b1f25;
+}
+
+.postcard-gallery {
+  border-radius: 0;
+}
+
+.landmark-thumb {
+  border-radius: 12px;
+  border-color: var(--glass-border);
+}

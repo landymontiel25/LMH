@@ -20,12 +20,15 @@ import { isRateLimited } from './_lib/rateLimit.js';
 // these flows.
 const APP_HELP =
   `HOW LANDMARK HUNTERS WORKS (for questions about the app itself, not a landmark):\n` +
-  `- Navigation: 5 tabs — Map, Landmarks, Mapr, Itinerary, Profile.\n` +
-  `- Mapr (the middle tab, app home screen): a live AI chat, opened every day — type or describe what you're up for (a vibe, a time budget, an ` +
+  `- Navigation: tabs along the bottom — Plan (Mapr), Landmarks, Map, Itinerary, Profile. "Plan" is the Mapr tab under a new label.\n` +
+  `- Mapr (the "Plan" tab, first in the tab bar, app home screen): a live AI chat, opened every day. It greets you ("Hey <name>, what are ` +
+  `you in the mood for?"), with a search-style box at the top; type or describe what you're up for (a vibe, a time budget, an ` +
   `interest) and it replies with 0-4 real stops, from the curated catalog or the live web. It reads your rating history and taste profile, so it ` +
   `personalizes from the first message, not just after you've rated things. It also weighs the CURRENT message's timing/mood ("Saturday night in the ` +
   `city") over a blanket favorite category — loving hiking doesn't mean it suggests a trail when you're clearly asking for nightlife. The city pill in ` +
-  `its header supports picking several cities at once, not just one. A "🧭 Plan Your Trip" card (open it any time, or land on it automatically via ` +
+  `the top row (📍 next to the "Mapr" wordmark) supports picking several cities at once, not just one. Under the box are one-tap shortcut ` +
+  `pills (Dinner tonight, Outdoors, Hidden gems, Keep it lowkey) that send that request as if typed. The "Full day itinerary" pill opens the ` +
+  `"🧭 Plan Your Trip" card (open it any time, or land on it automatically via ` +
   `Itinerary's "Use Mapr" button) lets you set a starting location, region, interests, mood (energized/active vs. easygoing/chill — the same ` +
   `place can be a yes on a lazy morning and a no on a Saturday night out), and solo/group in one place, then turns it into a normal chat message ` +
   `Mapr answers like any other.\n` +
@@ -63,7 +66,7 @@ const APP_HELP =
   `step (or skip), then the nearest real landmark to your GPS with a one-tap check-in. Reaching that final step — whether or not you check in — ` +
   `completes onboarding and awards the "Welcome" badge plus 10 bonus points.\n` +
   `- Trip Setup: no longer its own tab. The Itinerary tab's empty/overview state leads with "🧭 Use Mapr (recommended)", which jumps straight to ` +
-  `Mapr's Plan Your Trip card (see above) — a "➕ Create New Trip" modal (same starting location/region/interests form, plus a full solo-vs-group ` +
+  `the Plan tab's Plan Your Trip card (see above) — a "➕ Create New Trip" modal (same starting location/region/interests form, plus a full solo-vs-group ` +
   `flow with friend invites) is still there underneath it for anyone who wants the old non-chat form instead.\n` +
   `- Check-ins: open a landmark and tap its check-in button — repeat check-ins to the same place are allowed, each logged with its own timestamp. ` +
   `Points taper on repeats: full points on the 1st visit, about 20% on the 2nd-5th, nothing from the 6th on — but every visit still counts toward Mapr ` +
