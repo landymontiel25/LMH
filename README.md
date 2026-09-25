@@ -34,7 +34,7 @@ Deploy `firestore.rules` and `storage.rules` from this repo as-is (Firestore Dat
 
 ## AI features (optional)
 
-The in-app AI assistant (the "✨ Ask AI" widget, the Test tab's trip-planning chat, custom-interest matching on Setup, and landmark-submission verification) is powered by the Anthropic API via serverless functions in `api/`. Add `ANTHROPIC_API_KEY` to `.env` (see `.env.example`) to enable it locally, and as a Vercel environment variable in production. Without it, those features show a "not set up yet" message — everything else works fine.
+The in-app AI assistant (the "✨ Ask AI" widget, the Mapr trip-planning chat, custom-interest matching on Setup, and landmark-submission verification) is powered by the Anthropic API via serverless functions in `api/`. Add `ANTHROPIC_API_KEY` to `.env` (see `.env.example`) to enable it locally, and as a Vercel environment variable in production. Without it, those features show a "not set up yet" message — everything else works fine.
 
 ## How the leaderboard resets
 
