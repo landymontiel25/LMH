@@ -30,6 +30,22 @@ export const POINTS_PER_CHECKIN = 100;
 // the claim meaningful. Individual landmarks can widen this via
 // `checkInRadiusMeters` (malls, parks, beaches, national parks, etc.).
 export const CHECKIN_RADIUS_METERS = 30;
+// A landmark within this of the user's home address earns 0 points no
+// matter what -- otherwise a landmark right next to home would be free
+// points on demand (and blocks the obvious exploit of self-submitting a
+// custom landmark, like a water tower, next door). The visit still logs in
+// full either way; only the payout is zeroed.
+export const HOME_RADIUS_METERS = 804.672; // 0.5 miles
+
+// Payout taper for repeat visits to the same landmark: full the first time,
+// a light nudge for a handful of return trips, then nothing -- repeat
+// visits keep logging in full for Mapr either way (see claimCheckIn), this
+// only governs what pays out.
+export function taperedPoints(basePoints, visitNumber) {
+  if (visitNumber <= 1) return basePoints;
+  if (visitNumber <= 5) return Math.round(basePoints * 0.2);
+  return 0;
+}
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -56,13 +72,48 @@ export function periodKeys(date = new Date()) {
 export const PERIODS = ['weekly', 'monthly', 'yearly'];
 
 /**
- * Claims points for a landmark check-in. Idempotent per user+landmark: a landmark
- * can only ever award points once for a given user, tracked via the `checkins` doc id.
- * Returns { claimed: boolean, alreadyClaimed: boolean }.
+ * Claims a check-in. No longer one-and-done per landmark -- every visit
+ * gets its own doc (visit #1 keeps the original uid_landmarkId id, so every
+ * check-in that predates this change stays valid untouched; visit #2
+ * onward is uid_landmarkId_<visitNumber>), so re-checking in somewhere is
+ * always allowed and always logged with its own timestamp. What pays out
+ * is a separate question from what gets logged: payout is 0 inside the
+ * user's home radius (see HOME_RADIUS_METERS) and tapers with repeat
+ * visits outside it (see taperedPoints) -- but the visit itself is always
+ * recorded in full regardless, since Mapr should learn from every visit
+ * whether or not it paid out.
+ * Returns { claimed, alreadyClaimed, visitNumber?, payout?, checkinId? }.
  */
-export async function claimCheckIn({ userId, userName, landmarkId, landmarkName, region, points = POINTS_PER_CHECKIN }) {
-  const checkinRef = doc(db, 'checkins', `${userId}_${landmarkId}`);
+export async function claimCheckIn({
+  userId,
+  userName,
+  landmarkId,
+  landmarkName,
+  region,
+  points = POINTS_PER_CHECKIN,
+  ratingOnly = false,
+  homeCoords = null,
+  landmarkCoords = null,
+}) {
+  // Visit numbering needs a count of this user's prior check-ins here -- a
+  // query, which a transaction can't run (only reads by reference). This
+  // happens just before the transaction; the transaction's own existence
+  // check on the resulting doc id is what actually guards against a real
+  // race (two taps landing on the same visit number), the same protection
+  // the original single-checkin version always had.
+  const priorSnap = await getDocs(
+    query(collection(db, 'checkins'), where('userId', '==', userId), where('landmarkId', '==', landmarkId))
+  );
+  const visitNumber = priorSnap.size + 1;
+  const checkinId = visitNumber === 1 ? `${userId}_${landmarkId}` : `${userId}_${landmarkId}_${visitNumber}`;
+  const checkinRef = doc(db, 'checkins', checkinId);
   const keys = periodKeys();
+
+  const insideHomeRadius =
+    !!homeCoords &&
+    !!landmarkCoords &&
+    distanceMeters(homeCoords.lat, homeCoords.lng, landmarkCoords.lat, landmarkCoords.lng) <= HOME_RADIUS_METERS;
+  const payout = ratingOnly || insideHomeRadius ? 0 : taperedPoints(points, visitNumber);
 
   const result = await runTransaction(db, async (tx) => {
     const existing = await tx.get(checkinRef);
@@ -76,27 +127,37 @@ export async function claimCheckIn({ userId, userName, landmarkId, landmarkName,
       landmarkId,
       landmarkName,
       region,
-      points,
+      points: payout,
+      basePoints: points,
+      visitNumber,
+      ratingOnly,
+      // Explicit, so isRealCheckin never has to infer "was this a real
+      // visit" from the points value alone -- a home-radius or
+      // fully-tapered repeat visit is still real, at 0 points.
+      visited: !ratingOnly,
+      insideHomeRadius,
       createdAt: serverTimestamp(),
     });
 
-    for (const period of PERIODS) {
-      const entryRef = doc(db, 'leaderboard_entries', `${period}_${keys[period]}_${userId}`);
-      tx.set(
-        entryRef,
-        {
-          userId,
-          userName,
-          period,
-          periodKey: keys[period],
-          points: increment(points),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+    if (payout > 0) {
+      for (const period of PERIODS) {
+        const entryRef = doc(db, 'leaderboard_entries', `${period}_${keys[period]}_${userId}`);
+        tx.set(
+          entryRef,
+          {
+            userId,
+            userName,
+            period,
+            periodKey: keys[period],
+            points: increment(payout),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
     }
 
-    return { claimed: true, alreadyClaimed: false };
+    return { claimed: true, alreadyClaimed: false, visitNumber, payout, checkinId };
   });
 
   return result;
@@ -218,6 +279,15 @@ export async function hasClaimedLandmark(userId, landmarkId) {
   return snap.exists();
 }
 
+/** How many times a user has visited this landmark (real visits, not ratingOnly claims). */
+export async function getVisitCount(userId, landmarkId) {
+  if (!db || !userId || !landmarkId) return 0;
+  const snap = await getDocs(
+    query(collection(db, 'checkins'), where('userId', '==', userId), where('landmarkId', '==', landmarkId))
+  );
+  return snap.docs.map((d) => d.data()).filter(isRealCheckin).length;
+}
+
 /**
  * Sums a user's all-time points across every landmark they've checked into.
  * A single-field equality query, so no composite index is needed.
@@ -235,10 +305,20 @@ export async function getUserTotalPoints(userId) {
 // Landmark" makes (see CheckInContext's ratingOnly flag). Its checkins doc
 // is real (Firestore rules require one to exist before its review can be
 // written), but it isn't a visit, so it shouldn't count toward check-in/city
-// stats, badges, or "already been here" map state. A doc with no points
-// field at all (older data) is treated as real -- explicit 0 is the only
-// non-real case. Same rule as streaks.js' isRealCheckin.
-function isRealCheckin(x) {
+// stats, badges, or "already been here" map state. Checked via the
+// explicit `visited`/`ratingOnly` fields claimCheckIn now writes on every
+// check-in, not `points !== 0` -- a repeat visit inside the home radius or
+// past the taper cutoff is still a real, physical visit at 0 payout, so
+// points alone can no longer tell "real but unpaid" apart from
+// "ratingOnly, never a visit at all". Data written before those fields
+// existed has neither, so it falls back to the old points-based rule,
+// which was always correct for that older data (no 0-payout reals existed
+// yet). Same rule as streaks.js' isRealCheckin -- shared here, not
+// duplicated, so every caller (leaderboard, streaks, check-in galleries,
+// friend stats, Mapr ratings) agrees on what counts as a real visit.
+export function isRealCheckin(x) {
+  if (x.ratingOnly) return false;
+  if (typeof x.visited === 'boolean') return x.visited;
   return x.points !== 0;
 }
 

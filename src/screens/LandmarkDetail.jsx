@@ -16,7 +16,14 @@ import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useFriends } from '../lib/FriendsContext';
 import { submitReview, getMyReview, getLandmarkReviews, reportReview, deleteMyReview } from '../lib/reviews';
 import { isRateable, tierById } from '../lib/ratingFlow';
-import { getMyCheckin, addCheckinPhoto, removeCheckinPhoto, updateCheckinTimestamp, MAX_CHECKIN_PHOTOS } from '../lib/leaderboard';
+import {
+  getMyCheckin,
+  getVisitCount,
+  addCheckinPhoto,
+  removeCheckinPhoto,
+  updateCheckinTimestamp,
+  MAX_CHECKIN_PHOTOS,
+} from '../lib/leaderboard';
 import { regionTimezone, tzAbbrev, toZonedInputValue, fromZonedInputValue } from '../lib/timezones';
 import RatingFlow from '../components/RatingFlow';
 import LandmarkPostcard from '../components/LandmarkPostcard';
@@ -127,6 +134,7 @@ export default function LandmarkDetail() {
   const [savedRating, setSavedRating] = useState(null);
   // Your own check-in doc here (for "Checked in: Tuesday, Sep 15 at 3:47 PM").
   const [myCheckin, setMyCheckin] = useState(null);
+  const [visitCount, setVisitCount] = useState(0);
   // Admin Mode: editing this check-in's date/time, same as editing the
   // landmark's own fields above.
   const [editingCheckinDate, setEditingCheckinDate] = useState(false);
@@ -243,9 +251,13 @@ export default function LandmarkDetail() {
   useEffect(() => {
     if (!firebaseEnabled || !user || !landmark || !checkedInHere) {
       setMyCheckin(null);
+      setVisitCount(0);
       return;
     }
     let cancelled = false;
+    getVisitCount(user.uid, landmark.id).then((n) => {
+      if (!cancelled) setVisitCount(n);
+    });
     getMyCheckin(user.uid, landmark.id)
       .then((c) => {
         if (cancelled) return;
@@ -615,6 +627,11 @@ export default function LandmarkDetail() {
             </p>
           ) : (
             <ul className="checkin-stats">
+              {visitCount > 1 && (
+                <li>
+                  <span>Visits:</span> {visitCount}
+                </li>
+              )}
               <li>
                 <span>Checked in:</span> {myCheckin?.createdAt?.seconds ? fmtCheckinTime(myCheckin.createdAt.seconds) : '…'}
                 {adminMode && isAdmin(user?.email) && !editingCheckinDate && (

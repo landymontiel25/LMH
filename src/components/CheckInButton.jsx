@@ -18,7 +18,10 @@ export default function CheckInButton({ landmark, user, firebaseEnabled, claimed
   const { coords } = useGeo();
   if (!firebaseEnabled) return null;
 
-  const isClaimed = !!claimedMap[landmark.id];
+  // "Visited before" is just a badge now, not a lock -- unlimited repeat
+  // check-ins are allowed (see leaderboard.js's taperedPoints/home-radius),
+  // so a prior visit never disables the button.
+  const alreadyVisited = !!claimedMap[landmark.id];
   const busy = checkingIn === landmark.id;
   const radius = landmark.checkInRadiusMeters ?? CHECKIN_RADIUS_METERS;
   const hasPosition = landmark.lat != null && landmark.lng != null;
@@ -27,13 +30,11 @@ export default function CheckInButton({ landmark, user, firebaseEnabled, claimed
   const tooFar = REQUIRE_PROXIMITY && distance != null && distance > radius;
 
   const handleClick = () => {
-    if (isClaimed || !user || busy || noLocation || tooFar) return;
+    if (!user || busy || noLocation || tooFar) return;
     onCheckIn(landmark);
   };
 
-  const label = isClaimed
-    ? `✓ Checked In (+${landmark.points ?? POINTS_PER_CHECKIN})`
-    : busy
+  const label = busy
     ? '…'
     : !user
     ? 'Sign in to Check In'
@@ -41,13 +42,15 @@ export default function CheckInButton({ landmark, user, firebaseEnabled, claimed
     ? 'Enable location to check in'
     : tooFar
     ? 'Get closer to check in'
+    : alreadyVisited
+    ? `\u{1F4CD} Check In Again (+${landmark.points ?? POINTS_PER_CHECKIN})`
     : "\u{1F4CD} Check In";
 
   return (
     <button
       type="button"
-      className={`btn btn-sm ${isClaimed ? 'btn-success' : 'btn-primary'} ${className}`}
-      disabled={isClaimed || !user || busy || noLocation || tooFar}
+      className={`btn btn-sm ${alreadyVisited ? 'btn-success' : 'btn-primary'} ${className}`}
+      disabled={!user || busy || noLocation || tooFar}
       title={!user ? 'Sign in to check in' : tooFar ? `You need to be within ${radius}m of this spot` : 'Check in'}
       onClick={handleClick}
     >

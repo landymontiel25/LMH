@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { periodKeys } from './leaderboard';
+import { periodKeys, taperedPoints, isRealCheckin, HOME_RADIUS_METERS } from './leaderboard';
 
 describe('periodKeys', () => {
   it('computes matching weekly/monthly/yearly keys for a known date', () => {
@@ -20,5 +20,44 @@ describe('periodKeys', () => {
     const keys = periodKeys(new Date(Date.UTC(2027, 0, 1)));
     expect(keys.monthly).toBe('2027-01');
     expect(keys.yearly).toBe('2027');
+  });
+});
+
+describe('taperedPoints', () => {
+  it('pays full points on the first visit', () => {
+    expect(taperedPoints(100, 1)).toBe(100);
+  });
+
+  it('pays 20% on the 2nd-5th visit', () => {
+    expect(taperedPoints(100, 2)).toBe(20);
+    expect(taperedPoints(100, 5)).toBe(20);
+  });
+
+  it('pays nothing from the 6th visit on', () => {
+    expect(taperedPoints(100, 6)).toBe(0);
+    expect(taperedPoints(100, 50)).toBe(0);
+  });
+});
+
+describe('HOME_RADIUS_METERS', () => {
+  it('is 0.5 miles', () => {
+    expect(HOME_RADIUS_METERS).toBeCloseTo(804.672, 2);
+  });
+});
+
+describe('isRealCheckin', () => {
+  it('is false for a ratingOnly claim, whatever its points', () => {
+    expect(isRealCheckin({ ratingOnly: true, points: 0 })).toBe(false);
+    expect(isRealCheckin({ ratingOnly: true, points: 100 })).toBe(false);
+  });
+
+  it('trusts the explicit visited flag when present, even at 0 points', () => {
+    expect(isRealCheckin({ visited: true, points: 0 })).toBe(true);
+    expect(isRealCheckin({ visited: false, points: 100 })).toBe(false);
+  });
+
+  it('falls back to the points heuristic for legacy data with neither field', () => {
+    expect(isRealCheckin({ points: 100 })).toBe(true);
+    expect(isRealCheckin({ points: 0 })).toBe(false);
   });
 });

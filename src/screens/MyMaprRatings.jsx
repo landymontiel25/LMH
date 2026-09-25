@@ -41,10 +41,16 @@ export default function MyMaprRatings() {
     getUserCheckins(user.uid)
       .then((rows) => {
         if (cancelled) return;
-        // A ratingOnly claim always has points === 0 (see CheckInContext) --
-        // a real check-in either has no points field at all (older data) or
-        // a positive one, never exactly 0.
-        setRatingOnlyIds(new Set(rows.filter((c) => c.points === 0).map((c) => c.landmarkId)));
+        // A ratingOnly claim is an explicit "Rate a Landmark" click, never a
+        // real visit -- legacy rows without the field fall back to the old
+        // points === 0 heuristic (payout-0 real visits didn't exist yet then).
+        setRatingOnlyIds(
+          new Set(
+            rows
+              .filter((c) => (typeof c.ratingOnly === 'boolean' ? c.ratingOnly : c.points === 0))
+              .map((c) => c.landmarkId)
+          )
+        );
       })
       .catch(() => {
         if (!cancelled) setRatingOnlyIds(new Set());

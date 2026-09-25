@@ -10,7 +10,7 @@ export const CheckInContext = createContext(null);
 
 export function CheckInProvider({ children }) {
   const { user, firebaseEnabled } = useAuth();
-  const { myUsername } = useFriends();
+  const { myUsername, myProfile } = useFriends();
   const [claimedMap, setClaimedMap] = useState({});
   const [checkingIn, setCheckingIn] = useState(null);
   // The landmark currently in the rate + post prompt. Tapping "Check In" sets
@@ -100,7 +100,9 @@ export function CheckInProvider({ children }) {
     if (!user || !landmark) return null;
     setCheckingIn(landmark.id);
     try {
-      const points = checkInOptions?.ratingOnly ? 0 : landmark.points ?? POINTS_PER_CHECKIN;
+      const ratingOnly = !!checkInOptions?.ratingOnly;
+      const points = ratingOnly ? 0 : landmark.points ?? POINTS_PER_CHECKIN;
+      const landmarkCoords = landmark.lat != null && landmark.lng != null ? { lat: landmark.lat, lng: landmark.lng } : null;
       const result = await claimCheckIn({
         userId: user.uid,
         // Never store the email on public leaderboards — prefer the username.
@@ -109,19 +111,24 @@ export function CheckInProvider({ children }) {
         landmarkName: landmark.name,
         region: landmark.regionId ?? landmark.region,
         points,
+        ratingOnly,
+        homeCoords: myProfile?.homeCoords || null,
+        landmarkCoords,
       });
-      // Only a real (points > 0) attempt marks the map/UI as "checked in"
+      // Only a real (non-ratingOnly) attempt marks the map/UI as "checked in"
       // here -- a ratingOnly claim never should, even if it's the one that
       // just created the underlying checkins doc (Firestore rules require
       // one to exist before a review can be written -- see firestore.rules
       // -- so the doc itself is unavoidable, but the visual "you've been
       // here" state is not). If you rate first and physically check in
       // later, that later real attempt is what finally marks it claimed.
-      if (points > 0 && (result.claimed || result.alreadyClaimed)) {
+      if (!ratingOnly && (result.claimed || result.alreadyClaimed)) {
         setClaimedMap((m) => ({ ...m, [landmark.id]: true }));
       }
-      if (result.claimed && points > 0) {
-        setCelebration(buildCelebration(points));
+      // Celebrate off the actual payout, not the base point value -- a
+      // home-radius or 6th+ repeat visit pays 0 and has nothing to celebrate.
+      if (result.claimed && result.payout > 0) {
+        setCelebration(buildCelebration(result.payout));
       }
       return result;
     } finally {
