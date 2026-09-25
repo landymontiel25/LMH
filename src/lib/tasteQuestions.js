@@ -157,7 +157,9 @@ export function composeTasteIntro(myProfile, now = new Date()) {
 // any of it changes (see picksCacheKey in maprPicks.js), instead of only
 // noticing on the next landmark rating or after the multi-hour TTL expires.
 export function tasteFingerprint(myProfile) {
-  const text = composeTasteIntro(myProfile);
+  // Answers to the "lean into [tag]?" prompt change Mapr Picks' ranking too.
+  const text =
+    composeTasteIntro(myProfile) + JSON.stringify(myProfile?.tagBoosts || {}) + JSON.stringify(myProfile?.tagNotes || {});
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
     hash = (hash * 31 + text.charCodeAt(i)) | 0;

@@ -18,6 +18,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
 import { tierStars } from './ratingFlow';
+import { applyRating } from './tagScores';
 
 // Reject after `ms` so a stalled Storage upload (bucket not enabled, blocked by
 // rules, CORS, or just slow) can never hang the whole save forever.
@@ -75,11 +76,13 @@ export async function submitReview({ userId, userName, landmark, rating, photoFi
 
   const reviewRef = doc(db, 'reviews', `${userId}_${landmarkId}`);
   const aggRef = doc(db, 'landmark_ratings', landmarkId);
+  const userRef = doc(db, 'users', userId);
 
   const writeReview = () =>
     runTransaction(db, async (tx) => {
       const prev = await tx.get(reviewRef);
       const agg = await tx.get(aggRef);
+      const userSnap = await tx.get(userRef);
       const prevStars = prev.exists() ? prev.data().stars || 0 : 0;
       const hadReview = prev.exists();
       const curSum = agg.exists() ? agg.data().sum || 0 : 0;
@@ -116,6 +119,26 @@ export async function submitReview({ userId, userName, landmark, rating, photoFi
         },
         { merge: true }
       );
+
+      // Mapr Picks' per-region tag scores (see tagScores.js). Inside this
+      // transaction so a retried save never counts the same rating twice.
+      const region = landmark.region;
+      if (region && rating.tier) {
+        const u = userSnap.exists() ? userSnap.data() : {};
+        const next = applyRating(
+          { scores: u.tagScores?.[region], at: u.tagScoresAt?.[region] },
+          landmark.categories,
+          rating.tier,
+          Date.now()
+        );
+        if (Object.keys(next.scores).length) {
+          tx.set(
+            userRef,
+            { tagScores: { [region]: next.scores }, tagScoresAt: { [region]: next.at } },
+            { merge: true }
+          );
+        }
+      }
     });
 
   // The review's create rule checks `exists(checkins/...)` for the check-in

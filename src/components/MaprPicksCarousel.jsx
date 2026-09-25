@@ -9,14 +9,18 @@ import { useBadges } from '../lib/BadgesContext';
 import { coarseLocation, localMaprPicks, picksCacheKey, readPicksCache, writePicksCache } from '../lib/maprPicks';
 import { composeTasteIntro, baselineToSyntheticReviews, tasteFingerprint } from '../lib/tasteQuestions';
 import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
+import { useTrip } from '../lib/TripContext';
+import { getRegionCheckinCounts } from '../lib/leaderboard';
+import { saveRebuiltTagScores } from '../lib/friends';
+import { pickRegion, rebuildTagScores, TAG_SCORES_VERSION } from '../lib/tagScores';
 import RateLandmarkSearch from './RateLandmarkSearch';
 
 // "Your Mapr Picks": landmarks Mapr thinks you'll love next, as a
 // swipeable card row under the taste card. Capped at RESERVE (10) on
 // screen at once -- swiping alone never loads more; only voting (✓/✗/not
 // sure) on one pulls in a replacement, so the deck only grows once you've
-// actually weighed in. Asks /api/mapr-picks (Claude, fed your ratings,
-// chips and comments) for RESERVE at once; the local affinity scorer tops
+// actually weighed in. Asks /api/mapr-picks for 8 (its tag scorer
+// shortlists 30 in your current region, Claude picks from those); the local affinity scorer tops
 // the queue back up for free once the API response runs low (and fills
 // everything if the API is unavailable). A local-scorer pass also paints
 // the very first frame instantly, before either the cache read or the API
@@ -26,7 +30,8 @@ const RESERVE = 10;
 
 export default function MaprPicksCarousel({ reviews, interests = [], checkedInIds = [], regionIds = [] }) {
   const { user } = useAuth();
-  const { myProfile } = useFriends();
+  const { myProfile, profileFresh } = useFriends();
+  const { trip } = useTrip();
   const { ratings } = useRatings();
   const { coords } = useGeo();
   const { reload: reloadBadges, actionsToday } = useBadges();
@@ -53,7 +58,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // tasteFingerprint) -- changing any of it must invalidate the picks
   // cache immediately, the same as a new rating already does via
   // ratingsCount, not wait on the TTL.
-  const tasteFP = tasteFingerprint(myProfile);
+  const tasteFP = `${tasteFingerprint(myProfile)}.${myProfile?.tagScoresVersion || 0}`;
   // A landmark you've already left a rating for should never come back as
   // a "pick" -- checkedInIds alone misses this, since "Rate a Landmark"
   // deliberately claims its check-in for 0 points (not a real visit), so
@@ -78,6 +83,11 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // Baseline picks (TasteNudgeCard) feed the local affinity scorer too, as
   // synthetic category-level reviews -- so the offline fallback (no API)
   // still reflects a filled-in baseline, not just the AI-path prompt.
+  const region = pickRegion({
+    origin,
+    fallbackRegions: [orderedReviews.at(-1)?.region, ...[...regionIds].reverse()],
+  });
+  const customMatchIds = (trip.savedCustomInterests || []).flatMap((t) => trip.customInterestMatches?.[t] || []);
   const localReviews = [
     ...orderedReviews.map((r) => ({
       tier: r.ratingTier,
@@ -89,6 +99,16 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     })),
     ...baselineToSyntheticReviews(myProfile?.tasteBaseline, myProfile?.tasteBaselineCategoryNotes),
   ];
+
+  // Ratings saved before per-region tag scores existed: replay them once so
+  // those travelers don't restart from zero. Waits for a server-fresh
+  // profile so a stale cached copy can't trigger a second replay.
+  useEffect(() => {
+    if (!user || !profileFresh || !reviews.length) return;
+    if ((myProfile?.tagScoresVersion || 0) >= TAG_SCORES_VERSION) return;
+    saveRebuiltTagScores(user.uid, rebuildTagScores(reviews), TAG_SCORES_VERSION).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, profileFresh, reviews.length, myProfile?.tagScoresVersion]);
 
   useEffect(() => {
     if (!user) {
@@ -156,25 +176,30 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         });
       let next = null;
       try {
+        const checkinCounts = region ? await getRegionCheckinCounts(region).catch(() => ({})) : {};
+        if (cancelled) return;
         const r = await fetch('/api/mapr-picks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            reviews: orderedReviews.map((r) => ({
+            region,
+            tagScores: myProfile?.tagScores?.[region] || {},
+            tagScoresAt: myProfile?.tagScoresAt?.[region] || {},
+            tagBoosts: myProfile?.tagBoosts?.[region] || {},
+            tagNotes: myProfile?.tagNotes?.[region] || {},
+            checkinCounts,
+            interests,
+            customMatchIds,
+            excludeIds: [...excludeIds, ...passedIds],
+            recentReviews: orderedReviews.slice(-10).map((r) => ({
               name: r.landmarkName,
               tier: r.ratingTier,
               categories: r.categories || [],
               highlights: r.highlights || [],
               comment: commentWithLoveNotes(r),
             })),
-            interests,
             tasteIntro: composeTasteIntro(myProfile),
-            checkedInIds: excludeIds,
-            weakCheckedInIds,
-            regionIds,
             origin,
-            feedback: fbList,
-            passedIds,
           }),
         });
         const data = await r.json().catch(() => null);
@@ -206,7 +231,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     // anything they've told Mapr about taste changes; the other inputs
     // ride along with those.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, ratingsCount, locKey, tasteFP]);
+  }, [user?.uid, ratingsCount, locKey, tasteFP, region]);
 
   // Which card is in view, for the dots. The dots below only represent the
   // actual picks, but the "+ Rate a Landmark" card sits before them in the

@@ -303,6 +303,26 @@ export async function getVisitCount(userId, landmarkId) {
 }
 
 /**
+ * Real check-ins per landmark across every user in one region, as
+ * { [landmarkId]: count }. Repeat visits count: they're real demand too.
+ * Cached for 10 minutes per region.
+ */
+const regionCountsCache = new Map();
+export async function getRegionCheckinCounts(region) {
+  if (!db || !region) return {};
+  const hit = regionCountsCache.get(region);
+  if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.counts;
+  const snap = await getDocs(query(collection(db, 'checkins'), where('region', '==', region)));
+  const counts = {};
+  for (const d of snap.docs) {
+    const x = d.data();
+    if (isRealCheckin(x)) counts[x.landmarkId] = (counts[x.landmarkId] || 0) + 1;
+  }
+  regionCountsCache.set(region, { at: Date.now(), counts });
+  return counts;
+}
+
+/**
  * Sums a user's all-time points across every landmark they've checked into.
  * A single-field equality query, so no composite index is needed.
  */
