@@ -71,7 +71,7 @@ export default async function handler(req, res) {
     const interests = (Array.isArray(body.interests) ? body.interests : []).map((c) => str(c, 30)).slice(0, 20);
     // Told directly at onboarding or from Settings -- free-form, not tied
     // to any rating. Read as prose alongside everything else here.
-    const tasteIntro = str(body.tasteIntro, 600);
+    const tasteIntro = str(body.tasteIntro, 4000);
     const checkedIn = new Set((Array.isArray(body.checkedInIds) ? body.checkedInIds : []).map((id) => str(id, 80)));
     const regionIds = new Set((Array.isArray(body.regionIds) ? body.regionIds : []).map((id) => str(id, 40)));
     // "Not sure" votes carry no taste signal (see PICK FEEDBACK rule below),

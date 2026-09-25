@@ -164,7 +164,7 @@ export default function Settings() {
           <textarea
             className="rating-comment"
             rows={3}
-            maxLength={600}
+            maxLength={2000}
             placeholder="What are you already into?"
             value={tasteIntro}
             onChange={(e) => setTasteIntro(e.target.value)}

@@ -88,38 +88,40 @@ export default function CheckInReview() {
       setSaving(false);
       return;
     }
-    // Points are awarded the moment commitCheckIn resolves. Everything past
-    // this point (rating, photo) is a bonus save -- a failure here must
-    // never read as "check-in failed" when it actually succeeded.
-    if (rateable) {
-      try {
-        const res = await submitReview({
-          userId: user.uid,
-          userName: myUsername || user.displayName || 'Explorer',
-          landmark: justCheckedIn,
-          rating,
-          photoFiles,
-        });
-        await reloadRatings();
-        await reloadMyPhotos();
-        if (res?.photoFailed) {
-          setMsg("Checked in! Your photo couldn't upload — tap Done to close.");
-        }
-      } catch {
-        setMsg("Checked in! Your rating couldn't save — you can try rating it again from the landmark page.");
-      }
-    } else if (photoFiles.length) {
-      // No rating here, so the photo lives on the check-in doc instead.
-      try {
-        await attachCheckinPhoto(user.uid, justCheckedIn.id, photoFiles[0]);
-        await reloadMyPhotos();
-      } catch {
-        setMsg("Checked in! Your photo couldn't upload — tap Done to close.");
-      }
-    }
+    // Points are awarded and the visit counted the instant commitCheckIn
+    // resolves -- that's the whole check-in as far as the traveler's
+    // concerned, so celebrate right away instead of making them sit through
+    // the rating/photo save (which, with photos, can take several seconds
+    // per photo) and two reload queries first. Everything below this line
+    // is a bonus save that runs in the background; a failure there shows up
+    // as a small note under the already-posted success panel, it never
+    // delays or reads as "check-in failed" when it actually succeeded.
     setPosted(true);
     setBlast(!ratingOnly);
     setSaving(false);
+
+    if (rateable) {
+      submitReview({
+        userId: user.uid,
+        userName: myUsername || user.displayName || 'Explorer',
+        landmark: justCheckedIn,
+        rating,
+        photoFiles,
+      })
+        .then(async (res) => {
+          await reloadRatings();
+          await reloadMyPhotos();
+          if (res?.photoFailed) setMsg("Your photo couldn't upload — you can try again from the landmark page.");
+        })
+        .catch(() => {
+          setMsg("Your rating couldn't save — you can try rating it again from the landmark page.");
+        });
+    } else if (photoFiles.length) {
+      // No rating here, so the photo lives on the check-in doc instead.
+      attachCheckinPhoto(user.uid, justCheckedIn.id, photoFiles[0])
+        .then(() => reloadMyPhotos())
+        .catch(() => setMsg("Your photo couldn't upload — you can try again from the landmark page."));
+    }
   };
 
   const close = () => clearJustCheckedIn();

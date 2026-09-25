@@ -45,6 +45,7 @@ export default function TasteNudgeCard({
     () => new Set(Object.keys(initialCategoryNotes || {}).filter((id) => initialCategoryNotes[id]))
   );
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const cycleChip = (categoryId, example) => {
     setPicked((prev) => {
@@ -70,14 +71,24 @@ export default function TasteNudgeCard({
 
   const save = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const cleanCategoryNotes = Object.fromEntries(
         Object.entries(categoryNotes).filter(([, v]) => v?.trim())
       );
       await saveTasteBaseline(user.uid, { baseline: picked, notes: extra, categoryNotes: cleanCategoryNotes });
       await reloadFriends();
-    } catch {
-      // Best-effort -- never block dismissing the nudge on this write failing.
+    } catch (e) {
+      // Used to swallow this and close anyway -- which silently threw away
+      // whatever you'd just picked/typed the moment the write failed for
+      // any reason (offline, a hiccup, whatever), with no sign anything
+      // went wrong. Now it stays open with everything you entered intact
+      // so you can just hit Save again, and actually says something failed
+      // instead of looking like it worked.
+      console.error('[TasteNudgeCard] saveTasteBaseline failed:', e);
+      setSaving(false);
+      setSaveError(e?.message || "Couldn't save — check your connection and try again.");
+      return;
     }
     setSaving(false);
     onDone();
@@ -159,7 +170,7 @@ export default function TasteNudgeCard({
                 <textarea
                   className="rating-comment"
                   rows={2}
-                  maxLength={200}
+                  maxLength={2000}
                   placeholder={`Anything specific about ${q.label.toLowerCase()}? e.g. "no pepper on my steak"`}
                   value={categoryNotes[q.id] || ''}
                   onChange={(e) => setCategoryNotes((prev) => ({ ...prev, [q.id]: e.target.value }))}
@@ -175,13 +186,19 @@ export default function TasteNudgeCard({
       <textarea
         className="rating-comment"
         rows={2}
-        maxLength={300}
+        maxLength={2000}
         placeholder="Anything else, liked or hated? (optional)"
         value={extra}
         onChange={(e) => setExtra(e.target.value)}
         disabled={saving}
         style={{ marginTop: 12 }}
       />
+
+      {saveError && (
+        <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
+          {saveError}
+        </p>
+      )}
 
       <button
         type="button"
@@ -190,7 +207,7 @@ export default function TasteNudgeCard({
         disabled={saving || (!editing && totalPicked === 0 && !extra.trim())}
         onClick={save}
       >
-        {saving ? 'Saving…' : totalPicked > 0 ? `Save (${totalPicked} picked)` : 'Save'}
+        {saving ? 'Saving…' : saveError ? 'Try Again' : totalPicked > 0 ? `Save (${totalPicked} picked)` : 'Save'}
       </button>
     </div>
   );

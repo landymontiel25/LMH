@@ -44,7 +44,7 @@ export default function TasteIntroStep({ onDone }) {
       <textarea
         className="rating-comment"
         rows={5}
-        maxLength={600}
+        maxLength={2000}
         placeholder="What are you already into?"
         value={text}
         onChange={(e) => setText(e.target.value)}
