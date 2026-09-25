@@ -1,36 +1,85 @@
 :root {
-  --color-bg: #14181c;
-  --color-bg-rgb: 20, 24, 28;
-  --color-bg-raised: #1b2127;
-  --color-bg-card: #1e252b;
-  --color-brass: #c9a15a;
-  --color-brass-bright: #e8c179;
-  --color-green: #4f7a5c;
-  --color-rust: #b3503f;
-  --color-parchment: #ede6d6;
-  --color-parchment-dim: #b8b0a0;
-  --color-border: rgba(201, 161, 90, 0.35);
-  --color-border-soft: rgba(237, 230, 214, 0.12);
-
-  --font-heading: Georgia, 'Times New Roman', serif;
-  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-
+  /* Mapr design system */
+  --bg-primary: #080a0d;
+  --bg-secondary: #0d1014;
+  --bg-elevated: #12161c;
+  --bg-card: #14181e;
+  --bg-card-hover: #191e25;
+  --bg-input: #11161d;
+  --mapr-blue: #5b8cff;
+  --mapr-blue-hover: #70a0ff;
+  --mapr-blue-active: #4778ea;
+  --mapr-blue-soft: rgba(91, 140, 255, 0.14);
+  --mapr-blue-border: rgba(91, 140, 255, 0.35);
+  --text-primary: #f5f6f7;
+  --text-secondary: #a6acb5;
+  --text-tertiary: #747b86;
+  --text-disabled: #515762;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-default: rgba(255, 255, 255, 0.11);
+  --border-strong: rgba(255, 255, 255, 0.17);
+  --success: #55c987;
+  --warning: #f2b84b;
+  --danger: #f06a6a;
+  --radius-xs: 8px;
+  --radius-sm: 12px;
   --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
   --radius-pill: 999px;
-  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.4);
-  --shadow-float: 0 8px 26px rgba(0, 0, 0, 0.35);
-  --glass-border: rgba(255, 255, 255, 0.14);
-  /* No blur -- panels are fully opaque now, so backdrop-filter has nothing
-     to blur and iOS Safari (esp. under Low Power Mode) was skipping it
-     while still applying the old semi-transparent background, leaving
-     cards/modals see-through. */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Older token names, mapped onto the system above. --color-bg-rgb is the
+     surface tone most controls and panels sit on; the page itself uses
+     --color-bg. */
+  --color-bg: var(--bg-primary);
+  --color-bg-rgb: 20, 24, 30;
+  --color-bg-raised: var(--bg-elevated);
+  --color-bg-card: var(--bg-card);
+  --color-brass: var(--mapr-blue);
+  --color-brass-bright: var(--mapr-blue);
+  --color-green: var(--success);
+  --color-rust: var(--danger);
+  --color-parchment: var(--text-primary);
+  --color-parchment-dim: var(--text-secondary);
+  --color-border: var(--border-default);
+  --color-border-soft: var(--border-subtle);
+
+  --font-body: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
+  --font-heading: var(--font-body);
+  --font-display: 'DM Serif Display', Georgia, serif;
+
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.22);
+  --shadow-float: 0 16px 50px rgba(0, 0, 0, 0.38);
+  --glass-border: var(--border-subtle);
+  /* No blur -- panels are fully opaque, so backdrop-filter has nothing
+     to blur (and iOS Safari under Low Power Mode skips it anyway). */
   --glass-blur: none;
   --header-h: 76px;
   --nav-h: 78px;
 }
 
+/* iOS (Safari and the installed app): native SF Pro instead of Inter. */
+@supports (-webkit-touch-callout: none) {
+  :root {
+    --font-body: -apple-system, 'SF Pro Text', 'SF Pro Display', Inter, sans-serif;
+  }
+}
+
 [data-theme='light'] {
+  --text-primary: #2b2620;
+  --text-secondary: #6b5f4e;
+  --text-tertiary: #8a7f6d;
+  --text-disabled: #b3a994;
+  --border-subtle: rgba(43, 38, 32, 0.08);
+  --border-default: rgba(43, 38, 32, 0.14);
+  --border-strong: rgba(43, 38, 32, 0.22);
+  --bg-primary: #f6efe0;
+  --bg-secondary: #fffaf0;
+  --bg-card: #fffaf0;
+  --bg-card-hover: #fbf3e2;
+  --bg-elevated: #fffaf0;
+  --bg-input: #fffaf0;
   --color-bg: #f6efe0;
   --color-bg-rgb: 246, 239, 224;
   --color-bg-raised: #ede1c8;
@@ -63,12 +112,8 @@ body {
 body {
   font-family: var(--font-body);
   min-height: 100vh;
-  background-image:
-    linear-gradient(rgba(var(--color-bg-rgb), 0.94), rgba(var(--color-bg-rgb), 0.97)),
-    repeating-radial-gradient(circle at 20% 20%, transparent 0, transparent 38px, rgba(201, 161, 90, 0.05) 39px, rgba(201, 161, 90, 0.05) 40px),
-    repeating-radial-gradient(circle at 80% 60%, transparent 0, transparent 54px, rgba(201, 161, 90, 0.04) 55px, rgba(201, 161, 90, 0.04) 56px),
-    repeating-radial-gradient(circle at 50% 90%, transparent 0, transparent 70px, rgba(201, 161, 90, 0.035) 71px, rgba(201, 161, 90, 0.035) 72px);
-  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -79,9 +124,10 @@ body {
 
 h1, h2, h3, h4 {
   font-family: var(--font-heading);
-  color: var(--color-brass-bright);
+  font-weight: 600;
+  color: var(--text-primary);
   margin: 0 0 0.5em;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
 }
 
 p {
@@ -107,8 +153,8 @@ textarea {
 }
 
 ::selection {
-  background: var(--color-brass);
-  color: #14181c;
+  background: var(--mapr-blue-soft);
+  color: var(--text-primary);
 }
 
 /* ---------- Layout shells ---------- */
@@ -118,7 +164,35 @@ textarea {
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  padding: 20px 16px calc(var(--nav-h) + 32px);
+  padding: 24px 20px calc(var(--nav-h) + 40px);
+  animation: page-in 0.24s var(--ease) both;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    max-width: 800px;
+    padding: 32px 32px calc(var(--nav-h) + 48px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Shown briefly while a lazy-loaded screen's chunk downloads. */
@@ -138,17 +212,19 @@ textarea {
 }
 
 .screen-title {
-  font-size: 1.6rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .screen-subtitle {
-  color: var(--color-parchment-dim);
+  color: var(--text-secondary);
   font-size: 0.95rem;
-  margin-top: -6px;
-  margin-bottom: 1.25em;
+  margin-top: -4px;
+  margin-bottom: 1.5em;
 }
 
 /* ---------- Buttons ---------- */
@@ -158,25 +234,27 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 44px;
   font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 0.82rem;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  padding: 13px 22px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--glass-border);
-  background: rgb(var(--color-bg-rgb));
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  color: var(--color-brass-bright);
+  font-weight: 500;
+  font-size: 0.94rem;
+  letter-spacing: 0;
+  padding: 11px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
   cursor: pointer;
-  transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s var(--ease), background 0.18s var(--ease), border-color 0.18s var(--ease);
   text-decoration: none;
 }
 
+.btn:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+}
+
 .btn:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 .btn:disabled {
@@ -185,31 +263,36 @@ textarea {
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, var(--color-brass-bright), var(--color-brass));
-  color: #17130a;
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 6px 18px rgba(201, 161, 90, 0.35);
+  background: var(--mapr-blue);
+  color: #ffffff;
+  border-color: transparent;
 }
 
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 8px 22px rgba(232, 193, 121, 0.45);
+  background: var(--mapr-blue-hover);
 }
 
+.btn-primary:active:not(:disabled) {
+  background: var(--mapr-blue-active);
+}
+
+/* Tertiary: text/icon only, a surface only on hover. */
 .btn-ghost {
-  border-color: var(--glass-border);
-  color: var(--color-parchment);
+  background: transparent;
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
 }
 
 .btn-success {
   border-color: var(--color-green);
-  color: #d9ecdd;
-  background: rgba(79, 122, 92, 0.3);
+  color: var(--success);
+  background: rgba(85, 201, 135, 0.3);
 }
 
 .btn-danger {
   border-color: var(--color-rust);
-  color: #f0beb3;
-  background: rgba(179, 80, 63, 0.32);
+  color: var(--danger);
+  background: rgba(240, 106, 106, 0.32);
 }
 
 .btn-block {
@@ -217,29 +300,39 @@ textarea {
 }
 
 .btn-sm {
-  padding: 8px 16px;
-  font-size: 0.7rem;
+  min-height: 36px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  border-radius: 10px;
 }
 
 /* Hugs its label tightly instead of the standard pill padding -- for
    buttons like the landmark row's "Info" where a wide bubble crowds the
    title next to it on narrow screens. */
 .btn-tight {
+  min-height: 32px;
   padding: 5px 10px;
-  font-size: 0.65rem;
-  letter-spacing: 0.03em;
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  border-radius: var(--radius-xs);
 }
 
 /* ---------- Cards ---------- */
 
 .card {
-  background: rgb(var(--color-bg-rgb));
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-  padding: 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  transition: transform 0.18s var(--ease), background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+@media (hover: hover) {
+  button.card:hover,
+  a.card:hover {
+    transform: translateY(-2px);
+    background: var(--bg-card-hover);
+  }
 }
 
 .btn-icon-trash {
@@ -259,7 +352,7 @@ textarea {
 }
 
 .btn-icon-trash:hover {
-  background: rgba(179, 80, 63, 0.15);
+  background: rgba(240, 106, 106, 0.15);
 }
 
 .btn-icon-trash:active {
@@ -404,8 +497,8 @@ textarea {
   padding: 4px 9px;
   border-radius: 999px;
   border: 1px solid var(--color-border);
-  color: var(--color-brass-bright);
-  background: rgba(201, 161, 90, 0.08);
+  color: var(--text-primary);
+  background: rgba(91, 140, 255, 0.08);
   white-space: nowrap;
 }
 
@@ -423,14 +516,14 @@ textarea {
 
 .tag-free {
   border-color: var(--color-green);
-  color: #bfe0c8;
-  background: rgba(79, 122, 92, 0.15);
+  color: var(--success);
+  background: rgba(85, 201, 135, 0.15);
 }
 
 .tag-error {
   border-color: var(--color-rust);
-  color: #f0beb3;
-  background: rgba(179, 80, 63, 0.15);
+  color: var(--danger);
+  background: rgba(240, 106, 106, 0.15);
 }
 
 .tag-optional {
@@ -443,7 +536,7 @@ textarea {
   font-weight: 700;
   border-color: var(--color-rust);
   color: #f2c9a0;
-  background: rgba(179, 100, 63, 0.15);
+  background: rgba(242, 184, 75, 0.15);
 }
 
 .distance-tag {
@@ -463,7 +556,7 @@ textarea {
   font-size: 0.78rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-brass);
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
@@ -524,7 +617,7 @@ textarea {
 
 .badge-tile.earned {
   border-color: var(--color-brass);
-  background: rgba(201, 161, 90, 0.1);
+  background: rgba(91, 140, 255, 0.1);
 }
 
 .badge-tile.locked {
@@ -543,7 +636,7 @@ textarea {
 }
 
 .badge-tile.earned .badge-tile-label {
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
 }
 
 .badge-tile-date {
@@ -760,7 +853,7 @@ textarea {
   font-family: var(--font-heading);
   font-size: 1.4rem;
   font-weight: 700;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   margin: 0 0 6px;
 }
 
@@ -789,7 +882,7 @@ textarea {
 
 .chip.selected {
   border-color: var(--color-brass);
-  background: rgba(201, 161, 90, 0.14);
+  background: rgba(91, 140, 255, 0.14);
   color: var(--color-brass-bright);
 }
 
@@ -849,7 +942,7 @@ textarea {
   font-size: 0.78rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-brass);
+  color: var(--text-secondary);
 }
 
 .rating-flow-label span {
@@ -877,7 +970,7 @@ textarea {
 
 .rating-chip.selected {
   border-color: var(--color-brass);
-  background: rgba(201, 161, 90, 0.22);
+  background: rgba(91, 140, 255, 0.22);
   color: var(--color-brass-bright);
 }
 
@@ -902,7 +995,7 @@ textarea {
 .rating-aspect.selected .rating-aspect-rank {
   border-color: var(--color-brass);
   background: var(--color-brass);
-  color: #17130a;
+  color: #ffffff;
 }
 
 .chip.disabled,
@@ -960,7 +1053,7 @@ textarea {
 .checkin-stats-card {
   margin-bottom: 16px;
   border-color: var(--color-border);
-  background: linear-gradient(160deg, rgba(201, 161, 90, 0.12), rgb(var(--color-bg-rgb)));
+  background: linear-gradient(160deg, rgba(91, 140, 255, 0.12), rgb(var(--color-bg-rgb)));
 }
 .checkin-stats {
   list-style: none;
@@ -1078,8 +1171,8 @@ textarea {
 .landmark-row.visited,
 .card.visited {
   border-color: var(--color-green);
-  background: rgba(79, 122, 92, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(79, 122, 92, 0.35);
+  background: rgba(85, 201, 135, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(85, 201, 135, 0.35);
 }
 
 /* ---------- Check-in blast ---------- */
@@ -1092,7 +1185,7 @@ textarea {
   justify-content: center;
   overflow: hidden;
   cursor: pointer;
-  background: radial-gradient(circle at 50% 45%, rgba(255, 224, 130, 0.35), rgba(20, 24, 28, 0.94) 60%);
+  background: radial-gradient(circle at 50% 45%, rgba(91, 140, 255, 0.28), rgba(8, 10, 13, 0.94) 60%);
   animation: blast-bg 0.5s ease-out;
 }
 @keyframes blast-bg {
@@ -1239,7 +1332,7 @@ textarea {
 
 .quick-rate-btn.rated {
   border-color: var(--color-green);
-  color: #bfe0c8;
+  color: var(--success);
 }
 
 /* Progress toward the "rate 10 places" payoff, under Your Stats */
@@ -1250,7 +1343,7 @@ textarea {
 }
 
 .rating-progress strong {
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
 }
 
 .rating-progress-track {
@@ -1273,12 +1366,12 @@ textarea {
   padding: 12px 14px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  background: linear-gradient(160deg, rgba(201, 161, 90, 0.12), rgb(var(--color-bg-rgb)));
+  background: linear-gradient(160deg, rgba(91, 140, 255, 0.12), rgb(var(--color-bg-rgb)));
 }
 
 .taste-card-title {
   font-family: var(--font-heading);
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
@@ -1299,7 +1392,7 @@ textarea {
   padding: 12px 14px 10px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  background: linear-gradient(160deg, rgba(201, 161, 90, 0.12), rgb(var(--color-bg-rgb)));
+  background: linear-gradient(160deg, rgba(91, 140, 255, 0.12), rgb(var(--color-bg-rgb)));
 }
 .mapr-picks-track {
   display: flex;
@@ -1349,7 +1442,7 @@ textarea {
 }
 .mapr-pick.liked {
   border-color: var(--color-green);
-  box-shadow: inset 0 0 0 1px rgba(79, 122, 92, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(85, 201, 135, 0.45);
 }
 .mapr-pick-actions {
   display: flex;
@@ -1374,13 +1467,13 @@ textarea {
 }
 .mapr-pick-vote.yes.on {
   border-color: var(--color-green);
-  color: #bfe0c8;
-  background: rgba(79, 122, 92, 0.2);
+  color: var(--success);
+  background: rgba(85, 201, 135, 0.2);
 }
 .mapr-pick-vote.no:hover,
 .mapr-pick-vote.no:focus-visible {
   border-color: var(--color-rust);
-  color: #f0beb3;
+  color: var(--danger);
 }
 .mapr-pick-vote.unsure {
   flex: 0.7;
@@ -1407,7 +1500,7 @@ textarea {
   padding: 4px 9px;
   border-radius: var(--radius-pill);
   background: linear-gradient(180deg, var(--color-brass-bright), var(--color-brass));
-  color: #17130a;
+  color: #ffffff;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -1417,7 +1510,7 @@ textarea {
   margin: 10px 12px 0;
   font-family: var(--font-heading);
   font-size: 1.02rem;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
 }
 .mapr-pick-sub {
   margin: 0 12px;
@@ -1488,8 +1581,8 @@ textarea {
   background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--color-brass);
-  color: var(--color-brass-bright);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
   border-radius: var(--radius-md);
   padding: 12px 14px;
   font-size: 0.9rem;
@@ -1536,7 +1629,7 @@ textarea {
 
 .autocomplete-item:hover,
 .autocomplete-item:focus-visible {
-  background: rgba(201, 161, 90, 0.14);
+  background: rgba(91, 140, 255, 0.14);
 }
 
 .autocomplete-item:disabled {
@@ -1572,8 +1665,8 @@ textarea {
   background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--color-brass);
-  color: var(--color-brass-bright);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
   border-radius: var(--radius-md);
   padding: 12px 14px;
   font-size: 0.9rem;
@@ -1624,7 +1717,7 @@ textarea {
 
 .city-dropdown-item:hover,
 .city-dropdown-item:focus-visible {
-  background: rgba(201, 161, 90, 0.14);
+  background: rgba(91, 140, 255, 0.14);
 }
 
 .city-dropdown-item.active {
@@ -1671,7 +1764,7 @@ textarea {
 .app-header .brand-text {
   font-family: var(--font-heading);
   font-size: 1.05rem;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
@@ -1690,8 +1783,8 @@ textarea {
   gap: 6px;
   padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid var(--color-brass);
-  background: linear-gradient(180deg, rgba(201, 161, 90, 0.22), rgba(201, 161, 90, 0.10));
+  border: 1px solid var(--border-default);
+  background: linear-gradient(180deg, rgba(91, 140, 255, 0.22), rgba(91, 140, 255, 0.10));
   text-decoration: none;
   white-space: nowrap;
   line-height: 1;
@@ -1700,7 +1793,7 @@ textarea {
 .score-chip-rank {
   font-size: 0.74rem;
   font-weight: 700;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   letter-spacing: 0.02em;
 }
 
@@ -1710,7 +1803,7 @@ textarea {
   font-size: 0.82rem;
   color: var(--color-parchment);
   padding-left: 6px;
-  border-left: 1px solid rgba(201, 161, 90, 0.4);
+  border-left: 1px solid rgba(91, 140, 255, 0.4);
 }
 
 .score-chip-join {
@@ -1731,7 +1824,7 @@ textarea {
 }
 
 .profile-menu-caret {
-  color: var(--color-brass);
+  color: var(--text-secondary);
   font-size: 0.65rem;
 }
 
@@ -1744,13 +1837,13 @@ textarea {
   background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--color-brass);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-float);
   padding: 8px 14px;
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
 }
 
 /* Same floating-popover language as .points-popover, but for wrapping
@@ -1765,7 +1858,7 @@ textarea {
   background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--color-brass);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-float);
   padding: 10px 14px;
@@ -1816,7 +1909,7 @@ textarea {
   background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--color-brass);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-float);
   padding: 10px 12px;
@@ -1825,7 +1918,7 @@ textarea {
 .user-popover-username {
   font-family: var(--font-heading);
   font-weight: 700;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
 }
 
 .user-popover-note {
@@ -1978,7 +2071,7 @@ textarea {
 .landmark-row.selected .check-circle {
   border-color: var(--color-brass-bright);
   background: var(--color-brass-bright);
-  color: #17130a;
+  color: #ffffff;
 }
 
 /* ---------- Utility ---------- */
@@ -1995,7 +2088,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: var(--color-brass);
+  color: var(--text-tertiary);
   margin: 22px 0;
   font-size: 0.8rem;
   letter-spacing: 0.1em;
@@ -2080,18 +2173,18 @@ textarea {
   text-align: center;
   font-family: var(--font-heading);
   font-weight: 700;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
 }
 
 .leaderboard-row.me {
   border-color: var(--color-brass);
-  background: rgba(201, 161, 90, 0.1);
+  background: rgba(91, 140, 255, 0.1);
 }
 
 /* --- Ranks hero card --- */
 .rank-hero {
-  background: linear-gradient(160deg, rgba(201, 161, 90, 0.18), rgb(var(--color-bg-rgb)));
-  border-color: var(--color-brass);
+  background: linear-gradient(160deg, rgba(91, 140, 255, 0.18), rgb(var(--color-bg-rgb)));
+  border-color: var(--border-default);
 }
 
 .rank-hero-top {
@@ -2105,7 +2198,7 @@ textarea {
   font-weight: 700;
   font-size: 2.4rem;
   line-height: 1;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   min-width: 64px;
   text-align: center;
 }
@@ -2168,7 +2261,7 @@ textarea {
   padding-top: 22px;
   padding-bottom: 22px;
   border-color: var(--color-brass);
-  background: linear-gradient(180deg, rgba(201, 161, 90, 0.22), rgb(var(--color-bg-rgb)));
+  background: linear-gradient(180deg, rgba(91, 140, 255, 0.22), rgb(var(--color-bg-rgb)));
 }
 
 .podium-empty {
@@ -2200,7 +2293,7 @@ textarea {
   font-family: var(--font-heading);
   font-weight: 700;
   font-size: 0.9rem;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
 }
 
 /* --- Check-ins history (list + grid) --- */
@@ -2235,7 +2328,7 @@ textarea {
 .checkin-pts {
   font-family: var(--font-heading);
   font-weight: 700;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
@@ -2328,7 +2421,7 @@ textarea {
   margin-top: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-md);
-  background: rgba(201, 161, 90, 0.10);
+  background: rgba(91, 140, 255, 0.10);
   border: 1px solid var(--glass-border);
   color: var(--color-parchment);
   line-height: 1.5;
@@ -2346,7 +2439,7 @@ textarea {
   margin: 4px 0 2px;
   padding: 10px 14px;
   border-radius: var(--radius-md);
-  background: linear-gradient(180deg, rgba(201, 161, 90, 0.28), rgba(201, 161, 90, 0.12));
+  background: linear-gradient(180deg, rgba(91, 140, 255, 0.28), rgba(91, 140, 255, 0.12));
   border: 1px solid var(--color-brass);
   color: var(--color-parchment);
   font-weight: 700;
@@ -2379,7 +2472,7 @@ textarea {
 .tab-btn.active {
   border-color: var(--color-brass);
   color: var(--color-brass-bright);
-  background: rgba(201, 161, 90, 0.12);
+  background: rgba(91, 140, 255, 0.12);
 }
 
 /* ---------- Map ---------- */
@@ -2492,8 +2585,8 @@ textarea {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(180deg, #e0b45f, #c9992f);
-  color: #2a2008;
+  background: var(--mapr-blue);
+  color: #ffffff;
   font-family: var(--font-heading);
   font-weight: 700;
   font-size: 0.9rem;
@@ -2533,7 +2626,7 @@ textarea {
 
 .itin-city-arrow {
   font-size: 1.5rem;
-  color: var(--color-brass-bright);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -2578,9 +2671,9 @@ textarea {
 }
 
 .rating-tag {
-  border-color: rgba(232, 184, 75, 0.5);
+  border-color: rgba(242, 184, 75, 0.5);
   color: #a9791b;
-  background: rgba(232, 184, 75, 0.14);
+  background: rgba(242, 184, 75, 0.14);
 }
 
 .friend-email-input,
@@ -2665,7 +2758,7 @@ textarea {
 .profile-name {
   font-family: var(--font-heading);
   font-size: 1.3rem;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   margin-bottom: 14px;
 }
 
@@ -2744,7 +2837,7 @@ textarea {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  border: 1px solid var(--color-brass);
+  border: 1px solid var(--border-default);
   background: rgb(var(--color-bg-rgb));
   box-shadow: var(--shadow-float);
   font-size: 1.3rem;
@@ -2788,7 +2881,7 @@ textarea {
   padding: 7px 14px 7px 10px;
   border: 1px solid var(--color-rust);
   border-radius: var(--radius-pill);
-  background: rgba(179, 80, 63, 0.92);
+  background: rgba(240, 106, 106, 0.92);
   color: #fff;
   font-family: var(--font-body);
   font-size: 0.72rem;
@@ -2834,7 +2927,7 @@ textarea {
   height: 14px;
   border-radius: 50%;
   background: #6db3e0;
-  box-shadow: 0 0 0 4px rgba(109, 179, 224, 0.25);
+  box-shadow: 0 0 0 4px rgba(91, 140, 255, 0.25);
   position: relative;
 }
 
@@ -2843,7 +2936,7 @@ textarea {
   position: absolute;
   inset: -8px;
   border-radius: 50%;
-  background: rgba(109, 179, 224, 0.35);
+  background: rgba(91, 140, 255, 0.35);
   animation: pin-pulse 1.8s ease-out infinite;
 }
 
@@ -2864,7 +2957,7 @@ textarea {
 }
 
 .map-pin-checked-in {
-  background: linear-gradient(135deg, #bfe0c8, var(--color-green));
+  background: linear-gradient(135deg, var(--success), var(--success));
   border-color: #1c2e21;
 }
 
@@ -2874,7 +2967,7 @@ textarea {
   right: -7px;
   font-size: 13px;
   line-height: 1;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   text-shadow: 0 0 2px #000, 0 0 3px #000, 0 1px 1px #000;
 }
 
@@ -2884,21 +2977,21 @@ textarea {
   height: 26px;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  background: linear-gradient(135deg, #ffe08a, var(--color-brass-bright));
+  background: var(--mapr-blue-hover);
   border: 3px solid #2a2115;
-  box-shadow: 0 0 0 4px rgba(201, 161, 90, 0.45), 0 3px 8px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 4px rgba(91, 140, 255, 0.45), 0 3px 8px rgba(0, 0, 0, 0.6);
   animation: focus-pulse 1.6s ease-in-out infinite;
 }
 
 @keyframes focus-pulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(201, 161, 90, 0.45), 0 3px 8px rgba(0, 0, 0, 0.6); }
-  50% { box-shadow: 0 0 0 9px rgba(201, 161, 90, 0.12), 0 3px 8px rgba(0, 0, 0, 0.6); }
+  0%, 100% { box-shadow: 0 0 0 4px rgba(91, 140, 255, 0.45), 0 3px 8px rgba(0, 0, 0, 0.6); }
+  50% { box-shadow: 0 0 0 9px rgba(91, 140, 255, 0.12), 0 3px 8px rgba(0, 0, 0, 0.6); }
 }
 
 .focus-tooltip.leaflet-tooltip {
-  background: #17130a;
-  color: var(--color-brass-bright);
-  border: 1px solid var(--color-brass);
+  background: #ffffff;
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   font-family: var(--font-heading);
   font-weight: 700;
@@ -2908,7 +3001,7 @@ textarea {
 }
 
 .focus-tooltip.leaflet-tooltip-top::before {
-  border-top-color: var(--color-brass);
+  border-top-color: var(--border-default);
 }
 
 .map-pin-user {
@@ -2917,7 +3010,7 @@ textarea {
   border-radius: 50%;
   background: #6db3e0;
   border: 2px solid #eaf5fc;
-  box-shadow: 0 0 0 4px rgba(109, 179, 224, 0.25);
+  box-shadow: 0 0 0 4px rgba(91, 140, 255, 0.25);
   position: relative;
 }
 
@@ -2925,7 +3018,7 @@ textarea {
   position: absolute;
   inset: -8px;
   border-radius: 50%;
-  background: rgba(109, 179, 224, 0.35);
+  background: rgba(91, 140, 255, 0.35);
   animation: pin-pulse 1.8s ease-out infinite;
 }
 
@@ -2947,7 +3040,7 @@ textarea {
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, var(--color-brass-bright), var(--color-brass));
   border: 2px solid #2a2115;
-  color: #17130a;
+  color: #ffffff;
   font-family: var(--font-heading);
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
@@ -2955,7 +3048,7 @@ textarea {
 
 /* Every landmark inside this cluster is already checked in. */
 .map-cluster-done {
-  background: radial-gradient(circle at 35% 30%, #bfe0c8, var(--color-green));
+  background: radial-gradient(circle at 35% 30%, var(--success), var(--success));
   border-color: #1c2e21;
 }
 
@@ -2971,7 +3064,7 @@ textarea {
   background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   font-size: 1.1rem;
   cursor: pointer;
   display: flex;
@@ -2993,7 +3086,7 @@ textarea {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   border-radius: var(--radius-pill);
   padding: 0 10px;
   font-size: 0.82rem;
@@ -3016,7 +3109,7 @@ textarea {
   background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   font-size: 1.1rem;
   cursor: pointer;
   display: flex;
@@ -3032,7 +3125,7 @@ textarea {
    the map is showing a subset. */
 .map-search-btn.active {
   border-color: var(--color-brass-bright);
-  box-shadow: 0 0 0 2px rgba(201, 161, 90, 0.45);
+  box-shadow: 0 0 0 2px rgba(91, 140, 255, 0.45);
 }
 
 .map-filter-chips {
@@ -3059,8 +3152,8 @@ textarea {
 .map-add-btn {
   background: linear-gradient(180deg, var(--color-brass-bright), var(--color-brass));
   border-color: rgba(255, 255, 255, 0.5);
-  color: #17130a;
-  box-shadow: 0 6px 18px rgba(201, 161, 90, 0.35);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(91, 140, 255, 0.35);
 }
 
 /* "Move pins" toggle -- top-right, mirroring .map-search-btn's top-left
@@ -3077,7 +3170,7 @@ textarea {
   background: rgb(var(--color-bg-rgb));
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   font-size: 1.1rem;
   cursor: pointer;
   display: flex;
@@ -3093,7 +3186,7 @@ textarea {
 
 .map-edit-btn.active {
   border-color: var(--color-brass-bright);
-  box-shadow: 0 0 0 2px rgba(201, 161, 90, 0.45);
+  box-shadow: 0 0 0 2px rgba(91, 140, 255, 0.45);
 }
 
 .map-edit-hint {
@@ -3206,7 +3299,7 @@ body.lightbox-open .ask-landmark-panel {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 1000;
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
   pointer-events: none;
 }
@@ -3248,7 +3341,7 @@ body.lightbox-open .ask-landmark-panel {
 
 .map-popup h4 {
   font-family: var(--font-heading);
-  color: var(--color-brass-bright);
+  color: var(--text-primary);
   margin: 0;
   font-size: 1rem;
 }
@@ -3506,7 +3599,7 @@ body.lightbox-open .ask-landmark-panel {
 
 .chatlab-bubble.error {
   border-color: var(--color-rust);
-  background: rgba(179, 80, 63, 0.14);
+  background: rgba(240, 106, 106, 0.14);
 }
 
 .chatlab-typing {
@@ -3726,4 +3819,501 @@ body.lightbox-open .ask-landmark-panel {
   textarea {
     font-size: 16px !important;
   }
+}
+
+/* ==========================================================================
+   Mapr design system: shared control styles
+   Visual only. These sit last so they win over the per-component rules
+   above at equal specificity.
+   ========================================================================== */
+
+/* ---------- Inputs ---------- */
+
+.field input[type='text'],
+.field input[type='email'],
+.field input[type='password'],
+.field select,
+.field textarea,
+.rating-comment,
+.autocomplete-chip-input,
+.city-dropdown-panel input[type='text'],
+.review-comment-input,
+.friend-email-input,
+.map-search-input,
+.radius-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.field input[type='text'],
+.field input[type='email'],
+.field input[type='password'],
+.field select,
+.field textarea {
+  padding: 14px 18px;
+}
+
+.field input[type='text']:focus,
+.field input[type='email']:focus,
+.field input[type='password']:focus,
+.field select:focus,
+.field textarea:focus,
+.rating-comment:focus,
+.autocomplete-chip-input:focus,
+.city-dropdown-panel input[type='text']:focus,
+.review-comment-input:focus,
+.friend-email-input:focus,
+.map-search-input:focus,
+.radius-select:focus {
+  outline: none;
+  border-color: var(--mapr-blue);
+  box-shadow: 0 0 0 3px var(--mapr-blue-soft);
+}
+
+.field label {
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ---------- Tags (true chips keep the pill radius) ---------- */
+
+.tag {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 4px 10px;
+  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+}
+
+.tag-active {
+  background: var(--mapr-blue-soft);
+  border-color: var(--mapr-blue-border);
+  color: var(--text-primary);
+}
+
+.tag-free {
+  color: var(--success);
+  border-color: rgba(85, 201, 135, 0.3);
+  background: rgba(85, 201, 135, 0.1);
+}
+
+.tag-error {
+  color: var(--danger);
+  border-color: rgba(240, 106, 106, 0.35);
+  background: rgba(240, 106, 106, 0.1);
+}
+
+/* ---------- Selection tiles and segmented tabs ---------- */
+
+.chip {
+  border-radius: var(--radius-sm);
+  border-color: var(--border-subtle);
+  background: var(--bg-card);
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+
+.chip:hover {
+  background: var(--bg-card-hover);
+}
+
+.chip.selected {
+  border-color: var(--mapr-blue-border);
+  background: var(--mapr-blue-soft);
+  color: var(--text-primary);
+}
+
+.tab-btn {
+  min-height: 40px;
+  border-radius: 10px;
+  border-color: var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.tab-btn.active {
+  border-color: var(--mapr-blue-border);
+  background: var(--mapr-blue-soft);
+  color: var(--text-primary);
+}
+
+.mapr-pick-vote,
+.score-chip-join {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+/* ---------- Progress ---------- */
+
+.level-bar-track {
+  height: 6px;
+  border: none;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.level-bar-fill {
+  background: var(--mapr-blue);
+  border-radius: 3px;
+}
+
+/* ---------- Header, popovers, modals ---------- */
+
+.app-header {
+  background: var(--bg-elevated);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+.app-header .brand-text {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0;
+}
+
+.score-chip {
+  padding: 7px 12px;
+  border-color: var(--border-default);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.score-chip-pts {
+  font-family: var(--font-body);
+  font-weight: 500;
+  border-left-color: var(--border-default);
+}
+
+.points-popover,
+.streak-info-popover,
+.user-popover-card {
+  background: var(--bg-elevated);
+  border-color: var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  color: var(--text-primary);
+}
+
+.modal-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+  padding: 24px;
+}
+
+.fixed-action-bar {
+  background: var(--bg-elevated);
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+/* ---------- Photos ---------- */
+
+.postcard,
+.postcard.rot-r {
+  background: var(--bg-card);
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  overflow: hidden;
+  transform: none;
+  box-shadow: none;
+}
+
+.postcard::before,
+.postcard::after {
+  display: none;
+}
+
+.postcard-photo,
+.postcard-gallery {
+  border-radius: 0;
+  background: var(--bg-elevated);
+}
+
+.landmark-thumb {
+  border-radius: var(--radius-sm);
+  border-color: var(--border-subtle);
+}
+
+/* ---------- Map controls ---------- */
+
+.map-search-btn,
+.map-locate-btn,
+.map-edit-btn,
+.ask-landmark-fab {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-float);
+}
+
+.map-add-btn {
+  background: var(--mapr-blue);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.map-search-btn.active,
+.map-edit-btn.active {
+  border-color: var(--mapr-blue);
+  box-shadow: 0 0 0 3px var(--mapr-blue-soft);
+}
+
+.map-pin,
+.map-cluster {
+  background: var(--mapr-blue);
+}
+
+.focus-tooltip.leaflet-tooltip {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* ---------- Bottom tabs ---------- */
+
+.bottom-nav {
+  height: calc(72px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-secondary);
+  border-color: var(--border-subtle);
+  border-radius: 20px 20px 0 0;
+  box-shadow: none;
+}
+
+.bottom-nav a {
+  gap: 4px;
+  color: var(--text-tertiary);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: color 0.15s var(--ease);
+}
+
+.bottom-nav a.active {
+  color: var(--mapr-blue);
+}
+
+.bottom-nav .nav-icon {
+  display: flex;
+}
+
+.bottom-nav .nav-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---------- Mapr chat ---------- */
+
+.chatlab {
+  --chatlab-bg: transparent;
+  --chatlab-panel: var(--bg-card);
+  --chatlab-border: var(--border-subtle);
+  --chatlab-cyan: var(--mapr-blue);
+  --chatlab-violet: #7756f7;
+  --chatlab-pink: #a76bff;
+  --chatlab-text: var(--text-primary);
+  --chatlab-text-dim: var(--text-secondary);
+  --mapr-orb: radial-gradient(circle at 30% 75%, #52d5ff 0%, transparent 38%),
+    radial-gradient(circle at 68% 30%, #a76bff 0%, transparent 45%), linear-gradient(135deg, #367bff, #7756f7);
+  font-family: var(--font-body);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.chatlab-header {
+  background: var(--bg-card);
+  border-color: var(--border-subtle);
+  box-shadow: none;
+  padding: 16px 20px;
+}
+
+.chatlab-orb {
+  background: var(--mapr-orb);
+  background-size: 140% 140%;
+  box-shadow: none;
+  animation: mapr-orb-drift 9s ease-in-out infinite alternate;
+}
+
+@keyframes mapr-orb-drift {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+.chatlab-title {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.chatlab-tagline {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+}
+
+.chatlab-region-pill {
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border-color: var(--border-default);
+}
+
+.chatlab-region-popover,
+.chatlab-region-popover .autocomplete-list {
+  background: var(--bg-elevated);
+  border-color: var(--border-default);
+}
+
+.chatlab-region-popover .autocomplete-item:hover,
+.chatlab-region-popover .autocomplete-item:focus-visible {
+  background: var(--bg-card-hover);
+}
+
+.chatlab-avatar {
+  background: var(--mapr-orb);
+  box-shadow: none;
+}
+
+.chatlab-bubble {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: var(--radius-md);
+  animation: bubble-in 0.22s var(--ease) both;
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.chatlab-msg.user .chatlab-bubble {
+  background: var(--mapr-blue);
+  border-color: transparent;
+  border-bottom-right-radius: 6px;
+}
+
+.chatlab-msg.user .chatlab-bubble p {
+  color: #ffffff;
+}
+
+.chatlab-msg.assistant .chatlab-bubble {
+  border-bottom-left-radius: 6px;
+}
+
+.chatlab-typing span {
+  background: var(--text-tertiary);
+}
+
+.chatlab-stop,
+.chatlab-stop-external:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.chatlab-stop:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-default);
+}
+
+.chatlab-stop-globe {
+  background: var(--bg-card);
+  border-color: var(--border-subtle);
+}
+
+.chatlab-stop-links a {
+  color: var(--mapr-blue);
+}
+
+.chatlab-quick-replies button {
+  background: var(--bg-elevated);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  padding: 8px 14px;
+}
+
+.chatlab-quick-replies button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+
+.chatlab-composer {
+  background: var(--bg-elevated);
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-float);
+}
+
+.chatlab-composer input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+.chatlab-composer input:focus {
+  outline: none;
+  border-color: var(--mapr-blue);
+  box-shadow: 0 0 0 3px var(--mapr-blue-soft);
+}
+
+.chatlab-send {
+  background: var(--mapr-blue);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.chatlab-send:hover:not(:disabled) {
+  background: var(--mapr-blue-hover);
+}
+
+.chatlab .discovery-stats-card,
+.chatlab .taste-profile-card {
+  background: var(--bg-card);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .level-bar-track {
+  background: rgba(43, 38, 32, 0.1);
+}
+
+[data-theme='light'] .tag {
+  background: rgba(43, 38, 32, 0.05);
 }

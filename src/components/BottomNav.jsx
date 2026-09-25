@@ -1,20 +1,21 @@
 import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
+import { FlaskConical, Map as MapIcon, MapPin, Route, Sparkles, UserRound } from 'lucide-react';
 
 // 5 tabs -- Setup is no longer one of them (it's the "Create New Trip"
 // modal inside Itinerary now). Mapr sits dead center: it's the app's home
 // screen, the one thing people open every day, so it gets the "create"
 // position instead of an end slot.
 const items = [
-  { to: '/', label: 'Map', icon: '\u{1F310}', end: true },
-  { to: '/landmarks', label: 'Landmarks', icon: '\u{1F4CD}' },
-  { to: '/mapr', label: 'Mapr', icon: '\u{1F9E0}' },
-  { to: '/itinerary', label: 'Itinerary', icon: '\u{1F5FA}\u{FE0F}' },
-  { to: '/profile', label: 'Profile', icon: '\u{1F3C6}' },
+  { to: '/', label: 'Map', Icon: MapIcon, end: true },
+  { to: '/landmarks', label: 'Landmarks', Icon: MapPin },
+  { to: '/mapr', label: 'Mapr', Icon: Sparkles },
+  { to: '/itinerary', label: 'Itinerary', Icon: Route },
+  { to: '/profile', label: 'Profile', Icon: UserRound },
   // Throwaway tab for previewing a Mapr redesign concept -- see MaprTest.jsx.
   // Remove this row (and its route in App.jsx) once the design question is
   // settled either way.
-  { to: '/mapr-test', label: 'Test', icon: '\u{1F9EA}' },
+  { to: '/mapr-test', label: 'Test', Icon: FlaskConical },
 ];
 
 export default function BottomNav() {
@@ -53,7 +54,9 @@ export default function BottomNav() {
     <nav className="bottom-nav" ref={navRef}>
       {items.map((item) => (
         <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'active' : '')}>
-          <span className="nav-icon">{item.icon}</span>
+          <span className="nav-icon">
+            <item.Icon strokeWidth={1.75} aria-hidden="true" />
+          </span>
           <span>{item.label}</span>
         </NavLink>
       ))}
