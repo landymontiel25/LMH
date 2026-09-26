@@ -32,6 +32,10 @@ import { friendlyError } from '../lib/friendlyError';
 
 const NO_FILTER = (v) => !v?.length;
 
+// Turn-by-turn's actual route, once directions are up -- see the dimming
+// rule on body.map-nav-open in theme.css.
+const NAV_ROUTE_GREEN = '#22c55e';
+
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
 
 // Only 4 combinations exist -- cache them instead of building a fresh
@@ -830,7 +834,13 @@ export default function MapExplore() {
             <>
               <FitNavRoute points={nav.data.points} />
               <Polyline positions={nav.data.points} pathOptions={{ color: '#ffffff', weight: 9, opacity: 0.6 }} />
-              <Polyline positions={nav.data.points} pathOptions={{ color: '#2b7fff', weight: 5, opacity: 1 }} />
+              {/* Green once real turn-by-turn is up: this is THE way,
+                  distinct from the plain blue used for a planned-but-not-
+                  navigating route elsewhere in the app. The rest of the map
+                  dims (body.map-nav-open, in theme.css) so it stands out --
+                  the underlying satellite imagery has no real per-road data
+                  we could recolor individually, only what we draw ourselves. */}
+              <Polyline positions={nav.data.points} pathOptions={{ color: NAV_ROUTE_GREEN, weight: 5, opacity: 1 }} />
               <Marker position={[nav.dest.lat, nav.dest.lng]} icon={focusIcon} zIndexOffset={1000} interactive={false}>
                 <Tooltip permanent direction="top" offset={[0, -34]} className="focus-tooltip">
                   {nav.dest.name}

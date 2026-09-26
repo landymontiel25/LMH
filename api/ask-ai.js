@@ -109,7 +109,9 @@ const APP_HELP =
   `you're in an itinerary). Short hops (about 1.2 km / 0.75 mi or less) are walking directions; longer ones are driving, with the ETA ` +
   `including live traffic and a note on how many minutes traffic is adding. On the Map tab it needs location turned on; on an itinerary, ` +
   `if you're planning from far away it shows the leg from the previous stop instead. "Refresh from Here" re-routes from where you are ` +
-  `now, and "Open in Maps App" hands off to Google or Apple Maps.\n` +
+  `now, and "Open in Maps App" hands off to Google or Apple Maps. Once real turn-by-turn is up, the route draws in green and the ` +
+  `satellite map around it dims, so the way stands out (the map is a photo, so individual real-world roads can't be recolored -- only ` +
+  `the route the app draws itself can be).\n` +
   `- Group Trips: a shared itinerary a few friends can all see and edit together (only the trip's owner can change who's a member).\n` +
   `- Adding a landmark that's missing (Add Landmark screen): any signed-in account with a verified email can submit one (verify it from the ` +
   `link emailed at sign-up; Settings can resend it). It shows up on the map for everyone right away.\n` +
