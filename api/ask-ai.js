@@ -120,7 +120,13 @@ const APP_HELP =
   `if you're planning from far away it shows the leg from the previous stop instead. "Refresh from Here" re-routes from where you are ` +
   `now, and "Open in Maps App" hands off to Google or Apple Maps. Once real turn-by-turn is up, the route draws in green and the ` +
   `satellite map around it dims, so the way stands out (the map is a photo, so individual real-world roads can't be recolored -- only ` +
-  `the route the app draws itself can be).\n` +
+  `the route the app draws itself can be).\n` +  `- Live navigation, like Apple Maps: once the route is up, tap ▶ Start. The map follows you at street level, the next turn and a ` +
+  `live distance countdown sit at the top, and time left, distance and arrival time at the bottom. It speaks each instruction ` +
+  `(🔊 to mute), keeps the screen on, re-routes automatically if you go off the route, and says when you've arrived. Drag the map ` +
+  `to look around, then 📍 to recenter; End stops it.\n` +
+  `- Itineraries show each stop's street address and, between stops, how long each leg takes and whether it's a walk or a drive. ` +
+  `"▶ Start Trip" runs live navigation through the stops you haven't checked into yet, in list order -- arriving at one offers ` +
+  `"Next: …" for the following stop. "All stops in Google Maps" opens the whole route, every stop in order, in Google Maps.\n` +
   `- Group Trips: a shared itinerary a few friends can all see and edit together (only the trip's owner can change who's a member).\n` +
   `- Adding a landmark that's missing (Add Landmark screen): any signed-in account with a verified email can submit one (verify it from the ` +
   `link emailed at sign-up; Settings can resend it). It shows up on the map for everyone right away.\n` +

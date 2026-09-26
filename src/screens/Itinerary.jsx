@@ -16,9 +16,16 @@ import ThemedChallenge from '../components/ThemedChallenge';
 import OfflineDownloadButton from '../components/OfflineDownloadButton';
 import { createGroupTrip, listMyGroupTrips } from '../lib/groupTrips';
 import { getRegion } from '../data/regions';
-import { geocodeLocation } from '../lib/geocode';
+import { geocodeLocation, streetAddress, cachedStreetAddress } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
-import { SORT_OPTIONS, orderStops, annotateRoute, enhanceRouteWithDrivingTimes, fetchDirections } from '../lib/routing';
+import {
+  SORT_OPTIONS,
+  orderStops,
+  annotateRoute,
+  enhanceRouteWithDrivingTimes,
+  fetchDirections,
+  googleMapsMultiStopLink,
+} from '../lib/routing';
 import TurnByTurnPanel from '../components/TurnByTurnPanel';
 import DirectionsButton from '../components/DirectionsButton';
 import { useRatings } from '../lib/RatingsContext';
@@ -463,6 +470,48 @@ export default function Itinerary() {
 
   const displayRoute = drivingRoute.length === route.length ? drivingRoute : route;
 
+  // Street address under each catalog stop (Mapr-found places already have
+  // one). Cached per device; new lookups go one per second, Nominatim's limit.
+  const [addresses, setAddresses] = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (const s of selectedLandmarks) {
+        if (cancelled) return;
+        if (s.address || !Number.isFinite(s.lat) || !Number.isFinite(s.lng)) continue;
+        const cached = cachedStreetAddress(s.lat, s.lng);
+        const a = cached || (await streetAddress(s.lat, s.lng));
+        if (cancelled) return;
+        if (a) setAddresses((cur) => (cur[s.id] === a ? cur : { ...cur, [s.id]: a }));
+        if (!cached) await new Promise((r) => setTimeout(r, 1100));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLandmarks]);
+
+  // Live navigation on the full-screen Map through the stops still to go,
+  // in list order; each arrival offers the next one.
+  const toNavStop = (s) => ({ name: s.name, lat: s.lat, lng: s.lng });
+  const startTrip = (fromStop) => {
+    const pending = displayRoute.filter((s) => !claimedMap[s.id]);
+    const list = fromStop
+      ? displayRoute.slice(displayRoute.findIndex((s) => s.id === fromStop.id)).filter((s) => s.id === fromStop.id || !claimedMap[s.id])
+      : pending.length
+      ? pending
+      : displayRoute;
+    if (!list.length) return;
+    navigate('/', {
+      state: { directionsTo: toNavStop(list[0]), directionsQueue: list.slice(1).map(toNavStop), startNav: true },
+    });
+  };
+  const linkStops = displayRoute.filter((s) => !claimedMap[s.id]).length
+    ? displayRoute.filter((s) => !claimedMap[s.id])
+    : displayRoute;
+  const allWalkable = linkStops.every((s, i) => i === 0 || s.distanceFromPrevMeters <= 1200);
+  const allStopsLink = googleMapsMultiStopLink(linkStops, coords, allWalkable ? 'walking' : 'driving');
+
   // In-app turn-by-turn (api/directions.js). Starts from your live GPS when
   // you're actually in the city; if you're planning from far away, from the
   // stop before this one instead, so the route is still the useful leg.
@@ -759,6 +808,7 @@ export default function Itinerary() {
               data={nav.data}
               onRefresh={() => startNav(nav.stop)}
               onClose={() => setNav(null)}
+              onStart={() => startTrip(nav.stop)}
             />
           )}
         </div>
@@ -773,19 +823,26 @@ export default function Itinerary() {
             </button>
           </div>
         )}
+        {displayRoute.length > 0 && (
+          <div className="itin-trip-actions">
+            <button type="button" className="btn btn-primary" onClick={() => startTrip()}>
+              {'\u{25B6}\u{FE0F}'} Start Trip
+            </button>
+            {allStopsLink && (
+              <a className="btn btn-ghost" href={allStopsLink} target="_blank" rel="noreferrer">
+                {'\u{1F5FA}\u{FE0F}'} All stops in Google Maps
+              </a>
+            )}
+          </div>
+        )}
         {displayRoute.map((stop, idx) => (
           <div key={stop.id}>
-            {idx === 0
-              ? stop.distanceFromPrevMeters <= 80000 && (
-                  <div className="route-travel">
-                    {'\u{1F4CD}'} {formatDistance(stop.distanceFromPrevMeters, units)} from you
-                  </div>
-                )
-              : (
-                <div className="route-travel">
-                  {'\u{1F6B6}'} {formatDistance(stop.distanceFromPrevMeters, units)} to next stop
-                </div>
-              )}
+            {(idx > 0 || stop.distanceFromPrevMeters <= 80000) && (
+              <div className="route-travel">
+                {stop.distanceFromPrevMeters <= 1200 ? '\u{1F6B6}' : '\u{1F697}'} {stop.travelMinutesFromPrev || 1} min ·{' '}
+                {formatDistance(stop.distanceFromPrevMeters, units)} {idx === 0 ? 'from you' : 'from the last stop'}
+              </div>
+            )}
             <div className="route-step">
               <div className="route-num">{idx + 1}</div>
               <div className={`card ${claimedMap[stop.id] ? 'visited' : ''}`} style={{ flex: 1 }}>
@@ -816,12 +873,15 @@ export default function Itinerary() {
                     {stop.address && <span className="tag place-tag">{stop.address}</span>}
                   </div>
                 ) : (
+                  <>
+                  {addresses[stop.id] && <p className="route-address">{'\u{1F4CD}'} {addresses[stop.id]}</p>}
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                     <span className={`tag ${stop.free ? 'tag-free' : ''}`}>
                       {stop.free ? 'Free to Visit' : 'Ticketed'}
                     </span>
                     <span className="tag">{'\u{23F1}\u{FE0F}'} ~{stop.typicalMinutes} min there</span>
                   </div>
+                  </>
                 )}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <DirectionsButton

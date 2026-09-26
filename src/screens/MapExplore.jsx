@@ -23,6 +23,8 @@ import { matchesSearch } from '../lib/search';
 import CheckInButton from '../components/CheckInButton';
 import DirectionsButton from '../components/DirectionsButton';
 import TurnByTurnPanel from '../components/TurnByTurnPanel';
+import ActiveNavOverlay from '../components/ActiveNavOverlay';
+import { prepareRoute, navProgress } from '../lib/navProgress';
 import { fetchDirections } from '../lib/routing';
 import LandmarkThumb from '../components/LandmarkThumb';
 import QuickRateButton from '../components/QuickRateButton';
@@ -207,6 +209,24 @@ function FitNavRoute({ points }) {
   return null;
 }
 
+// While navigating, keeps the map centered on you (zoomed in to street
+// level). Dragging the map pauses following until Recenter is tapped.
+function FollowUser({ pos, following, onUserPan }) {
+  const map = useMap();
+  useMapEvents({ dragstart: onUserPan });
+  useEffect(() => {
+    if (!following || !pos) return;
+    map.setView([pos.lat, pos.lng], Math.max(map.getZoom(), 17), { animate: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, pos?.lat, pos?.lng, following]);
+  return null;
+}
+
+// Off the route this many fixes in a row -> fetch a new route from here,
+// but no more often than every REROUTE_MS.
+const OFF_ROUTE_FIXES = 2;
+const REROUTE_MS = 15000;
+
 export default function MapExplore() {
   const { toggleLandmark, getRegionSelection, trip, mapFocus, mapFocusPoint, setMapFocusPoint, mapFocusStops } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
@@ -224,12 +244,22 @@ export default function MapExplore() {
   // "Use the Map" from any Get Directions sheet (DirectionsButton) lands
   // here with location.state.directionsTo. The route runs from your live
   // location, so a request waits for the GPS fix if it hasn't come in yet.
-  const [nav, setNav] = useState(null); // { dest, loading, error, data, req }
+  // active: live navigation (following you, next turn up top). queue: the
+  // itinerary stops still to go after this one, offered on arrival.
+  const [nav, setNav] = useState(null); // { dest, loading, error, data, req, active, queue }
   useEffect(() => {
     const dest = location.state?.directionsTo;
     if (!dest) return;
     mapRef.current?.closePopup();
-    setNav({ dest, loading: true, error: null, data: null, req: 0 });
+    setNav({
+      dest,
+      loading: true,
+      error: null,
+      data: null,
+      req: 0,
+      active: !!location.state?.startNav,
+      queue: location.state?.directionsQueue || [],
+    });
     // Clear it so a reload or back-navigation doesn't re-open directions.
     navigate(location.pathname, { replace: true, state: {} });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -270,6 +300,61 @@ export default function MapExplore() {
     return () => document.body.classList.remove('map-nav-open');
   }, [nav]);
   const refreshNav = () => setNav((cur) => cur && { ...cur, loading: true, error: null, req: cur.req + 1 });
+
+  // Live navigation: where you are along the route on every GPS fix.
+  const navRoute = useMemo(() => (nav?.data?.points?.length > 1 ? prepareRoute(nav.data) : null), [nav?.data]);
+  const alongRef = useRef(0);
+  useEffect(() => {
+    alongRef.current = 0;
+  }, [navRoute]);
+  const navActive = !!nav?.active;
+  const progress = useMemo(
+    () => (navActive && navRoute && coords ? navProgress(navRoute, coords, alongRef.current) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navActive, navRoute, coords?.lat, coords?.lng]
+  );
+  const [following, setFollowing] = useState(true);
+  const offRouteCountRef = useRef(0);
+  const lastRerouteRef = useRef(0);
+  useEffect(() => {
+    if (!progress) return;
+    alongRef.current = progress.along;
+    if (progress.arrived || !progress.offRoute) {
+      offRouteCountRef.current = 0;
+      return;
+    }
+    offRouteCountRef.current += 1;
+    if (offRouteCountRef.current >= OFF_ROUTE_FIXES && !nav.loading && Date.now() - lastRerouteRef.current > REROUTE_MS) {
+      lastRerouteRef.current = Date.now();
+      offRouteCountRef.current = 0;
+      refreshNav();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress]);
+  const startLiveNav = () => {
+    setFollowing(true);
+    setNav((cur) => cur && { ...cur, active: true });
+  };
+  const goToNextStop = () => {
+    setFollowing(true);
+    setNav((cur) =>
+      cur?.queue?.length
+        ? { dest: cur.queue[0], queue: cur.queue.slice(1), loading: true, error: null, data: null, req: 0, active: true }
+        : null
+    );
+  };
+  // Only the part of the route still ahead of you, once you're moving.
+  const remainingPoints = useMemo(() => {
+    if (!navRoute) return null;
+    if (!progress || !coords) return navRoute.points;
+    const i = navRoute.cum.findIndex((c) => c > progress.along);
+    return i === -1 ? [[coords.lat, coords.lng]] : [[coords.lat, coords.lng], ...navRoute.points.slice(i)];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navRoute, progress]);
+  useEffect(() => {
+    document.body.classList.toggle('map-nav-active', navActive);
+    return () => document.body.classList.remove('map-nav-active');
+  }, [navActive]);
   const [radiusMiles, setRadiusMiles] = useZoomRadius();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -847,17 +932,18 @@ export default function MapExplore() {
               zIndex={650}
             />
           )}
+          {navActive && <FollowUser pos={coords} following={following} onUserPan={() => setFollowing(false)} />}
           {nav?.data?.points?.length > 1 && (
             <>
-              <FitNavRoute points={nav.data.points} />
-              <Polyline positions={nav.data.points} pathOptions={{ color: '#ffffff', weight: 9, opacity: 0.6 }} />
+              {!navActive && <FitNavRoute points={nav.data.points} />}
+              <Polyline positions={remainingPoints} pathOptions={{ color: '#ffffff', weight: 9, opacity: 0.6 }} />
               {/* Green once real turn-by-turn is up: this is THE way,
                   distinct from the plain blue used for a planned-but-not-
                   navigating route elsewhere in the app. The rest of the map
                   dims (body.map-nav-open, in theme.css) so it stands out --
                   the underlying satellite imagery has no real per-road data
                   we could recolor individually, only what we draw ourselves. */}
-              <Polyline positions={nav.data.points} pathOptions={{ color: NAV_ROUTE_GREEN, weight: 5, opacity: 1 }} />
+              <Polyline positions={remainingPoints} pathOptions={{ color: NAV_ROUTE_GREEN, weight: 5, opacity: 1 }} />
               <Marker position={[nav.dest.lat, nav.dest.lng]} icon={focusIcon} zIndexOffset={1000} interactive={false}>
                 <Tooltip permanent direction="top" offset={[0, -34]} className="focus-tooltip">
                   {nav.dest.name}
@@ -940,17 +1026,35 @@ export default function MapExplore() {
           </MarkerClusterGroup>
         </MapContainer>
 
-      {nav && (
-        <div className="map-nav-sheet">
-          <TurnByTurnPanel
-            stop={nav.dest}
-            loading={nav.loading}
-            error={nav.error}
-            data={nav.data}
-            onRefresh={refreshNav}
-            onClose={() => setNav(null)}
-          />
-        </div>
+      {/* Live mode takes over the screen; a route that failed to load at
+          all falls back to the regular sheet, with its error and Try again. */}
+      {nav && navActive && !(nav.error && !nav.data) ? (
+        <ActiveNavOverlay
+          key={`${nav.dest.lat},${nav.dest.lng}`}
+          dest={nav.dest}
+          mode={nav.data?.mode}
+          progress={progress}
+          rerouting={nav.loading && !!nav.data}
+          following={following}
+          onRecenter={() => setFollowing(true)}
+          onEnd={() => setNav(null)}
+          nextStop={nav.queue?.[0] || null}
+          onNextStop={goToNextStop}
+        />
+      ) : (
+        nav && (
+          <div className="map-nav-sheet">
+            <TurnByTurnPanel
+              stop={nav.dest}
+              loading={nav.loading}
+              error={nav.error}
+              data={nav.data}
+              onRefresh={refreshNav}
+              onClose={() => setNav(null)}
+              onStart={coords ? startLiveNav : null}
+            />
+          </div>
+        )
       )}
 
       {!placingPin && (

@@ -49,6 +49,34 @@ export async function reverseAddress(lat, lng) {
     if (!place.address) return place.name;
     return place.address.startsWith(place.name) ? place.address : `${place.name}, ${place.address}`;
   }
+  return streetAddress(lat, lng);
+}
+
+const STREET_CACHE_KEY = 'lh-street-address-cache';
+function readStreetCache() {
+  try {
+    return JSON.parse(localStorage.getItem(STREET_CACHE_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+const streetKey = (lat, lng) => `${lat.toFixed(5)},${lng.toFixed(5)}`;
+
+/** The cached street address for a point, if this device has looked it up before. */
+export function cachedStreetAddress(lat, lng) {
+  return readStreetCache()[streetKey(lat, lng)] || null;
+}
+
+/**
+ * Street address for a point via Nominatim at building zoom: "Independence
+ * Hall, 520 Chestnut Street, Philadelphia, Pennsylvania". Cached on this
+ * device (addresses don't move). Null on any failure; never throws.
+ */
+export async function streetAddress(lat, lng) {
+  const key = streetKey(lat, lng);
+  const cached = readStreetCache()[key];
+  if (cached) return cached;
   const params = new URLSearchParams({ lat: String(lat), lon: String(lng), format: 'json', zoom: '18', addressdetails: '1' });
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 4000);
@@ -62,8 +90,15 @@ export async function reverseAddress(lat, lng) {
     const street = [a.house_number, a.road].filter(Boolean).join(' ');
     const building = a.building || a.amenity || a.shop || a.tourism || null;
     const town = a.city || a.town || a.village || a.suburb || a.hamlet;
-    const label = [building, street, town, a.state].filter(Boolean).join(', ');
-    return label || null;
+    const label = [building, street, town, a.state].filter(Boolean).join(', ') || null;
+    if (label) {
+      try {
+        localStorage.setItem(STREET_CACHE_KEY, JSON.stringify({ ...readStreetCache(), [key]: label }));
+      } catch {
+        /* storage full -- still return it */
+      }
+    }
+    return label;
   } catch {
     return null;
   } finally {

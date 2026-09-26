@@ -52,6 +52,12 @@ const coord = (o) =>
     ? { lat: Number(o.lat), lng: Number(o.lng) }
     : null;
 
+const endPoint = (loc) => {
+  const lat = num(loc?.latLng?.latitude);
+  const lng = num(loc?.latLng?.longitude);
+  return lat != null && lng != null ? [lat, lng] : null;
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -105,7 +111,8 @@ export default async function handler(req, res) {
         // tier) for driving -- walking has no traffic to account for.
         'X-Goog-FieldMask':
           'routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,' +
-          'routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters,routes.legs.steps.staticDuration',
+          'routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters,routes.legs.steps.staticDuration,' +
+          'routes.legs.steps.endLocation',
       },
       body: JSON.stringify({
         origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
@@ -132,6 +139,10 @@ export default async function handler(req, res) {
         // staticDuration comes back as e.g. "42s" -- traffic isn't broken
         // out per step, only for the route total below.
         durationSeconds: parseInt(s.staticDuration, 10) || 0,
+        // Where the step ends (its maneuver point) and what kind of turn it
+        // is -- what live navigation uses to know which step you're on.
+        end: endPoint(s.endLocation),
+        maneuver: String(s.navigationInstruction?.maneuver || '').slice(0, 40),
       }))
     );
 
