@@ -23,6 +23,8 @@ import TagCapPrompt from './components/TagCapPrompt';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import AdminModeBadge from './components/AdminModeBadge';
+import { ScreenSkeleton } from './components/Skeleton';
+import { ToastProvider } from './lib/ToastContext';
 
 // Lazy so each screen (and, critically, Leaflet + its cluster plugin --
 // only pulled in by MapExplore/AddLandmark) ships as its own chunk instead
@@ -47,6 +49,7 @@ const FriendCities = lazy(() => import('./screens/FriendCities'));
 const Notifications = lazy(() => import('./screens/Notifications'));
 const RequestFeature = lazy(() => import('./screens/RequestFeature'));
 const Mapr = lazy(() => import('./screens/Mapr'));
+const NotFound = lazy(() => import('./screens/NotFound'));
 
 // Keyed by path so a crash's fallback UI clears itself on the next
 // navigation (React Router doesn't remount the boundary just because the
@@ -55,7 +58,7 @@ function AppRoutes() {
   const location = useLocation();
   return (
     <ErrorBoundary key={location.pathname}>
-      <Suspense fallback={<div className="app-loading">{'\u{1F9ED}'}</div>}>
+      <Suspense fallback={<ScreenSkeleton />}>
         <Routes>
           <Route path="/" element={<MapExplore />} />
           <Route path="/add-landmark" element={<AddLandmark />} />
@@ -78,6 +81,7 @@ function AppRoutes() {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/request-feature" element={<RequestFeature />} />
           <Route path="/mapr" element={<Mapr />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </ErrorBoundary>
@@ -86,6 +90,7 @@ function AppRoutes() {
 
 export default function App() {
   return (
+    <ToastProvider>
     <AuthProvider>
       <AdminModeProvider>
       <LandmarkEditsProvider>
@@ -125,5 +130,6 @@ export default function App() {
       </LandmarkEditsProvider>
       </AdminModeProvider>
     </AuthProvider>
+    </ToastProvider>
   );
 }
