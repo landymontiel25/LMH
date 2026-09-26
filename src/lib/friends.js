@@ -117,6 +117,14 @@ export async function setProfileVisibility(uid, isPublic) {
   await setDoc(doc(db, 'users', uid), { public: !!isPublic, updatedAt: serverTimestamp() }, { merge: true });
 }
 
+// Turns off Mapr's on-device "you keep going here" habit prompt (see
+// src/lib/habitTracking.js) -- defaults to on, so absence of this field
+// means enabled.
+export async function setHabitTrackingEnabled(uid, enabled) {
+  if (!db || !uid) return;
+  await setDoc(doc(db, 'users', uid), { habitTrackingEnabled: !!enabled, updatedAt: serverTimestamp() }, { merge: true });
+}
+
 // The free-text "tell Mapr what you already love" blurb -- optional, set at
 // onboarding (TasteIntroStep) or anytime after from Settings. Same
 // users/{uid} doc getUserProfile already reads, so it's available for free

@@ -21,6 +21,7 @@ import CheckInReview from './components/CheckInReview';
 import LoveReasonPrompt from './components/LoveReasonPrompt';
 import TagCapPrompt from './components/TagCapPrompt';
 import AskLandmarkWidget from './components/AskLandmarkWidget';
+import HabitPlacePrompt from './components/HabitPlacePrompt';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import AdminModeBadge from './components/AdminModeBadge';
 import { ScreenSkeleton } from './components/Skeleton';
@@ -115,6 +116,7 @@ export default function App() {
           <LoveReasonPrompt />
           <TagCapPrompt />
           <AskLandmarkWidget />
+          <HabitPlacePrompt />
           <CelebrationOverlay />
           <AdminModeBadge />
           </HashRouter>

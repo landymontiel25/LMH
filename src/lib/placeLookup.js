@@ -33,6 +33,29 @@ export function nearestRegionId(lat, lng, maxKm = 120) {
   return best?.id ?? null;
 }
 
+/**
+ * Names the business at a GPS point (via /api/places-nearby), for the habit
+ * prompt (src/lib/habitTracking.js) -- a repeated visit is just coordinates
+ * until this says what's actually there. Returns null rather than throwing
+ * when nothing's found or the lookup fails, since the caller just leaves
+ * the cluster unnamed and tries again later.
+ */
+export async function reverseGeocodePlace(lat, lng) {
+  try {
+    const r = await fetch('/api/places-nearby', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat, lng }),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (!data?.name) return null;
+    return { name: data.name, address: data.address || '', lat: data.lat ?? lat, lng: data.lng ?? lng, placeId: data.placeId || '' };
+  } catch {
+    return null;
+  }
+}
+
 // Stable id for a web place, so adding the same spot twice doesn't duplicate it.
 export function placeId(name, lat, lng) {
   const slug = String(name || 'place')
