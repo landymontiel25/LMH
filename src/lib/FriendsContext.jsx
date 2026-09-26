@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { firebaseEnabled } from './firebase';
 import {
@@ -10,6 +10,7 @@ import {
   claimUsername,
 } from './friends';
 import { backfillUserName } from './leaderboard';
+import { syncMyReviewVisibility } from './reviews';
 
 // Current user's profile (incl. username), friend set (for deciding whose photos
 // you can see), and pending incoming requests. Upserts your profile on sign-in.
@@ -153,6 +154,18 @@ export function FriendsProvider({ children }) {
     reload();
     return unsubscribe;
   }, [user, reload]);
+
+  // Once per session (and whenever privacy changes): make sure your reviews
+  // carry your current privacy, so they show in landmark Comments to the
+  // right people -- including reviews saved before that copy existed.
+  const syncedRef = useRef(null);
+  useEffect(() => {
+    if (!user || !profileFresh || !myProfile) return;
+    const key = `${user.uid}:${!!myProfile.public}`;
+    if (syncedRef.current === key) return;
+    syncedRef.current = key;
+    syncMyReviewVisibility(user.uid, !!myProfile.public).catch(() => {});
+  }, [user, profileFresh, myProfile]);
 
   const setUsername = useCallback(
     async (name) => {

@@ -32,6 +32,19 @@ service cloud.firestore {
                 || exists(/databases/$(database)/documents/friend_edges/$(request.auth.uid + '_' + review.data.userId))));
     }
 
+    // A review's `hidden` flag must always equal "reported by 2+ people" --
+    // written by the author and by reporters alike, so neither side can
+    // hide or un-hide a review on their own. It exists so a list query can
+    // filter hidden reviews out (see the reviews list rule).
+    function reviewHiddenOk(data) {
+      return data.get('hidden', false) == (data.get('reportedBy', []).size() >= 2);
+    }
+
+    // The author's own copy of their profile privacy, for list queries.
+    function reviewVisibilityOk(data) {
+      return data.get('visibility', 'private') in ['public', 'private'];
+    }
+
     // --- Existing production rules, kept as-is (stricter than the new
     // defaults below): public read, ownership-validated writes, immutable
     // checkins, and leaderboard entries locked to their own owner. ---
@@ -221,11 +234,10 @@ service cloud.firestore {
       // A review (comment, stars, photos) is visible to: its own author, a
       // friend of the author, or anyone at all if the author's account is
       // public (users/{uid}.public == true, set via the Profile page's
-      // Privacy toggle -- default is private/friends-only). This is
-      // evaluated per-document, so a list query (e.g. a landmark's Visitor
-      // Reviews) silently drops any review this viewer isn't allowed to see
-      // -- the client no longer needs its own separate photo-visibility
-      // check. exists() is checked before get() so a reviewer who somehow
+      // Privacy toggle -- default is private/friends-only). That's the
+      // `get` rule; it can't serve list queries (Firestore rejects a whole
+      // query it can't prove safe rather than filtering it), so lists have
+      // their own rule below. exists() is checked before get() so a reviewer who somehow
       // has no users/{uid} doc yet fails safe (denied) instead of erroring.
       // Hidden once REPORT_HIDE_THRESHOLD (2) distinct people have reported
       // it -- unless you're the author or an admin -- and hidden from
@@ -238,7 +250,7 @@ service cloud.firestore {
       // throw inside the rule itself. Firestore treats a thrown rule as a
       // hard deny, not the clean "not found" a missing doc should be, which
       // made every first-time rating fail with permission-denied.
-      allow read: if
+      allow get: if
         resource == null
         || (
           (exists(/databases/$(database)/documents/users/$(resource.data.userId))
@@ -255,11 +267,28 @@ service cloud.firestore {
         && !(request.auth != null
           && (exists(/databases/$(database)/documents/blocks/$(request.auth.uid + '_' + resource.data.userId))
               || exists(/databases/$(database)/documents/blocks/$(resource.data.userId + '_' + request.auth.uid))));
+      // List queries (a landmark's Comments, your own reviews). Firestore
+      // only allows a query it can prove returns nothing this viewer can't
+      // see, and it can't look up every author's privacy setting mid-query,
+      // so a list uses the review's own copy of it (`visibility`, kept in
+      // sync by the author) plus `hidden`. Three query shapes pass: your own
+      // (userId == you), public ones (visibility == 'public', hidden ==
+      // false), and one friend's (userId == friend, hidden == false). Block
+      // filtering for lists happens in the app; a direct get still enforces
+      // blocks and the author's live privacy setting above.
+      allow list: if
+        (request.auth != null && resource.data.userId == request.auth.uid)
+        || (resource.data.get('hidden', true) == false
+            && (resource.data.get('visibility', 'private') == 'public'
+                || (request.auth != null
+                    && exists(/databases/$(database)/documents/friend_edges/$(request.auth.uid + '_' + resource.data.userId)))));
       allow create: if request.auth != null
         && reviewId == request.auth.uid + '_' + request.resource.data.landmarkId
         && request.resource.data.userId == request.auth.uid
         && !request.resource.data.keys().hasAny(['reportedBy'])
         && request.resource.data.get('comment', '').size() <= 500
+        && reviewHiddenOk(request.resource.data)
+        && reviewVisibilityOk(request.resource.data)
         && exists(/databases/$(database)/documents/checkins/$(reviewId));
       // Two ways to update: the author editing their own review (unchanged),
       // or someone else reporting it -- which may ONLY append their own uid
@@ -273,12 +302,15 @@ service cloud.firestore {
             && request.resource.data.userId == request.auth.uid
             && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reportedBy', 'userId'])
             && request.resource.data.get('comment', '').size() <= 500
+            && reviewHiddenOk(request.resource.data)
+            && reviewVisibilityOk(request.resource.data)
             && exists(/databases/$(database)/documents/checkins/$(reviewId)))
           || (
             reviewId.split('_')[0] != request.auth.uid
             && !(resource.data.get('reportedBy', []).hasAny([request.auth.uid]))
             && request.resource.data.reportedBy == resource.data.get('reportedBy', []).concat([request.auth.uid])
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportedBy'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportedBy', 'hidden'])
+            && reviewHiddenOk(request.resource.data)
           )
         );
       allow delete: if request.auth != null && reviewId.split('_')[0] == request.auth.uid;
