@@ -15,7 +15,9 @@ export const APP_HELP =
   `the same three choices as everywhere else (Use the Map, Google Maps, Apple Maps).\n` +
   `- Mapr chats: like Claude, you can have many chats. The bar at the top of Mapr shows the open chat's name (tap it to rename), ` +
   `☰ opens your chat list (search, open, rename, move to a project, delete) and ➕ starts a new chat. A new chat is named after ` +
-  `your first message. Chats sync to your account, so they're on every device you sign in on.\n` +
+  `your first message. Chats sync to your account, so they're on every device you sign in on. An "Edit" link under any message ` +
+  `you sent lets you change it and resend -- that discards the old reply (and anything after it) and gets a fresh answer to the ` +
+  `edited message, rather than adding a correction on top of the old thread.\n` +
   `- Mapr projects: group chats into a project (☰ → "📁 New project"). A project has a name and instructions Mapr follows in ` +
   `every chat inside it (budget, group size, what you're into). The owner can share a project with friends (⚙️ on the ` +
   `project → "Share with a friend"); everyone in it can read and continue its chats and edit the instructions, and the ` +

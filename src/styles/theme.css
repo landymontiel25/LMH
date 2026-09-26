@@ -3745,6 +3745,48 @@ body.lightbox-open .bottom-nav {
   border-bottom-left-radius: 4px;
 }
 
+.chatlab-edit-btn {
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--chatlab-text-dim);
+  font-size: 0.72rem;
+  font-family: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.chatlab-edit-btn:hover {
+  opacity: 1;
+  color: var(--chatlab-text);
+}
+
+.chatlab-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.chatlab-edit-input {
+  width: 100%;
+  resize: vertical;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--chatlab-border);
+  border-radius: 10px;
+  color: var(--chatlab-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 8px 10px;
+}
+
+.chatlab-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .chatlab-bubble.error {
   border-color: var(--color-rust);
   background: rgba(240, 106, 106, 0.14);

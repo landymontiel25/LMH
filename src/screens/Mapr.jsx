@@ -182,6 +182,8 @@ export default function Mapr() {
   // Arriving from a "shared a project with you" notification opens the list.
   const [chatsOpen, setChatsOpen] = useState(() => !!location.state?.openChats);
   const [renamingTitle, setRenamingTitle] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editDraft, setEditDraft] = useState('');
   const [regionOpen, setRegionOpen] = useState(false);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const feedEndRef = useRef(null);
@@ -234,7 +236,15 @@ export default function Mapr() {
     if (existing) return existing;
 
     setCreatingKeys((cur) => new Set(cur).add(key));
-    const promise = landmarkForRating({ name: stop.name, address: stop.address || stop.place }, { near: coords, user, resendVerification })
+    // The AI research + web search behind this can genuinely take a while
+    // -- but it must never look stuck forever if a request truly hangs, so
+    // this gives up and shows a retryable failure after a bounded wait.
+    const withTimeout = (p, ms) =>
+      Promise.race([p, new Promise((_, reject) => setTimeout(() => reject(new Error('Timed out setting this up.')), ms))]);
+    const promise = withTimeout(
+      landmarkForRating({ name: stop.name, address: stop.address || stop.place }, { near: coords, user, resendVerification }),
+      30000
+    )
       .then((created) => {
         setMessagesFor(activeChat.id, (cur) =>
           cur.map((mm) =>
@@ -307,13 +317,21 @@ export default function Mapr() {
       navigate(`/landmarks/${stop.createdRegion}/${stop.createdId}`);
       return;
     }
+    // Tapping a card that's already mid-creation (background effect or an
+    // earlier tap) just awaits the same request below -- this toast is the
+    // only feedback that tap needs, since the button itself can't visibly
+    // change state twice in a row for the same thing.
+    if (creatingKeys.has(stopKey(m.id, idx, stop.name))) {
+      toast.show('Still setting this up — hang tight.');
+    }
     try {
       const created = await ensureStopCreated(m, idx, stop);
       navigate(`/landmarks/${created.region || created.regionId}/${created.id}`);
-    } catch {
-      // Couldn't create it (signed out, unverified, not found on the map --
-      // already reflected as createFailed) -- stays put, Source link still
-      // works, tapping again retries.
+    } catch (err) {
+      // Couldn't create it (signed out, unverified, not found on the map,
+      // or timed out -- already reflected as createFailed) -- stays put,
+      // Source link still works, tapping again retries.
+      toast.show(friendlyError(err, "Couldn't open that place — tap it again to retry."));
     }
   };
 
@@ -365,7 +383,7 @@ export default function Mapr() {
   // retry resends the text of a failed turn: that user bubble is already in
   // the thread, so only the error bubble under it is swapped back out for
   // the typing indicator -- never a second copy of the same message.
-  const send = async (e, overrideText, { retry = false } = {}) => {
+  const send = async (e, overrideText, { retry = false, historyOverride } = {}) => {
     e?.preventDefault();
     const text = (overrideText ?? draft).trim();
     if (!text || busy) return;
@@ -380,7 +398,13 @@ export default function Mapr() {
     // while it's coming in.
     const chatId = activeChat.id;
     const put = (u) => setMessagesFor(chatId, u);
-    const base = retry && messages.at(-1)?.error ? messages.slice(0, -1) : messages;
+    // historyOverride: editing an earlier message already truncated
+    // `messages` in state, but that setState hasn't landed yet by the time
+    // this runs in the same tick -- read from the override instead of the
+    // (still-stale) `messages` closure so the edit doesn't briefly resurrect
+    // the messages it just replaced.
+    const startingMessages = historyOverride ?? messages;
+    const base = retry && startingMessages.at(-1)?.error ? startingMessages.slice(0, -1) : startingMessages;
     const history = retry ? base : [...base, { role: 'user', text }];
     setMessages(history);
     // Only a typed message empties the composer; a quick reply or planner
@@ -545,6 +569,20 @@ export default function Mapr() {
     }
   };
 
+  // Editing an earlier message discards it and everything that followed
+  // (the old reply, and any turns after that), then sends the edited text
+  // as a fresh turn -- a real "redo from here", not appending a correction
+  // onto a thread that still has the old answer sitting in it.
+  const editAndResend = async (idx, newText) => {
+    const trimmed = newText.trim();
+    if (!trimmed || busy) return;
+    const truncated = messages.slice(0, idx);
+    setMessagesFor(activeChat.id, truncated);
+    setEditingIndex(null);
+    setEditDraft('');
+    await send(null, trimmed, { historyOverride: truncated });
+  };
+
   return (
     <div className="chatlab">
       <div className="chatlab-header">
@@ -661,7 +699,55 @@ export default function Mapr() {
           <div key={i} className={`chatlab-msg ${m.role}`}>
             {m.role === 'assistant' && <div className="chatlab-avatar" />}
             <div className={`chatlab-bubble ${m.error ? 'error' : ''}`}>
-              <p>{m.text}</p>
+              {m.role === 'user' && editingIndex === i ? (
+                <form
+                  className="chatlab-edit-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    editAndResend(i, editDraft);
+                  }}
+                >
+                  <textarea
+                    className="chatlab-edit-input"
+                    value={editDraft}
+                    onChange={(e) => setEditDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        editAndResend(i, editDraft);
+                      }
+                      if (e.key === 'Escape') setEditingIndex(null);
+                    }}
+                    autoFocus
+                    rows={2}
+                  />
+                  <div className="chatlab-edit-actions">
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingIndex(null)}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary btn-sm" disabled={!editDraft.trim() || busy}>
+                      Save & resend
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <p>{m.text}</p>
+                  {m.role === 'user' && !busy && (
+                    <button
+                      type="button"
+                      className="chatlab-edit-btn"
+                      title="Edit and resend this message"
+                      onClick={() => {
+                        setEditingIndex(i);
+                        setEditDraft(m.text);
+                      }}
+                    >
+                      {'\u{270F}\u{FE0F}'} Edit
+                    </button>
+                  )}
+                </>
+              )}
               {m.stops?.length > 0 && (
                 <div className="chatlab-stops">
                   {m.stops.map((stop, idx) => {
@@ -690,7 +776,6 @@ export default function Mapr() {
                         <button
                           type="button"
                           className="chatlab-stop-card-main"
-                          disabled={creating}
                           onClick={() => openStop(m, idx, stop)}
                         >
                           {resolved ? (
