@@ -26,30 +26,63 @@ import AdminModeBadge from './components/AdminModeBadge';
 import { ScreenSkeleton } from './components/Skeleton';
 import { ToastProvider } from './lib/ToastContext';
 
+// Each screen is its own file with a content hash in its name, and every
+// deploy replaces them. A tab opened before a deploy then asks for a file
+// that's gone, and the screen crashed with "Something went wrong" -- the
+// usual cause of that screen. Reload once to pick up the current version
+// (the flag stops a reload loop if the file is missing for another reason).
+const RELOAD_FLAG = 'lh-chunk-reload';
+function lazyScreen(load) {
+  return lazy(() =>
+    load()
+      .then((m) => {
+        sessionStorage.removeItem(RELOAD_FLAG);
+        return m;
+      })
+      .catch((err) => {
+        if (!sessionStorage.getItem(RELOAD_FLAG)) {
+          sessionStorage.setItem(RELOAD_FLAG, '1');
+          window.location.reload();
+          return new Promise(() => {});
+        }
+        throw err;
+      })
+  );
+}
+// Vite's own signal for the same thing (a preloaded dependency is gone).
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', (e) => {
+    if (sessionStorage.getItem(RELOAD_FLAG)) return;
+    e.preventDefault();
+    sessionStorage.setItem(RELOAD_FLAG, '1');
+    window.location.reload();
+  });
+}
+
 // Lazy so each screen (and, critically, Leaflet + its cluster plugin --
 // only pulled in by MapExplore/AddLandmark) ships as its own chunk instead
 // of all up front in one bundle, same as everything past the entry chunk
 // that Vite would otherwise inline.
-const LandmarkSelection = lazy(() => import('./screens/LandmarkSelection'));
-const MapExplore = lazy(() => import('./screens/MapExplore'));
-const AddLandmark = lazy(() => import('./screens/AddLandmark'));
-const LandmarkDetail = lazy(() => import('./screens/LandmarkDetail'));
-const Itinerary = lazy(() => import('./screens/Itinerary'));
-const Profile = lazy(() => import('./screens/Profile'));
-const FullLeaderboard = lazy(() => import('./screens/FullLeaderboard'));
-const Legal = lazy(() => import('./screens/Legal'));
-const GroupTrip = lazy(() => import('./screens/GroupTrip'));
-const Settings = lazy(() => import('./screens/Settings'));
-const FullStats = lazy(() => import('./screens/FullStats'));
-const MyCheckins = lazy(() => import('./screens/MyCheckins'));
-const MyMaprRatings = lazy(() => import('./screens/MyMaprRatings'));
-const MyCities = lazy(() => import('./screens/MyCities'));
-const FriendCheckins = lazy(() => import('./screens/FriendCheckins'));
-const FriendCities = lazy(() => import('./screens/FriendCities'));
-const Notifications = lazy(() => import('./screens/Notifications'));
-const RequestFeature = lazy(() => import('./screens/RequestFeature'));
-const Mapr = lazy(() => import('./screens/Mapr'));
-const NotFound = lazy(() => import('./screens/NotFound'));
+const LandmarkSelection = lazyScreen(() => import('./screens/LandmarkSelection'));
+const MapExplore = lazyScreen(() => import('./screens/MapExplore'));
+const AddLandmark = lazyScreen(() => import('./screens/AddLandmark'));
+const LandmarkDetail = lazyScreen(() => import('./screens/LandmarkDetail'));
+const Itinerary = lazyScreen(() => import('./screens/Itinerary'));
+const Profile = lazyScreen(() => import('./screens/Profile'));
+const FullLeaderboard = lazyScreen(() => import('./screens/FullLeaderboard'));
+const Legal = lazyScreen(() => import('./screens/Legal'));
+const GroupTrip = lazyScreen(() => import('./screens/GroupTrip'));
+const Settings = lazyScreen(() => import('./screens/Settings'));
+const FullStats = lazyScreen(() => import('./screens/FullStats'));
+const MyCheckins = lazyScreen(() => import('./screens/MyCheckins'));
+const MyMaprRatings = lazyScreen(() => import('./screens/MyMaprRatings'));
+const MyCities = lazyScreen(() => import('./screens/MyCities'));
+const FriendCheckins = lazyScreen(() => import('./screens/FriendCheckins'));
+const FriendCities = lazyScreen(() => import('./screens/FriendCities'));
+const Notifications = lazyScreen(() => import('./screens/Notifications'));
+const RequestFeature = lazyScreen(() => import('./screens/RequestFeature'));
+const Mapr = lazyScreen(() => import('./screens/Mapr'));
+const NotFound = lazyScreen(() => import('./screens/NotFound'));
 
 // Keyed by path so a crash's fallback UI clears itself on the next
 // navigation (React Router doesn't remount the boundary just because the

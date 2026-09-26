@@ -92,7 +92,8 @@ export const APP_HELP =
   `reason back into future recommendations.\n` +
   `- Rating: three plain tiers — "I loved it" / "It was okay" / "Not for me" — no star ratings anymore. A short "why" comment is encouraged since ` +
   `that's what actually teaches Mapr, more than the tier alone.\n` +
-  `- Comments: every landmark page has a 💬 Comments section with your comment (at the top) and other people's. Once you've checked ` +
+  `- Comments: every landmark page has a 💬 Comments section with your comment (at the top) and other people's. Only written ` +
+  `comments show there -- a rating on its own doesn't count as a comment. Once you've checked ` +
   `in somewhere you can add or edit your comment any time later, with or without a rating -- from that section or from each row of ` +
   `My Check-ins (Profile → your check-ins). Other people's comments show when their account is public or they're your friend.\n` +
   `- My Check-ins has a search box: type a place, city, something from your comment, your rating ("loved") or a date.\n` +
@@ -128,6 +129,7 @@ export const APP_HELP =
   `- Itineraries show each stop's street address and, between stops, how long each leg takes and whether it's a walk or a drive. ` +
   `"▶ Start Trip" runs live navigation through the stops you haven't checked into yet, in list order -- arriving at one offers ` +
   `"Next: …" for the following stop. "All stops in Google Maps" opens the whole route, every stop in order, in Google Maps.\n` +
+  `- Each stop on an itinerary or group trip shows its street address under its name.\n` +
   `- Group Trips: a shared itinerary a few friends can all see and edit together (only the trip's owner can change who's a member). ` +
   `"🗺️ View in Map" next to Shared Landmarks opens the Map with the trip's stops numbered in the most efficient order from where ` +
   `you are, the route drawn between them, and ▶ Start for live navigation through them (plus "All stops in Google Maps").\n` +

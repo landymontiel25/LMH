@@ -20,6 +20,8 @@ export default function AdminEditBuiltInPanel({ landmark, onSaved }) {
   const [typicalMinutes, setTypicalMinutes] = useState(String(landmark.typicalMinutes ?? 15));
   const [imageUrl, setImageUrl] = useState(landmark.images?.[0] || '');
   const [saving, setSaving] = useState(false);
+  // Catalog landmarks store their city as `region`; list/map copies add `regionId`.
+  const regionId = landmark.regionId ?? landmark.region;
   const [resetting, setResetting] = useState(false);
   const [msg, setMsg] = useState(null);
 
@@ -29,7 +31,7 @@ export default function AdminEditBuiltInPanel({ landmark, onSaved }) {
     try {
       const minutes = Math.round(Number(typicalMinutes));
       await saveLandmarkEdit({
-        region: landmark.regionId,
+        region: regionId,
         id: landmark.id,
         userId: user?.uid,
         fields: {
@@ -43,7 +45,8 @@ export default function AdminEditBuiltInPanel({ landmark, onSaved }) {
             .slice(0, 5),
           free,
           typicalMinutes: Number.isFinite(minutes) && minutes > 0 ? minutes : 15,
-          images: imageUrl.trim() ? [imageUrl.trim()] : [],
+          // Only the first photo is editable here -- keep the rest of the gallery.
+          images: [imageUrl.trim(), ...(landmark.images || []).slice(1)].filter(Boolean),
         },
       });
       onSaved?.();
@@ -60,7 +63,7 @@ export default function AdminEditBuiltInPanel({ landmark, onSaved }) {
     setResetting(true);
     setMsg(null);
     try {
-      await clearLandmarkEdit(landmark.regionId, landmark.id);
+      await clearLandmarkEdit(regionId, landmark.id);
       onSaved?.();
       setMsg({ ok: true, text: 'Reverted to the original catalog data.' });
     } catch (e) {

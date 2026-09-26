@@ -230,7 +230,7 @@ export async function getAllRatings() {
 
 /**
  * A landmark's comments you're allowed to see: public ones, your own, and
- * your friends' (friends-only accounts). Three queries because Firestore
+ * your friends' (friends-only accounts) -- only reviews with written text. Three queries because Firestore
  * only runs a list query its rules can prove safe -- a plain "every review
  * of this landmark" query is always refused (see firestore.rules). Single-
  * or equality-only filters, so no composite index is needed.
@@ -254,7 +254,8 @@ export async function getLandmarkReviews(landmarkId, { uid = null, friendUids = 
   for (const snap of friendSnaps) snap?.docs.forEach((d) => byId.set(d.id, { id: d.id, ...d.data() }));
   if (mine?.exists()) byId.set(mine.id, { id: mine.id, ...mine.data() });
   return [...byId.values()]
-    .filter((r) => r.comment || r.ratingTier || r.stars || r.photoURLs?.length || r.photoURL)
+    // A rating on its own isn't a comment -- only reviews with written text show.
+    .filter((r) => (r.comment || '').trim())
     .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
 }
 
@@ -324,10 +325,12 @@ export async function saveMyComment({ userId, landmark, comment }) {
   await runTransaction(db, async (tx) => {
     const cur = await tx.get(ref);
     const user = await tx.get(doc(db, 'users', userId));
+    const username = user.exists() ? user.data().username : null;
     tx.set(
       ref,
       {
         userId,
+        userName: username || (cur.exists() ? cur.data().userName : null) || 'Explorer',
         landmarkId: landmark.id,
         landmarkName: landmark.name,
         region: landmark.region ?? landmark.regionId,
