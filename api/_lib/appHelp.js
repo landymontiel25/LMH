@@ -128,7 +128,9 @@ export const APP_HELP =
   `- Itineraries show each stop's street address and, between stops, how long each leg takes and whether it's a walk or a drive. ` +
   `"▶ Start Trip" runs live navigation through the stops you haven't checked into yet, in list order -- arriving at one offers ` +
   `"Next: …" for the following stop. "All stops in Google Maps" opens the whole route, every stop in order, in Google Maps.\n` +
-  `- Group Trips: a shared itinerary a few friends can all see and edit together (only the trip's owner can change who's a member).\n` +
+  `- Group Trips: a shared itinerary a few friends can all see and edit together (only the trip's owner can change who's a member). ` +
+  `"🗺️ View in Map" next to Shared Landmarks opens the Map with the trip's stops numbered in the most efficient order from where ` +
+  `you are, the route drawn between them, and ▶ Start for live navigation through them (plus "All stops in Google Maps").\n` +
   `- Adding a landmark that's missing (Add Landmark screen): any signed-in account with a verified email can submit one (verify it from the ` +
   `link emailed at sign-up; Settings can resend it). It shows up on the map for everyone right away.\n` +
   `- "Nearby Now" (on the map screen): an expandable panel showing landmarks close to your current location right now.\n` +

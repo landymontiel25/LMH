@@ -27,7 +27,7 @@ import ActiveNavOverlay from '../components/ActiveNavOverlay';
 import { prepareRoute, navProgress } from '../lib/navProgress';
 import { useSmartSearch, landmarkSearchText } from '../lib/smartSearch';
 import SmartSearchLabel from '../components/SmartSearchLabel';
-import { fetchDirections } from '../lib/routing';
+import { fetchDirections, buildNearestNeighborRoute, googleMapsMultiStopLink } from '../lib/routing';
 import LandmarkThumb from '../components/LandmarkThumb';
 import QuickRateButton from '../components/QuickRateButton';
 import { usePersistentState } from '../lib/usePersistentState';
@@ -109,6 +109,18 @@ const focusIcon = L.divIcon({
   iconAnchor: [13, 31],
   popupAnchor: [0, -36],
 });
+
+// Numbered stop on a trip's route ("View in Map" from a group trip).
+const tripStopIconCache = new Map();
+function tripStopIcon(n) {
+  if (!tripStopIconCache.has(n)) {
+    tripStopIconCache.set(
+      n,
+      L.divIcon({ className: '', html: `<div class="trip-stop-pin">${n}</div>`, iconSize: [28, 28], iconAnchor: [14, 14] })
+    );
+  }
+  return tripStopIconCache.get(n);
+}
 
 const TILE_LAYERS = {
   street: {
@@ -223,6 +235,19 @@ function FitNavRoute({ points }) {
   return null;
 }
 
+// Frames a trip's whole route once, when it's first shown.
+function FitTripRoute({ points }) {
+  const map = useMap();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current || points.length < 1) return;
+    done.current = true;
+    if (points.length === 1) map.setView(points[0], 16);
+    else map.fitBounds(points, { paddingTopLeft: [40, 110], paddingBottomRight: [40, 360], maxZoom: 16 });
+  }, [map, points]);
+  return null;
+}
+
 // While navigating, keeps the map centered on you (zoomed in to street
 // level). Dragging the map pauses following until Recenter is tapped.
 function FollowUser({ pos, following, onUserPan }) {
@@ -278,6 +303,18 @@ export default function MapExplore() {
     navigate(location.pathname, { replace: true, state: {} });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
+  // "View in Map" from a group trip: its stops, in the most efficient order
+  // from where you are, with the route drawn and Start for live navigation.
+  const [tripRoute, setTripRoute] = useState(null); // { name, stops: [{ id, name, lat, lng }] }
+  useEffect(() => {
+    const tr = location.state?.tripRoute;
+    if (!tr?.stops?.length) return;
+    mapRef.current?.closePopup();
+    setTripRoute(tr);
+    navigate(location.pathname, { replace: true, state: {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
+
   const coordsRef = useRef(coords);
   coordsRef.current = coords;
   const hasFix = !!coords;
@@ -314,6 +351,24 @@ export default function MapExplore() {
     return () => document.body.classList.remove('map-nav-open');
   }, [nav]);
   const refreshNav = () => setNav((cur) => cur && { ...cur, loading: true, error: null, req: cur.req + 1 });
+
+  // Ordered once you have a location (GPS, else where you last were); the
+  // order doesn't reshuffle as you move.
+  const tripOrigin = coords || lastKnown || null;
+  const hasTripOrigin = !!tripOrigin;
+  const orderedTrip = useMemo(() => {
+    if (!tripRoute) return null;
+    const origin = tripOrigin || tripRoute.stops[0];
+    return { origin: tripOrigin, stops: buildNearestNeighborRoute(origin, tripRoute.stops) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripRoute, hasTripOrigin]);
+  const startTripRoute = () => {
+    if (!orderedTrip?.stops.length) return;
+    const [first, ...rest] = orderedTrip.stops.map((st) => ({ name: st.name, lat: st.lat, lng: st.lng }));
+    setFollowing(true);
+    setNav({ dest: first, queue: rest, loading: true, error: null, data: null, req: 0, active: true });
+    setTripRoute(null);
+  };
 
   // Live navigation: where you are along the route on every GPS fix.
   const navRoute = useMemo(() => (nav?.data?.points?.length > 1 ? prepareRoute(nav.data) : null), [nav?.data]);
@@ -983,6 +1038,24 @@ export default function MapExplore() {
               zIndex={650}
             />
           )}
+          {orderedTrip && !nav && (
+            <>
+              <FitTripRoute
+                points={[...(orderedTrip.origin ? [[orderedTrip.origin.lat, orderedTrip.origin.lng]] : []), ...orderedTrip.stops.map((st) => [st.lat, st.lng])]}
+              />
+              <Polyline
+                positions={[...(orderedTrip.origin ? [[orderedTrip.origin.lat, orderedTrip.origin.lng]] : []), ...orderedTrip.stops.map((st) => [st.lat, st.lng])]}
+                pathOptions={{ color: '#4d7fff', weight: 4, opacity: 0.9, dashArray: '8 8' }}
+              />
+              {orderedTrip.stops.map((st, i) => (
+                <Marker key={`trip-${st.id || i}`} position={[st.lat, st.lng]} icon={tripStopIcon(i + 1)} zIndexOffset={900}>
+                  <Tooltip direction="top" offset={[0, -14]} className="focus-tooltip">
+                    {i + 1}. {st.name}
+                  </Tooltip>
+                </Marker>
+              ))}
+            </>
+          )}
           {navActive && <FollowUser pos={coords} following={following} onUserPan={() => setFollowing(false)} />}
           {nav?.data?.points?.length > 1 && (
             <>
@@ -1076,6 +1149,50 @@ export default function MapExplore() {
             {customMarkers}
           </MarkerClusterGroup>
         </MapContainer>
+
+      {orderedTrip && !nav && (
+        <div className="map-nav-sheet">
+          <div className="card turn-panel trip-route-panel">
+            <div className="turn-panel-head">
+              <h3 style={{ margin: 0 }}>
+                {'\u{1F5FA}\u{FE0F}'} {tripRoute.name}
+              </h3>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setTripRoute(null)}>
+                {'\u{2715}'} Close
+              </button>
+            </div>
+            <p className="screen-subtitle" style={{ margin: '4px 0 8px' }}>
+              {orderedTrip.origin ? 'Best order from where you are' : 'Best order between the stops'} · {orderedTrip.stops.length}{' '}
+              stop{orderedTrip.stops.length === 1 ? '' : 's'}
+            </p>
+            <ol className="turn-steps trip-route-steps">
+              {orderedTrip.stops.map((st, i) => (
+                <li key={st.id || i}>
+                  <span>
+                    {i + 1}. {st.name}
+                  </span>
+                  {(i > 0 || orderedTrip.origin) && (
+                    <span className="turn-step-dist">{formatDistance(st.distanceFromPrevMeters, units)}</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={startTripRoute} disabled={!coords}>
+                {'\u{25B6}\u{FE0F}'} {coords ? 'Start' : 'Start (waiting for location)'}
+              </button>
+              <a
+                className="btn btn-ghost btn-sm"
+                href={googleMapsMultiStopLink(orderedTrip.stops, orderedTrip.origin)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                All stops in Google Maps
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Live mode takes over the screen; a route that failed to load at
           all falls back to the regular sheet, with its error and Try again. */}

@@ -228,6 +228,16 @@ export default function GroupTrip() {
       errorMessage: `Couldn't remove ${trip.memberNames?.[memberUid] || 'that member'}. Try again.`,
       retry: () => removeMember(memberUid),
     });
+  // Every stop on the trip (ticked landmarks + Mapr-found places) for the
+  // Map's route view, which orders them from where you are.
+  const tripStops = [
+    ...(region?.landmarks || []).filter((l) => isSelected(l.id)),
+    ...(trip.places || []),
+  ]
+    .filter((p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lng))
+    .map((p) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng }));
+  const viewInMap = () => navigate('/', { state: { tripRoute: { name: trip.name, stops: tripStops } } });
+
   // Leave right away; the delete finishes in the background. If it's
   // refused, say so (the trip is still there) and offer to try again.
   const deleteTrip = () => {
@@ -282,11 +292,18 @@ export default function GroupTrip() {
           <h3 style={{ margin: 0 }}>
             {'\u{1F5FA}\u{FE0F}'} Shared Landmarks ({selectedCount})
           </h3>
-          {regionLandmarks.length > 0 && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAll(!allSelected)}>
-              {allSelected ? 'Clear all' : '\u{2705} Select all'}
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {tripStops.length > 0 && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={viewInMap}>
+                {'\u{1F5FA}\u{FE0F}'} View in Map
+              </button>
+            )}
+            {regionLandmarks.length > 0 && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAll(!allSelected)}>
+                {allSelected ? 'Clear all' : '\u{2705} Select all'}
+              </button>
+            )}
+          </div>
         </div>
         {(region?.landmarks || []).map((l) => {
           const selected = isSelected(l.id);
