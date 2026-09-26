@@ -5,7 +5,7 @@ import { usePersistentState } from '../lib/usePersistentState';
 import { friendlyError } from '../lib/friendlyError';
 import ErrorNotice from '../components/ErrorNotice';
 import { Skeleton, SkeletonList } from '../components/Skeleton';
-import { useGeo } from '../lib/GeoContext';
+import { useGpsStartLocation } from '../lib/useGpsStartLocation';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { INTERESTS, getRegion } from '../data/regions';
@@ -19,7 +19,6 @@ import AddInterestChip from '../components/AddInterestChip';
 import RegionSearch from '../components/RegionSearch';
 import PreferenceChips from '../components/PreferenceChips';
 
-const CURRENT_LOCATION_LABEL = 'Your Current Location';
 const isEmptyList = (v) => !v?.length;
 
 // Friend multi-select shown once "Group" is picked as the trip type -- lets
@@ -81,12 +80,10 @@ function GroupFriendPicker({ friends, loading, error, onRetry, query, onQueryCha
 export default function TripSetup() {
   const { trip, updateTrip, setCustomInterestMatches, setCustomInterestEmoji, removeCustomInterest, applyPreferences } =
     useTrip();
-  const { coords, error: geoError, refreshing: geoRefreshing, refresh: refreshGeo } = useGeo();
+  const { useCurrentLocation, locating, locateError, usingGps } = useGpsStartLocation();
   const { user } = useAuth();
   const { myUsername } = useFriends();
   const navigate = useNavigate();
-  const [locating, setLocating] = useState(false);
-  const [locateError, setLocateError] = useState(null);
   // Custom interests (e.g. "nightlife", "racing") aren't tagged on any landmark,
   // so the AI has to figure out which ones fit while this stays showing "finding
   // matches…" on the chip. Not persisted -- it's re-derived from the trip's own
@@ -137,43 +134,6 @@ export default function TripSetup() {
     setSelectedFriendList((cur) => (cur.includes(uid) ? cur.filter((u) => u !== uid) : [...cur, uid]));
   };
 
-  // The app already keeps a live, continuously-updating fix in GeoContext
-  // (via Capacitor's watchPosition) for the "nearby now" features -- reusing
-  // it here means an instant apply instead of waiting on a brand-new GPS
-  // request. Only falls back to requesting a fresh fix when nothing's been
-  // read yet this session.
-  const applyCoords = ({ lat, lng }) => {
-    updateTrip({
-      startingLocation: CURRENT_LOCATION_LABEL,
-      startingCoords: { lat, lng },
-      activeRegion: nearestRegionId(lat, lng),
-    });
-  };
-
-  const useCurrentLocation = () => {
-    if (coords) {
-      applyCoords(coords);
-      return;
-    }
-    if (!('geolocation' in navigator)) {
-      setLocateError('Geolocation is not supported on this device.');
-      return;
-    }
-    setLocating(true);
-    setLocateError(null);
-    refreshGeo();
-  };
-
-  // Finishes a fallback fresh-fix request once GeoContext's refresh()
-  // settles (it has no per-call callback of its own -- it just updates the
-  // shared coords/error state).
-  useEffect(() => {
-    if (!locating || geoRefreshing) return;
-    if (coords) applyCoords(coords);
-    else if (geoError) setLocateError(geoError);
-    setLocating(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locating, geoRefreshing]);
 
   const toggleInterest = (id) => {
     const has = trip.interests.includes(id);
@@ -260,12 +220,12 @@ export default function TripSetup() {
         </label>
         <button
           type="button"
-          className={`btn btn-sm ${trip.startingLocation === CURRENT_LOCATION_LABEL ? 'btn-primary' : 'btn-ghost'}`}
+          className={`btn btn-sm ${usingGps ? 'btn-primary' : 'btn-ghost'}`}
           style={{ marginBottom: 10 }}
           onClick={useCurrentLocation}
           disabled={locating}
         >
-          {'\u{1F4CD}'} {locating ? 'Locating…' : 'Use My Current Location'}
+          {'\u{1F4CD}'} {locating ? 'Locating…' : usingGps ? 'Using Your Current Location' : 'Use My Current Location'}
         </button>
         <LocationAutocomplete
           name="start-location"

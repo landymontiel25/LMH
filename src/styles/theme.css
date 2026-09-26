@@ -4165,6 +4165,13 @@ body.lightbox-open .ask-landmark-panel {
   background: var(--mapr-blue);
 }
 
+/* Checked-in pins and all-checked-in clusters stay green over the blue above. */
+.map-pin.map-pin-checked-in,
+.map-cluster.map-cluster-done {
+  background: var(--success);
+  border-color: #1c2e21;
+}
+
 .focus-tooltip.leaflet-tooltip {
   background: var(--bg-elevated);
   color: var(--text-primary);

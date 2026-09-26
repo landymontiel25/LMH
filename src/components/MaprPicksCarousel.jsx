@@ -54,10 +54,9 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   const [active, setActive] = useState(0);
   // { [landmarkId]: 'yes' | 'no' | 'unsure' } -- your ✓ / ✗ / "not sure" on
   // picks, for the buttons' state and as a light signal to Mapr next time.
-  // "unsure" carries no taste signal at all -- not a like, not a dislike,
-  // just "ask me again later". It drops out of THIS deck (this state keeps
-  // it out of the immediate refill in vote() below) but, unlike ✓/✗, is
-  // never permanently blacklisted -- see votedIds in pickFeedback.js.
+  // "unsure" carries no taste signal at all -- not a like, not a dislike.
+  // It's snoozed for a week rather than blacklisted like ✓/✗ -- see
+  // votedIds in pickFeedback.js.
   const [feedback, setFeedback] = useState({});
   // Set only when nothing could be loaded at all (the API and the on-device
   // fallback both came up empty after a failed fetch) -- so a real outage
@@ -434,7 +433,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
                   type="button"
                   className="mapr-pick-vote unsure"
                   onClick={() => vote(p, 'unsure')}
-                  title="Not sure -- doesn't count as a like or a dislike, we'll just ask again later"
+                  title="Not sure -- doesn't count as a like or a dislike, we'll ask again in about a week"
                 >
                   {'\u{1F937}'} Not sure
                 </button>
