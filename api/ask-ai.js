@@ -22,6 +22,9 @@ const APP_HELP =
   `HOW LANDMARK HUNTERS WORKS (for questions about the app itself, not a landmark):\n` +
   `- Navigation: 5 tabs — Map, Landmarks, Mapr, Itinerary, Profile.\n` +
   `- AI features (Mapr chat, Mapr Picks, Ask AI, custom-interest matching) need you to be signed in. There's no daily limit.\n` +
+  `- Mapr knows where you are when location is on: it uses your phone's live location, so "near me" / "nearby" just works without ` +
+  `naming a city. If location is off, it asks which city you're in. Every place Mapr suggests from the web has a Directions link that opens ` +
+  `the same three choices as everywhere else (Use the Map, Google Maps, Apple Maps).\n` +
   `- Your progress is saved on this device as you go: the Mapr conversation, half-typed messages and questions, a landmark you were adding, a ` +
   `rating in progress, feature-request drafts, and your Landmarks search/filters come back if you close the app. If something fails to load or ` +
   `save, the app says what happened in plain words and shows a Try again button; nothing you typed is cleared.\n` +

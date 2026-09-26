@@ -50,12 +50,16 @@ const INSTRUCTIONS =
   `"Saturday night", "lunch tomorrow", a time they name); only if they don't say, assume RIGHT NOW. At that planned ` +
   `time, favor the categories the TIME SLOTS table lists for it, on top of their TAG SCORES. Never favor a category ` +
   `they score negative just because it fits the time.\n` +
+  `- If CURRENT LOCATION is given below, that's where the traveler is right now (from their phone's GPS). Use it for ` +
+  `"near me", "nearby", "around here", "close by" and for any ask with no city -- search near that town, prefer places a ` +
+  `short trip away, and mention roughly how far each stop is. Never ask which city they're in when you have it. If ` +
+  `location is marked unavailable and they ask for something nearby, ask which city or neighborhood they're in.\n` +
   `- When they push back or ask to adjust ("more nightlife", "skip the museum", "somewhere closer"), revise the picks accordingly.\n` +
   `- Never invent a place. Catalog stops must be real region/id values from the catalog below. Web-found stops must be real places you actually found via search, and must include the source URL.\n\n` +
   `Once you're done -- searching or not -- your ENTIRE visible reply must be ONLY a single JSON object. No narration before or after it, not even a note that you're searching:\n` +
   `{"reply": "<your conversational reply, 1-4 sentences>", "stops": [<catalog stop> | <web stop>, ...], "quickReplies": [<short tappable answer>, ...]}\n` +
   `- Catalog stop: {"match": "<region/id from the catalog>", "reason": "<why this stop, 1 short sentence>"}\n` +
-  `- Web stop: {"name": "<real place name>", "place": "<city or neighborhood>", "url": "<source URL you found it from>", "reason": "<why this stop, 1 short sentence>"}\n` +
+  `- Web stop: {"name": "<real place name>", "place": "<city or neighborhood>", "address": "<street address if your search showed one, else empty>", "url": "<source URL you found it from>", "reason": "<why this stop, 1 short sentence>"}\n` +
   `- "stops" can be an empty array. Only use region/id values that actually appear in the catalog -- for anything else, use the web stop shape instead of inventing a match id.\n` +
   `- "quickReplies" can be an empty array -- see the rule above for when to fill it in.`;
 
@@ -71,6 +75,15 @@ const PRICE_PER_TOKEN = {
 };
 const PRICE_PER_SEARCH = 10 / 1000;
 const str = (v, n) => String(v ?? '').trim().slice(0, n);
+
+// Straight-line distance in km (haversine).
+function kmBetween(lat1, lng1, lat2, lng2) {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 function estimateCostUsd(usage) {
   if (!usage) return 0;
@@ -208,6 +221,33 @@ export default async function handler(req, res) {
             .join(', ')}`
       );
     }
+    // Live GPS from the traveler's device (Mapr.jsx), with the town it
+    // resolves to. Also lists the closest catalog landmarks, so "near me"
+    // can land on real in-app stops before reaching for web search.
+    const loc = body.location && typeof body.location === 'object' ? body.location : null;
+    const locLat = Number(loc?.lat);
+    const locLng = Number(loc?.lng);
+    if (loc && Number.isFinite(locLat) && Number.isFinite(locLng) && Math.abs(locLat) <= 90 && Math.abs(locLng) <= 180) {
+      const label = str(loc.label, 120);
+      const acc = Number(loc.accuracy);
+      const nearest = ALL_LANDMARKS.filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng))
+        .map((l) => ({ l, km: kmBetween(locLat, locLng, l.lat, l.lng) }))
+        .sort((a, b) => a.km - b.km)
+        .slice(0, 8)
+        .filter((x) => x.km <= 80);
+      profileParts.push(
+        `CURRENT LOCATION: ${label || 'unknown town'} (${locLat.toFixed(4)}, ${locLng.toFixed(4)}` +
+          (Number.isFinite(acc) && acc > 0 ? `, accurate to about ${Math.round(acc)} m` : '') +
+          ').' +
+          (nearest.length
+            ? '\nNEAREST CATALOG LANDMARKS: ' +
+              nearest.map((x) => `${x.l.regionId}/${x.l.id} ${x.l.name} (${x.km < 1 ? '<1' : Math.round(x.km)} km)`).join('; ')
+            : '')
+      );
+      for (const x of nearest) validIds.add(`${x.l.regionId}/${x.l.id}`);
+    } else if (body.locationStatus === 'unavailable') {
+      profileParts.push('CURRENT LOCATION: unavailable (location sharing is off on their device).');
+    }
     const profile = profileParts.length ? `TRAVELER PROFILE:\n${profileParts.join('\n\n')}` : '';
 
     const client = new Anthropic();
@@ -260,7 +300,7 @@ export default async function handler(req, res) {
       .map((s) => {
         if (s?.match && validIds.has(s.match)) {
           const [rid, id] = s.match.split('/');
-          const landmark = pool.find((l) => l.regionId === rid && l.id === id);
+          const landmark = ALL_LANDMARKS.find((l) => l.regionId === rid && l.id === id);
           return {
             region: rid,
             id,
@@ -281,6 +321,7 @@ export default async function handler(req, res) {
           external: true,
           name,
           place: String(s?.place || '').trim().slice(0, 80),
+          address: String(s?.address || '').trim().slice(0, 160),
           url,
           reason: String(s?.reason || '').slice(0, 200),
         };
