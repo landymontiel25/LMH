@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { appleMapsLink, googleMapsLink } from '../lib/routing';
-import { searchPlaces, getPlaceDetails, makeSessionToken } from '../lib/places';
+import { lookupPlace } from '../lib/placeLookup';
 
 // Every "Get Directions" in the app opens this sheet: use the app's own map
 // (turn-by-turn from api/directions.js), Google Maps, or Apple Maps. "Use the
@@ -39,15 +39,8 @@ export default function DirectionsButton({
     if (hasCoords || !query || found) return;
     setLookup('looking');
     try {
-      const viewbox = near
-        ? { minLat: near.lat - 0.4, maxLat: near.lat + 0.4, minLng: near.lng - 0.5, maxLng: near.lng + 0.5 }
-        : null;
-      const token = makeSessionToken();
-      const [top] = await searchPlaces(query, viewbox ? { viewbox } : null, token);
-      if (!top) throw new Error('No match');
-      const d = await getPlaceDetails(top.placeId, token);
-      if (!Number.isFinite(d?.lat) || !Number.isFinite(d?.lng)) throw new Error('No coordinates');
-      setFound({ lat: d.lat, lng: d.lng });
+      const spot = await lookupPlace(query, near);
+      setFound({ lat: spot.lat, lng: spot.lng });
       setLookup('idle');
     } catch {
       setLookup('failed');

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -27,6 +27,8 @@ import { usePersistentState } from '../lib/usePersistentState';
 import { friendlyError } from '../lib/friendlyError';
 import { useToast } from '../lib/ToastContext';
 import ErrorNotice from '../components/ErrorNotice';
+import AddMemberSheet from '../components/AddMemberSheet';
+import EditableTitle from '../components/EditableTitle';
 import { ScreenSkeleton, Skeleton, SkeletonCard, SkeletonList } from '../components/Skeleton';
 
 const ROUTE_BLUE = '#2b7fff';
@@ -203,7 +205,20 @@ function ItineraryMap({ origin, stops, onDetails, onInApp, navPoints, navStopId,
 const AUTO_ORIGIN_REFRESH_METERS = 150;
 
 export default function Itinerary() {
-  const { trip, toggleLandmark, setRegionSelection, getRegionSelection, regionsWithItineraries, updateTrip, setMapFocus } = useTrip();
+  const {
+    trip,
+    toggleLandmark,
+    setRegionSelection,
+    getRegionSelection,
+    regionsWithItineraries,
+    updateTrip,
+    setMapFocus,
+    itineraryName,
+    renameItinerary,
+    removePlace,
+    removeItinerary,
+  } = useTrip();
+  const [showAddMember, setShowAddMember] = useState(false);
   const { coords } = useGeo();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { myUsername } = useFriends();
@@ -260,7 +275,6 @@ export default function Itinerary() {
   // (or fall through to) the empty "No itineraries yet" screen.
   const [groupsLoading, setGroupsLoading] = useState(!!user);
   const [groupsError, setGroupsError] = useState(null);
-  const [groupBusy, setGroupBusy] = useState(false);
 
   const loadGroupTrips = () => {
     if (!user) {
@@ -281,15 +295,69 @@ export default function Itinerary() {
   const autoOriginRef = useRef(null);
 
   const confirmRemove = () => {
-    if (pendingRemove && region) toggleLandmark(pendingRemove.id, region.id);
+    if (pendingRemove && region) {
+      if (pendingRemove.external) removePlace(region.id, pendingRemove.id);
+      else toggleLandmark(pendingRemove.id, region.id);
+    }
     setPendingRemove(null);
   };
 
+  // Catalog landmarks plus any real places Mapr found on the web and you
+  // added -- those get a landmark-shaped stand-in so the route, map and
+  // directions treat them the same (no check-in or rating: they aren't in
+  // the catalog, so there's nothing to award points for).
   const selectedLandmarks = useMemo(() => {
     if (!region) return [];
     const ids = trip.byRegion[region.id] || [];
-    return region.landmarks.filter((l) => ids.includes(l.id));
-  }, [region, trip.byRegion]);
+    const places = (trip.placesByRegion?.[region.id] || []).map((p) => ({
+      ...p,
+      external: true,
+      regionId: region.id,
+      categories: [],
+      images: [],
+      free: true,
+      typicalMinutes: 45,
+    }));
+    return [...region.landmarks.filter((l) => ids.includes(l.id)), ...places];
+  }, [region, trip.byRegion, trip.placesByRegion]);
+
+  // Adding someone to a solo itinerary turns it into a group trip: same
+  // name, stops and places, you as owner, them as a member.
+  const [converting, setConverting] = useState(false);
+  const convertToGroup = async (member) => {
+    if (!user || !region || converting) return;
+    setConverting(true);
+    try {
+      const id = await createGroupTrip({
+        ownerUid: user.uid,
+        ownerName: myUsername || user.displayName || 'Explorer',
+        name: itineraryName(region.id),
+        regionId: region.id,
+        landmarkIds: selectedLandmarks.filter((l) => !l.external).map((l) => l.id),
+        places: (trip.placesByRegion?.[region.id] || []).map(({ id: pid, name, address, lat, lng, url }) => ({
+          id: pid,
+          name,
+          address: address || '',
+          lat,
+          lng,
+          url: url || '',
+        })),
+        initialMembers: [member],
+      });
+      removeItinerary(region.id);
+      setShowAddMember(false);
+      setOpenRegion(null);
+      toast.show(`${member.name} is on it now. It's a group trip you both can edit.`, { tone: 'success', durationMs: 4000 });
+      navigate(`/group/${id}`);
+    } catch (e) {
+      toast.show(friendlyError(e, `Couldn't add ${member.name}. Try again.`), {
+        actionLabel: 'Retry',
+        onAction: () => convertToGroup(member),
+      });
+    } finally {
+      setConverting(false);
+    }
+  };
 
   // Priority for the route's starting point: an explicit pin (autocomplete
   // selection or "Use My Current Location") > a typed address to geocode >
@@ -501,17 +569,19 @@ export default function Itinerary() {
           </div>
         )}
         <p className="screen-subtitle">
-          {myRegions.length} {myRegions.length === 1 ? 'city' : 'cities'} planned — tap one to see its route.
+          {myRegions.length} {myRegions.length === 1 ? 'itinerary' : 'itineraries'} planned — tap one to see its route.
         </p>
         {myRegions.map((rid) => {
           const r = getRegion(rid);
-          const count = (trip.byRegion[rid] || []).length;
+          const count = (trip.byRegion[rid] || []).length + (trip.placesByRegion?.[rid] || []).length;
+          const named = itineraryName(rid);
           return (
             <button key={rid} type="button" className="card itin-city-card" onClick={() => setOpenRegion(rid)}>
               <div style={{ textAlign: 'left' }}>
-                <h3 style={{ margin: 0 }}>{r?.name}</h3>
+                <h3 style={{ margin: 0 }}>{named}</h3>
                 <p style={{ margin: '4px 0 0', color: 'var(--color-parchment-dim)', fontSize: '0.85rem' }}>
-                  {count} landmark{count !== 1 ? 's' : ''}
+                  {named !== r?.name ? `${r?.name} · ` : ''}
+                  {count} stop{count !== 1 ? 's' : ''}
                 </p>
               </div>
               <span className="itin-city-arrow">{'→'}</span>
@@ -555,10 +625,13 @@ export default function Itinerary() {
       <button className="btn btn-ghost btn-sm" style={{ marginBottom: 12 }} onClick={() => setOpenRegion(null)}>
         {'←'} My Itineraries
       </button>
-      <h1 className="screen-title">
-        <span>{'\u{1F5FA}\u{FE0F}'}</span> {region.name}
-      </h1>
+      <EditableTitle
+        value={itineraryName(region.id)}
+        onSave={(name) => renameItinerary(region.id, name)}
+        prefix={<span>{'\u{1F5FA}\u{FE0F}'}</span>}
+      />
       <p className="screen-subtitle">
+        {itineraryName(region.id) !== region.name ? `${region.name} · ` : ''}
         {SORT_OPTIONS.find((o) => o.id === sort)?.label}
         {sort === 'nearest' || sort === 'route'
           ? ` from ${coords ? 'your current location' : trip.startingLocation || 'your starting point'}`
@@ -591,39 +664,29 @@ export default function Itinerary() {
       />
       <OfflineDownloadButton region={region} />
 
-      {user && (
-        <button
-          type="button"
-          className="btn btn-ghost btn-block"
-          style={{ marginBottom: 16 }}
-          disabled={groupBusy}
-          onClick={async () => {
-            const start = async () => {
-              setGroupBusy(true);
-              try {
-                const id = await createGroupTrip({
-                  ownerUid: user.uid,
-                  ownerName: myUsername || user.displayName || user.email,
-                  name: `${region.name} Trip`,
-                  regionId: region.id,
-                  landmarkIds: selectedLandmarks.map((l) => l.id),
-                });
-                navigate(`/group/${id}`);
-              } catch (e) {
-                toast.show(friendlyError(e, "Couldn't start the group trip. Try again."), {
-                  actionLabel: 'Retry',
-                  onAction: start,
-                });
-              } finally {
-                setGroupBusy(false);
-              }
-            };
-            await start();
-          }}
-        >
-          {'\u{1F465}'} {groupBusy ? 'Starting…' : 'Start a Group Trip With Friends'}
-        </button>
-      )}
+      <div className="card section">
+        <h3 style={{ marginTop: 0 }}>Members</h3>
+        <div className="friend-row">
+          <span>{user ? `${myUsername || user.displayName || 'You'} (you)` : 'You'}</span>
+        </div>
+        {user ? (
+          <button type="button" className="member-add-row" onClick={() => setShowAddMember(true)} disabled={converting}>
+            {'\u{2795}'} {converting ? 'Adding…' : 'Add a user'}
+          </button>
+        ) : (
+          <p className="screen-subtitle" style={{ margin: '10px 0 0' }}>
+            <Link to="/profile">Sign in</Link> to plan this with friends.
+          </p>
+        )}
+        {showAddMember && (
+          <AddMemberSheet
+            title={`Add someone to ${itineraryName(region.id)}`}
+            excludeUids={user ? [user.uid] : []}
+            onPick={convertToGroup}
+            onClose={() => setShowAddMember(false)}
+          />
+        )}
+      </div>
 
       {showRecap && (
         <TripRecapCard
@@ -667,7 +730,7 @@ export default function Itinerary() {
           <ItineraryMap
             origin={routeOrigin}
             stops={displayRoute}
-            onDetails={(s) => navigate(`/landmarks/${region.id}/${s.id}`)}
+            onDetails={(s) => (s.external ? s.url && window.open(s.url, '_blank', 'noopener') : navigate(`/landmarks/${region.id}/${s.id}`))}
             onInApp={startNav}
             navPoints={nav?.data?.points}
             navStopId={nav?.stop.id}
@@ -687,6 +750,14 @@ export default function Itinerary() {
       )}
 
       <div style={{ display: view === 'list' ? 'block' : 'none' }}>
+        {selectedLandmarks.length === 0 && (
+          <div className="empty-state" style={{ padding: '20px 10px' }}>
+            <p style={{ margin: '0 0 12px' }}>No stops yet. Ask Mapr ("add Wynwood Walls to my itinerary") or pick landmarks.</p>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/landmarks')}>
+              {'\u{1F4CD}'} Pick Landmarks
+            </button>
+          </div>
+        )}
         {displayRoute.map((stop, idx) => (
           <div key={stop.id}>
             {idx === 0
@@ -705,9 +776,15 @@ export default function Itinerary() {
               <div className={`card ${claimedMap[stop.id] ? 'visited' : ''}`} style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
+                    {stop.external ? (
+                      <span className="chatlab-stop-globe" aria-hidden="true">
+                        {'\u{1F310}'}
+                      </span>
+                    ) : (
+                      <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
+                    )}
                     <h4 style={{ margin: 0, color: 'var(--color-parchment)' }}>{stop.name}</h4>
-                    <QuickRateButton landmark={stop} />
+                    {!stop.external && <QuickRateButton landmark={stop} />}
                   </div>
                   <button
                     type="button"
@@ -718,12 +795,19 @@ export default function Itinerary() {
                     {'\u{1F5D1}\u{FE0F}'}
                   </button>
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                  <span className={`tag ${stop.free ? 'tag-free' : ''}`}>
-                    {stop.free ? 'Free to Visit' : 'Ticketed'}
-                  </span>
-                  <span className="tag">{'\u{23F1}\u{FE0F}'} ~{stop.typicalMinutes} min there</span>
-                </div>
+                {stop.external ? (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <span className="tag place-tag">{'\u{2728}'} Found by Mapr</span>
+                    {stop.address && <span className="tag place-tag">{stop.address}</span>}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <span className={`tag ${stop.free ? 'tag-free' : ''}`}>
+                      {stop.free ? 'Free to Visit' : 'Ticketed'}
+                    </span>
+                    <span className="tag">{'\u{23F1}\u{FE0F}'} ~{stop.typicalMinutes} min there</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <DirectionsButton
                     name={stop.name}
@@ -734,7 +818,13 @@ export default function Itinerary() {
                   >
                     Get Directions
                   </DirectionsButton>
-                  {stop.free ? (
+                  {stop.external ? (
+                    stop.url && (
+                      <a className="btn btn-ghost btn-sm" href={stop.url} target="_blank" rel="noreferrer">
+                        Source {'↗'}
+                      </a>
+                    )
+                  ) : stop.free ? (
                     <button className="btn btn-sm" disabled style={{ borderColor: 'var(--color-green)', color: '#bfe0c8' }}>
                       Free to Visit
                     </button>
@@ -743,9 +833,12 @@ export default function Itinerary() {
                       Book Now
                     </a>
                   )}
-                  <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/landmarks/${region.id}/${stop.id}`)}>
-                    Details
-                  </button>
+                  {!stop.external && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/landmarks/${region.id}/${stop.id}`)}>
+                      Details
+                    </button>
+                  )}
+                  {!stop.external && (
                   <CheckInButton
                     landmark={stop}
                     user={user}
@@ -754,6 +847,7 @@ export default function Itinerary() {
                     checkingIn={checkingIn}
                     onCheckIn={checkIn}
                   />
+                  )}
                 </div>
               </div>
             </div>

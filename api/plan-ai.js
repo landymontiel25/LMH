@@ -54,14 +54,28 @@ const INSTRUCTIONS =
   `"near me", "nearby", "around here", "close by" and for any ask with no city -- search near that town, prefer places a ` +
   `short trip away, and mention roughly how far each stop is. Never ask which city they're in when you have it. If ` +
   `location is marked unavailable and they ask for something nearby, ask which city or neighborhood they're in.\n` +
+  `- You can also DO things with their itineraries when they ask, via "actions" (see the JSON shape below): add a stop ` +
+  `("add it to my itinerary", "put Autana on my Philly trip"), remove one, create a new itinerary, rename one, or add a ` +
+  `person by username. Only act when they clearly ask -- never on your own. "it"/"that one"/"both" refer to places you ` +
+  `suggested earlier in this chat; use their exact names. Pick the itinerary from YOUR ITINERARIES below by its ref: the ` +
+  `one they name, else the one in that stop's city; if none exists there, use "new" (the app creates one for that city). ` +
+  `If it's genuinely unclear which of several itineraries they mean, ask instead, with their names as quickReplies. In ` +
+  `"reply", say what you're doing in plain words ("Added Autana to your Philly itinerary."); the app confirms each ` +
+  `action under your message. Checking in, rating, and account settings are not actions -- tell them where to tap.\n` +
   `- When they push back or ask to adjust ("more nightlife", "skip the museum", "somewhere closer"), revise the picks accordingly.\n` +
   `- Never invent a place. Catalog stops must be real region/id values from the catalog below. Web-found stops must be real places you actually found via search, and must include the source URL.\n\n` +
   `Once you're done -- searching or not -- your ENTIRE visible reply must be ONLY a single JSON object. No narration before or after it, not even a note that you're searching:\n` +
-  `{"reply": "<your conversational reply, 1-4 sentences>", "stops": [<catalog stop> | <web stop>, ...], "quickReplies": [<short tappable answer>, ...]}\n` +
+  `{"reply": "<your conversational reply, 1-4 sentences>", "stops": [<catalog stop> | <web stop>, ...], "quickReplies": [<short tappable answer>, ...], "actions": [<action>, ...]}\n` +
   `- Catalog stop: {"match": "<region/id from the catalog>", "reason": "<why this stop, 1 short sentence>"}\n` +
   `- Web stop: {"name": "<real place name>", "place": "<city or neighborhood>", "address": "<street address if your search showed one, else empty>", "url": "<source URL you found it from>", "reason": "<why this stop, 1 short sentence>"}\n` +
   `- "stops" can be an empty array. Only use region/id values that actually appear in the catalog -- for anything else, use the web stop shape instead of inventing a match id.\n` +
-  `- "quickReplies" can be an empty array -- see the rule above for when to fill it in.`;
+  `- "quickReplies" can be an empty array -- see the rule above for when to fill it in.\n` +
+  `- "actions" is usually an empty array. Each action is one of:\n` +
+  `  {"type": "add_stop", "stop": "<region/id, or the exact name of a place from this chat>", "itinerary": "<ref from YOUR ITINERARIES, or \"new\">", "newName": "<optional name if new>"}\n` +
+  `  {"type": "remove_stop", "stop": "<name or region/id>", "itinerary": "<ref>"}\n` +
+  `  {"type": "create_itinerary", "name": "<name>", "city": "<region id from the catalog, e.g. miami>", "group": <true for a group itinerary, else false>}\n` +
+  `  {"type": "rename_itinerary", "itinerary": "<ref>", "name": "<new name>"}\n` +
+  `  {"type": "add_member", "itinerary": "<ref>", "username": "<their username, no @>"}`;
 
 // claude-haiku-4-5 per-token pricing (USD per token, i.e. price-per-MTok / 1e6),
 // plus $10/1,000 web searches -- used to report a running cost estimate to the
@@ -248,6 +262,26 @@ export default async function handler(req, res) {
     } else if (body.locationStatus === 'unavailable') {
       profileParts.push('CURRENT LOCATION: unavailable (location sharing is off on their device).');
     }
+    const itineraries = (Array.isArray(body.itineraries) ? body.itineraries : []).slice(0, 20).map((it) => ({
+      kind: it?.kind === 'group' ? 'group' : 'solo',
+      ref: str(it?.ref, 60),
+      name: str(it?.name, 80),
+      city: str(it?.city, 60),
+      members: (Array.isArray(it?.members) ? it.members : []).map((m) => str(m, 40)).slice(0, 10),
+      stops: (Array.isArray(it?.stops) ? it.stops : []).map((x) => str(x, 80)).slice(0, 30),
+    }));
+    profileParts.push(
+      itineraries.length
+        ? 'YOUR ITINERARIES (ref | name | city | stops):\n' +
+            itineraries
+              .map(
+                (it) =>
+                  `- ${it.ref} | ${it.name} | ${it.city} | ${it.kind === 'group' ? `group with ${it.members.join(', ')}` : 'solo'} | ` +
+                  (it.stops.length ? it.stops.join(', ') : 'no stops yet')
+              )
+              .join('\n')
+        : 'YOUR ITINERARIES: none yet.'
+    );
     const profile = profileParts.length ? `TRAVELER PROFILE:\n${profileParts.join('\n\n')}` : '';
 
     const client = new Anthropic();
@@ -341,10 +375,29 @@ export default async function handler(req, res) {
           .filter(Boolean)
           .slice(0, 4);
 
+    // Proposed itinerary actions: whitelisted and trimmed here; the app runs
+    // them as the signed-in user (src/lib/maprActions.js), so nothing here
+    // can do more than that traveler could by hand.
+    const ACTIONS = ['add_stop', 'remove_stop', 'create_itinerary', 'rename_itinerary', 'add_member'];
+    const actions = (Array.isArray(parsed.actions) ? parsed.actions : [])
+      .filter((a) => a && ACTIONS.includes(a.type))
+      .slice(0, 6)
+      .map((a) => ({
+        type: a.type,
+        stop: str(a.stop, 160),
+        itinerary: str(a.itinerary, 80),
+        newName: str(a.newName, 80),
+        name: str(a.name, 80),
+        city: str(a.city, 40),
+        group: a.group === true,
+        username: str(a.username, 40),
+      }));
+
     res.status(200).json({
       reply: String(parsed.reply || '').slice(0, 500) || "Here's what I found:",
       stops,
       quickReplies,
+      actions,
       cost: costUsd,
     });
   } catch (err) {

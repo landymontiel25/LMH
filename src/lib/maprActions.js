@@ -1,0 +1,334 @@
+import { ALL_LANDMARKS, getRegion } from '../data/regions';
+import { lookupPlace, nearestRegionId, placeId } from './placeLookup';
+import {
+  addGroupMember,
+  addGroupPlace,
+  createGroupTrip,
+  deleteGroupTrip,
+  removeGroupPlace,
+  renameGroupTrip,
+  setGroupLandmarks,
+} from './groupTrips';
+import { findUserByUsername } from './friends';
+import { friendlyError } from './friendlyError';
+
+// Mapr can do what a traveler could do by hand with their itineraries: add
+// or remove a stop, create, rename, and invite someone. The AI only
+// proposes actions (api/plan-ai.js); this runs them as the signed-in user,
+// through the same functions and Firestore rules the screens use, so it
+// can never do anything the traveler couldn't.
+//
+// Each result: { ok, text, undo?, link? } -- shown under Mapr's reply.
+
+export const ACTION_TYPES = ['add_stop', 'remove_stop', 'create_itinerary', 'rename_itinerary', 'add_member'];
+
+// Undo handlers for actions Mapr ran this session, keyed by message id +
+// index. Module-level so they survive leaving the Mapr tab and coming
+// back; not saved to disk, so they're gone after a full reload.
+const undoRegistry = new Map();
+export function registerUndo(key, fn) {
+  undoRegistry.set(key, fn);
+}
+export function getUndo(key) {
+  return undoRegistry.get(key);
+}
+export function forgetUndo(key) {
+  undoRegistry.delete(key);
+}
+
+// TripContext's state only refreshes on the next render, so several
+// actions in one reply track what they've already created/renamed here.
+function soloExists(ctx, regionId) {
+  return ctx.session.created.has(regionId) || ctx.tripApi.regionsWithItineraries().includes(regionId);
+}
+function soloName(ctx, regionId) {
+  return ctx.session.names[regionId] || ctx.tripApi.itineraryName(regionId);
+}
+function rename(ctx, regionId, name) {
+  ctx.tripApi.renameItinerary(regionId, name);
+  ctx.session.names[regionId] = name || getRegion(regionId)?.name;
+}
+
+function norm(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// "miami/wynwood-walls", or a name from anything Mapr has suggested in
+// this conversation (catalog or web), or a catalog landmark by name.
+function resolveStop(ref, conversationStops) {
+  const text = String(ref || '').trim();
+  if (!text) return null;
+  if (text.includes('/')) {
+    const [regionId, id] = text.split('/');
+    const l = ALL_LANDMARKS.find((x) => x.regionId === regionId && x.id === id);
+    if (l) return { kind: 'landmark', regionId, id, name: l.name };
+  }
+  const n = norm(text);
+  const match =
+    conversationStops.find((s) => norm(s.name) === n) ||
+    conversationStops.find((s) => norm(s.name).includes(n) || n.includes(norm(s.name)));
+  if (match) {
+    if (!match.external) return { kind: 'landmark', regionId: match.region, id: match.id, name: match.name };
+    return { kind: 'place', name: match.name, address: match.address || '', place: match.place || '', url: match.url || '' };
+  }
+  const l = ALL_LANDMARKS.find((x) => norm(x.name) === n);
+  return l ? { kind: 'landmark', regionId: l.regionId, id: l.id, name: l.name } : null;
+}
+
+function findItinerary(ref, ctx) {
+  const r = String(ref || '').trim();
+  if (!r || r === 'new') return null;
+  const group = ctx.groupTrips.find((g) => g.id === r || norm(g.name) === norm(r));
+  if (group) return { kind: 'group', trip: group, name: group.name, regionId: group.regionId };
+  const soloIds = [...new Set([...ctx.tripApi.regionsWithItineraries(), ...ctx.session.created])];
+  const soloId =
+    soloIds.find((id) => id === r) ||
+    soloIds.find((id) => norm(soloName(ctx, id)) === norm(r) || norm(getRegion(id)?.name) === norm(r));
+  if (soloId) return { kind: 'solo', regionId: soloId, name: soloName(ctx, soloId) };
+  return null;
+}
+
+async function placeFor(stop, near) {
+  const query = [stop.name, stop.address || stop.place].filter(Boolean).join(', ');
+  const spot = await lookupPlace(query, near);
+  return {
+    id: placeId(stop.name, spot.lat, spot.lng),
+    name: stop.name.slice(0, 120),
+    address: (stop.address || spot.address || '').slice(0, 160),
+    lat: spot.lat,
+    lng: spot.lng,
+    url: stop.url || '',
+  };
+}
+
+const soloLink = (regionId) => ({ to: '/itinerary', regionId });
+const groupLink = (tripId) => ({ to: `/group/${tripId}` });
+
+async function addStop(action, ctx) {
+  const stop = resolveStop(action.stop, ctx.conversationStops);
+  if (!stop) return { ok: false, text: `Couldn't tell which place "${action.stop}" is. Try naming it exactly.` };
+  let target = findItinerary(action.itinerary, ctx);
+
+  if (target?.kind === 'group') {
+    const trip = target.trip;
+    if (stop.kind === 'landmark') {
+      if (stop.regionId !== trip.regionId) {
+        return { ok: false, text: `${stop.name} is in ${getRegion(stop.regionId)?.name}, but ${trip.name} is for ${getRegion(trip.regionId)?.name}.` };
+      }
+      await setGroupLandmarks(trip, [stop.id], true);
+      return {
+        ok: true,
+        text: `Added ${stop.name} to ${trip.name}.`,
+        undo: () => setGroupLandmarks(trip, [stop.id], false),
+        link: groupLink(trip.id),
+      };
+    }
+    const place = await placeFor(stop, ctx.coords);
+    await addGroupPlace(trip, place);
+    return {
+      ok: true,
+      text: `Added ${stop.name} to ${trip.name}.`,
+      undo: () => removeGroupPlace({ ...trip, places: [...(trip.places || []), place] }, place.id),
+      link: groupLink(trip.id),
+    };
+  }
+
+  // Solo itinerary (one per city). A web place's city comes from where it
+  // actually is, not from what the AI guessed.
+  if (stop.kind === 'landmark') {
+    const regionId = stop.regionId;
+    const existed = soloExists(ctx, regionId);
+    if (target?.kind === 'solo' && target.regionId !== regionId) {
+      return { ok: false, text: `${stop.name} is in ${getRegion(regionId)?.name}, not ${target.name}. Want it in a ${getRegion(regionId)?.name} itinerary instead?` };
+    }
+    ctx.tripApi.addLandmark(stop.id, regionId);
+    if (!existed && action.newName) rename(ctx, regionId, action.newName);
+    const name = soloName(ctx, regionId);
+    ctx.session.created.add(regionId);
+    return {
+      ok: true,
+      text: `Added ${stop.name} to ${existed ? 'your' : 'a new'} ${name} itinerary.`,
+      undo: () => {
+        ctx.tripApi.removeLandmark(stop.id, regionId);
+        if (!existed) ctx.tripApi.removeItinerary(regionId);
+      },
+      link: soloLink(regionId),
+    };
+  }
+
+  const place = await placeFor(stop, ctx.coords);
+  const regionId = target?.kind === 'solo' ? target.regionId : nearestRegionId(place.lat, place.lng);
+  if (!regionId) {
+    return { ok: false, text: `${stop.name} is outside the cities the app plans trips for, so it can't go on an itinerary yet.` };
+  }
+  const existed = soloExists(ctx, regionId);
+  ctx.tripApi.addPlace(regionId, place);
+  if (!existed && action.newName) rename(ctx, regionId, action.newName);
+  const name = soloName(ctx, regionId);
+  ctx.session.created.add(regionId);
+  return {
+    ok: true,
+    text: `Added ${stop.name} to ${existed ? 'your' : 'a new'} ${name} itinerary.`,
+    undo: () => {
+      ctx.tripApi.removePlace(regionId, place.id);
+      if (!existed) ctx.tripApi.removeItinerary(regionId);
+    },
+    link: soloLink(regionId),
+  };
+}
+
+async function removeStop(action, ctx) {
+  const target = findItinerary(action.itinerary, ctx);
+  const stop = resolveStop(action.stop, ctx.conversationStops);
+  const n = norm(action.stop);
+  if (target?.kind === 'group') {
+    const trip = target.trip;
+    if (stop?.kind === 'landmark' && trip.landmarkIds.includes(stop.id)) {
+      await setGroupLandmarks(trip, [stop.id], false);
+      return { ok: true, text: `Removed ${stop.name} from ${trip.name}.`, undo: () => setGroupLandmarks(trip, [stop.id], true), link: groupLink(trip.id) };
+    }
+    const place = (trip.places || []).find((p) => norm(p.name) === n || norm(p.name).includes(n));
+    if (place) {
+      await removeGroupPlace(trip, place.id);
+      return { ok: true, text: `Removed ${place.name} from ${trip.name}.`, undo: () => addGroupPlace({ ...trip, places: [] }, place), link: groupLink(trip.id) };
+    }
+    return { ok: false, text: `"${action.stop}" isn't on ${trip.name}.` };
+  }
+  const regionIds = target ? [target.regionId] : ctx.tripApi.regionsWithItineraries();
+  for (const regionId of regionIds) {
+    if (stop?.kind === 'landmark' && stop.regionId === regionId && ctx.tripApi.getRegionSelection(regionId).includes(stop.id)) {
+      ctx.tripApi.removeLandmark(stop.id, regionId);
+      return { ok: true, text: `Removed ${stop.name} from your ${ctx.tripApi.itineraryName(regionId)} itinerary.`, undo: () => ctx.tripApi.addLandmark(stop.id, regionId), link: soloLink(regionId) };
+    }
+    const place = (ctx.trip.placesByRegion?.[regionId] || []).find((p) => norm(p.name) === n || norm(p.name).includes(n));
+    if (place) {
+      ctx.tripApi.removePlace(regionId, place.id);
+      return { ok: true, text: `Removed ${place.name} from your ${ctx.tripApi.itineraryName(regionId)} itinerary.`, undo: () => ctx.tripApi.addPlace(regionId, place), link: soloLink(regionId) };
+    }
+  }
+  return { ok: false, text: `Couldn't find "${action.stop}" on your itineraries.` };
+}
+
+async function createItinerary(action, ctx) {
+  const regionId = getRegion(action.city) ? action.city : null;
+  const name = String(action.name || '').trim().slice(0, 80) || (regionId && `${getRegion(regionId).name} Trip`);
+  if (!regionId) return { ok: false, text: 'Which city is this itinerary for?' };
+  if (action.group) {
+    if (!ctx.user) return { ok: false, text: 'Sign in to create a group itinerary.' };
+    const id = await createGroupTrip({ ownerUid: ctx.user.uid, ownerName: ctx.ownerName, name, regionId });
+    ctx.onGroupsChanged?.();
+    return { ok: true, text: `Created the group itinerary ${name}.`, undo: () => deleteGroupTrip(id).then(() => ctx.onGroupsChanged?.()), link: groupLink(id) };
+  }
+  const existed = soloExists(ctx, regionId);
+  const oldName = ctx.trip.itineraryNames?.[regionId];
+  rename(ctx, regionId, name);
+  ctx.session.created.add(regionId);
+  if (existed) {
+    return {
+      ok: true,
+      text: `You already had a ${getRegion(regionId).name} itinerary, so I named it ${name}.`,
+      undo: () => ctx.tripApi.renameItinerary(regionId, oldName || ''),
+      link: soloLink(regionId),
+    };
+  }
+  return { ok: true, text: `Created your ${name} itinerary.`, undo: () => ctx.tripApi.removeItinerary(regionId), link: soloLink(regionId) };
+}
+
+async function renameItin(action, ctx) {
+  const target = findItinerary(action.itinerary, ctx);
+  const name = String(action.name || '').trim().slice(0, 80);
+  if (!target || !name) return { ok: false, text: "Couldn't tell which itinerary to rename." };
+  if (target.kind === 'group') {
+    const old = target.trip.name;
+    await renameGroupTrip(target.trip, name);
+    ctx.onGroupsChanged?.();
+    return { ok: true, text: `Renamed ${old} to ${name}.`, undo: () => renameGroupTrip({ ...target.trip, name }, old).then(() => ctx.onGroupsChanged?.()), link: groupLink(target.trip.id) };
+  }
+  const old = ctx.trip.itineraryNames?.[target.regionId] || '';
+  rename(ctx, target.regionId, name);
+  return { ok: true, text: `Renamed ${target.name} to ${name}.`, undo: () => ctx.tripApi.renameItinerary(target.regionId, old), link: soloLink(target.regionId) };
+}
+
+async function addMember(action, ctx) {
+  if (!ctx.user) return { ok: false, text: 'Sign in to add people to an itinerary.' };
+  const target = findItinerary(action.itinerary, ctx);
+  if (!target) return { ok: false, text: "Couldn't tell which itinerary to add them to." };
+  const username = String(action.username || '').trim().replace(/^@/, '').toLowerCase();
+  const found = username ? await findUserByUsername(username) : null;
+  if (!found?.uid) return { ok: false, text: `No one goes by @${username || '?'}. Check the username.` };
+  if (found.uid === ctx.user.uid) return { ok: false, text: "That's you." };
+  const member = { uid: found.uid, name: found.username || found.displayName || username };
+  if (target.kind === 'group') {
+    if (target.trip.memberUids.includes(member.uid)) return { ok: true, text: `${member.name} is already on ${target.name}.`, link: groupLink(target.trip.id) };
+    await addGroupMember(target.trip, member.uid, member.name);
+    ctx.onGroupsChanged?.();
+    return { ok: true, text: `Added ${member.name} to ${target.name}.`, link: groupLink(target.trip.id) };
+  }
+  // Solo -> group trip with the same name, stops and places.
+  const regionId = target.regionId;
+  const id = await createGroupTrip({
+    ownerUid: ctx.user.uid,
+    ownerName: ctx.ownerName,
+    name: target.name,
+    regionId,
+    landmarkIds: ctx.tripApi.getRegionSelection(regionId),
+    places: ctx.trip.placesByRegion?.[regionId] || [],
+    initialMembers: [member],
+  });
+  ctx.tripApi.removeItinerary(regionId);
+  ctx.onGroupsChanged?.();
+  return { ok: true, text: `Added ${member.name}. ${target.name} is now a group trip you both can edit.`, link: groupLink(id) };
+}
+
+const RUNNERS = {
+  add_stop: addStop,
+  remove_stop: removeStop,
+  create_itinerary: createItinerary,
+  rename_itinerary: renameItin,
+  add_member: addMember,
+};
+
+export async function runMaprActions(actions, baseCtx) {
+  const ctx = { ...baseCtx, session: { created: new Set(), names: {} } };
+  const results = [];
+  for (const action of actions || []) {
+    const run = RUNNERS[action?.type];
+    if (!run) continue;
+    try {
+      results.push(await run(action, ctx));
+    } catch (err) {
+      results.push({ ok: false, text: friendlyError(err, "That didn't go through. Try again.") });
+    }
+  }
+  return results;
+}
+
+// What Mapr is told about your itineraries, so "add it to my itinerary"
+// and "rename my Philly trip" can point at the right one.
+export function itinerarySummary(trip, tripApi, groupTrips) {
+  const solo = tripApi.regionsWithItineraries().map((regionId) => ({
+    kind: 'solo',
+    ref: regionId,
+    name: tripApi.itineraryName(regionId),
+    city: getRegion(regionId)?.name || regionId,
+    stops: [
+      ...tripApi.getRegionSelection(regionId).map((id) => ALL_LANDMARKS.find((l) => l.regionId === regionId && l.id === id)?.name).filter(Boolean),
+      ...(trip.placesByRegion?.[regionId] || []).map((p) => p.name),
+    ].slice(0, 30),
+  }));
+  const groups = groupTrips.map((g) => ({
+    kind: 'group',
+    ref: g.id,
+    name: g.name,
+    city: getRegion(g.regionId)?.name || g.regionId,
+    members: Object.values(g.memberNames || {}).slice(0, 10),
+    stops: [
+      ...(g.landmarkIds || []).map((id) => ALL_LANDMARKS.find((l) => l.regionId === g.regionId && l.id === id)?.name).filter(Boolean),
+      ...(g.places || []).map((p) => p.name),
+    ].slice(0, 30),
+  }));
+  return [...solo, ...groups].slice(0, 20);
+}

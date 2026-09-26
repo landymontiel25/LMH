@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { migrateInterests } from '../data/regions';
+import { migrateInterests, getRegion } from '../data/regions';
 
 const STORAGE_KEY = 'landmarkhunters.trip.v1';
 
@@ -32,6 +32,13 @@ const DEFAULT_TRIP = {
   // the chip stays put so you can turn it back on later.
   deselectedCustomInterests: [],
   byRegion: {}, // { [regionId]: string[] of landmark ids } — one itinerary per city
+  // { [regionId]: string } -- a name you gave that city's itinerary
+  // ("Villanova Visit Weekend"); falls back to the city's own name.
+  itineraryNames: {},
+  // { [regionId]: place[] } -- real places Mapr found on the web (not in the
+  // catalog) that you added to that city's itinerary:
+  // { id, name, address, lat, lng, url }
+  placesByRegion: {},
 };
 
 function loadTrip() {
@@ -48,6 +55,8 @@ function loadTrip() {
       t.activeRegion = parsed.region ?? null;
     }
     t.byRegion = t.byRegion || {};
+    t.itineraryNames = t.itineraryNames || {};
+    t.placesByRegion = t.placesByRegion || {};
     // Retired interest ids (e.g. the old "food-local-life") become their
     // replacements, so a saved preference keeps filtering after a split.
     t.interests = migrateInterests(t.interests);
@@ -122,6 +131,62 @@ export function TripProvider({ children }) {
     });
   };
 
+  // Idempotent add (Mapr's "add it to my itinerary" shouldn't toggle a
+  // stop OFF if it was already there).
+  const addLandmark = (id, regionId) =>
+    setTrip((t) => {
+      const cur = t.byRegion[regionId] || [];
+      if (cur.includes(id)) return t;
+      return { ...t, byRegion: { ...t.byRegion, [regionId]: [...cur, id] }, activeRegion: regionId };
+    });
+
+  const removeLandmark = (id, regionId) =>
+    setTrip((t) => {
+      const next = (t.byRegion[regionId] || []).filter((x) => x !== id);
+      const byRegion = { ...t.byRegion };
+      if (next.length) byRegion[regionId] = next;
+      else delete byRegion[regionId];
+      return { ...t, byRegion };
+    });
+
+  const addPlace = (regionId, place) =>
+    setTrip((t) => {
+      const cur = t.placesByRegion[regionId] || [];
+      if (cur.some((p) => p.id === place.id)) return t;
+      return { ...t, placesByRegion: { ...t.placesByRegion, [regionId]: [...cur, place] }, activeRegion: regionId };
+    });
+
+  const removePlace = (regionId, id) =>
+    setTrip((t) => {
+      const next = (t.placesByRegion[regionId] || []).filter((p) => p.id !== id);
+      const placesByRegion = { ...t.placesByRegion };
+      if (next.length) placesByRegion[regionId] = next;
+      else delete placesByRegion[regionId];
+      return { ...t, placesByRegion };
+    });
+
+  const renameItinerary = (regionId, name) =>
+    setTrip((t) => {
+      const itineraryNames = { ...t.itineraryNames };
+      const clean = String(name || '').trim().slice(0, 80);
+      if (clean) itineraryNames[regionId] = clean;
+      else delete itineraryNames[regionId];
+      return { ...t, itineraryNames };
+    });
+
+  // Removes a city's itinerary entirely (stops, places and its name) --
+  // used when it's turned into a group trip.
+  const removeItinerary = (regionId) =>
+    setTrip((t) => {
+      const byRegion = { ...t.byRegion };
+      const placesByRegion = { ...t.placesByRegion };
+      const itineraryNames = { ...t.itineraryNames };
+      delete byRegion[regionId];
+      delete placesByRegion[regionId];
+      delete itineraryNames[regionId];
+      return { ...t, byRegion, placesByRegion, itineraryNames };
+    });
+
   const clearRegion = (regionId) =>
     setTrip((t) => {
       const byRegion = { ...t.byRegion };
@@ -168,8 +233,14 @@ export function TripProvider({ children }) {
 
   const getRegionSelection = (regionId) => trip.byRegion[regionId] || [];
 
+  // A city counts once it has catalog stops, Mapr-found places, or a name
+  // (a freshly created, still-empty itinerary).
   const regionsWithItineraries = () =>
-    Object.keys(trip.byRegion).filter((r) => trip.byRegion[r]?.length);
+    [...new Set([...Object.keys(trip.byRegion), ...Object.keys(trip.placesByRegion), ...Object.keys(trip.itineraryNames)])].filter(
+      (r) => trip.byRegion[r]?.length || trip.placesByRegion[r]?.length || trip.itineraryNames[r]
+    );
+
+  const itineraryName = (regionId) => trip.itineraryNames[regionId] || getRegion(regionId)?.name || 'Itinerary';
 
   const resetTrip = () => setTrip(DEFAULT_TRIP);
 
@@ -179,6 +250,13 @@ export function TripProvider({ children }) {
         trip,
         updateTrip,
         toggleLandmark,
+        addLandmark,
+        removeLandmark,
+        addPlace,
+        removePlace,
+        renameItinerary,
+        removeItinerary,
+        itineraryName,
         setRegionSelection,
         clearRegion,
         clearAll,

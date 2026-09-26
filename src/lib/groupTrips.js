@@ -16,15 +16,15 @@ import { db } from './firebase';
 import { notifyUser } from './notifications';
 
 // A trip a few friends build together (item i6): one shared landmark list,
-// visible and editable by every member. Only the owner can change who's a
-// member (see firestore.rules) -- everyone else can only edit the shared
-// landmark list.
+// visible and editable by every member. Any member can rename it, edit the
+// shared lists and invite people; only the owner can remove members (see
+// firestore.rules).
 //
 // initialMembers ({ uid, name }[]) lets the owner invite friends in the same
 // write that creates the trip -- e.g. from Trip Setup's friend picker --
 // instead of creating an owner-only trip and then calling addGroupMember in
 // a loop right after.
-export async function createGroupTrip({ ownerUid, ownerName, name, regionId, landmarkIds = [], initialMembers = [] }) {
+export async function createGroupTrip({ ownerUid, ownerName, name, regionId, landmarkIds = [], places = [], initialMembers = [] }) {
   const ref = await addDoc(collection(db, 'group_trips'), {
     ownerUid,
     name,
@@ -35,6 +35,7 @@ export async function createGroupTrip({ ownerUid, ownerName, name, regionId, lan
       ...Object.fromEntries(initialMembers.map((m) => [m.uid, m.name])),
     },
     landmarkIds,
+    places,
     createdAt: serverTimestamp(),
   });
   // Let each invited friend know right away -- best-effort, since a
@@ -94,9 +95,8 @@ export async function setGroupLandmarks(trip, landmarkIds, add) {
 export async function addGroupMember(trip, memberUid, memberName) {
   if (trip.memberUids.includes(memberUid)) return;
   await updateDoc(doc(db, 'group_trips', trip.id), {
-    memberUids: [...trip.memberUids, memberUid],
-    memberNames: { ...trip.memberNames, [memberUid]: memberName },
-    name: trip.name,
+    memberUids: arrayUnion(memberUid),
+    [`memberNames.${memberUid}`]: memberName,
   });
   notifyUser(memberUid, {
     type: 'group_invite',
@@ -117,4 +117,23 @@ export async function removeGroupMember(trip, memberUid) {
 
 export async function deleteGroupTrip(tripId) {
   await deleteDoc(doc(db, 'group_trips', tripId));
+}
+
+export async function renameGroupTrip(trip, name) {
+  const clean = String(name || '').trim().slice(0, 80);
+  if (!clean || clean === trip.name) return;
+  await updateDoc(doc(db, 'group_trips', trip.id), { name: clean });
+}
+
+// Real places Mapr found on the web (not in the catalog), shared with the
+// whole trip. place: { id, name, address, lat, lng, url }
+export async function addGroupPlace(trip, place) {
+  if ((trip.places || []).some((p) => p.id === place.id)) return;
+  await updateDoc(doc(db, 'group_trips', trip.id), { places: arrayUnion(place) });
+}
+
+export async function removeGroupPlace(trip, placeId) {
+  const place = (trip.places || []).find((p) => p.id === placeId);
+  if (!place) return;
+  await updateDoc(doc(db, 'group_trips', trip.id), { places: arrayRemove(place) });
 }
