@@ -14,6 +14,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { syncMyReviewVisibility } from './reviews';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
@@ -115,6 +116,8 @@ export async function upsertUserProfile(user) {
 export async function setProfileVisibility(uid, isPublic) {
   if (!db || !uid) return;
   await setDoc(doc(db, 'users', uid), { public: !!isPublic, updatedAt: serverTimestamp() }, { merge: true });
+  // Your reviews carry a copy of this for comment lists (see reviews.js).
+  await syncMyReviewVisibility(uid, !!isPublic).catch(() => {});
 }
 
 // Turns off Mapr's on-device "you keep going here" habit prompt (see

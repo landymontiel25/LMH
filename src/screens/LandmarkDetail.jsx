@@ -7,7 +7,7 @@ import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
 import { isAdmin } from '../lib/admins';
 import AdminEditLandmarkPanel from '../components/AdminEditLandmarkPanel';
 import AdminEditBuiltInPanel from '../components/AdminEditBuiltInPanel';
-import { blockUser } from '../lib/blocks';
+import { blockUser, listBlockedUsers } from '../lib/blocks';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { useCheckIn } from '../lib/useCheckIn';
@@ -151,7 +151,7 @@ export default function LandmarkDetail() {
   );
   const { ratings, reload: reloadRatings } = useRatings();
   const { reload: reloadMyPhotos } = useMyPhotos();
-  const { myUsername } = useFriends();
+  const { myUsername, friendUids } = useFriends();
   const toast = useToast();
   // myRating: live RatingFlow payload (null until a tier's picked).
   // savedRating: what's already on file, to pre-fill on an edit.
@@ -316,11 +316,12 @@ export default function LandmarkDetail() {
         setReviewsError(null);
       }
       try {
-        // firestore.rules already excludes any review reported past the
-        // hide threshold (unless it's yours or you're an admin), so whatever
-        // comes back here is exactly what's safe to show -- no client-side
-        // report-count filtering needed anymore.
-        setReviews(await getLandmarkReviews(landmark.id));
+        const list = await getLandmarkReviews(landmark.id, { uid: user?.uid, friendUids });
+        // Lists can't check blocks server-side (see firestore.rules), so
+        // people you've blocked are dropped here.
+        const blocked = user ? await listBlockedUsers(user.uid).catch(() => []) : [];
+        const blockedIds = new Set(blocked.map((b) => b.blockedUid));
+        setReviews(list.filter((r) => !blockedIds.has(r.userId)));
         setReviewsStatus('ready');
       } catch (e) {
         if (quiet) return;
@@ -328,7 +329,9 @@ export default function LandmarkDetail() {
         setReviewsStatus('error');
       }
     },
-    [firebaseEnabled, landmark]
+    // friendUids by value, so a fresh-but-identical array doesn't refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [firebaseEnabled, landmark, user?.uid, [...friendUids].join(',')]
   );
 
   useEffect(() => {

@@ -9,7 +9,6 @@ import {
   orderBy,
   limit,
   updateDoc,
-  setDoc,
   deleteDoc,
   addDoc,
   arrayUnion,
@@ -27,6 +26,14 @@ function userError(message) {
   err.userMessage = message;
   return err;
 }
+
+// `visibility` and `hidden` are copies kept on every review so a landmark's
+// Comments can be listed at all: Firestore refuses any list query it can't
+// prove safe, and it can't look up each author's privacy setting mid-query
+// (see the reviews list rule in firestore.rules). visibility mirrors the
+// author's users/{uid}.public; hidden is "reported by 2+ people".
+const visibilityFor = (userData) => (userData?.public ? 'public' : 'private');
+const hiddenFor = (reviewData) => (reviewData?.reportedBy?.length || 0) >= 2;
 
 // localStorage key for a rating that's been started but not saved yet
 // (see RatingFlow's draftKey) -- per account AND landmark, so a shared
@@ -130,6 +137,8 @@ export async function submitReview({ userId, userName, landmark, rating, photoFi
           // can tally categories without a read per review.
           categories: landmark.categories || [],
           ...(photoURLs.length ? { photoURLs } : {}),
+          visibility: visibilityFor(userSnap.exists() ? userSnap.data() : null),
+          hidden: hiddenFor(prev.exists() ? prev.data() : null),
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -219,13 +228,48 @@ export async function getAllRatings() {
   return map;
 }
 
-/** Recent reviews for a landmark. Single-field query (no composite index); sorted client-side. */
-export async function getLandmarkReviews(landmarkId) {
+/**
+ * A landmark's comments you're allowed to see: public ones, your own, and
+ * your friends' (friends-only accounts). Three queries because Firestore
+ * only runs a list query its rules can prove safe -- a plain "every review
+ * of this landmark" query is always refused (see firestore.rules). Single-
+ * or equality-only filters, so no composite index is needed.
+ */
+export async function getLandmarkReviews(landmarkId, { uid = null, friendUids = [] } = {}) {
   if (!db) return [];
-  const snap = await getDocs(query(collection(db, 'reviews'), where('landmarkId', '==', landmarkId), limit(100)));
-  return snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
+  const col = collection(db, 'reviews');
+  const publicQ = getDocs(
+    query(col, where('landmarkId', '==', landmarkId), where('visibility', '==', 'public'), where('hidden', '==', false), limit(100))
+  );
+  const mineQ = uid ? getDoc(doc(db, 'reviews', `${uid}_${landmarkId}`)).catch(() => null) : Promise.resolve(null);
+  const friendChunks = [];
+  const friends = [...new Set(friendUids)].filter((f) => f && f !== uid);
+  for (let i = 0; i < friends.length; i += 10) friendChunks.push(friends.slice(i, i + 10));
+  const friendQs = friendChunks.map((chunk) =>
+    getDocs(query(col, where('landmarkId', '==', landmarkId), where('userId', 'in', chunk), where('hidden', '==', false))).catch(() => null)
+  );
+  const [pub, mine, ...friendSnaps] = await Promise.all([publicQ, mineQ, ...friendQs]);
+  const byId = new Map();
+  for (const d of pub.docs) byId.set(d.id, { id: d.id, ...d.data() });
+  for (const snap of friendSnaps) snap?.docs.forEach((d) => byId.set(d.id, { id: d.id, ...d.data() }));
+  if (mine?.exists()) byId.set(mine.id, { id: mine.id, ...mine.data() });
+  return [...byId.values()]
+    .filter((r) => r.comment || r.ratingTier || r.stars || r.photoURLs?.length || r.photoURL)
     .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
+}
+
+/**
+ * Brings your own reviews' visibility/hidden copies in line with your
+ * profile privacy -- after flipping Public/Private, and once per session
+ * for reviews saved before those fields existed. Best effort per review.
+ */
+export async function syncMyReviewVisibility(uid, isPublic) {
+  if (!db || !uid) return 0;
+  const want = isPublic ? 'public' : 'private';
+  const snap = await getDocs(query(collection(db, 'reviews'), where('userId', '==', uid)));
+  const stale = snap.docs.filter((d) => d.data().visibility !== want || d.data().hidden !== hiddenFor(d.data()));
+  await Promise.allSettled(stale.map((d) => updateDoc(d.ref, { visibility: want, hidden: hiddenFor(d.data()) })));
+  return stale.length;
 }
 
 /**
@@ -238,7 +282,16 @@ export async function getLandmarkReviews(landmarkId) {
  * filter.
  */
 export async function reportReview({ reporterUid, review }) {
-  await updateDoc(doc(db, 'reviews', review.id), { reportedBy: arrayUnion(reporterUid) });
+  const ref = doc(db, 'reviews', review.id);
+  await runTransaction(db, async (tx) => {
+    const cur = await tx.get(ref);
+    if (!cur.exists()) return;
+    const reportedBy = cur.data().reportedBy || [];
+    if (reportedBy.includes(reporterUid)) return;
+    const next = [...reportedBy, reporterUid];
+    // `hidden` has to flip in the same write as the 2nd report (the rules check it).
+    tx.update(ref, { reportedBy: next, hidden: next.length >= 2 });
+  });
 }
 
 /** Delete your own review and roll its stars back out of the aggregate. */
@@ -267,18 +320,25 @@ export async function deleteMyReview(userId, landmarkId) {
  */
 export async function saveMyComment({ userId, landmark, comment }) {
   const text = (comment || '').trim().slice(0, COMMENT_MAX);
-  await setDoc(
-    doc(db, 'reviews', `${userId}_${landmark.id}`),
-    {
-      userId,
-      landmarkId: landmark.id,
-      landmarkName: landmark.name,
-      region: landmark.region ?? landmark.regionId,
-      comment: text,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const ref = doc(db, 'reviews', `${userId}_${landmark.id}`);
+  await runTransaction(db, async (tx) => {
+    const cur = await tx.get(ref);
+    const user = await tx.get(doc(db, 'users', userId));
+    tx.set(
+      ref,
+      {
+        userId,
+        landmarkId: landmark.id,
+        landmarkName: landmark.name,
+        region: landmark.region ?? landmark.regionId,
+        comment: text,
+        visibility: visibilityFor(user.exists() ? user.data() : null),
+        hidden: hiddenFor(cur.exists() ? cur.data() : null),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
   return text;
 }
 
@@ -297,18 +357,24 @@ export async function appendLoveNote(userId, landmarkId, landmark, note) {
   const text = (note || '').trim().slice(0, 280);
   if (!db || !userId || !landmarkId || !text) return;
   const reviewRef = doc(db, 'reviews', `${userId}_${landmarkId}`);
-  await setDoc(
-    reviewRef,
-    {
-      userId,
-      landmarkId,
-      landmarkName: landmark?.name,
-      region: landmark?.region ?? landmark?.regionId,
-      loveNotes: arrayUnion(text),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await runTransaction(db, async (tx) => {
+    const cur = await tx.get(reviewRef);
+    const user = await tx.get(doc(db, 'users', userId));
+    tx.set(
+      reviewRef,
+      {
+        userId,
+        landmarkId,
+        landmarkName: landmark?.name,
+        region: landmark?.region ?? landmark?.regionId,
+        loveNotes: arrayUnion(text),
+        visibility: visibilityFor(user.exists() ? user.data() : null),
+        hidden: hiddenFor(cur.exists() ? cur.data() : null),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
 }
 
 /** The most recent "why do you love this place" answer for a landmark, or null. */
