@@ -3,10 +3,11 @@ import { useAuth } from '../lib/AuthContext';
 import { useGeo } from '../lib/GeoContext';
 import { useTrip } from '../lib/TripContext';
 import { useFriends } from '../lib/FriendsContext';
-import { reverseGeocodePlace, nearestRegionId, placeId } from '../lib/placeLookup';
+import { reverseGeocodePlace, nearestRegionId, placeId, lookupPlace } from '../lib/placeLookup';
 import { distanceMeters } from '../lib/geo';
 import { ALL_LANDMARKS } from '../data/regions';
 import { notifyUser } from '../lib/notifications';
+import { findRelatedStop } from '../lib/habitNearby';
 import {
   recordVisit,
   getDueSuggestion,
@@ -30,13 +31,17 @@ const ALREADY_TRACKED_RADIUS_METERS = 80;
 export default function HabitPlacePrompt() {
   const { user } = useAuth();
   const { coords } = useGeo();
-  const { addPlace } = useTrip();
+  const { trip, addPlace, addLandmark } = useTrip();
   const { myProfile } = useFriends();
   const uid = user?.uid;
   const enabled = myProfile?.habitTrackingEnabled !== false;
   const [suggestion, setSuggestion] = useState(null);
+  const [relatedStop, setRelatedStop] = useState(null);
+  const [relatedAdded, setRelatedAdded] = useState(false);
+  const [relatedError, setRelatedError] = useState(false);
   const lastRecordedAtRef = useRef(0);
   const notifiedIdRef = useRef(null);
+  const relatedFetchedIdRef = useRef(null);
 
   const isAlreadyTracked = (lat, lng) =>
     ALL_LANDMARKS.some((l) => distanceMeters(lat, lng, l.lat, l.lng) <= ALREADY_TRACKED_RADIUS_METERS);
@@ -71,11 +76,39 @@ export default function HabitPlacePrompt() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid, enabled, coords, suggestion]);
 
+  // "If I love shooting, is there a shooting range near Dunkin?" -- once the
+  // habit place itself is named, ask the same AI behind Mapr chat for ONE
+  // extra stop that fits this traveler's taste near it. Fetched at most once
+  // per surfaced suggestion (fires as rarely as the habit prompt itself,
+  // see habitTracking.js's cooldown), and only when there's an actual taste
+  // signal to work from.
+  useEffect(() => {
+    if (!suggestion || relatedFetchedIdRef.current === suggestion.id) return;
+    relatedFetchedIdRef.current = suggestion.id;
+    const savedInterests = trip.savedInterests || [];
+    const hasTaste = savedInterests.length > 0 || !!myProfile?.tasteIntro;
+    if (!hasTaste) return;
+    findRelatedStop({
+      coords: { lat: suggestion.lat, lng: suggestion.lng },
+      placeName: suggestion.name,
+      myProfile,
+      savedInterests,
+      regionId: nearestRegionId(suggestion.lat, suggestion.lng),
+    }).then((stop) => {
+      if (stop) setRelatedStop(stop);
+    });
+  }, [suggestion, trip.savedInterests, myProfile]);
+
   if (!suggestion) return null;
 
   const timeLabel = typicalTimeLabel(suggestion);
 
-  const close = () => setSuggestion(null);
+  const close = () => {
+    setSuggestion(null);
+    setRelatedStop(null);
+    setRelatedAdded(false);
+    setRelatedError(false);
+  };
 
   const addToItinerary = () => {
     const regionId = nearestRegionId(suggestion.lat, suggestion.lng);
@@ -92,6 +125,34 @@ export default function HabitPlacePrompt() {
     markClusterAdded(uid, suggestion.id);
     close();
   };
+
+  const addRelatedStop = async () => {
+    setRelatedError(false);
+    try {
+      if (relatedStop.region && relatedStop.id) {
+        addLandmark(relatedStop.id, relatedStop.region);
+      } else {
+        const near = { lat: suggestion.lat, lng: suggestion.lng };
+        const query = [relatedStop.name, relatedStop.address || relatedStop.place].filter(Boolean).join(', ');
+        const spot = await lookupPlace(query, near);
+        const regionId = nearestRegionId(spot.lat, spot.lng) || nearestRegionId(suggestion.lat, suggestion.lng);
+        if (!regionId) throw new Error('Outside tracked cities');
+        addPlace(regionId, {
+          id: placeId(relatedStop.name, spot.lat, spot.lng),
+          name: relatedStop.name,
+          lat: spot.lat,
+          lng: spot.lng,
+          address: relatedStop.address || spot.address || '',
+          url: relatedStop.url || '',
+        });
+      }
+      setRelatedAdded(true);
+    } catch {
+      setRelatedError(true);
+    }
+  };
+
+  const dismissRelatedStop = () => setRelatedStop(null);
 
   const alreadyThere = () => {
     markClusterAdded(uid, suggestion.id);
@@ -127,6 +188,31 @@ export default function HabitPlacePrompt() {
         <button type="button" className="btn btn-block btn-ghost" style={{ marginTop: 8 }} onClick={stopTracking}>
           {'\u{1F6AB}'} Don't track this place
         </button>
+
+        {relatedStop && !relatedAdded && (
+          <div className="card section" style={{ marginTop: 16, marginBottom: 0 }}>
+            <p className="screen-subtitle" style={{ marginTop: 0 }}>
+              {'\u{2728}'} Since you're into that -- <strong>{relatedStop.name}</strong> is nearby or on the way.
+              {relatedStop.reason ? ` ${relatedStop.reason}` : ''}
+            </p>
+            <button type="button" className="btn btn-block btn-success" onClick={addRelatedStop}>
+              {'\u{2795}'} Add {relatedStop.name} too
+            </button>
+            <button type="button" className="btn btn-block btn-ghost" style={{ marginTop: 8 }} onClick={dismissRelatedStop}>
+              No thanks
+            </button>
+            {relatedError && (
+              <p className="screen-subtitle" style={{ marginTop: 8 }}>
+                Couldn't add that one -- you can still find it and add it from the map.
+              </p>
+            )}
+          </div>
+        )}
+        {relatedAdded && (
+          <p className="screen-subtitle" style={{ marginTop: 16, marginBottom: 0 }}>
+            {'\u{2705}'} Added {relatedStop.name} to your itinerary too.
+          </p>
+        )}
       </div>
     </div>
   );
