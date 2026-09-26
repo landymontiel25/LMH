@@ -1,5 +1,8 @@
 import { INTERESTS } from '../data/regions';
 
+// Same cap firestore.rules enforces on reviews.comment.
+export const COMMENT_MAX = 500;
+
 // Only these categories get the rating flow. A landmark that's ONLY
 // campus-life or dorms (a residence hall, an admissions office) skips
 // straight to "checked in" -- rating a dorm on Price/Atmosphere tells

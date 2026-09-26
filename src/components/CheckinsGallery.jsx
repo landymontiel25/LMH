@@ -12,6 +12,7 @@ import { regionTimezone, tzAbbrev, toZonedInputValue, fromZonedInputValue } from
 import { friendlyError } from '../lib/friendlyError';
 import { SkeletonGrid, SkeletonList } from './Skeleton';
 import ErrorNotice from './ErrorNotice';
+import MyCommentEditor from './MyCommentEditor';
 
 
 // Shared "Sep 7, 2026, 10:04 AM" formatting for check-in timestamps.
@@ -33,6 +34,8 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
   const { user: viewer } = useAuth();
   const { adminMode } = useAdminMode();
   const canEditDates = adminMode && isAdmin(viewer?.email);
+  // Only your own gallery gets comment editing, not a friend's.
+  const isOwnGallery = !!viewer && viewer.uid === user?.uid;
   const [checkins, setCheckins] = useState(null);
   // A failed read is its own state -- never shown as "No check-ins yet".
   const [loadError, setLoadError] = useState(null);
@@ -109,7 +112,8 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
 
   useEffect(() => {
     let cancelled = false;
-    const build = (c, review) => {
+    // `loaded` is false for the instant first paint, before reviews are read.
+    const build = (c, review, loaded = false) => {
       const lm = getLandmark(c.region, c.landmarkId);
       // Prefer the photo saved AT check-in, then a rating photo, then the
       // landmark's stock image.
@@ -134,6 +138,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         stars: tier ? tierStars(tier.id) : null,
         tierEmoji: tier?.emoji || null,
         tierLabel: tier?.label || null,
+        comment: loaded ? review?.comment || '' : null,
       };
     };
 
@@ -159,7 +164,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         rows.map((c) => getMyReview(user.uid, c.landmarkId).catch(() => null))
       );
       if (cancelled) return;
-      if (reviews.some(Boolean)) setCheckins(rows.map((c, i) => build(c, reviews[i])));
+      setCheckins(rows.map((c, i) => build(c, reviews[i], true)));
     })();
     return () => {
       cancelled = true;
@@ -335,6 +340,14 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
                       </button>
                     )}
                   </div>
+                )}
+                {isOwnGallery && it.comment !== null && (
+                  <MyCommentEditor
+                    compact
+                    userId={user.uid}
+                    landmark={{ id: it.landmarkId, name: it.name, region: it.regionId }}
+                    comment={it.comment}
+                  />
                 )}
               </div>
             </div>

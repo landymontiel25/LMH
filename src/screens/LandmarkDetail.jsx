@@ -33,6 +33,7 @@ import {
 } from '../lib/leaderboard';
 import { regionTimezone, tzAbbrev, toZonedInputValue, fromZonedInputValue } from '../lib/timezones';
 import RatingFlow from '../components/RatingFlow';
+import MyCommentEditor from '../components/MyCommentEditor';
 import LandmarkPostcard from '../components/LandmarkPostcard';
 import Lightbox from '../components/Lightbox';
 import ReviewReplies from '../components/ReviewReplies';
@@ -187,6 +188,12 @@ export default function LandmarkDetail() {
   // immediately after ANY save, first-time included.
   const [justEdited, setJustEdited] = useState(false);
   const [reviews, setReviews] = useState([]);
+  // Your own comment on this place (with or without a rating), for the
+  // editor at the top of Comments. null until loaded.
+  const [myComment, setMyComment] = useState(null);
+  // Bumped when the comment is edited on its own, so the rating flow below
+  // remounts with it instead of later saving its older copy back.
+  const [commentRev, setCommentRev] = useState(0);
   // 'loading' only for the first fetch (skeleton); later refreshes after a
   // save/delete happen quietly behind the list that's already showing.
   const [reviewsStatus, setReviewsStatus] = useState('loading'); // loading | ready | error
@@ -257,6 +264,7 @@ export default function LandmarkDetail() {
     // Best-effort pre-fill: if this read fails the card still works, it
     // just starts blank (and saving overwrites correctly either way).
     const r = await getMyReview(user.uid, landmark.id).catch(() => null);
+    setMyComment(r?.comment || '');
     if (!r) return;
     // Pre-fills the tier flow on an edit. A legacy star-only review (from
     // before there was only ever the tier flow) has no tier to pre-fill --
@@ -619,6 +627,26 @@ export default function LandmarkDetail() {
       /* user dismissed the share sheet — nothing to do */
     }
   };
+
+  // Add or edit your own comment any time after checking in here.
+  const myCommentBox =
+    user && checkedInHere && myComment !== null ? (
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="review-head" style={{ marginBottom: 6 }}>
+          <strong>Your comment</strong>
+        </div>
+        <MyCommentEditor
+          userId={user.uid}
+          landmark={{ ...landmark, region: landmark.region ?? regionId }}
+          comment={myComment}
+          onSaved={(text) => {
+            setMyComment(text);
+            setCommentRev((n) => n + 1);
+            Promise.all([loadReviews({ quiet: true }), loadMyReview()]).catch(() => {});
+          }}
+        />
+      </div>
+    ) : null;
 
   return (
     <div>
@@ -1006,7 +1034,7 @@ export default function LandmarkDetail() {
                 Rate for yourself, not others. This is just so we learn your taste.
               </p>
               <RatingFlow
-                key={landmark.id}
+                key={`${landmark.id}:${commentRev}`}
                 landmark={landmark}
                 initial={savedRating?.tier ? savedRating : null}
                 draftKey={draftKey}
@@ -1081,14 +1109,14 @@ export default function LandmarkDetail() {
 
       {firebaseEnabled && reviewsStatus === 'loading' && (
         <div className="section">
-          <h3>Visitor Reviews</h3>
+          <h3>{'\u{1F4AC}'} Comments</h3>
           <SkeletonList count={2} label="Loading reviews" />
         </div>
       )}
 
       {firebaseEnabled && reviewsStatus === 'error' && (
         <div className="section">
-          <h3>Visitor Reviews</h3>
+          <h3>{'\u{1F4AC}'} Comments</h3>
           <ErrorNotice
             message={friendlyError(reviewsError, "Couldn't load reviews right now.")}
             onRetry={() => loadReviews()}
@@ -1096,18 +1124,20 @@ export default function LandmarkDetail() {
         </div>
       )}
 
-      {firebaseEnabled && reviewsStatus === 'ready' && reviews.length === 0 && isRateable(landmark) && (
+      {firebaseEnabled && reviewsStatus === 'ready' && reviews.length === 0 && (isRateable(landmark) || checkedInHere) && (
         <div className="section">
-          <h3>Visitor Reviews</h3>
+          <h3>{'\u{1F4AC}'} Comments</h3>
+          {myCommentBox}
           <p className="screen-subtitle" style={{ margin: 0 }}>
-            No reviews yet.
+            No comments yet.
           </p>
         </div>
       )}
 
       {firebaseEnabled && reviewsStatus === 'ready' && reviews.length > 0 && (
         <div className="section">
-          <h3>Visitor Reviews ({reviews.length})</h3>
+          <h3>{'\u{1F4AC}'} Comments ({reviews.length})</h3>
+          {myCommentBox}
           {reviews.map((r) => {
             const mine = user && r.userId === user.uid;
             return (
@@ -1122,7 +1152,7 @@ export default function LandmarkDetail() {
                     <span className="tag">Rated</span>
                   )}
                 </div>
-                {r.comment && <p className="review-comment">{r.comment}</p>}
+                {r.comment && !(mine && myCommentBox) && <p className="review-comment">{r.comment}</p>}
                 {(() => {
                   // firestore.rules already filtered this list down to reviews
                   // this viewer is allowed to see in full (their own, a

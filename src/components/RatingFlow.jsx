@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { TIERS, MAX_CHIPS, MAX_ASPECTS, chipsFor, aspectsFor, aspectLabel } from '../lib/ratingFlow';
+import { TIERS, MAX_CHIPS, MAX_ASPECTS, COMMENT_MAX, chipsFor, aspectsFor, aspectLabel } from '../lib/ratingFlow';
 import { usePersistentState, readPersisted } from '../lib/usePersistentState';
 
 function toDraft(initial) {
@@ -187,7 +187,7 @@ export default function RatingFlow({ landmark, onChange, initial = null, require
             enterKeyHint="done"
             className="rating-comment"
             rows={2}
-            maxLength={280}
+            maxLength={COMMENT_MAX}
             placeholder={
               requireComment
                 ? "Why did you love it — or not? Mapr reads this to learn your taste"
