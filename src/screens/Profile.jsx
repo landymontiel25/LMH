@@ -219,7 +219,7 @@ function FinishOnboardingCard({ onStartOnboarding }) {
 }
 
 export default function Profile() {
-  const { user, firebaseEnabled } = useAuth();
+  const { user, firebaseEnabled, signOutUser } = useAuth();
   const { myUsername, friendUids, myProfile } = useFriends();
   const { trip } = useTrip();
   const navigate = useNavigate();
@@ -702,6 +702,9 @@ export default function Profile() {
       <Link to="/settings" className="btn btn-ghost btn-block" style={{ marginTop: 20 }}>
         {'\u{2699}\u{FE0F}'} Settings
       </Link>
+      <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
+        Sign Out
+      </button>
     </div>
   );
 }
