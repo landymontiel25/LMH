@@ -2,9 +2,42 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
+import { useBadges } from '../lib/BadgesContext';
 import { subscribeLeaderboard } from '../lib/leaderboard';
 import { subscribeMyNotifications } from '../lib/notifications';
 import { Skeleton } from './Skeleton';
+
+// Dead center of the header, on every screen -- the one stat people check
+// without thinking about it, so it doesn't live behind a tap like the rest
+// of ProfileMenu's popover. Flame animates (flicker, not spin/bounce) only
+// while there's an actual streak to celebrate; a cold start shows a dim,
+// still flame instead of implying progress that isn't there. Turns
+// warning-colored once today's check-in hasn't secured it yet -- same
+// signal StreakWarningBanner gives, just always in view instead of only
+// right before local midnight.
+function StreakBadge() {
+  const { user, firebaseEnabled } = useAuth();
+  const { streakDays, checkedInToday } = useBadges();
+
+  if (!firebaseEnabled || !user) return null;
+
+  const active = streakDays > 0;
+  const atRisk = active && !checkedInToday;
+  const title = !active
+    ? 'Check in today to start a streak'
+    : atRisk
+    ? `${streakDays}-day streak — check in today to keep it`
+    : `${streakDays}-day streak — today's secured`;
+
+  return (
+    <Link to="/profile" className={`header-streak ${active ? 'active' : ''} ${atRisk ? 'at-risk' : ''}`} title={title}>
+      <span className="header-streak-flame" aria-hidden="true">
+        {'\u{1F525}'}
+      </span>
+      <span className="header-streak-num">{streakDays}</span>
+    </Link>
+  );
+}
 
 // Header identity control. Shows who you're signed in as; hovering (desktop)
 // or tapping (mobile) reveals this week's rank/points, a "Notifications"
@@ -152,6 +185,7 @@ export default function Header() {
       <Link to="/" aria-label="Landmark Hunters" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
         <img src="/logo.png" alt="Landmark Hunters" className="brand-mark" />
       </Link>
+      <StreakBadge />
       <div className="app-header-actions">
         <ProfileMenu />
       </div>
