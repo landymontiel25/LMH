@@ -135,38 +135,50 @@ function zoomForRadiusMiles(map, lat, miles) {
   return Math.log2((EARTH_MPP_ZOOM0 * Math.cos((lat * Math.PI) / 180)) / metersPerPixel);
 }
 
-function InitialView({ loading, coords, bounds, regionBounds, stopBounds, focusPoint, radiusMiles }) {
+function InitialView({ coords, lastKnown, bounds, regionBounds, stopBounds, focusPoint, radiusMiles }) {
   const map = useMap();
-  const centered = useRef(false);
+  const framed = useRef(null); // 'fixed' (a landmark, itinerary or city) | 'provisional' | 'gps'
+  const userMoved = useRef(false);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => map.invalidateSize());
     return () => cancelAnimationFrame(id);
   }, [map]);
 
+  // Once you pan the map yourself, a late GPS fix doesn't yank it away.
+  useMapEvents({
+    dragstart: () => {
+      userMoved.current = true;
+    },
+  });
+
   useEffect(() => {
-    if (centered.current) return;
+    if (framed.current === 'fixed' || framed.current === 'gps') return;
     // Priority: a specific landmark ("See it on the Map") → every stop of
     // the itinerary you came from → the city you're browsing → your GPS
-    // location → the whole collection.
+    // location. Never waits on GPS: until a fix comes in, the map opens on
+    // your last known location (or every landmark), then moves to you.
     if (focusPoint) {
-      centered.current = true;
+      framed.current = 'fixed';
       map.setView([focusPoint.lat, focusPoint.lng], 17);
     } else if (stopBounds) {
-      centered.current = true;
+      framed.current = 'fixed';
       map.fitBounds(stopBounds, { padding: [50, 50], maxZoom: 16 });
     } else if (regionBounds) {
-      centered.current = true;
+      framed.current = 'fixed';
       map.fitBounds(regionBounds, { padding: [40, 40] });
     } else if (coords) {
-      centered.current = true;
-      map.setView([coords.lat, coords.lng], zoomForRadiusMiles(map, coords.lat, radiusMiles));
-    } else if (!loading) {
-      centered.current = true;
-      map.fitBounds(bounds, { padding: [30, 30] });
+      if (!(framed.current === 'provisional' && userMoved.current)) {
+        map.setView([coords.lat, coords.lng], zoomForRadiusMiles(map, coords.lat, radiusMiles));
+      }
+      framed.current = 'gps';
+    } else if (!framed.current) {
+      framed.current = 'provisional';
+      if (lastKnown) map.setView([lastKnown.lat, lastKnown.lng], zoomForRadiusMiles(map, lastKnown.lat, radiusMiles));
+      else map.fitBounds(bounds, { padding: [30, 30] });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, coords, regionBounds, stopBounds, focusPoint]);
+  }, [coords, regionBounds, focusPoint]);
 
   return null;
 }
@@ -236,7 +248,7 @@ export default function MapExplore() {
   const { applyEdit } = useLandmarkEdits();
   const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
-  const { coords, error: geoError, loading: geoLoading } = useGeo();
+  const { coords, error: geoError, loading: geoLoading, lastKnown } = useGeo();
   const { units } = useUnits();
   const mapRef = useRef(null);
   const location = useLocation();
@@ -926,8 +938,10 @@ export default function MapExplore() {
 
   return (
     <div className="map-fullscreen">
+      {/* A small note, not a cover: the map and its pins are usable while
+          the GPS fix is still coming in. */}
       {geoLoading && (
-        <div className="map-loading-overlay">
+        <div className="map-locating-pill" role="status">
           <span className="map-loading-pulse" />
           Finding your location…
         </div>
@@ -944,8 +958,8 @@ export default function MapExplore() {
           style={{ height: '100%', width: '100%' }}
         >
           <InitialView
-            loading={geoLoading}
             coords={coords}
+            lastKnown={lastKnown}
             bounds={ALL_LANDMARKS_BOUNDS}
             regionBounds={regionBounds}
             stopBounds={stopBounds}

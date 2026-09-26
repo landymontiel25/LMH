@@ -2948,19 +2948,6 @@ textarea {
   text-align: center;
 }
 
-.map-loading-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: var(--color-bg);
-  color: var(--color-parchment-dim);
-  font-size: 0.9rem;
-}
-
 .map-loading-pulse {
   width: 14px;
   height: 14px;
@@ -5169,4 +5156,24 @@ h2,
 
 .checkin-grid-divider {
   grid-column: 1 / -1;
+}
+
+/* "Finding your location…" while the map is already usable underneath. */
+.map-locating-pill {
+  position: absolute;
+  top: calc(var(--header-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-float);
+  color: var(--color-parchment-dim);
+  font-size: 0.78rem;
+  pointer-events: none;
 }
