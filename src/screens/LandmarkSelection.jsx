@@ -148,14 +148,12 @@ export default function LandmarkSelection() {
   // shows everything.
   const [cityFilter, setCityFilter] = useState(() => trip.activeRegion ?? 'all');
   // Default to the city you're standing in (nearest city center within
-  // NEAR_CITY_KM of your GPS fix). Picking a city yourself wins for the
-  // rest of this visit, but leaving this screen (switching tabs remounts
-  // it) and coming back re-applies your current GPS location -- simple and
-  // predictable beats "remembers where you last browsed" flakiness (e.g.
-  // depending on the map having registered a clean drag gesture).
-  const cityPickedRef = useRef(false);
+  // NEAR_CITY_KM of your GPS fix) -- but only until you pick a city
+  // yourself. Once you do, that choice sticks (trip.activeRegionPicked,
+  // persisted on the trip) even after switching tabs and coming back,
+  // instead of GPS quietly overriding it again.
   useEffect(() => {
-    if (!coords || cityPickedRef.current) return;
+    if (!coords || trip.activeRegionPicked) return;
     let best = null;
     let bestKm = NEAR_CITY_KM;
     for (const r of PICKABLE_REGIONS) {
@@ -465,12 +463,14 @@ export default function LandmarkSelection() {
       <CityDropdown
         value={cityFilter}
         onChange={(id) => {
-          cityPickedRef.current = true;
           setCityFilter(id);
-          // Remember the city being browsed so the Map opens on it this session.
+          // Remember the city being browsed (so the Map opens on it too) and
+          // that it was picked by hand, so GPS won't quietly override it later.
           if (id !== 'all') {
-            updateTrip({ activeRegion: id });
+            updateTrip({ activeRegion: id, activeRegionPicked: true });
             setMapFocus(id);
+          } else {
+            updateTrip({ activeRegionPicked: true });
           }
         }}
       />

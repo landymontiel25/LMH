@@ -7,6 +7,9 @@ const DEFAULT_TRIP = {
   startingLocation: '',
   startingCoords: null,
   activeRegion: null, // city currently being browsed (Setup / Landmarks context)
+  // True once you've picked a city on Landmarks yourself -- from then on GPS
+  // no longer overrides activeRegion when you come back to that screen.
+  activeRegionPicked: false,
   // Visited/Unvisited tab selection on Choose Landmarks -- persisted so it
   // survives navigating into a landmark's Info page and back (that screen
   // unmounts Choose Landmarks, which would otherwise reset local state).
