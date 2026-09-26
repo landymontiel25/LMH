@@ -130,7 +130,12 @@ export default function GroupTrip() {
 
   const region = getRegion(trip.regionId);
   const isOwner = trip.ownerUid === user.uid;
-  const isSelected = (id) => (id in pendingLandmarks ? pendingLandmarks[id] : trip.landmarkIds.includes(id));
+  // Every write path stores landmarkIds/memberUids as arrays, but never
+  // trust a remote document that fully -- a doc from an older schema, or
+  // one edited outside the app, shouldn't crash this screen.
+  const landmarkIds = trip.landmarkIds || [];
+  const memberUids = trip.memberUids || [];
+  const isSelected = (id) => (id in pendingLandmarks ? pendingLandmarks[id] : landmarkIds.includes(id));
   const selectedCount = (region?.landmarks || []).filter((l) => isSelected(l.id)).length;
 
   const setLandmark = (landmark, add) => {
@@ -225,7 +230,7 @@ export default function GroupTrip() {
 
       <div className="card section">
         <h3 style={{ marginTop: 0 }}>Members</h3>
-        {trip.memberUids.map((memberUid) => (
+        {memberUids.map((memberUid) => (
           <div key={memberUid} className="friend-row">
             <span>
               {trip.memberNames?.[memberUid] || 'A traveler'}
@@ -245,7 +250,7 @@ export default function GroupTrip() {
         {showAdd && (
           <AddMemberSheet
             title={`Add someone to ${trip.name}`}
-            excludeUids={trip.memberUids}
+            excludeUids={memberUids}
             onPick={(m) => addMember(m)}
             onClose={() => setShowAdd(false)}
           />
