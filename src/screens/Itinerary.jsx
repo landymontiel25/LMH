@@ -15,6 +15,7 @@ import TripRecapCard from '../components/TripRecapCard';
 import ThemedChallenge from '../components/ThemedChallenge';
 import OfflineDownloadButton from '../components/OfflineDownloadButton';
 import { createGroupTrip, listMyGroupTrips } from '../lib/groupTrips';
+import { itineraryPhase, groupKey } from '../lib/itineraryStatus';
 import { getRegion } from '../data/regions';
 import { geocodeLocation, streetAddress, cachedStreetAddress } from '../lib/geocode';
 import { distanceMeters } from '../lib/geo';
@@ -232,6 +233,7 @@ export default function Itinerary() {
     removePlace,
     removeItinerary,
     addPlace,
+    setItineraryStatus,
   } = useTrip();
   const [showAddMember, setShowAddMember] = useState(false);
   const { coords } = useGeo();
@@ -577,6 +579,20 @@ export default function Itinerary() {
   // How many of this city's planned landmarks you've already checked in at.
   const visitedCount = selectedLandmarks.filter((l) => claimedMap[l.id]).length;
 
+  // Current vs Past (src/lib/itineraryStatus.js): done = every catalog
+  // landmark checked into, or moved there by hand.
+  const [itinTab, setItinTab] = usePersistentState('itinerary.tab', 'current');
+  const statusOverrides = trip.itineraryStatus || {};
+  const soloPhase = (rid) => itineraryPhase(rid, trip.byRegion[rid], claimedMap, statusOverrides);
+  const groupPhase = (g) => itineraryPhase(groupKey(g.id), g.landmarkIds, claimedMap, statusOverrides);
+  const pastCount = myRegions.filter((rid) => soloPhase(rid) === 'past').length + groupTrips.filter((g) => groupPhase(g) === 'past').length;
+  const currentCount = myRegions.length + groupTrips.length - pastCount;
+  const tabSolo = myRegions.filter((rid) => soloPhase(rid) === itinTab);
+  const tabGroups = groupTrips.filter((g) => groupPhase(g) === itinTab);
+  const pastLabel = (key, landmarkIds) =>
+    statusOverrides[key] === 'past' ? 'moved to Past' : `\u{2705} all ${(landmarkIds || []).length} visited`;
+  const openPhase = openReg ? soloPhase(openReg) : null;
+
   // Nothing planned on this device yet: wait for (or report a failure of)
   // the group-trip load before deciding this really is a dead end.
   if (myRegions.length === 0 && groupsLoading) {
@@ -634,10 +650,37 @@ export default function Itinerary() {
             compact
           />
         )}
-        {groupTrips.length > 0 && (
+        <div className="tabs" style={{ marginBottom: 14 }}>
+          {[
+            { id: 'current', label: 'Current', count: currentCount },
+            { id: 'past', label: 'Past', count: pastCount },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`tab-btn ${itinTab === t.id ? 'active' : ''}`}
+              onClick={() => setItinTab(t.id)}
+            >
+              {t.label} ({t.count})
+            </button>
+          ))}
+        </div>
+        {itinTab === 'past' && tabGroups.length + tabSolo.length > 0 && (
+          <p className="screen-subtitle" style={{ marginTop: 0 }}>
+            Itineraries move here once you've checked into every landmark on them.
+          </p>
+        )}
+        {tabGroups.length + tabSolo.length === 0 && !groupsLoading && (
+          <p className="screen-subtitle">
+            {itinTab === 'past'
+              ? "Nothing here yet. Once you've checked into every landmark on an itinerary, it moves here."
+              : 'No current itineraries. Start one below, or check Past.'}
+          </p>
+        )}
+        {tabGroups.length > 0 && (
           <div style={{ marginBottom: 18 }}>
             <h3 style={{ margin: '0 0 8px' }}>{'\u{1F465}'} Group Trips</h3>
-            {groupTrips.map((t) => (
+            {tabGroups.map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -647,7 +690,8 @@ export default function Itinerary() {
                 <div style={{ textAlign: 'left' }}>
                   <h3 style={{ margin: 0 }}>{t.name}</h3>
                   <p style={{ margin: '4px 0 0', color: 'var(--color-parchment-dim)', fontSize: '0.85rem' }}>
-                    {getRegion(t.regionId)?.name} · {t.memberUids.length} member{t.memberUids.length !== 1 ? 's' : ''}
+                    {getRegion(t.regionId)?.name} · {(t.memberUids || []).length} member{(t.memberUids || []).length !== 1 ? 's' : ''}
+                    {itinTab === 'past' ? ` · ${pastLabel(groupKey(t.id), t.landmarkIds)}` : ''}
                   </p>
                 </div>
                 <span className="itin-city-arrow">{'→'}</span>
@@ -655,10 +699,12 @@ export default function Itinerary() {
             ))}
           </div>
         )}
-        <p className="screen-subtitle">
-          {myRegions.length} {myRegions.length === 1 ? 'itinerary' : 'itineraries'} planned — tap one to see its route.
-        </p>
-        {myRegions.map((rid) => {
+        {tabSolo.length > 0 && itinTab === 'current' && (
+          <p className="screen-subtitle">
+            {tabSolo.length} {tabSolo.length === 1 ? 'itinerary' : 'itineraries'} planned — tap one to see its route.
+          </p>
+        )}
+        {tabSolo.map((rid) => {
           const r = getRegion(rid);
           const count = (trip.byRegion[rid] || []).length + (trip.placesByRegion?.[rid] || []).length;
           const named = itineraryName(rid);
@@ -669,6 +715,7 @@ export default function Itinerary() {
                 <p style={{ margin: '4px 0 0', color: 'var(--color-parchment-dim)', fontSize: '0.85rem' }}>
                   {named !== r?.name ? `${r?.name} · ` : ''}
                   {count} stop{count !== 1 ? 's' : ''}
+                  {itinTab === 'past' ? ` · ${pastLabel(rid, trip.byRegion[rid])}` : ''}
                 </p>
               </div>
               <span className="itin-city-arrow">{'→'}</span>
@@ -955,6 +1002,21 @@ export default function Itinerary() {
 
       <button type="button" className="btn btn-primary btn-block" onClick={() => navigate('/')}>
         {'\u{1F3AF}'} Start Checking In on the Map
+      </button>
+
+      <button
+        type="button"
+        className="btn btn-ghost btn-block"
+        style={{ marginTop: 12 }}
+        onClick={() => {
+          const toPast = openPhase !== 'past';
+          setItineraryStatus(region.id, toPast ? 'past' : 'current');
+          setItinTab(toPast ? 'past' : 'current');
+          setOpenRegion(null);
+          toast.show(`Moved ${itineraryName(region.id)} to ${toPast ? 'Past' : 'Current'}.`, { tone: 'success' });
+        }}
+      >
+        {openPhase === 'past' ? `${'\u{21A9}\u{FE0F}'} Move back to Current` : `${'\u{1F4E6}'} Move to Past`}
       </button>
 
       <button type="button" className="btn btn-danger btn-block" style={{ marginTop: 12 }} onClick={() => setConfirmDelete(true)}>

@@ -71,13 +71,16 @@ describe('GroupTrip renders without crashing on real-world trip shapes', () => {
     }));
     const { default: GroupTrip } = await import('./GroupTrip.jsx');
     const { TripProvider } = await import('../lib/TripContext');
+    const { CheckInContext } = await import('../lib/CheckInContext');
     return mount(
       <TripProvider>
-        <MemoryRouter initialEntries={['/group/g1']}>
-          <Routes>
-            <Route path="/group/:tripId" element={<GroupTrip />} />
-          </Routes>
-        </MemoryRouter>
+        <CheckInContext.Provider value={{ claimedMap: {} }}>
+          <MemoryRouter initialEntries={['/group/g1']}>
+            <Routes>
+              <Route path="/group/:tripId" element={<GroupTrip />} />
+            </Routes>
+          </MemoryRouter>
+        </CheckInContext.Provider>
       </TripProvider>
     );
   }
