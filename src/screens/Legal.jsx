@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
 const EFFECTIVE_DATE = 'September 12, 2026';
-const CONTACT_EMAIL = 'landymontiel25@gmail.com';
+const CONTACT_EMAIL = 'supportlandmarkhunters@gmail.com';
 
 // Reachable with no sign-in required -- App Store Connect needs a public
 // URL for this before a build can even be submitted for review, and a
