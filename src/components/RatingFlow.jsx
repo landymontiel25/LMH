@@ -1,5 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TIERS, MAX_CHIPS, MAX_ASPECTS, chipsFor, aspectsFor, aspectLabel } from '../lib/ratingFlow';
+import { usePersistentState, readPersisted } from '../lib/usePersistentState';
+
+function toDraft(initial) {
+  return {
+    tier: initial?.tier || null,
+    highlights: initial?.highlights || [],
+    lovedOrder: initial?.lovedOrder || [],
+    dislikedOrder: initial?.dislikedOrder || [],
+    comment: initial?.comment || '',
+  };
+}
 
 // The three-step rating: tier -> chips -> ranked aspects. Shared by the
 // check-in popup and the landmark page's "Rate your visit" card so both
@@ -14,29 +25,50 @@ import { TIERS, MAX_CHIPS, MAX_ASPECTS, chipsFor, aspectsFor, aspectLabel } from
 // #2, and so on, with the number shown on the button; tapping a ranked one
 // removes it and the rest close up. Same ordered list as a drag handle would
 // give, without a drag gesture that's fiddly on a phone inside a modal.
-export default function RatingFlow({ landmark, onChange, initial = null, requireComment = false }) {
-  const [tier, setTier] = useState(initial?.tier || null);
-  const [highlights, setHighlights] = useState(initial?.highlights || []);
-  const [lovedOrder, setLovedOrder] = useState(initial?.lovedOrder || []);
-  const [dislikedOrder, setDislikedOrder] = useState(initial?.dislikedOrder || []);
+//
+// draftKey (see ratingDraftKey in reviews.js): when given, a rating in
+// progress is saved on this device as you tap, so closing the app mid-rating
+// doesn't lose it. The parent clears it once the rating actually saves.
+export default function RatingFlow({ landmark, onChange, initial = null, requireComment = false, draftKey = null }) {
+  // A draft identical to what's already on file (or with no tier) isn't
+  // worth keeping -- it would only "restore" what the form shows anyway.
+  const initialJson = JSON.stringify(toDraft(initial));
+  const isEmpty = useCallback((d) => !d?.tier || JSON.stringify(d) === initialJson, [initialJson]);
+  const [restored, setRestored] = useState(() => {
+    const saved = draftKey ? readPersisted(draftKey) : undefined;
+    return !!saved && !isEmpty(saved);
+  });
+  const [draft, setDraft, clearDraft] = usePersistentState(draftKey, () => toDraft(initial), { isEmpty });
+  const { tier, highlights, lovedOrder, dislikedOrder, comment } = draft;
+  const patch = (fields) => setDraft((cur) => ({ ...cur, ...fields }));
+  const setHighlights = (fn) => setDraft((cur) => ({ ...cur, highlights: fn(cur.highlights) }));
+  const setLovedOrder = (list) => patch({ lovedOrder: list });
+  const setDislikedOrder = (list) => patch({ dislikedOrder: list });
   // Free text, optional: the one place to say what the chips can't. Mapr
   // reads it alongside the chips when learning what you like.
-  const [comment, setComment] = useState(initial?.comment || '');
+  const setComment = (text) => patch({ comment: text });
 
+  const discardDraft = () => {
+    clearDraft();
+    setDraft(toDraft(initial));
+    setRestored(false);
+  };
+
+  const payload = useMemo(
+    () => (tier ? { tier, highlights, lovedOrder, dislikedOrder, comment: comment.trim() } : null),
+    [tier, highlights, lovedOrder, dislikedOrder, comment]
+  );
   useEffect(() => {
-    onChange?.(tier ? { tier, highlights, lovedOrder, dislikedOrder, comment: comment.trim() } : null);
+    onChange?.(payload);
     // onChange identity changes every parent render; the payload is what matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tier, highlights, lovedOrder, dislikedOrder, comment]);
+  }, [payload]);
 
   const pickTier = (id) => {
     if (id === tier) return;
-    setTier(id);
     // Chips are tier-specific, and a "probably skip" has no loved aspects
     // (and vice versa) -- start those over rather than carry stale picks.
-    setHighlights([]);
-    setLovedOrder([]);
-    setDislikedOrder([]);
+    patch({ tier: id, highlights: [], lovedOrder: [], dislikedOrder: [] });
   };
 
   const toggleChip = (id) =>
@@ -82,6 +114,14 @@ export default function RatingFlow({ landmark, onChange, initial = null, require
 
   return (
     <div className="rating-flow">
+      {restored && (
+        <p className="draft-restored-note">
+          {'\u{1F4DD}'} Your unsaved rating was restored {'\u{00B7}'}{' '}
+          <button type="button" onClick={discardDraft}>
+            Discard
+          </button>
+        </p>
+      )}
       <div className="rating-tier-grid">
         {TIERS.map((t) => (
           <button
@@ -142,6 +182,9 @@ export default function RatingFlow({ landmark, onChange, initial = null, require
             {requireComment ? 'Why?' : 'Anything else?'} <span>{requireComment ? 'required' : 'optional'}</span>
           </p>
           <textarea
+            name="comment"
+            autoComplete="off"
+            enterKeyHint="done"
             className="rating-comment"
             rows={2}
             maxLength={280}

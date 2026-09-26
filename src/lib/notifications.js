@@ -21,7 +21,9 @@ export async function notifyUser(uid, { type, message, landmarkId = null, groupT
   });
 }
 
-export function subscribeMyNotifications(uid, onData) {
+// onError (optional) lets a screen tell "couldn't load" apart from "nothing
+// here"; without it a failed read still reports an empty list, as before.
+export function subscribeMyNotifications(uid, onData, onError) {
   // Single-field query (no composite index needed); sorted client-side,
   // same pattern as getLandmarkReviews/getUserCheckins.
   return onSnapshot(
@@ -31,7 +33,7 @@ export function subscribeMyNotifications(uid, onData) {
       rows.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       onData(rows.slice(0, 30));
     },
-    () => onData([])
+    (err) => (onError ? onError(err) : onData([]))
   );
 }
 

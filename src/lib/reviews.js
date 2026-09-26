@@ -20,6 +20,21 @@ import { db, storage } from './firebase';
 import { tierStars } from './ratingFlow';
 import { applyRating } from './tagScores';
 
+// An Error whose message was written for travelers, not developers --
+// friendlyError() shows `userMessage` as-is instead of a generic fallback.
+function userError(message) {
+  const err = new Error(message);
+  err.userMessage = message;
+  return err;
+}
+
+// localStorage key for a rating that's been started but not saved yet
+// (see RatingFlow's draftKey) -- per account AND landmark, so a shared
+// device never shows one person's half-finished rating to another.
+export function ratingDraftKey(userId, landmarkId) {
+  return userId && landmarkId ? `rating.${userId}.${landmarkId}` : null;
+}
+
 // Reject after `ms` so a stalled Storage upload (bucket not enabled, blocked by
 // rules, CORS, or just slow) can never hang the whole save forever.
 function withTimeout(promise, ms) {
@@ -46,12 +61,12 @@ export async function submitReview({ userId, userName, landmark, rating, photoFi
   // tier now. The plain rating.stars fallback below is just for any
   // leftover pre-tier data, not a live input path.
   const stars = rating?.tier ? tierStars(rating.tier) : Number(rating?.stars) || 0;
-  if (!stars) throw new Error('Pick a rating first.');
+  if (!stars) throw userError('Pick a rating first.');
 
   // Must have checked in here first.
   const checkin = await getDoc(doc(db, 'checkins', `${userId}_${landmarkId}`));
   if (!checkin.exists()) {
-    throw new Error('Check in at this landmark first to leave a rating.');
+    throw userError('Check in at this landmark first to leave a rating.');
   }
 
   // Up to 3 photos. Accepts an array (photoFiles) or a single file (photoFile).

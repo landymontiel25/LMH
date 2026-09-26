@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LandmarkThumb from '../components/LandmarkThumb';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
@@ -19,6 +19,7 @@ import TasteProfileCard from '../components/TasteProfileCard';
 import TasteNudgeCard from '../components/TasteNudgeCard';
 import TripPlannerCard from '../components/TripPlannerCard';
 import { authHeaders } from '../lib/apiAuth';
+import { fetchJson, friendlyError } from '../lib/friendlyError';
 
 // "You haven't told Mapr what you like yet" nudge -- shown once (per
 // device/account) until either dismissed outright or satisfied by actually
@@ -74,6 +75,9 @@ export default function Mapr() {
     setTotalCost,
     busy,
     setBusy,
+    restored,
+    dismissRestored,
+    discardChat,
   } = useMaprChat();
   const [regionOpen, setRegionOpen] = useState(false);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
@@ -122,7 +126,10 @@ export default function Mapr() {
 
   // overrideText lets the trip planner card (or anything else) send a
   // message programmatically without going through the composer input.
-  const send = async (e, overrideText) => {
+  // retry resends the text of a failed turn: that user bubble is already in
+  // the thread, so only the error bubble under it is swapped back out for
+  // the typing indicator -- never a second copy of the same message.
+  const send = async (e, overrideText, { retry = false } = {}) => {
     e?.preventDefault();
     const text = (overrideText ?? draft).trim();
     if (!text || busy) return;
@@ -131,10 +138,14 @@ export default function Mapr() {
     // nudge just as well as filling in the Settings field does -- that's
     // the whole point of the nudge, so don't ask again once it's happened.
     if (showTasteNudge) dismissNudge();
+    if (restored) dismissRestored();
 
-    const history = [...messages, { role: 'user', text }];
+    const base = retry && messages.at(-1)?.error ? messages.slice(0, -1) : messages;
+    const history = retry ? base : [...base, { role: 'user', text }];
     setMessages(history);
-    setDraft('');
+    // Only a typed message empties the composer; a quick reply or planner
+    // message leaves whatever you'd started typing alone.
+    if (overrideText == null) setDraft('');
     setBusy(true);
 
     try {
@@ -190,7 +201,7 @@ export default function Mapr() {
       );
       const now = new Date();
       const startedAt = performance.now();
-      const r = await fetch('/api/plan-ai', {
+      const data = await fetchJson('/api/plan-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({
@@ -209,8 +220,6 @@ export default function Mapr() {
         }),
       });
       const generationMs = performance.now() - startedAt;
-      const data = await r.json().catch(() => null);
-      if (!r.ok || !data) throw new Error(data?.error || 'Something went wrong.');
       // Time-saved tracking (src/lib/timeSaved.js): real generation time for
       // this reply, logged only when it actually produced stops -- a plain
       // back-and-forth reply with no stops didn't save anyone planning time.
@@ -229,7 +238,22 @@ export default function Mapr() {
       setMessages((cur) => [...cur, { role: 'assistant', text: data.reply, stops, raw, quickReplies: data.quickReplies || [] }]);
       if (data.cost) setTotalCost((c) => c + data.cost);
     } catch (err) {
-      setMessages((cur) => [...cur, { role: 'assistant', text: err.message || 'Signal lost — try again?', stops: [], error: true }]);
+      // The user's message stays in the thread; this bubble explains what
+      // went wrong in plain words and carries the text to resend. A signed-
+      // out traveler gets the server's own "Sign in to use the AI features."
+      // plus a way to go do that.
+      const signIn = err.status === 401 || err.code === 'sign-in-required';
+      setMessages((cur) => [
+        ...cur,
+        {
+          role: 'assistant',
+          text: friendlyError(err, "Mapr couldn't answer just now. Try again."),
+          stops: [],
+          error: true,
+          retryText: text,
+          signIn,
+        },
+      ]);
     } finally {
       setBusy(false);
     }
@@ -291,6 +315,14 @@ export default function Mapr() {
       <TasteProfileCard />
 
       <div className="chatlab-feed">
+        {restored && messages.length > 1 && (
+          <p className="draft-restored-note">
+            Picked up your last conversation.
+            <button type="button" onClick={discardChat}>
+              Discard
+            </button>
+          </p>
+        )}
         {messages.map((m, i) => (
           <div key={i} className={`chatlab-msg ${m.role}`}>
             {m.role === 'assistant' && <div className="chatlab-avatar" />}
@@ -335,6 +367,18 @@ export default function Mapr() {
                   )}
                 </div>
               )}
+              {m.error && m.retryText && i === messages.length - 1 && !busy && (
+                <div className="chatlab-error-actions">
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => send(null, m.retryText, { retry: true })}>
+                    {'\u{1F504}'} Try again
+                  </button>
+                  {m.signIn && !user && (
+                    <Link to="/profile" className="btn btn-sm btn-primary">
+                      Sign in
+                    </Link>
+                  )}
+                </div>
+              )}
               {/* Only on the latest message, and only while nothing else is
                   in flight -- an older question's quick replies would be
                   answering a turn the conversation has already moved past. */}
@@ -368,6 +412,9 @@ export default function Mapr() {
         <div className="fixed-action-bar-inner chatlab-composer-inner">
           <input
             type="text"
+            name="mapr-message"
+            aria-label="Message Mapr"
+            enterKeyHint="send"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Tell it what you're up for…"

@@ -2,15 +2,20 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
+import { readPersisted, writePersisted } from '../lib/usePersistentState';
+
+// The email last used to sign in on this device, so coming back only means
+// typing a password (or letting the password manager fill it). Never the
+// password itself -- that's the browser's/OS's job.
+const LAST_EMAIL_KEY = 'auth.lastEmail';
 
 export default function SignInForm({ onSignedUp }) {
   const { signUpEmail, signInEmail, resetPassword } = useAuth();
   const [mode, setMode] = useState('signin');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => readPersisted(LAST_EMAIL_KEY) || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [errorCode, setErrorCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -23,7 +28,6 @@ export default function SignInForm({ onSignedUp }) {
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setErrorCode('');
     setResetSent(false);
     if (mode === 'signup' && !ageConfirmed) {
       setError('You must confirm you’re 13 or older to create an account.');
@@ -34,13 +38,15 @@ export default function SignInForm({ onSignedUp }) {
     try {
       if (mode === 'signup') {
         await signUpEmail(normalizedEmail, password, name);
+        writePersisted(LAST_EMAIL_KEY, normalizedEmail);
         onSignedUp?.();
       } else {
         await signInEmail(normalizedEmail, password);
+        writePersisted(LAST_EMAIL_KEY, normalizedEmail);
       }
     } catch (err) {
+      // Everything typed stays in the form -- fix and resubmit.
       setError(authErrorMessage(err));
-      setErrorCode(err?.code || '');
     } finally {
       setBusy(false);
     }
@@ -53,7 +59,6 @@ export default function SignInForm({ onSignedUp }) {
       return;
     }
     setError('');
-    setErrorCode('');
     setResetSent(false);
     setBusy(true);
     try {
@@ -61,7 +66,6 @@ export default function SignInForm({ onSignedUp }) {
       setResetSent(true);
     } catch (err) {
       setError(authErrorMessage(err));
-      setErrorCode(err?.code || '');
     } finally {
       setBusy(false);
     }
@@ -78,19 +82,31 @@ export default function SignInForm({ onSignedUp }) {
         {mode === 'signup' && (
           <div className="field">
             <label htmlFor="name">Display Name</label>
-            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+            <input
+              id="name"
+              name="name"
+              type="text"
+              autoComplete="name"
+              autoCapitalize="words"
+              enterKeyHint="next"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
           </div>
         )}
         <div className="field">
           <label htmlFor="email">Email</label>
           <input
             id="email"
+            name="email"
             type="email"
             inputMode="email"
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck="false"
             autoComplete="email"
+            enterKeyHint="next"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -101,11 +117,13 @@ export default function SignInForm({ onSignedUp }) {
           <div style={{ position: 'relative' }}>
             <input
               id="password"
+              name="password"
               type={showPassword ? 'text' : 'password'}
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck="false"
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              enterKeyHint={mode === 'signup' ? 'next' : 'go'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -116,6 +134,7 @@ export default function SignInForm({ onSignedUp }) {
               type="button"
               onClick={() => setShowPassword((s) => !s)}
               title={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
               style={{
                 position: 'absolute',
                 right: 6,
@@ -140,9 +159,8 @@ export default function SignInForm({ onSignedUp }) {
           </p>
         )}
         {error && (
-          <p className="tag tag-error" style={{ display: 'block', marginBottom: 14 }}>
+          <p className="tag tag-error" role="alert" style={{ display: 'block', marginBottom: 14 }}>
             {error}
-            {errorCode && <span style={{ opacity: 0.7 }}> ({errorCode})</span>}
           </p>
         )}
         {mode === 'signup' && (
@@ -159,6 +177,7 @@ export default function SignInForm({ onSignedUp }) {
           >
             <input
               type="checkbox"
+              name="age-confirmed"
               checked={ageConfirmed}
               onChange={(e) => setAgeConfirmed(e.target.checked)}
               required
@@ -194,6 +213,7 @@ export default function SignInForm({ onSignedUp }) {
       )}
 
       <button
+        type="button"
         className="btn btn-ghost btn-block"
         style={{ marginTop: 12 }}
         onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}
