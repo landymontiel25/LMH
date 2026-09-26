@@ -109,7 +109,7 @@ export default function Mapr() {
   // Retries exactly the one action that failed -- no retyping the whole
   // request, and no repeating whatever else was in the same reply that
   // already went through.
-  const retryAction = async (msgId, idx) => {
+  const retryAction = async (msgId, idx, { allowCreate = false } = {}) => {
     const key = `${msgId}:${idx}`;
     if (retrying[key]) return;
     const current = messages.find((m) => m.id === msgId)?.actionResults?.[idx];
@@ -125,9 +125,15 @@ export default function Mapr() {
         coords,
         conversationStops: getConversationStops(msgId),
         onGroupsChanged: loadGroupTrips,
-      });
+      }, { allowCreate });
       if (fresh.undo) registerUndo(key, fresh.undo);
-      setActionResult(msgId, idx, { ok: fresh.ok, text: fresh.text, link: fresh.link || null, action: fresh.action });
+      setActionResult(msgId, idx, {
+        ok: fresh.ok,
+        text: fresh.text,
+        link: fresh.link || null,
+        action: fresh.action,
+        needsConfirm: !!fresh.needsConfirm,
+      });
     } catch (err) {
       toast.show(friendlyError(err, "That didn't go through. Try again."));
     } finally {
@@ -349,13 +355,17 @@ export default function Mapr() {
         });
         actionResults = results.map((r, idx) => {
           if (r.undo) registerUndo(`${msgId}:${idx}`, r.undo);
-          return { ok: r.ok, text: r.text, link: r.link || null, action: r.action };
+          return { ok: r.ok, text: r.text, link: r.link || null, action: r.action, needsConfirm: !!r.needsConfirm };
         });
       }
       const raw =
         data.reply +
         (stops.length ? `\n(Suggested: ${stops.map((s) => s.name).join(', ')})` : '') +
-        (actionResults.length ? `\n(Done in the app: ${actionResults.map((r) => (r.ok ? r.text : `failed: ${r.text}`)).join(' ')})` : '');
+        (actionResults.length
+          ? `\n(Done in the app: ${actionResults
+              .map((r) => (r.ok ? r.text : r.needsConfirm ? `waiting for the traveler to confirm: ${r.text}` : `failed: ${r.text}`))
+              .join(' ')})`
+          : '');
       // Short tappable answers to a clarifying question ("Something new" /
       // "Repeat a favorite") -- tapping one just sends that exact text, the
       // same as typing it, so the traveler never has to type a one-word
@@ -521,6 +531,29 @@ export default function Mapr() {
                   {m.actionResults.map((r, idx) => {
                     const key = `${m.id}:${idx}`;
                     const canUndo = r.ok && !r.undone && getUndo(key);
+                    if (r.needsConfirm) {
+                      return (
+                        <div key={key} className="mapr-action confirm">
+                          <span>
+                            {r.declined ? `\u{1F6AB} Not created: ${r.text}` : `\u{1F4DD} ${r.text}`}
+                          </span>
+                          {!r.declined && (
+                            <span className="mapr-action-buttons">
+                              <button
+                                type="button"
+                                disabled={!!retrying[key]}
+                                onClick={() => retryAction(m.id, idx, { allowCreate: true })}
+                              >
+                                {retrying[key] ? 'Creating…' : 'Create it'}
+                              </button>
+                              <button type="button" disabled={!!retrying[key]} onClick={() => setActionResult(m.id, idx, { ...r, declined: true })}>
+                                No thanks
+                              </button>
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
                     return (
                       <div key={key} className={`mapr-action ${r.ok ? 'ok' : 'failed'}`}>
                         <span>

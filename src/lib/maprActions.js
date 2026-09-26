@@ -18,7 +18,11 @@ import { friendlyError } from './friendlyError';
 // through the same functions and Firestore rules the screens use, so it
 // can never do anything the traveler couldn't.
 //
-// Each result: { ok, text, undo?, link? } -- shown under Mapr's reply.
+// Each result: { ok, text, undo?, link?, needsConfirm? } -- shown under
+// Mapr's reply. Mapr never starts a new itinerary on its own: an action
+// that would create one stops before changing anything and comes back as
+// needsConfirm, and only runs once the traveler taps "Create it" (which
+// re-runs it with ctx.allowCreate).
 
 export const ACTION_TYPES = ['add_stop', 'remove_stop', 'create_itinerary', 'rename_itinerary', 'add_member'];
 
@@ -58,6 +62,11 @@ function soloName(ctx, regionId) {
 function rename(ctx, regionId, name) {
   ctx.tripApi.renameItinerary(regionId, name);
   ctx.session.names[regionId] = name || getRegion(regionId)?.name;
+}
+
+function confirmNew(regionId, stopName, newName) {
+  const label = newName ? `"${newName}"` : `${getRegion(regionId)?.name || 'new'}`;
+  return { ok: false, needsConfirm: true, text: `Start a new ${label} itinerary with ${stopName}?` };
 }
 
 function norm(s) {
@@ -167,6 +176,7 @@ async function addStop(action, ctx) {
     if (target?.kind === 'solo' && target.regionId !== regionId) {
       return { ok: false, text: `${stop.name} is in ${getRegion(regionId)?.name}, not ${target.name}. Want it in a ${getRegion(regionId)?.name} itinerary instead?` };
     }
+    if (!existed && !ctx.allowCreate) return confirmNew(regionId, stop.name, action.newName);
     ctx.tripApi.addLandmark(stop.id, regionId);
     if (!existed && action.newName) rename(ctx, regionId, action.newName);
     const name = soloName(ctx, regionId);
@@ -188,6 +198,7 @@ async function addStop(action, ctx) {
     return { ok: false, text: `${stop.name} is outside the cities the app plans trips for, so it can't go on an itinerary yet.` };
   }
   const existed = soloExists(ctx, regionId);
+  if (!existed && !ctx.allowCreate) return confirmNew(regionId, stop.name, action.newName);
   ctx.tripApi.addPlace(regionId, place);
   if (!existed && action.newName) rename(ctx, regionId, action.newName);
   const name = soloName(ctx, regionId);
@@ -241,11 +252,13 @@ async function createItinerary(action, ctx) {
   if (!regionId) return { ok: false, text: 'Which city is this itinerary for?' };
   if (action.group) {
     if (!ctx.user) return { ok: false, text: 'Sign in to create a group itinerary.' };
+    if (!ctx.allowCreate) return { ok: false, needsConfirm: true, text: `Create the group itinerary ${name}?` };
     const id = await createGroupTrip({ ownerUid: ctx.user.uid, ownerName: ctx.ownerName, name, regionId });
     ctx.onGroupsChanged?.();
     return { ok: true, text: `Created the group itinerary ${name}.`, undo: () => deleteGroupTrip(id).then(() => ctx.onGroupsChanged?.()), link: groupLink(id) };
   }
   const existed = soloExists(ctx, regionId);
+  if (!existed && !ctx.allowCreate) return { ok: false, needsConfirm: true, text: `Create your ${name} itinerary?` };
   const oldName = ctx.trip.itineraryNames?.[regionId];
   rename(ctx, regionId, name);
   ctx.session.created.add(regionId);
@@ -334,8 +347,8 @@ export async function runMaprActions(actions, baseCtx) {
 }
 
 /** Re-runs exactly one previously-failed action, e.g. from a Retry button. */
-export async function retryMaprAction(action, baseCtx) {
-  const [result] = await runMaprActions([action], baseCtx);
+export async function retryMaprAction(action, baseCtx, { allowCreate = false } = {}) {
+  const [result] = await runMaprActions([action], { ...baseCtx, allowCreate });
   return result;
 }
 

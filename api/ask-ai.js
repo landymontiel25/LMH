@@ -44,7 +44,9 @@ const APP_HELP =
   `- Mapr can act on your itineraries when you ask in chat: "add it to my itinerary", "put both on my Philly trip", "remove Wynwood", ` +
   `"make a new itinerary for Miami called Spring Break", "rename my trip to …", "add @username to my Villanova trip". It works for places ` +
   `from the catalog and places it found on the web (those show as "✨ Found by Mapr" stops with directions and a source link, no check-in ` +
-  `points). Each action shows a ✅ confirmation under Mapr's reply with Open and Undo. It can't check in, rate, or change account settings ` +
+  `points). Each action shows a ✅ confirmation under Mapr's reply with Open and Undo. Mapr never creates an itinerary on its ` +
+  `own: anything that would start a new one shows "Start a new … itinerary?" with Create it / No thanks, and only happens if ` +
+  `you tap Create it. It can't check in, rate, or change account settings ` +
   `for you.\n` +
   `- Tell Mapr you just left a place ("I just left the shooting range, where should I eat?") and it asks how it was: a card under ` +
   `its reply with "I loved it" / "It was okay" / "Not for me". One tap opens the usual rating (tier already picked, plus a ` +

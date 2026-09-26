@@ -55,8 +55,31 @@ beforeEach(() => {
 });
 
 describe('Mapr actions', () => {
-  it('adds a catalog stop to a new city itinerary, and undo removes it', async () => {
-    const [r] = await runMaprActions([{ type: 'add_stop', stop: `miami/${miamiLandmark.id}`, itinerary: 'new' }], ctx());
+  it('never starts a new itinerary without the traveler confirming', async () => {
+    const action = { type: 'add_stop', stop: `miami/${miamiLandmark.id}`, itinerary: 'new' };
+    const [r] = await runMaprActions([action], ctx());
+    expect(r.ok).toBe(false);
+    expect(r.needsConfirm).toBe(true);
+    expect(r.text).toMatch(/Miami/);
+    expect(t.api.regionsWithItineraries()).toEqual([]);
+
+    const [created] = await runMaprActions([{ type: 'create_itinerary', name: 'Spring Break', city: 'miami' }], ctx());
+    expect(created.needsConfirm).toBe(true);
+    const [group] = await runMaprActions([{ type: 'create_itinerary', name: 'Crew', city: 'miami', group: true }], ctx());
+    expect(group.needsConfirm).toBe(true);
+    expect(createGroupTrip).not.toHaveBeenCalled();
+    expect(t.api.regionsWithItineraries()).toEqual([]);
+  });
+
+  it('adds to an itinerary that already exists without asking', async () => {
+    t.api.renameItinerary('miami', 'Miami');
+    const [r] = await runMaprActions([{ type: 'add_stop', stop: `miami/${miamiLandmark.id}`, itinerary: 'miami' }], ctx());
+    expect(r.ok).toBe(true);
+    expect(t.trip.byRegion.miami).toEqual([miamiLandmark.id]);
+  });
+
+  it('adds a catalog stop to a new city itinerary once confirmed, and undo removes it', async () => {
+    const [r] = await runMaprActions([{ type: 'add_stop', stop: `miami/${miamiLandmark.id}`, itinerary: 'new' }], ctx({ allowCreate: true }));
     expect(r.ok).toBe(true);
     expect(t.trip.byRegion.miami).toEqual([miamiLandmark.id]);
     await r.undo();
@@ -65,7 +88,10 @@ describe('Mapr actions', () => {
 
   it('adds a web place from the chat to the nearest city', async () => {
     const stops = [{ external: true, name: 'Autana Arepas', place: 'Miami', address: '2520 NW 2nd Ave', url: 'https://x.test' }];
-    const [r] = await runMaprActions([{ type: 'add_stop', stop: 'autana arepas', itinerary: 'new' }], ctx({ conversationStops: stops }));
+    const [pending] = await runMaprActions([{ type: 'add_stop', stop: 'autana arepas', itinerary: 'new' }], ctx({ conversationStops: stops }));
+    expect(pending.needsConfirm).toBe(true);
+    expect(t.trip.placesByRegion.miami).toBeUndefined();
+    const r = await retryMaprAction(pending.action, ctx({ conversationStops: stops }), { allowCreate: true });
     expect(r.ok).toBe(true);
     expect(t.trip.placesByRegion.miami?.[0]).toMatchObject({ name: 'Autana Arepas', url: 'https://x.test' });
   });
@@ -76,7 +102,7 @@ describe('Mapr actions', () => {
   });
 
   it('creates, renames and removes', async () => {
-    await runMaprActions([{ type: 'create_itinerary', name: 'Spring Break', city: 'miami' }], ctx());
+    await runMaprActions([{ type: 'create_itinerary', name: 'Spring Break', city: 'miami' }], ctx({ allowCreate: true }));
     expect(t.api.itineraryName('miami')).toBe('Spring Break');
     await runMaprActions([{ type: 'rename_itinerary', itinerary: 'Spring Break', name: 'Miami Weekend' }], ctx());
     expect(t.api.itineraryName('miami')).toBe('Miami Weekend');
@@ -136,7 +162,7 @@ describe('Mapr actions', () => {
     // The place shouldn't have been added on the failed attempt: retrying
     // re-resolves the same action against a fresh lookup and succeeds once
     // the API cooperates.
-    const retried = await retryMaprAction(failed.action, ctx({ conversationStops: stops }));
+    const retried = await retryMaprAction(failed.action, ctx({ conversationStops: stops }), { allowCreate: true });
     expect(retried.ok).toBe(true);
     expect(t.trip.placesByRegion.miami?.[0]).toMatchObject({ name: 'Puyero Venezuelan Flavor' });
   });
