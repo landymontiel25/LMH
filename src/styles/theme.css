@@ -1760,18 +1760,11 @@ textarea {
   z-index: 20;
 }
 
-.app-header img {
-  height: 30px;
-  width: 30px;
+.app-header img,
+.app-header .brand-mark {
+  height: 34px;
+  width: auto;
   flex-shrink: 0;
-}
-
-.app-header .brand-text {
-  font-family: var(--font-heading);
-  font-size: 1.05rem;
-  color: var(--text-primary);
-  letter-spacing: 0.01em;
-  white-space: nowrap;
 }
 
 .app-header-actions {
@@ -3986,12 +3979,6 @@ body.lightbox-open .ask-landmark-panel {
   box-shadow: var(--shadow-card);
 }
 
-.app-header .brand-text {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  letter-spacing: 0;
-}
-
 .score-chip {
   padding: 7px 12px;
   border-color: var(--border-default);
@@ -4438,10 +4425,6 @@ h2,
 .app-header {
   background: rgba(10, 13, 22, 0.92);
   border-color: var(--border-default);
-}
-
-.app-header .brand-text {
-  font-size: 1.3rem;
 }
 
 .modal-card,
