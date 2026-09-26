@@ -1109,6 +1109,8 @@ export default function LandmarkDetail() {
           {myCommentBox}
           {reviews.map((r) => {
             const mine = user && r.userId === user.uid;
+            // Yours is already in the "Your comment" box above.
+            if (mine && myCommentBox) return null;
             return (
               <div key={r.id} className="review-item">
                 <div className="review-head">
@@ -1117,9 +1119,7 @@ export default function LandmarkDetail() {
                     <span className="tag">
                       {tierById(r.ratingTier)?.emoji} {tierById(r.ratingTier)?.label}
                     </span>
-                  ) : (
-                    <span className="tag">Rated</span>
-                  )}
+                  ) : null}
                 </div>
                 {r.comment && !(mine && myCommentBox) && <p className="review-comment">{r.comment}</p>}
                 {(() => {

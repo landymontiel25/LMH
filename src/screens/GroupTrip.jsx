@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useTrip } from '../lib/TripContext';
@@ -20,6 +20,7 @@ import EditableTitle from '../components/EditableTitle';
 import DirectionsButton from '../components/DirectionsButton';
 import { friendlyError } from '../lib/friendlyError';
 import { writePersisted } from '../lib/usePersistentState';
+import { useStopAddresses } from '../lib/useStopAddresses';
 import { runOptimistic, useToast } from '../lib/ToastContext';
 import ErrorNotice from '../components/ErrorNotice';
 import { Skeleton, SkeletonList } from '../components/Skeleton';
@@ -89,6 +90,14 @@ export default function GroupTrip() {
     );
     return unsub;
   }, [tripId, uid, attempt]);
+
+  // Street address under each landmark -- the trip's own stops first.
+  const addressStops = useMemo(() => {
+    const ls = (trip?.regionId && getRegion(trip.regionId)?.landmarks) || [];
+    const ids = new Set(trip?.landmarkIds || []);
+    return [...ls.filter((l) => ids.has(l.id)), ...ls.filter((l) => !ids.has(l.id))];
+  }, [trip]);
+  const addresses = useStopAddresses(addressStops);
 
   // Tapping Map from here frames this trip's city, then every stop in it.
   useEffect(() => {
@@ -309,8 +318,13 @@ export default function GroupTrip() {
           const selected = isSelected(l.id);
           return (
             <label key={l.id} className="friend-row" style={{ cursor: 'pointer' }}>
-              <span>
+              <span style={{ minWidth: 0 }}>
                 {selected ? '\u{2705}' : '\u{2B1C}'} {l.name}
+                {addresses[l.id] && (
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: 2 }}>
+                    {'\u{1F4CD}'} {addresses[l.id]}
+                  </span>
+                )}
               </span>
               <input
                 type="checkbox"

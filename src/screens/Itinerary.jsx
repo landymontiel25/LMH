@@ -17,7 +17,8 @@ import OfflineDownloadButton from '../components/OfflineDownloadButton';
 import { createGroupTrip, listMyGroupTrips } from '../lib/groupTrips';
 import { itineraryPhase, groupKey } from '../lib/itineraryStatus';
 import { getRegion } from '../data/regions';
-import { geocodeLocation, streetAddress, cachedStreetAddress } from '../lib/geocode';
+import { geocodeLocation } from '../lib/geocode';
+import { useStopAddresses } from '../lib/useStopAddresses';
 import { distanceMeters } from '../lib/geo';
 import {
   SORT_OPTIONS,
@@ -474,26 +475,8 @@ export default function Itinerary() {
 
   const displayRoute = drivingRoute.length === route.length ? drivingRoute : route;
 
-  // Street address under each catalog stop (Mapr-found places already have
-  // one). Cached per device; new lookups go one per second, Nominatim's limit.
-  const [addresses, setAddresses] = useState({});
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      for (const s of selectedLandmarks) {
-        if (cancelled) return;
-        if (s.address || !Number.isFinite(s.lat) || !Number.isFinite(s.lng)) continue;
-        const cached = cachedStreetAddress(s.lat, s.lng);
-        const a = cached || (await streetAddress(s.lat, s.lng));
-        if (cancelled) return;
-        if (a) setAddresses((cur) => (cur[s.id] === a ? cur : { ...cur, [s.id]: a }));
-        if (!cached) await new Promise((r) => setTimeout(r, 1100));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedLandmarks]);
+  // Street address under each catalog stop (Mapr-found places already have one).
+  const addresses = useStopAddresses(selectedLandmarks);
 
   // Deletes this city's itinerary (stops, Mapr places, name) with an Undo.
   const deleteItinerary = () => {

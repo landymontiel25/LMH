@@ -42,6 +42,10 @@ export default class ErrorBoundary extends Component {
         <a href="#/" className="btn btn-ghost btn-block" style={{ marginTop: 10, display: 'block', textAlign: 'center' }}>
           Back to Map
         </a>
+        {/* The real error, small, so a screenshot of this screen says what broke. */}
+        <p style={{ marginTop: 16, fontSize: '0.7rem', color: 'var(--color-parchment-dim)', wordBreak: 'break-word' }}>
+          Details: {String(this.state.error?.message || this.state.error).slice(0, 300)}
+        </p>
       </div>
     );
   }
