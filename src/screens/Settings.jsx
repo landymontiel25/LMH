@@ -4,7 +4,14 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTheme } from '../lib/useTheme';
 import { useUnits, countryName } from '../lib/UnitsContext';
-import { setProfileVisibility, getUserProfile, saveHomeLocation, saveTasteIntro, saveContextPreferences } from '../lib/friends';
+import {
+  setProfileVisibility,
+  getUserProfile,
+  saveHomeLocation,
+  saveTasteIntro,
+  saveContextPreferences,
+  setHabitTrackingEnabled,
+} from '../lib/friends';
 import { useAdminMode } from '../lib/AdminModeContext';
 import { authErrorMessage } from '../lib/authErrors';
 import PreferenceChips from '../components/PreferenceChips';
@@ -64,6 +71,9 @@ export default function Settings() {
   const [visOverride, setVisOverride] = useState(null);
   const visInFlightRef = useRef(false);
   const isPublic = visOverride ?? !!myProfile?.public;
+  const [habitOverride, setHabitOverride] = useState(null);
+  const habitInFlightRef = useRef(false);
+  const habitTrackingEnabled = habitOverride ?? myProfile?.habitTrackingEnabled !== false;
   // Drafts are per account (uid in the key). myProfile loads asynchronously
   // (FriendsContext); until you type, each field simply shows the server copy
   // whenever it lands. The taste-intro key is shared with onboarding's
@@ -166,6 +176,26 @@ export default function Settings() {
       visInFlightRef.current = false;
       // Server truth (myProfile) takes over again either way.
       setVisOverride(null);
+    });
+  };
+
+  const toggleHabitTracking = () => {
+    if (habitInFlightRef.current) return;
+    habitInFlightRef.current = true;
+    const next = !habitTrackingEnabled;
+    runOptimistic({
+      apply: () => setHabitOverride(next),
+      commit: async () => {
+        await setHabitTrackingEnabled(user.uid, next);
+        await reloadFriends();
+      },
+      rollback: () => setHabitOverride(null),
+      toast,
+      errorMessage: friendlyError(null, `Couldn't turn ${next ? 'on' : 'off'} habit tracking.`),
+      retry: toggleHabitTracking,
+    }).finally(() => {
+      habitInFlightRef.current = false;
+      setHabitOverride(null);
     });
   };
 
@@ -356,6 +386,25 @@ export default function Settings() {
             onClick={toggleVisibility}
           >
             {isPublic ? `${'\u{1F30E}'} Public — tap to make Private` : `${'\u{1F512}'} Private — tap to make Public`}
+          </button>
+        </div>
+      )}
+
+      {firebaseEnabled && user && (
+        <div className="card section">
+          <h3 style={{ marginTop: 0 }}>{'\u{1F4CD}'} Habit Tracking</h3>
+          <p className="screen-subtitle" style={{ marginTop: 0 }}>
+            {habitTrackingEnabled
+              ? "Mapr notices places you keep visiting (like a coffee shop every morning) and asks if you'd like to add them to an itinerary. Only happens while the app is open, and nothing leaves your device until a spot is worth asking about."
+              : "Mapr won't learn or suggest places from where you go."}
+          </p>
+          <button
+            type="button"
+            className={`btn btn-block ${habitTrackingEnabled ? 'btn-success' : 'btn-ghost'}`}
+            aria-pressed={habitTrackingEnabled}
+            onClick={toggleHabitTracking}
+          >
+            {habitTrackingEnabled ? `${'\u{2705}'} On — tap to turn off` : `${'\u{1F6AB}'} Off — tap to turn on`}
           </button>
         </div>
       )}
