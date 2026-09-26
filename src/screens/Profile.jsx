@@ -356,6 +356,11 @@ export default function Profile() {
         setEntries(data);
         setLoadError(null);
         setLoading(false);
+      }, 50, (err) => {
+        arrived = true;
+        clearTimeout(stall);
+        setLoadError(err);
+        setLoading(false);
       });
     } catch (err) {
       clearTimeout(stall);

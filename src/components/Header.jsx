@@ -43,7 +43,7 @@ function ProfileMenu() {
     const unsub = subscribeLeaderboard('weekly', (entries) => {
       const idx = entries.findIndex((e) => e.userId === user.uid);
       setMe({ points: idx >= 0 ? entries[idx].points : 0, rank: idx >= 0 ? idx + 1 : null });
-    });
+    }, 50, () => setMe({ points: null, rank: null, failed: true }));
     return unsub;
   }, [firebaseEnabled, user]);
 
@@ -90,7 +90,7 @@ function ProfileMenu() {
               as a real (and discouraging) answer -- show a placeholder instead. */}
           {me ? (
             <div>
-              {'\u{1F3C6}'} {me.rank ? `#${me.rank}` : '—'} {'·'} {me.points.toLocaleString()} pts
+              {'\u{1F3C6}'} {me.failed ? "Couldn't load this week's rank" : <>{me.rank ? `#${me.rank}` : '—'} {'·'} {me.points.toLocaleString()} pts</>}
             </div>
           ) : (
             <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

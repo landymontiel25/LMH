@@ -64,7 +64,12 @@ export default function FullLeaderboard() {
         setEntries(data);
         setLoadFailed(false);
         setLoading(false);
-      }, 200);
+      }, 200, () => {
+        arrived = true;
+        clearTimeout(stall);
+        setLoadFailed(true);
+        setLoading(false);
+      });
     } catch {
       clearTimeout(stall);
       setLoadFailed(true);

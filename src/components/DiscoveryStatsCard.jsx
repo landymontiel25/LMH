@@ -17,9 +17,14 @@ export default function DiscoveryStatsCard() {
       return;
     }
     let cancelled = false;
-    getTodaysTimeSavedMinutes(user.uid).then((minutes) => {
-      if (!cancelled) setMinutesSaved(minutes);
-    });
+    // The card only appears once there's a figure to show (0 hides it), so
+    // there's no skeleton here -- one would flash and vanish for most
+    // people. A failed read just leaves it hidden, same as "nothing yet".
+    getTodaysTimeSavedMinutes(user.uid)
+      .then((minutes) => {
+        if (!cancelled) setMinutesSaved(minutes);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };

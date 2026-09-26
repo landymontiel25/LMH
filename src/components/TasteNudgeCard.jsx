@@ -3,6 +3,32 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { saveTasteBaseline } from '../lib/friends';
 import { TASTE_QUESTIONS } from '../lib/tasteQuestions';
+import { useToast } from '../lib/ToastContext';
+import { friendlyError } from '../lib/friendlyError';
+import { readPersisted, writePersisted, clearPersisted } from '../lib/usePersistentState';
+
+const draftKey = (uid) => `tasteBaseline.${uid}`;
+
+// The write itself, outside the component: Save closes the card right away
+// (optimistic), so a failure -- and its Retry -- has to work after this
+// card is gone. The picks sit in the draft until the write lands, so even a
+// Retry that also fails loses nothing: the next Edit restores them.
+function commitBaseline(uid, values, reloadFriends) {
+  writePersisted(draftKey(uid), values);
+  return saveTasteBaseline(uid, values).then(async () => {
+    clearPersisted(draftKey(uid));
+    await reloadFriends();
+  });
+}
+
+function reportFailure(err, uid, values, reloadFriends, toast) {
+  console.error('[TasteNudgeCard] saveTasteBaseline failed:', err);
+  toast.show(friendlyError(err, "Your taste picks didn't save. They're kept on this device — tap Edit to see them."), {
+    actionLabel: 'Retry',
+    onAction: () =>
+      commitBaseline(uid, values, reloadFriends).catch((e) => reportFailure(e, uid, values, reloadFriends, toast)),
+  });
+}
 
 // The "you haven't told Mapr what you like yet" nudge, expanded into
 // something answerable in a few taps instead of a blank box: one quick
@@ -32,27 +58,30 @@ export default function TasteNudgeCard({
 }) {
   const { user } = useAuth();
   const { reload: reloadFriends } = useFriends();
+  const toast = useToast();
+  // Unsaved picks from an earlier visit (the app closed mid-edit, or a save
+  // that failed) win over the saved baseline, with a note saying so.
+  const [restoredDraft, setRestoredDraft] = useState(() => (user ? readPersisted(draftKey(user.uid)) || null : null));
+  const seed = restoredDraft || { baseline: initialBaseline, notes: initialNotes, categoryNotes: initialCategoryNotes };
   // Deep-copy the initial baseline into per-category Sets-as-objects so
   // editing here never mutates the profile's own object by reference.
   const [picked, setPicked] = useState(() => {
     const init = {};
-    for (const [catId, cat] of Object.entries(initialBaseline || {})) init[catId] = { ...cat };
+    for (const [catId, cat] of Object.entries(seed.baseline || {})) init[catId] = { ...cat };
     return init;
   });
-  const [extra, setExtra] = useState(initialNotes || '');
-  const [categoryNotes, setCategoryNotes] = useState(() => ({ ...(initialCategoryNotes || {}) }));
+  const [extra, setExtra] = useState(seed.notes || '');
+  const [categoryNotes, setCategoryNotes] = useState(() => ({ ...(seed.categoryNotes || {}) }));
   const [openComments, setOpenComments] = useState(
-    () => new Set(Object.keys(initialCategoryNotes || {}).filter((id) => initialCategoryNotes[id]))
+    () => new Set(Object.keys(seed.categoryNotes || {}).filter((id) => seed.categoryNotes[id]))
   );
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
   // The initial props are snapshotted into state once on mount (above). If
   // this opened before the profile's server read had landed, that snapshot
   // is empty even though real picks exist -- so as long as the traveler
   // hasn't touched anything yet, adopt the picks whenever they do arrive
   // instead of leaving them staring at a blank editor. Any edit flips this
   // and the seeded state is never overwritten from underneath them.
-  const dirtyRef = useRef(false);
+  const dirtyRef = useRef(!!restoredDraft);
   useEffect(() => {
     if (dirtyRef.current) return;
     const init = {};
@@ -85,37 +114,47 @@ export default function TasteNudgeCard({
     });
   };
 
+  // In-progress edits are saved to this device as you go (only once you've
+  // actually changed something), so leaving mid-edit doesn't lose them.
+  useEffect(() => {
+    if (!user || !dirtyRef.current) return undefined;
+    const t = setTimeout(() => writePersisted(draftKey(user.uid), { baseline: picked, notes: extra, categoryNotes }), 300);
+    return () => clearTimeout(t);
+  }, [user, picked, extra, categoryNotes]);
+
+  const discardDraft = () => {
+    if (user) clearPersisted(draftKey(user.uid));
+    dirtyRef.current = false;
+    setRestoredDraft(null);
+    const init = {};
+    for (const [catId, cat] of Object.entries(initialBaseline || {})) init[catId] = { ...cat };
+    setPicked(init);
+    setExtra(initialNotes || '');
+    setCategoryNotes({ ...(initialCategoryNotes || {}) });
+    setOpenComments(new Set(Object.keys(initialCategoryNotes || {}).filter((id) => initialCategoryNotes[id])));
+  };
+
+  // Closing with X is "never mind" -- don't bring these edits back next time.
+  const dismiss = () => {
+    if (user && dirtyRef.current) clearPersisted(draftKey(user.uid));
+    onDismiss();
+  };
+
   const totalPicked = Object.values(picked).reduce((n, cat) => n + Object.keys(cat).length, 0);
 
-  const save = async () => {
-    setSaving(true);
-    setSaveError(null);
-    try {
-      const cleanCategoryNotes = Object.fromEntries(
-        Object.entries(categoryNotes).filter(([, v]) => v?.trim())
-      );
-      await saveTasteBaseline(user.uid, { baseline: picked, notes: extra, categoryNotes: cleanCategoryNotes });
-      await reloadFriends();
-      setSaving(false);
-      // Hand the just-saved values back directly instead of making the
-      // caller wait on reloadFriends()'s own state update to land -- see
-      // TasteProfileCard's justSaved, which is exactly this bridging the
-      // gap between "the write is done" and "the FriendsContext re-render
-      // carrying it has actually happened" so the confidence score doesn't
-      // flash the wrong thing (or stay wrong) right after Save.
-      onDone({ baseline: picked, notes: extra, categoryNotes: cleanCategoryNotes });
-      return;
-    } catch (e) {
-      // Used to swallow this and close anyway -- which silently threw away
-      // whatever you'd just picked/typed the moment the write failed for
-      // any reason (offline, a hiccup, whatever), with no sign anything
-      // went wrong. Now it stays open with everything you entered intact
-      // so you can just hit Save again, and actually says something failed
-      // instead of looking like it worked.
-      console.error('[TasteNudgeCard] saveTasteBaseline failed:', e);
-      setSaving(false);
-      setSaveError(e?.message || "Couldn't save — check your connection and try again.");
-    }
+  // Optimistic: the card closes with the new picks immediately and the
+  // write runs behind it. `committed` lets the caller (TasteProfileCard)
+  // hold the just-saved values until the write lands -- bridging the gap
+  // between "Save tapped" and "the FriendsContext re-render carrying it"
+  // so the confidence score doesn't flash the wrong thing -- and drop them
+  // if it fails. Nothing typed is lost on failure: the picks stay in the
+  // draft (restored on the next Edit) and a toast offers Retry.
+  const save = () => {
+    const cleanCategoryNotes = Object.fromEntries(Object.entries(categoryNotes).filter(([, v]) => v?.trim()));
+    const values = { baseline: picked, notes: extra, categoryNotes: cleanCategoryNotes };
+    const committed = commitBaseline(user.uid, values, reloadFriends);
+    committed.catch((e) => reportFailure(e, user.uid, values, reloadFriends, toast));
+    onDone(values, committed);
   };
 
   return (
@@ -131,10 +170,19 @@ export default function TasteNudgeCard({
               : "Or just say it in the chat — either way counts and you won't see this again. This becomes your baseline; rating actual landmarks fills in the specifics later."}
           </p>
         </div>
-        <button type="button" className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={onDismiss} aria-label="Dismiss">
+        <button type="button" className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={dismiss} aria-label="Dismiss">
           {'\u{2715}'}
         </button>
       </div>
+
+      {restoredDraft && (
+        <p className="draft-restored-note" style={{ marginTop: 8 }}>
+          Unsaved picks restored {'\u{00B7}'}{' '}
+          <button type="button" onClick={discardDraft}>
+            Discard
+          </button>
+        </p>
+      )}
 
       <ul
         className="screen-subtitle"
@@ -156,7 +204,6 @@ export default function TasteNudgeCard({
                 <button
                   type="button"
                   onClick={() => toggleComment(q.id)}
-                  disabled={saving}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -182,8 +229,7 @@ export default function TasteNudgeCard({
                       className={`tag ${state === 'like' ? 'tag-active' : ''} ${state === 'dislike' ? 'tag-dislike' : ''}`}
                       style={{ cursor: 'pointer', fontFamily: 'inherit', appearance: 'none' }}
                       onClick={() => cycleChip(q.id, ex)}
-                      disabled={saving}
-                    >
+                        >
                       {state === 'like' ? `${'\u{1F44D}'} ` : state === 'dislike' ? `${'\u{1F44E}'} ` : ''}
                       {ex}
                     </button>
@@ -201,7 +247,6 @@ export default function TasteNudgeCard({
                     dirtyRef.current = true;
                     setCategoryNotes((prev) => ({ ...prev, [q.id]: e.target.value }));
                   }}
-                  disabled={saving}
                   style={{ marginTop: 6 }}
                 />
               )}
@@ -220,24 +265,17 @@ export default function TasteNudgeCard({
           dirtyRef.current = true;
           setExtra(e.target.value);
         }}
-        disabled={saving}
         style={{ marginTop: 12 }}
       />
-
-      {saveError && (
-        <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
-          {saveError}
-        </p>
-      )}
 
       <button
         type="button"
         className="btn btn-primary btn-block"
         style={{ marginTop: 14 }}
-        disabled={saving || (!editing && totalPicked === 0 && !extra.trim())}
+        disabled={!editing && totalPicked === 0 && !extra.trim()}
         onClick={save}
       >
-        {saving ? 'Saving…' : saveError ? 'Try Again' : totalPicked > 0 ? `Save (${totalPicked} picked)` : 'Save'}
+        {totalPicked > 0 ? `Save (${totalPicked} picked)` : 'Save'}
       </button>
     </div>
   );
