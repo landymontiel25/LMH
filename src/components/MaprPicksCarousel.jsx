@@ -337,7 +337,11 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     const el = trackRef.current;
     if (!el || !el.firstElementChild) return;
     const w = el.firstElementChild.getBoundingClientRect().width + 10;
-    setActive(Math.max(0, Math.round(el.scrollLeft / w) - 1));
+    // The last card can't scroll to the left edge, so reaching the end of
+    // the row is what lights the last dot.
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    const count = el.querySelectorAll('[data-pick-key]').length;
+    setActive(atEnd ? Math.max(0, count - 1) : Math.max(0, Math.round(el.scrollLeft / w) - 1));
   };
 
   // Either vote records your taste and swaps the card for the next pick
