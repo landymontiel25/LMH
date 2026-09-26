@@ -20,7 +20,7 @@ import { getRegion, REGIONS, ALL_LANDMARKS } from '../data/regions';
 import { distanceMeters } from '../lib/geo';
 import { useBadges } from '../lib/BadgesContext';
 import { PICKS_STREAK_THRESHOLD } from '../lib/streaks';
-import { claimMyReferralBonuses, REFERRAL_BONUS_POINTS } from '../lib/referrals';
+import { claimMyReferralBonuses } from '../lib/referrals';
 import { completeOnboarding, hasCompletedOnboardingLocally, markOnboardingCompletedLocally } from '../lib/onboarding';
 import FriendsPanel from '../components/FriendsPanel';
 import SignInForm from '../components/SignInForm';
@@ -55,9 +55,9 @@ const MEDAL = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
 function InviteButton({ myUsername }) {
   const [copied, setCopied] = useState(false);
   const share = async () => {
-    const handle = myUsername ? ` My username is @${myUsername} — add me and try to beat my score!` : '';
-    const bonus = myUsername ? ` (we both get ${REFERRAL_BONUS_POINTS} bonus points once you sign up!)` : '';
-    const text = `I'm hunting landmarks on Landmark Hunters 🏆 Come compete with me!${handle}${bonus}`;
+    const text = myUsername
+      ? `I'm on Landmark Hunters. Come join me! My name is ${myUsername}.`
+      : `I'm on Landmark Hunters. Come join me!`;
     const url = myUsername ? `https://landmarkhunters.com/?ref=${myUsername}` : 'https://landmarkhunters.com';
     try {
       if (navigator.share) {
@@ -77,7 +77,7 @@ function InviteButton({ myUsername }) {
   };
   return (
     <button className="btn btn-primary btn-block" onClick={share}>
-      {copied ? '✓ Invite copied!' : '\u{1F465} Invite Friends to Compete'}
+      {copied ? '✓ Invite copied!' : '\u{1F465} Invite Friends'}
     </button>
   );
 }
