@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
 import { usePersistentState } from '../lib/usePersistentState';
-import { useGeo } from '../lib/GeoContext';
 import { INTERESTS } from '../data/regions';
 import { nearestRegionId } from '../lib/geo';
+import { useGpsStartLocation } from '../lib/useGpsStartLocation';
 import LocationAutocomplete, { HomeStartPrefill } from './LocationAutocomplete';
 import MultiRegionSearch from './MultiRegionSearch';
 
-const CURRENT_LOCATION_LABEL = 'Your Current Location';
 const isFalsy = (v) => !v;
 const isSolo = (v) => v === 'solo';
 
@@ -25,50 +23,14 @@ const MOODS = [
 // here still applies if you later open "Create New Trip" too.
 export default function TripPlannerCard({ regions, onToggleRegion, onClearRegions, onClose, onPlan }) {
   const { trip, updateTrip, applyPreferences } = useTrip();
-  const { coords, error: geoError, refreshing: geoRefreshing, refresh: refreshGeo } = useGeo();
+  const { useCurrentLocation, locating, locateError, usingGps } = useGpsStartLocation();
   const navigate = useNavigate();
-  const [locating, setLocating] = useState(false);
-  const [locateError, setLocateError] = useState(null);
   // Everything else on the card (start, interests, cities) already lives in
   // saved trip/chat state; these three were the only picks a closed app
   // lost. Cleared once the card turns into a chat message.
   const [preferencesSelected, setPreferencesSelected] = usePersistentState('mapr.planner.prefs', false, { isEmpty: isFalsy });
   const [tripMode, setTripMode] = usePersistentState('mapr.planner.mode', 'solo', { isEmpty: isSolo }); // 'solo' | 'group'
   const [mood, setMood] = usePersistentState('mapr.planner.mood', null); // null | 'energized' | 'easygoing'
-
-  const applyCoords = ({ lat, lng }) => {
-    updateTrip({
-      startingLocation: CURRENT_LOCATION_LABEL,
-      startingCoords: { lat, lng },
-      activeRegion: nearestRegionId(lat, lng),
-    });
-  };
-
-  const useCurrentLocation = () => {
-    if (coords) {
-      applyCoords(coords);
-      return;
-    }
-    if (!('geolocation' in navigator)) {
-      setLocateError('Geolocation is not supported on this device.');
-      return;
-    }
-    setLocating(true);
-    setLocateError(null);
-    refreshGeo();
-    // GeoContext has no per-call callback -- the effect below finishes this
-    // once refresh() settles.
-  };
-
-  // Finishes a fallback fresh-fix request once GeoContext's refresh()
-  // settles (mirrors TripSetup's identical handling).
-  useEffect(() => {
-    if (!locating || geoRefreshing) return;
-    if (coords) applyCoords(coords);
-    else if (geoError) setLocateError(geoError);
-    setLocating(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locating, geoRefreshing]);
 
   const togglePreferences = () => {
     if (preferencesSelected) {
@@ -121,12 +83,12 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
         <label>Starting Location <span style={{ fontWeight: 400, color: 'var(--color-parchment-dim)' }}>(optional)</span></label>
         <button
           type="button"
-          className={`btn btn-sm ${trip.startingLocation === CURRENT_LOCATION_LABEL ? 'btn-primary' : 'btn-ghost'}`}
+          className={`btn btn-sm ${usingGps ? 'btn-primary' : 'btn-ghost'}`}
           style={{ marginBottom: 10 }}
           onClick={useCurrentLocation}
           disabled={locating}
         >
-          {'\u{1F4CD}'} {locating ? 'Locating…' : trip.startingLocation === CURRENT_LOCATION_LABEL ? 'Using Your Current Location' : 'Use My Current Location'}
+          {'\u{1F4CD}'} {locating ? 'Locating…' : usingGps ? 'Using Your Current Location' : 'Use My Current Location'}
         </button>
         <LocationAutocomplete
           name="start-location"

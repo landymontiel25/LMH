@@ -1,3 +1,6 @@
+import { reverseGeocodePlace } from './placeLookup';
+import { distanceMeters } from './geo';
+
 /**
  * Free-tier geocoding via OpenStreetMap Nominatim (no API key required).
  * Biases results to the trip's region using a viewbox for accuracy.
@@ -23,6 +26,44 @@ export async function reverseCountryCode(lat, lng) {
     const data = await res.json();
     const code = data?.address?.country_code;
     return code ? code.toUpperCase() : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// A business only names your spot when it's this close to you; otherwise a
+// shop across the street would label your front door.
+const BUSINESS_MATCH_METERS = 25;
+
+/**
+ * The street address (or the business you're standing in) for a GPS fix:
+ * "Dunkin', 9 Station Rd, Ardmore, PA 19003, USA" or "9 Station Road,
+ * Ardmore, Pennsylvania". Google Places names the business; Nominatim at
+ * building zoom gives the street address. Null on any failure; never throws.
+ */
+export async function reverseAddress(lat, lng) {
+  const place = await reverseGeocodePlace(lat, lng);
+  if (place?.name && distanceMeters(lat, lng, place.lat, place.lng) <= BUSINESS_MATCH_METERS) {
+    if (!place.address) return place.name;
+    return place.address.startsWith(place.name) ? place.address : `${place.name}, ${place.address}`;
+  }
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lng), format: 'json', zoom: '18', addressdetails: '1' });
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 4000);
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const a = (await res.json())?.address || {};
+    const street = [a.house_number, a.road].filter(Boolean).join(' ');
+    const building = a.building || a.amenity || a.shop || a.tourism || null;
+    const town = a.city || a.town || a.village || a.suburb || a.hamlet;
+    const label = [building, street, town, a.state].filter(Boolean).join(', ');
+    return label || null;
   } catch {
     return null;
   } finally {

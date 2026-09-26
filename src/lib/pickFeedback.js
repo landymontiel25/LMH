@@ -7,10 +7,8 @@ import { db } from './firebase';
 // love cathedrals in Italy), so they nudge category preferences rather than
 // ruling anything out; either way, that exact place is kept out of your
 // picks for good, since it's a real, conclusive verdict. "Not sure" is
-// different on purpose: it carries no taste signal at all and never
-// blacklists the place -- Mapr Picks is meant to hold only things you'd
-// clearly go to or clearly skip, so "not sure" just means "ask me again
-// later" (see votedIds below).
+// different on purpose: it carries no taste signal at all and only snoozes
+// the place for a week (see votedIds below).
 //
 // Stored two ways: localStorage (instant, always works) and Firestore
 // pick_feedback/{uid}_{landmarkId} (best-effort; survives a new phone).
@@ -82,17 +80,18 @@ export async function getPickFeedback(uid) {
   return map;
 }
 
-// Every landmark you've given a REAL verdict on (✓ or ✗) -- once you vote
-// either way, Mapr never shows it again, that verdict is conclusive. "Not
-// sure" is deliberately excluded here: it means "I don't know yet", not "I
-// like/dislike this", and Mapr Picks is only meant to hold things you'd
-// clearly go to or clearly skip -- so an "unsure" place drops out of the
-// CURRENT deck (MaprPicksCarousel keeps it out of the immediate refill via
-// its own feedback state) but stays eligible to be offered again later,
-// once the current queue/cache moves on, instead of being blacklisted for
-// good like a real ✓/✗.
-export function votedIds(feedback) {
+// "Not sure" snoozes a pick instead of blacklisting it. Without a snooze,
+// any reload of the deck (a location update, a profile change) brought the
+// same card straight back seconds after you tapped it.
+export const UNSURE_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Every landmark to keep out of your picks right now: a real ✓/✗ verdict
+// hides it for good; "not sure" hides it for UNSURE_SNOOZE_MS, then it can
+// come back.
+export function votedIds(feedback, now = Date.now()) {
   return Object.values(feedback || {})
-    .filter((f) => f.verdict === 'yes' || f.verdict === 'no')
+    .filter(
+      (f) => f.verdict === 'yes' || f.verdict === 'no' || (f.verdict === 'unsure' && now - (f.at || 0) < UNSURE_SNOOZE_MS)
+    )
     .map((f) => f.landmarkId);
 }

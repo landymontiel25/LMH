@@ -29,7 +29,9 @@ const APP_HELP =
   `rating in progress, feature-request drafts, and your Landmarks search/filters come back if you close the app. If something fails to load or ` +
   `save, the app says what happened in plain words and shows a Try again button; nothing you typed is cleared.\n` +
   `- Trip planning (Plan Your Trip card and Create New Trip) fills in your starting location from your saved home address when home is in the ` +
-  `city you picked, with a Clear option. In city search, pressing Enter picks the top match.\n` +
+  `city you picked, with a Clear option. "Use My Current Location" fills in the street address you're at (or the business, ` +
+  `if you're standing in one). In city search, pressing Enter picks the top match.\n` +
+  `- On the Map, landmarks you've checked into show as green pins.\n` +
   `- Select all: on the Landmarks list, once you pick a single city, "✅ Select All" adds every landmark the current filters show to that ` +
   `city's itinerary ("Clear" undoes it). A group trip's Shared Landmarks card has "Select all" / "Clear all" too, for everyone in the trip.\n` +
   `- Itineraries (Itinerary tab): one per city, plus group trips. Each has a name; tap ✏️ next to the title to rename it. A solo itinerary ` +
@@ -76,7 +78,7 @@ const APP_HELP =
   `love [category]. Want us to lean more into it?" -- Yes tilts picks toward it and lets it take up to 18 of the 30 shortlist spots (other categories still show up), No leaves it as is, and the ` +
   `optional comment box tells Mapr what you want more of there. It asks once per category, not once per city, and your answer applies in every city. Swipe to browse them. Only meant to hold things you'd clearly go to or clearly skip. Tap ✓ "I'd go" or ✗ "not for me" for a real, ` +
   `conclusive verdict -- that landmark won't be offered again. "🤷 Not sure" is different: it means "I genuinely don't know yet" (not a hidden ` +
-  `dislike), drops that landmark out of the current row, but leaves it eligible to be recommended again later once the picks refresh. Voting on ` +
+  `dislike), drops that landmark out of the row and keeps it out for about a week, after which it can be recommended again. Voting on ` +
   `one pulls in a fresh pick to replace it, keeping the row at 10; swiping alone doesn't load more.\n` +
   `- Onboarding: right after creating an account, a one-time flow — pick your usual interests (or skip), an optional "tell Mapr what you like" taste ` +
   `step (or skip), then the nearest real landmark to your GPS with a one-tap check-in. Reaching that final step — whether or not you check in — ` +
