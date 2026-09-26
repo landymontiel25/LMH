@@ -14,14 +14,50 @@ const readPos = (pos) => ({
   accuracy: pos.coords.accuracy,
 });
 
+// The last fix, saved on this device so the Map can open where you are
+// instantly -- a fresh GPS fix can take 10-15 s (longer on a laptop), and
+// the map used to sit blank waiting for it.
+const LAST_FIX_KEY = 'lh-last-fix';
+const LAST_FIX_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+function readLastFix() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAST_FIX_KEY) || 'null');
+    return v && Number.isFinite(v.lat) && Number.isFinite(v.lng) && Date.now() - (v.t || 0) < LAST_FIX_MAX_AGE_MS ? v : null;
+  } catch {
+    return null;
+  }
+}
+let lastSavedAt = 0;
+function saveLastFix(c) {
+  if (Date.now() - lastSavedAt < 60 * 1000) return;
+  lastSavedAt = Date.now();
+  try {
+    localStorage.setItem(LAST_FIX_KEY, JSON.stringify({ lat: c.lat, lng: c.lng, t: Date.now() }));
+  } catch {
+    /* private mode */
+  }
+}
+
 export function GeoProvider({ children }) {
   const [state, setState] = useState({ coords: null, error: null, loading: true });
   const [refreshing, setRefreshing] = useState(false);
+  const [lastKnown] = useState(readLastFix);
   const watchId = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
-    const onSuccess = (pos) => setState({ coords: readPos(pos), error: null, loading: false });
+    const onSuccess = (pos) => {
+      const coords = readPos(pos);
+      saveLastFix(coords);
+      setState({ coords, error: null, loading: false });
+    };
+    // A quick, rough fix (cached or Wi-Fi based) usually answers in well
+    // under a second; the precise watch below then takes over.
+    Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 4000, maximumAge: 10 * 60 * 1000 })
+      .then((pos) => {
+        if (!cancelled) setState((s) => (s.coords ? s : { coords: readPos(pos), error: null, loading: false }));
+      })
+      .catch(() => {});
     const onError = (err) => setState((s) => ({ ...s, error: err?.message || 'Unable to get your location.', loading: false }));
     Geolocation.watchPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }, (pos, err) => {
       if (err) onError(err);
@@ -43,7 +79,9 @@ export function GeoProvider({ children }) {
     setRefreshing(true);
     Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
       .then((pos) => {
-        setState({ coords: readPos(pos), error: null, loading: false });
+        const coords = readPos(pos);
+        saveLastFix(coords);
+        setState({ coords, error: null, loading: false });
         setRefreshing(false);
       })
       .catch((err) => {
@@ -52,7 +90,7 @@ export function GeoProvider({ children }) {
       });
   }, []);
 
-  return <GeoContext.Provider value={{ ...state, refresh, refreshing }}>{children}</GeoContext.Provider>;
+  return <GeoContext.Provider value={{ ...state, lastKnown, refresh, refreshing }}>{children}</GeoContext.Provider>;
 }
 
 export function useGeo() {
