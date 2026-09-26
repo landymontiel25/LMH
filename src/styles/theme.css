@@ -5186,3 +5186,15 @@ h2,
   font-size: 0.8rem;
   color: var(--color-parchment-dim);
 }
+
+.checkin-search {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--mapr-blue-soft);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+}

@@ -101,6 +101,7 @@ const APP_HELP =
   `- Comments: every landmark page has a 💬 Comments section with your comment (at the top) and other people's. Once you've checked ` +
   `in somewhere you can add or edit your comment any time later, with or without a rating -- from that section or from each row of ` +
   `My Check-ins (Profile → your check-ins). Other people's comments show when their account is public or they're your friend.\n` +
+  `- My Check-ins has a search box: type a place, city, something from your comment, your rating ("loved") or a date.\n` +
   `- Badges: not shown on Profile itself (that screen is deliberately kept simple) — see them all at Profile → "See Full Stats". Earned ` +
   `automatically from your check-in history — total check-ins (First Steps, Explorer, Adventurer, Legend), distinct cities visited (City Hopper, ` +
   `Globetrotter), daily check-in streaks (3/7/30-Day Streak), and the one-time Welcome badge from onboarding.\n` +
