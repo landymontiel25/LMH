@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { PICKABLE_REGIONS } from '../data/regions';
 import { matchesSearch } from '../lib/search';
+import { useSmartCitySearch } from '../lib/smartSearch';
+import SmartSearchLabel from './SmartSearchLabel';
 
 // Same type-to-search box as RegionSearch, but for picking SEVERAL cities at
 // once ("Philly or NYC this weekend") instead of one -- built as its own
@@ -24,9 +26,11 @@ export default function MultiRegionSearch({ selectedIds, onToggle, onClearAll, p
 
   const q = query.trim().toLowerCase();
   const sortedRegions = [...PICKABLE_REGIONS].sort((a, b) => a.name.localeCompare(b.name));
-  const matches = q
+  const wordMatches = q
     ? sortedRegions.filter((r) => matchesSearch([r.name, r.city, r.country, r.tagline].filter(Boolean).join(' '), q))
     : sortedRegions;
+  const smart = useSmartCitySearch(q, wordMatches, open);
+  const matches = [...wordMatches, ...smart.cities];
   const selected = sortedRegions.filter((r) => selectedIds.includes(r.id));
 
   return (
@@ -57,14 +61,16 @@ export default function MultiRegionSearch({ selectedIds, onToggle, onClearAll, p
           autoComplete="off"
           autoCapitalize="off"
         />
-        {open && matches.length > 0 && (
+        {open && (matches.length > 0 || smart.loading) && (
           <div className="autocomplete-list">
-            {matches.map((r) => {
+            {smart.loading && <SmartSearchLabel loading />}
+            {matches.map((r, i) => {
               const isSelected = selectedIds.includes(r.id);
               return (
+                <Fragment key={r.id}>
+                {i === wordMatches.length && <SmartSearchLabel count={smart.cities.length} />}
                 <button
                   type="button"
-                  key={r.id}
                   className="autocomplete-item"
                   onClick={() => onToggle(r)}
                 >
@@ -74,6 +80,7 @@ export default function MultiRegionSearch({ selectedIds, onToggle, onClearAll, p
                   </span>
                   {r.tagline && <span className="autocomplete-secondary">{r.tagline}</span>}
                 </button>
+                </Fragment>
               );
             })}
           </div>

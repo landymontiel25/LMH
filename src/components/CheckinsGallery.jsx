@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getLandmark, getRegion } from '../data/regions';
 import { getUserCheckins, updateCheckinTimestamp, isRealCheckin } from '../lib/leaderboard';
@@ -14,7 +14,12 @@ import { SkeletonGrid, SkeletonList } from './Skeleton';
 import ErrorNotice from './ErrorNotice';
 import MyCommentEditor from './MyCommentEditor';
 import { matchesSearch } from '../lib/search';
+import { useSmartSearch } from '../lib/smartSearch';
+import SmartSearchLabel from './SmartSearchLabel';
 
+
+// Marks where AI-understood matches start in the list.
+const SMART_DIVIDER = { id: '__smart__' };
 
 // Shared "Sep 7, 2026, 10:04 AM" formatting for check-in timestamps.
 function fmtDateTime(seconds) {
@@ -193,9 +198,23 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
   const hiddenCount = checkins && sorted ? checkins.length - sorted.length : 0;
   // Search by place, city, your comment, your rating or the date.
   const q = search.trim();
-  const shown = sorted
+  const matched = sorted
     ? sorted.filter((c) => matchesSearch([c.name, c.city, c.comment, c.tierLabel, c.date].filter(Boolean).join(' '), q))
     : null;
+  // AI fallback when the word search finds little: it reads your check-ins
+  // (place, city, your comment) to work out which one you mean.
+  const smartItems = useMemo(
+    () => (sorted || []).map((c) => ({ id: c.id, text: [c.name, c.city, c.comment].filter(Boolean).join(' — ') })),
+    [sorted]
+  );
+  const smart = useSmartSearch({ query: search, localCount: matched?.length ?? 0, items: smartItems, enabled: !!sorted });
+  const smartExtra = useMemo(() => {
+    const seen = new Set((matched || []).map((c) => c.id));
+    return smart.ids.map((id) => (sorted || []).find((c) => c.id === id)).filter((c) => c && !seen.has(c.id));
+  }, [smart.ids, matched, sorted]);
+  const shown = matched ? [...matched, ...smartExtra] : null;
+  // What's rendered: the plain matches, then a "Mapr thinks you mean" divider.
+  const display = matched ? [...matched, ...(smartExtra.length ? [SMART_DIVIDER, ...smartExtra] : [])] : null;
 
   const go = (it) => {
     sessionStorage.setItem(scrollKey, String(window.scrollY));
@@ -284,7 +303,8 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
           <p>No check-ins yet — find a landmark and check in with a photo! 📸</p>
         </div>
       )}
-      {shown && checkins.length > 0 && shown.length === 0 && (
+      {smart.loading && <SmartSearchLabel loading />}
+      {shown && checkins.length > 0 && shown.length === 0 && !smart.loading && (
         <p className="screen-subtitle">
           {q && sorted.length > 0
             ? `No check-ins match "${q}".`
@@ -294,7 +314,10 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
 
       {shown && shown.length > 0 && layout === 'list' && (
         <div style={{ marginTop: 12 }}>
-          {shown.map((it) => (
+          {display.map((it) =>
+            it === SMART_DIVIDER ? (
+              <SmartSearchLabel key={it.id} count={smartExtra.length} />
+            ) : (
             <div
               key={it.id}
               className="checkin-row"
@@ -376,13 +399,19 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
                 )}
               </div>
             </div>
-          ))}
+            )
+          )}
         </div>
       )}
 
       {shown && shown.length > 0 && layout === 'grid' && (
         <div className="checkin-grid">
-          {shown.map((it) => (
+          {display.map((it) =>
+            it === SMART_DIVIDER ? (
+              <div key={it.id} className="checkin-grid-divider">
+                <SmartSearchLabel count={smartExtra.length} />
+              </div>
+            ) : (
             <button type="button" key={it.id} className="checkin-tile" onClick={() => go(it)}>
               {it.photo ? (
                 <img src={it.photo} alt={it.name} loading="lazy" />
@@ -391,7 +420,8 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
               )}
               <span className="checkin-tile-name">{it.name}</span>
             </button>
-          ))}
+            )
+          )}
         </div>
       )}
     </div>

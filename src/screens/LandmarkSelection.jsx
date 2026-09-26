@@ -16,7 +16,9 @@ import QuickRateButton from '../components/QuickRateButton';
 import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } from '../data/regions';
 import { getCustomLandmarks } from '../lib/customLandmarks';
 import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
-import { matchesSearch } from '../lib/search';
+import { matchesSearch, searchScore } from '../lib/search';
+import { useSmartSearch, useSmartCitySearch, landmarkSearchText } from '../lib/smartSearch';
+import SmartSearchLabel from '../components/SmartSearchLabel';
 import { usePersistentState } from '../lib/usePersistentState';
 import ErrorNotice from '../components/ErrorNotice';
 
@@ -26,6 +28,9 @@ const NO_CATEGORIES = (v) => !v?.length;
 // Search/filter choices are handy for a while, not forever -- after a day
 // the list opens fresh instead of mysteriously pre-filtered.
 const DAY = 24 * 60 * 60 * 1000;
+
+// Marks where AI-understood matches start in the landmark list.
+const SMART_DIVIDER = { id: '__smart__' };
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
 
@@ -58,6 +63,7 @@ function CityDropdown({ value, onChange }) {
   const filtered = PICKABLE_REGIONS.filter((r) => matchesSearch(r.city, term)).sort((a, b) =>
     a.city.localeCompare(b.city)
   );
+  const smart = useSmartCitySearch(term, filtered, open);
   const selectedLabel = value === 'all' ? 'All Cities' : getRegion(value)?.city ?? 'All Cities';
 
   const choose = (id) => {
@@ -99,7 +105,20 @@ function CityDropdown({ value, onChange }) {
                 {r.city}
               </button>
             ))}
-            {filtered.length === 0 && <p className="city-dropdown-empty">No cities match.</p>}
+            <SmartSearchLabel loading={smart.loading} count={smart.cities.length} />
+            {smart.cities.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className={`city-dropdown-item ${value === r.id ? 'active' : ''}`}
+                onClick={() => choose(r.id)}
+              >
+                {r.city}
+              </button>
+            ))}
+            {filtered.length === 0 && !smart.loading && smart.cities.length === 0 && (
+              <p className="city-dropdown-empty">No cities match.</p>
+            )}
           </div>
         </div>
       )}
@@ -267,6 +286,17 @@ export default function LandmarkSelection() {
   // applies, so a correction shows up here too without a code deploy.
   const editedLandmarks = useMemo(() => ALL_LANDMARKS.map(applyEdit), [applyEdit]);
 
+  // Everything but the search box: city, category and visited filters.
+  const passesFilters = (l) => {
+    if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
+    if (activeCategories.length && !activeCategories.some((key) => landmarkMatchesCategory(l, key))) return false;
+    if (visitFilter.length) {
+      const visited = !!claimedMap[l.id];
+      if (!visitFilter.some((f) => (f === 'visited' ? visited : !visited))) return false;
+    }
+    return true;
+  };
+
   const landmarks = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = [...editedLandmarks, ...normalizedCustomLandmarks].filter((l) => {
@@ -288,12 +318,16 @@ export default function LandmarkSelection() {
       return true;
     });
 
-    // Typing a name to find it is a lookup, not a browse -- alphabetical is
-    // what makes a known name fast to spot, so a search term overrides
-    // whichever Sort mode (Popularity/Top Rated/Near Me) is active. Clearing
-    // the search goes back to that sort.
+    // Typing a name to find it is a lookup, not a browse -- the best match
+    // first (then alphabetical) is what makes a known name fast to spot, so
+    // a search term overrides whichever Sort mode (Popularity/Top Rated/Near
+    // Me) is active. Clearing the search goes back to that sort.
     if (term) {
-      return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+      // Best match first (name matches over description matches), then A-Z.
+      const score = new Map(
+        filtered.map((l) => [l, searchScore(l.name, [l.summary, getRegion(l.regionId)?.name, ...(l.facts ?? [])].join(' '), term)])
+      );
+      return [...filtered].sort((a, b) => score.get(b) - score.get(a) || a.name.localeCompare(b.name));
     }
 
     if (sortBy === 'popularity') {
@@ -338,6 +372,25 @@ export default function LandmarkSelection() {
   const handleToggle = (landmark) => {
     toggleLandmark(landmark.id, landmark.regionId);
   };
+
+  // AI fallback when the word search finds little (catalog searched on the
+  // server; community-added landmarks sent along), same filters applied.
+  const customSearchItems = useMemo(
+    () => normalizedCustomLandmarks.map((l) => ({ id: `custom:${l.id}`, text: landmarkSearchText(l, getRegion(l.regionId)?.name) })),
+    [normalizedCustomLandmarks]
+  );
+  const smart = useSmartSearch({ query: search, localCount: landmarks.length, catalog: true, items: customSearchItems });
+  const smartLandmarks = useMemo(() => {
+    const shown = new Set(landmarks.map((l) => `${l.regionId}/${l.id}`));
+    return smart.ids
+      .map((id) =>
+        id.startsWith('custom:')
+          ? normalizedCustomLandmarks.find((l) => l.id === id.slice(7))
+          : editedLandmarks.find((l) => `${l.regionId}/${l.id}` === id)
+      )
+      .filter((l) => l && !shown.has(`${l.regionId}/${l.id}`) && passesFilters(l));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [smart.ids, landmarks, normalizedCustomLandmarks, editedLandmarks, cityFilter, activeCategories, visitFilter, claimedMap]);
 
   // Toggle: applying it snapshots each touched city's prior selection so a
   // second tap can put it back exactly, instead of making you find Clear.
@@ -531,7 +584,8 @@ export default function LandmarkSelection() {
       )}
 
       <div>
-        {landmarks.map((l) => {
+        {[...landmarks, ...(smartLandmarks.length ? [SMART_DIVIDER, ...smartLandmarks] : [])].map((l) => {
+          if (l === SMART_DIVIDER) return <SmartSearchLabel key={l.id} count={smartLandmarks.length} />;
           const isSelected = getRegionSelection(l.regionId).includes(l.id);
           return (
             <div
@@ -614,7 +668,10 @@ export default function LandmarkSelection() {
             </div>
           );
         })}
-        {landmarks.length === 0 && <p className="empty-state">No landmarks match these filters.</p>}
+        {smart.loading && <SmartSearchLabel loading />}
+        {landmarks.length === 0 && !smart.loading && smartLandmarks.length === 0 && (
+          <p className="empty-state">No landmarks match these filters.</p>
+        )}
       </div>
 
       <div className="action-bar-spacer" />

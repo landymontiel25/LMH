@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { PICKABLE_REGIONS } from '../data/regions';
 import { matchesSearch } from '../lib/search';
+import { useSmartCitySearch } from '../lib/smartSearch';
+import SmartSearchLabel from './SmartSearchLabel';
 
 export const ANY_REGION = { id: '', name: 'Any region', tagline: 'Search everywhere' };
 
@@ -23,9 +25,11 @@ export default function RegionSearch({ region, onSelect, includeAny = false, pla
   const q = query.trim().toLowerCase();
   const sortedRegions = [...PICKABLE_REGIONS].sort((a, b) => a.name.localeCompare(b.name));
   const options = includeAny ? [ANY_REGION, ...sortedRegions] : sortedRegions;
-  const matches = q
+  const wordMatches = q
     ? options.filter((r) => matchesSearch([r.name, r.city, r.country, r.tagline].filter(Boolean).join(' '), q))
     : options;
+  const smart = useSmartCitySearch(q, wordMatches, open);
+  const matches = [...wordMatches, ...smart.cities];
 
   return (
     <div className="autocomplete" ref={ref}>
@@ -54,12 +58,14 @@ export default function RegionSearch({ region, onSelect, includeAny = false, pla
         autoComplete="off"
         autoCapitalize="off"
       />
-      {open && matches.length > 0 && (
+      {open && (matches.length > 0 || smart.loading) && (
         <div className="autocomplete-list">
-          {matches.map((r) => (
+          {smart.loading && <SmartSearchLabel loading />}
+          {matches.map((r, i) => (
+            <Fragment key={r.id || 'any'}>
+            {i === wordMatches.length && <SmartSearchLabel count={smart.cities.length} />}
             <button
               type="button"
-              key={r.id || 'any'}
               className="autocomplete-item"
               onClick={() => {
                 onSelect(r);
@@ -69,6 +75,7 @@ export default function RegionSearch({ region, onSelect, includeAny = false, pla
               <span className="autocomplete-primary">{r.name}</span>
               {r.tagline && <span className="autocomplete-secondary">{r.tagline}</span>}
             </button>
+            </Fragment>
           ))}
         </div>
       )}
