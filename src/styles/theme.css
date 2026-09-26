@@ -5177,3 +5177,23 @@ h2,
   font-size: 0.78rem;
   pointer-events: none;
 }
+
+/* Numbered stops for a trip's route on the Map ("View in Map"). */
+.trip-stop-pin {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: var(--mapr-blue);
+  font-weight: 800;
+  font-size: 0.85rem;
+  border: 3px solid var(--mapr-blue);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.trip-route-steps {
+  max-height: 180px;
+}
