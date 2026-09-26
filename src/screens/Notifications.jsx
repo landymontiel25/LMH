@@ -9,6 +9,57 @@ import { useToast, runOptimistic } from '../lib/ToastContext';
 import { friendlyError } from '../lib/friendlyError';
 import { SkeletonList } from '../components/Skeleton';
 import ErrorNotice from '../components/ErrorNotice';
+import { useBadges } from '../lib/BadgesContext';
+import { msUntilStreakLapse } from '../lib/streaks';
+
+function formatCountdown(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// Live time left on a streak warning, shown at the right of its row. The
+// streak lapses at the UTC midnight after the warning went out, the same
+// boundary computeStreakDays counts by.
+function StreakCountdown({ createdAt }) {
+  const { checkedInToday } = useBadges();
+  const sentMs = createdAt?.seconds ? createdAt.seconds * 1000 : Date.now();
+  const lapseAt = sentMs + msUntilStreakLapse(new Date(sentMs));
+  const [now, setNow] = useState(() => Date.now());
+  const msLeft = lapseAt - now;
+  const sameDay = msLeft > 0 && msLeft <= 24 * 60 * 60 * 1000;
+  const ticking = sameDay && !checkedInToday;
+
+  useEffect(() => {
+    if (!ticking) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [ticking]);
+
+  let label;
+  let color;
+  if (sameDay && checkedInToday) {
+    label = '\u2713 Kept';
+    color = 'var(--color-green)';
+  } else if (msLeft <= 0) {
+    label = 'Expired';
+    color = 'var(--color-parchment-dim)';
+  } else {
+    label = formatCountdown(msLeft);
+    color = 'var(--color-brass-bright)';
+  }
+  return (
+    <span
+      className="streak-countdown"
+      aria-label={ticking ? `${label} left` : label}
+      style={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: '0.9rem', color }}
+    >
+      {label}
+    </span>
+  );
+}
 
 // Everything that can ask for your attention, in one place, grouped by what
 // it actually is rather than one flat feed: friend requests (their own
@@ -193,9 +244,13 @@ export default function Notifications() {
                 borderTop: '1px solid rgba(255,255,255,0.08)',
                 cursor: 'pointer',
                 opacity: n.read ? 0.6 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
               }}
             >
-              <p style={{ margin: 0, fontSize: '0.9rem' }}>{n.message}</p>
+              <p style={{ margin: 0, fontSize: '0.9rem', flex: 1 }}>{n.message}</p>
+              {n.type === 'streak_warning' && <StreakCountdown createdAt={n.createdAt} />}
             </div>
           ))}
         </div>

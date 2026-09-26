@@ -109,7 +109,7 @@ export const APP_HELP =
   `- Time saved / discovery: Mapr shows real, tracked numbers — minutes saved today, summed from actual Mapr chat replies that produced stops, each ` +
   `compared against a stated manual-planning baseline (never a made-up estimate).\n` +
   `- Streaks: check in on consecutive days, or rate a few things through Mapr Picks, to build a streak; Profile warns if an active streak is about to ` +
-  `lapse.\n` +
+  `lapse, and the streak warning in Notifications shows a live countdown to when it expires.\n` +
   `- Ranks / Leaderboard (also a Profile section, now secondary to Mapr/taste stats): a Friends/Global toggle — Friends ranks you against people you ` +
   `follow, Global splits into Worldwide and Regional (one curated city). Each has Weekly/Monthly/Yearly views.\n` +
   `- Inviting friends: Profile has an "Invite Friends" button that shares your username/link; once someone signs up through it, both of you get 50 ` +
