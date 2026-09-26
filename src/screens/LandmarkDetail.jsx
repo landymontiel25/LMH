@@ -190,6 +190,9 @@ export default function LandmarkDetail() {
   // Your own comment on this place (with or without a rating), for the
   // editor at the top of Comments. null until loaded.
   const [myComment, setMyComment] = useState(null);
+  // You left a rating or comment here (possibly via Rate a Landmark, with
+  // no check-in) -- that's yours to edit too.
+  const [hasMyReview, setHasMyReview] = useState(false);
   // Bumped when the comment is edited on its own, so the rating flow below
   // remounts with it instead of later saving its older copy back.
   const [commentRev, setCommentRev] = useState(0);
@@ -246,6 +249,7 @@ export default function LandmarkDetail() {
     // just starts blank (and saving overwrites correctly either way).
     const r = await getMyReview(user.uid, landmark.id).catch(() => null);
     setMyComment(r?.comment || '');
+    setHasMyReview(!!r);
     if (!r) return;
     // Pre-fills the tier flow on an edit. A legacy star-only review (from
     // before there was only ever the tier flow) has no tier to pre-fill --
@@ -614,7 +618,7 @@ export default function LandmarkDetail() {
 
   // Add or edit your own comment any time after checking in here.
   const myCommentBox =
-    user && checkedInHere && myComment !== null ? (
+    user && myComment !== null && (checkedInHere || hasMyReview || reviews.some((r) => r.userId === user.uid)) ? (
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="review-head" style={{ marginBottom: 6 }}>
           <strong>Your comment</strong>

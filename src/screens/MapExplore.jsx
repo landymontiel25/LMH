@@ -5,7 +5,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
-import { ALL_LANDMARKS, ALL_LANDMARKS_BOUNDS, INTERESTS, getRegion } from '../data/regions';
+import { ALL_LANDMARKS, ALL_LANDMARKS_BOUNDS, INTERESTS, getRegion, normalizeCategories } from '../data/regions';
 import { SEARCHABLE_PLACES } from '../data/places';
 import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
@@ -435,7 +435,7 @@ export default function MapExplore() {
   // Saved as a plain array so the map reopens with the same categories
   // showing; the Set is just for fast lookups while rendering pins.
   const [filterCatList, setFilterCatList] = usePersistentState('map.filterCats', [], { isEmpty: NO_FILTER });
-  const filterCats = useMemo(() => new Set(filterCatList), [filterCatList]);
+  const filterCats = useMemo(() => new Set(normalizeCategories(filterCatList)), [filterCatList]);
   const setFilterCats = (set) => setFilterCatList([...set]);
   const toggleFilterCat = (id) =>
     setFilterCatList((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));

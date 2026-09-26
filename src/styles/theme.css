@@ -5321,3 +5321,16 @@ h2,
 .trip-route-steps {
   max-height: 180px;
 }
+
+.itin-search {
+  width: 100%;
+  height: 44px;
+  margin-bottom: 12px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-default);
+  background: var(--color-bg-card);
+  color: var(--color-parchment);
+  font: inherit;
+  font-size: 0.92rem;
+}
