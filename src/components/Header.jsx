@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useBadges } from '../lib/BadgesContext';
+import { useAdminMode } from '../lib/AdminModeContext';
 import { subscribeLeaderboard } from '../lib/leaderboard';
 import { subscribeMyNotifications } from '../lib/notifications';
 import { Skeleton } from './Skeleton';
@@ -48,6 +49,7 @@ function StreakBadge() {
 function ProfileMenu() {
   const { user, firebaseEnabled } = useAuth();
   const { myUsername, requests } = useFriends();
+  const { adminMode, canUseAdminMode, setAdminMode } = useAdminMode();
   const navigate = useNavigate();
   const [me, setMe] = useState(null); // { points, rank } for the current week
   const [unread, setUnread] = useState(0);
@@ -130,6 +132,19 @@ function ProfileMenu() {
               <span className="visually-hidden">Loading this week's rank…</span>
               {'\u{1F3C6}'} <Skeleton className="skeleton-inline" width={90} height={13} />
             </div>
+          )}
+          {/* Admin account only -- same switch as Settings -> Admin Mode. */}
+          {canUseAdminMode && (
+            <label className="admin-mode-switch">
+              <span>{'\u{1F6E0}\u{FE0F}'} Admin Mode</span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={adminMode}
+                onChange={(e) => setAdminMode(e.target.checked)}
+              />
+              <span className="admin-mode-switch-track" aria-hidden="true" />
+            </label>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <button

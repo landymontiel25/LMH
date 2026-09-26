@@ -29,7 +29,8 @@ export function LandmarkEditsProvider({ children }) {
   const applyEdit = useCallback(
     (landmark) => {
       if (!landmark) return landmark;
-      const edit = edits[`${landmark.regionId}/${landmark.id}`];
+      // Catalog entries carry `region`; list/map copies add `regionId`.
+      const edit = edits[`${landmark.regionId ?? landmark.region}/${landmark.id}`];
       return edit ? { ...landmark, ...edit } : landmark;
     },
     [edits]
