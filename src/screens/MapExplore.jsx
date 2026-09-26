@@ -19,6 +19,7 @@ import { getCustomLandmarks, deleteCustomLandmark, updateCustomLandmark } from '
 import { isAdmin } from '../lib/admins';
 import { useAdminMode } from '../lib/AdminModeContext';
 import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
+import MapCategoryFilter from '../components/MapCategoryFilter';
 import { searchScore } from '../lib/search';
 import CheckInButton from '../components/CheckInButton';
 import DirectionsButton from '../components/DirectionsButton';
@@ -1254,28 +1255,11 @@ export default function MapExplore() {
           </button>
           {filterOpen && (
             <div className="map-search-panel">
-              <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '0.9rem' }}>Show on the map</p>
-              <div className="map-filter-chips">
-                <button
-                  type="button"
-                  className={`chip ${filterCats.size === 0 ? 'selected' : ''}`}
-                  onClick={() => setFilterCats(new Set())}
-                >
-                  <span className="chip-icon">{'\u{1F4CD}'}</span>
-                  <span>All landmarks</span>
-                </button>
-                {INTERESTS.map((i) => (
-                  <button
-                    key={i.id}
-                    type="button"
-                    className={`chip ${filterCats.has(i.id) ? 'selected' : ''}`}
-                    onClick={() => toggleFilterCat(i.id)}
-                  >
-                    <span className="chip-icon">{i.icon}</span>
-                    <span>{i.label}</span>
-                  </button>
-                ))}
-              </div>
+              <MapCategoryFilter
+                selected={filterCats}
+                onToggle={toggleFilterCat}
+                onClear={() => setFilterCats(new Set())}
+              />
             </div>
           )}
           {(!searchOpen && !filterOpen) || editMode ? (

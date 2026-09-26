@@ -7,41 +7,88 @@ import { useAdminMode } from '../lib/AdminModeContext';
 import { subscribeLeaderboard } from '../lib/leaderboard';
 import { subscribeMyNotifications } from '../lib/notifications';
 import { Skeleton } from './Skeleton';
+import { msUntilStreakLapse, PICKS_STREAK_THRESHOLD } from '../lib/streaks';
 
-// Dead center of the header, on every screen -- the one stat people check
-// without thinking about it, so it doesn't live behind a tap like the rest
-// of ProfileMenu's popover. Flame animates (flicker, not spin/bounce) only
-// while there's an actual streak to celebrate; a cold start shows a dim,
-// still flame instead of implying progress that isn't there. Turns
-// warning-colored once today's check-in hasn't secured it yet -- same
-// signal StreakWarningBanner gives, just always in view instead of only
-// right before local midnight.
+function formatLeft(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  return h > 0 ? `${h}h ${m}m ${sec}s` : `${m}m ${sec}s`;
+}
+
+// Dead center of the header, on every screen. Flame animates only while
+// there's a streak to celebrate and turns warning-colored once today's
+// check-in hasn't secured it yet. Tapping it opens a live countdown to the
+// moment the streak lapses (the UTC midnight computeStreakDays counts by;
+// a day already secured pushes that out by 24h).
 function StreakBadge() {
   const { user, firebaseEnabled } = useAuth();
   const { streakDays, checkedInToday } = useBadges();
+  const [open, setOpen] = useState(false);
+  const [msLeft, setMsLeft] = useState(() => msUntilStreakLapse());
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setMsLeft(msUntilStreakLapse());
+    const id = setInterval(() => setMsLeft(msUntilStreakLapse()), 1000);
+    const close = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('touchstart', close);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('touchstart', close);
+    };
+  }, [open]);
 
   if (!firebaseEnabled || !user) return null;
 
   const active = streakDays > 0;
   const atRisk = active && !checkedInToday;
-  const title = !active
-    ? 'Check in today to start a streak'
-    : atRisk
-    ? `${streakDays}-day streak — check in today to keep it`
-    : `${streakDays}-day streak — today's secured`;
+  const left = checkedInToday ? msLeft + 24 * 60 * 60 * 1000 : msLeft;
 
   return (
-    <Link to="/profile" className={`header-streak ${active ? 'active' : ''} ${atRisk ? 'at-risk' : ''}`} title={title}>
-      <span className="header-streak-flame" aria-hidden="true">
-        {'\u{1F525}'}
-      </span>
-      <span className="header-streak-num">{streakDays}</span>
-    </Link>
+    <div className="header-streak-wrap" ref={ref}>
+      <button
+        type="button"
+        className={`header-streak ${active ? 'active' : ''} ${atRisk ? 'at-risk' : ''}`}
+        aria-expanded={open}
+        aria-label={`${streakDays}-day streak`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="header-streak-flame" aria-hidden="true">
+          {'\u{1F525}'}
+        </span>
+        <span className="header-streak-num">{streakDays}</span>
+      </button>
+      {open && (
+        <div className="points-popover streak-popover" role="status">
+          {!active ? (
+            <div>Check in today to start a streak</div>
+          ) : (
+            <>
+              <div className="points-popover-joined">
+                {atRisk ? `${streakDays}-day streak ends in` : "Today's secured — streak safe for"}
+              </div>
+              <div className={`streak-popover-clock ${atRisk ? 'at-risk' : ''}`}>{formatLeft(left)}</div>
+              {atRisk && (
+                <div className="streak-popover-hint">
+                  Check in, or vote/rate {PICKS_STREAK_THRESHOLD} landmarks
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-// Header identity control. Shows who you're signed in as; hovering (desktop)
-// or tapping (mobile) reveals this week's rank/points, a "Notifications"
+// Header identity control. Shows who you're signed in as; tapping reveals this week's rank/points, a "Notifications"
 // link (badged with the unread count), and "View Profile". Notifications
 // live inside this dropdown rather than as their own header icon -- a
 // second always-visible icon here has no room next to the wordmark on a
@@ -55,20 +102,6 @@ function ProfileMenu() {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const closeTimer = useRef(null);
-
-  // The popover sits a few pixels below the trigger (see .points-popover's
-  // top offset) -- moving the mouse straight down crosses that gap outside
-  // both elements' hover area. A short grace period survives the crossing;
-  // re-entering (the popover is a descendant, so this fires again) cancels it.
-  const openNow = () => {
-    clearTimeout(closeTimer.current);
-    setOpen(true);
-  };
-  const closeSoon = () => {
-    closeTimer.current = setTimeout(() => setOpen(false), 250);
-  };
-  useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   useEffect(() => {
     if (!firebaseEnabled || !user) {
@@ -113,7 +146,7 @@ function ProfileMenu() {
   const notificationCount = unread + requests.length;
 
   return (
-    <div className="profile-menu" ref={ref} onMouseEnter={openNow} onMouseLeave={closeSoon}>
+    <div className="profile-menu" ref={ref}>
       <button type="button" className="score-chip profile-menu-trigger" onClick={() => setOpen((o) => !o)}>
         <span className="score-chip-pts">{name}</span>
         <span className="profile-menu-caret">{'▾'}</span>
