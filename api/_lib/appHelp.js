@@ -13,6 +13,14 @@ export const APP_HELP =
   `- Mapr knows where you are when location is on: it uses your phone's live location, so "near me" / "nearby" just works without ` +
   `naming a city. If location is off, it asks which city you're in. Every place Mapr suggests from the web has a Directions link that opens ` +
   `the same three choices as everywhere else (Use the Map, Google Maps, Apple Maps).\n` +
+  `- Mapr chats: like Claude, you can have many chats. The bar at the top of Mapr shows the open chat's name (tap it to rename), ` +
+  `☰ opens your chat list (search, open, rename, move to a project, delete) and ➕ starts a new chat. A new chat is named after ` +
+  `your first message. Chats sync to your account, so they're on every device you sign in on.\n` +
+  `- Mapr projects: group chats into a project (☰ → "📁 New project"). A project has a name and instructions Mapr follows in ` +
+  `every chat inside it (budget, group size, what you're into). The owner can share a project with friends (⚙️ on the ` +
+  `project → "Share with a friend"); everyone in it can read and continue its chats and edit the instructions, and the ` +
+  `person added gets a notification. Only the owner can remove people or delete the project; deleting it keeps its chats ` +
+  `as regular chats.\n` +
   `- Your progress is saved on this device as you go: the Mapr conversation, half-typed messages and questions, a landmark you were adding, a ` +
   `rating in progress, feature-request drafts, and your Landmarks search/filters come back if you close the app. If something fails to load or ` +
   `save, the app says what happened in plain words and shows a Try again button; nothing you typed is cleared.\n` +

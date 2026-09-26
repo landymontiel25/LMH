@@ -9,6 +9,7 @@ import { useTrip } from '../lib/TripContext';
 import { useGeo } from '../lib/GeoContext';
 import { effectiveTagScores, pickRegion } from '../lib/tagScores';
 import { useMaprChat } from '../lib/MaprChatContext';
+import MaprChatsPanel from '../components/MaprChatsPanel';
 import MultiRegionSearch from '../components/MultiRegionSearch';
 import DirectionsButton from '../components/DirectionsButton';
 import { reverseLocality } from '../lib/geocode';
@@ -153,6 +154,9 @@ export default function Mapr() {
   const {
     messages,
     setMessages,
+    setMessagesFor,
+    activeChat,
+    activeProject,
     draft,
     setDraft,
     regions,
@@ -166,7 +170,13 @@ export default function Mapr() {
     restored,
     dismissRestored,
     discardChat,
+    synced,
+    newChat,
+    renameChat,
   } = useMaprChat();
+  // Arriving from a "shared a project with you" notification opens the list.
+  const [chatsOpen, setChatsOpen] = useState(() => !!location.state?.openChats);
+  const [renamingTitle, setRenamingTitle] = useState(null);
   const [regionOpen, setRegionOpen] = useState(false);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const feedEndRef = useRef(null);
@@ -245,6 +255,10 @@ export default function Mapr() {
     if (showTasteNudge) dismissNudge();
     if (restored) dismissRestored();
 
+    // The reply belongs to this chat even if you switch to another one
+    // while it's coming in.
+    const chatId = activeChat.id;
+    const put = (u) => setMessagesFor(chatId, u);
     const base = retry && messages.at(-1)?.error ? messages.slice(0, -1) : messages;
     const history = retry ? base : [...base, { role: 'user', text }];
     setMessages(history);
@@ -328,6 +342,7 @@ export default function Mapr() {
           insiderMode,
           tagScoreSummary,
           itineraries: itinerarySummary(trip, tripApi, groupTrips),
+          project: activeProject ? { name: activeProject.name, instructions: activeProject.instructions } : null,
           location,
           locationStatus: coords ? 'ok' : geoError ? 'unavailable' : 'pending',
           localNow: {
@@ -382,7 +397,7 @@ export default function Mapr() {
       // "Repeat a favorite") -- tapping one just sends that exact text, the
       // same as typing it, so the traveler never has to type a one-word
       // answer by hand.
-      setMessages((cur) => [
+      put((cur) => [
         ...cur,
         { id: msgId, role: 'assistant', text: data.reply, stops, raw, quickReplies: data.quickReplies || [], actionResults, rate: data.rate || null },
       ]);
@@ -393,7 +408,7 @@ export default function Mapr() {
       // out traveler gets the server's own "Sign in to use the AI features."
       // plus a way to go do that.
       const signIn = err.status === 401 || err.code === 'sign-in-required';
-      setMessages((cur) => [
+      put((cur) => [
         ...cur,
         {
           role: 'assistant',
@@ -442,6 +457,54 @@ export default function Mapr() {
         </div>
       </div>
 
+      {synced && (
+        <div className="mapr-chat-bar">
+          <button type="button" className="mapr-chat-bar-btn" aria-label="Your chats" onClick={() => setChatsOpen(true)}>
+            {'\u{2630}'}
+          </button>
+          {renamingTitle !== null ? (
+            <form
+              className="mapr-chat-bar-title"
+              onSubmit={(e) => {
+                e.preventDefault();
+                renameChat(activeChat.id, renamingTitle).catch(() => {});
+                setRenamingTitle(null);
+              }}
+            >
+              <input
+                autoFocus
+                aria-label="Chat name"
+                value={renamingTitle}
+                maxLength={80}
+                onChange={(e) => setRenamingTitle(e.target.value)}
+                onBlur={(e) => e.currentTarget.form.requestSubmit()}
+              />
+            </form>
+          ) : (
+            <button
+              type="button"
+              className="mapr-chat-bar-title"
+              title="Rename this chat"
+              onClick={() => setRenamingTitle(activeChat.title)}
+            >
+              {activeProject && <span className="mapr-chat-bar-project">{'\u{1F4C1}'} {activeProject.name} /</span>}
+              <span className="mapr-chat-title">{activeChat.title}</span>
+              <span aria-hidden="true">{'\u{270F}\u{FE0F}'}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="mapr-chat-bar-btn"
+            aria-label="New chat"
+            title="New chat"
+            onClick={() => newChat(activeChat.projectId)}
+          >
+            {'\u{2795}'}
+          </button>
+        </div>
+      )}
+      {chatsOpen && <MaprChatsPanel onClose={() => setChatsOpen(false)} />}
+
       {showPlanner ? (
         <TripPlannerCard
           regions={regions}
@@ -469,7 +532,7 @@ export default function Mapr() {
           <p className="draft-restored-note">
             Picked up your last conversation.
             <button type="button" onClick={discardChat}>
-              Discard
+              {synced ? 'New chat' : 'Discard'}
             </button>
           </p>
         )}

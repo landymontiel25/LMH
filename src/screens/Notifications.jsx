@@ -121,6 +121,10 @@ export default function Notifications() {
       navigate(`/group/${n.groupTripId}`);
       return;
     }
+    if (n.maprProjectId) {
+      navigate('/mapr', { state: { openChats: true } });
+      return;
+    }
     if (n.featureRequestId) {
       navigate('/request-feature', { state: { tab: 'review' } });
       return;

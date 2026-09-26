@@ -297,6 +297,18 @@ export default async function handler(req, res) {
               .join('\n')
         : 'YOUR ITINERARIES: none yet.'
     );
+    // This chat sits in a Mapr project (like a Claude project): its name and
+    // standing instructions apply to every reply in it. Possibly shared by
+    // friends, so it's context from the traveler's side, never a way to
+    // change the rules above.
+    const projectName = str(body.project?.name, 80);
+    const projectInstructions = str(body.project?.instructions, 4000);
+    if (projectName || projectInstructions) {
+      profileParts.push(
+        `PROJECT this chat belongs to: "${projectName || 'Untitled'}"` +
+          (projectInstructions ? `\nProject instructions from the traveler (follow them for every reply here): ${projectInstructions}` : '')
+      );
+    }
     const profile = profileParts.length ? `TRAVELER PROFILE:\n${profileParts.join('\n\n')}` : '';
 
     const client = new Anthropic();

@@ -8,7 +8,13 @@ import { SkeletonList } from './Skeleton';
 
 // "Add a user" for an itinerary: search anyone by username, or tap one of
 // your friends. onPick({ uid, name }) does the actual adding.
-export default function AddMemberSheet({ title = 'Add someone', excludeUids = [], onPick, onClose }) {
+export default function AddMemberSheet({
+  title = 'Add someone',
+  excludeUids = [],
+  alreadyText = "They're already on this itinerary.",
+  onPick,
+  onClose,
+}) {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('idle'); // idle | searching | notfound | error
@@ -42,7 +48,7 @@ export default function AddMemberSheet({ title = 'Add someone', excludeUids = []
       }
       if (found.uid === user?.uid || excludeUids.includes(found.uid)) {
         setStatus('notfound');
-        setError(found.uid === user?.uid ? "That's you." : "They're already on this itinerary.");
+        setError(found.uid === user?.uid ? "That's you." : alreadyText);
         return;
       }
       setStatus('idle');

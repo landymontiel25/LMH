@@ -8,7 +8,10 @@ import { db } from './firebase';
 // not done yet) -- neither is something this session can configure. This
 // still gets the useful part in front of people today: a friend's
 // submission getting approved shows up the next time they open the app.
-export async function notifyUser(uid, { type, message, landmarkId = null, groupTripId = null, featureRequestId = null }) {
+export async function notifyUser(
+  uid,
+  { type, message, landmarkId = null, groupTripId = null, featureRequestId = null, maprProjectId = null }
+) {
   await addDoc(collection(db, 'notifications'), {
     uid,
     type,
@@ -16,6 +19,7 @@ export async function notifyUser(uid, { type, message, landmarkId = null, groupT
     landmarkId,
     groupTripId,
     featureRequestId,
+    ...(maprProjectId ? { maprProjectId } : {}),
     read: false,
     createdAt: serverTimestamp(),
   });
