@@ -59,6 +59,7 @@ export default function GroupTrip() {
   // Landmark ticks you've made that the server hasn't confirmed yet, so the
   // checkbox flips the instant you tap it. { [landmarkId]: true | false }
   const [pendingLandmarks, setPendingLandmarks] = useState({});
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { setMapFocus, setMapFocusStops } = useTrip();
 
   const uid = user?.uid;
@@ -328,9 +329,28 @@ export default function GroupTrip() {
       )}
 
       {isOwner && (
-        <button type="button" className="btn btn-ghost btn-block" onClick={deleteTrip}>
-          Delete This Group Trip
+        <button type="button" className="btn btn-danger btn-block" onClick={() => setConfirmDelete(true)}>
+          {'\u{1F5D1}\u{FE0F}'} Delete This Group Trip
         </button>
+      )}
+
+      {confirmDelete && (
+        <div className="modal-backdrop" onClick={() => setConfirmDelete(false)}>
+          <div className="modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>{'\u{1F5D1}\u{FE0F}'} Delete this group trip?</h3>
+            <p className="screen-subtitle" style={{ marginTop: 0 }}>
+              <strong>{trip.name}</strong> will be deleted for everyone in it. This can't be undone.
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button className="btn btn-ghost btn-block" onClick={() => setConfirmDelete(false)}>
+                Keep it
+              </button>
+              <button className="btn btn-danger btn-block" onClick={deleteTrip}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

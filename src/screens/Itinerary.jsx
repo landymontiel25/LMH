@@ -231,6 +231,7 @@ export default function Itinerary() {
     renameItinerary,
     removePlace,
     removeItinerary,
+    addPlace,
   } = useTrip();
   const [showAddMember, setShowAddMember] = useState(false);
   const { coords } = useGeo();
@@ -283,6 +284,7 @@ export default function Itinerary() {
     }
   }, [sort]);
   const [pendingRemove, setPendingRemove] = useState(null); // stop awaiting delete confirmation
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
   const [groupTrips, setGroupTrips] = useState([]);
   // Kept apart from "no group trips": a failed load must not look like
@@ -490,6 +492,27 @@ export default function Itinerary() {
       cancelled = true;
     };
   }, [selectedLandmarks]);
+
+  // Deletes this city's itinerary (stops, Mapr places, name) with an Undo.
+  const deleteItinerary = () => {
+    const rid = region.id;
+    const name = itineraryName(rid);
+    const landmarks = [...(trip.byRegion[rid] || [])];
+    const places = [...(trip.placesByRegion?.[rid] || [])];
+    const customName = trip.itineraryNames?.[rid] || '';
+    removeItinerary(rid);
+    setConfirmDelete(false);
+    setOpenRegion(null);
+    toast.show(`Deleted ${name}.`, {
+      actionLabel: 'Undo',
+      onAction: () => {
+        if (landmarks.length) setRegionSelection(rid, landmarks);
+        places.forEach((pl) => addPlace(rid, pl));
+        if (customName) renameItinerary(rid, customName);
+        setOpenRegion(rid);
+      },
+    });
+  };
 
   // Live navigation on the full-screen Map through the stops still to go,
   // in list order; each arrival offers the next one.
@@ -933,6 +956,30 @@ export default function Itinerary() {
       <button type="button" className="btn btn-primary btn-block" onClick={() => navigate('/')}>
         {'\u{1F3AF}'} Start Checking In on the Map
       </button>
+
+      <button type="button" className="btn btn-danger btn-block" style={{ marginTop: 12 }} onClick={() => setConfirmDelete(true)}>
+        {'\u{1F5D1}\u{FE0F}'} Delete Itinerary
+      </button>
+
+      {confirmDelete && (
+        <div className="modal-backdrop" onClick={() => setConfirmDelete(false)}>
+          <div className="modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>{'\u{1F5D1}\u{FE0F}'} Delete this itinerary?</h3>
+            <p className="screen-subtitle" style={{ marginTop: 0 }}>
+              <strong>{itineraryName(region.id)}</strong> and its {displayRoute.length} stop{displayRoute.length === 1 ? '' : 's'} will
+              be removed. Your check-ins and ratings stay.
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button className="btn btn-ghost btn-block" onClick={() => setConfirmDelete(false)}>
+                Keep it
+              </button>
+              <button className="btn btn-danger btn-block" onClick={deleteItinerary}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pendingRemove && (
         <div className="modal-backdrop" onClick={() => setPendingRemove(null)}>

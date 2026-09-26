@@ -38,7 +38,9 @@ const APP_HELP =
   `- Itineraries (Itinerary tab): one per city, plus group trips. Each has a name; tap ✏️ next to the title to rename it. A solo itinerary ` +
   `shows a Members card with you and "➕ Add a user": search anyone by username or pick a friend, and the itinerary becomes a group trip ` +
   `you both can edit (same name, stops and places). In a group trip, any member can rename it, tick landmarks, and invite people with ` +
-  `"➕ Add" at the bottom of the Members list; only the owner can remove members.\n` +
+  `"➕ Add" at the bottom of the Members list; only the owner can remove members. "🗑️ Delete Itinerary" at the bottom of an ` +
+  `itinerary deletes it after a confirm (its stops and name; check-ins and ratings stay), with an Undo right after. A group ` +
+  `trip's owner has "Delete This Group Trip" there instead, also confirmed, and that one deletes it for everyone with no undo.\n` +
   `- Mapr can act on your itineraries when you ask in chat: "add it to my itinerary", "put both on my Philly trip", "remove Wynwood", ` +
   `"make a new itinerary for Miami called Spring Break", "rename my trip to …", "add @username to my Villanova trip". It works for places ` +
   `from the catalog and places it found on the web (those show as "✨ Found by Mapr" stops with directions and a source link, no check-in ` +
