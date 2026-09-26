@@ -21,7 +21,16 @@ import TasteNudgeCard from '../components/TasteNudgeCard';
 import TripPlannerCard from '../components/TripPlannerCard';
 import { authHeaders } from '../lib/apiAuth';
 import { fetchJson, friendlyError } from '../lib/friendlyError';
-import { runMaprActions, itinerarySummary, registerUndo, getUndo, forgetUndo } from '../lib/maprActions';
+import {
+  runMaprActions,
+  retryMaprAction,
+  itinerarySummary,
+  registerUndo,
+  getUndo,
+  forgetUndo,
+  registerConversationStops,
+  getConversationStops,
+} from '../lib/maprActions';
 import { listMyGroupTrips } from '../lib/groupTrips';
 import { writePersisted } from '../lib/usePersistentState';
 import { useToast } from '../lib/ToastContext';
@@ -89,6 +98,45 @@ export default function Mapr() {
         m.id === msgId ? { ...m, actionResults: m.actionResults.map((r, j) => (j === idx ? { ...r, undone: true } : r)) } : m
       )
     );
+
+  const setActionResult = (msgId, idx, next) =>
+    setMessages((cur) =>
+      cur.map((m) => (m.id === msgId ? { ...m, actionResults: m.actionResults.map((r, j) => (j === idx ? next : r)) } : m))
+    );
+
+  const [retrying, setRetrying] = useState({});
+  // Retries exactly the one action that failed -- no retyping the whole
+  // request, and no repeating whatever else was in the same reply that
+  // already went through.
+  const retryAction = async (msgId, idx) => {
+    const key = `${msgId}:${idx}`;
+    if (retrying[key]) return;
+    const current = messages.find((m) => m.id === msgId)?.actionResults?.[idx];
+    if (!current?.action) return;
+    setRetrying((cur) => ({ ...cur, [key]: true }));
+    try {
+      const fresh = await retryMaprAction(current.action, {
+        trip,
+        tripApi,
+        groupTrips: user ? await loadGroupTrips() : [],
+        user,
+        ownerName: myUsername || user?.displayName || 'Explorer',
+        coords,
+        conversationStops: getConversationStops(msgId),
+        onGroupsChanged: loadGroupTrips,
+      });
+      if (fresh.undo) registerUndo(key, fresh.undo);
+      setActionResult(msgId, idx, { ok: fresh.ok, text: fresh.text, link: fresh.link || null, action: fresh.action });
+    } catch (err) {
+      toast.show(friendlyError(err, "That didn't go through. Try again."));
+    } finally {
+      setRetrying((cur) => {
+        const next = { ...cur };
+        delete next[key];
+        return next;
+      });
+    }
+  };
   const { coords, error: geoError } = useGeo();
   // Chat thread, city picks, planner-open state, cost total and busy all
   // live in MaprChatContext (above the router in App.jsx) instead of here
@@ -287,6 +335,7 @@ export default function Mapr() {
       let actionResults = [];
       if (data.actions?.length) {
         const conversationStops = [...history.flatMap((m) => m.stops || []), ...stops];
+        registerConversationStops(msgId, conversationStops);
         const results = await runMaprActions(data.actions, {
           trip,
           tripApi,
@@ -299,7 +348,7 @@ export default function Mapr() {
         });
         actionResults = results.map((r, idx) => {
           if (r.undo) registerUndo(`${msgId}:${idx}`, r.undo);
-          return { ok: r.ok, text: r.text, link: r.link || null };
+          return { ok: r.ok, text: r.text, link: r.link || null, action: r.action };
         });
       }
       const raw =
@@ -479,6 +528,11 @@ export default function Mapr() {
                           {r.ok && r.link && !r.undone && (
                             <button type="button" onClick={() => openLink(r.link)}>
                               Open
+                            </button>
+                          )}
+                          {!r.ok && r.action && (
+                            <button type="button" disabled={!!retrying[key]} onClick={() => retryAction(m.id, idx)}>
+                              {retrying[key] ? 'Trying…' : 'Try again'}
                             </button>
                           )}
                           {canUndo && (
