@@ -200,6 +200,18 @@ export default function Mapr() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // "Ask Mapr about …" from a landmark's page: arrives with the question
+  // and sends it straight away, once per navigation.
+  const pendingAskRef = useRef(location.state?.ask || null);
+  useEffect(() => {
+    const ask = pendingAskRef.current;
+    if (!ask) return;
+    pendingAskRef.current = null;
+    navigate(location.pathname, { replace: true, state: {} });
+    send(null, ask);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     function handleClickOutside(e) {
       if (regionBoxRef.current && !regionBoxRef.current.contains(e.target)) setRegionOpen(false);

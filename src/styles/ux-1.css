@@ -46,7 +46,3 @@
   margin: 14px 0 6px;
 }
 
-/* Ask AI: answer-shaped placeholder while it thinks. */
-.ask-landmark-skeleton {
-  display: block;
-}
