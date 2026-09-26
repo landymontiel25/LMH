@@ -568,6 +568,7 @@ textarea {
 .field input[type='text'],
 .field input[type='email'],
 .field input[type='password'],
+.field input[type='search'],
 .field select,
 .field textarea {
   width: 100%;
@@ -586,6 +587,7 @@ textarea {
 .field input[type='text']:focus,
 .field input[type='email']:focus,
 .field input[type='password']:focus,
+.field input[type='search']:focus,
 .field select:focus,
 .field textarea:focus {
   border-color: var(--color-brass);
@@ -3978,6 +3980,7 @@ body.lightbox-open .bottom-nav {
 .field input[type='text'],
 .field input[type='email'],
 .field input[type='password'],
+.field input[type='search'],
 .field select,
 .field textarea,
 .rating-comment,
@@ -3986,7 +3989,8 @@ body.lightbox-open .bottom-nav {
 .review-comment-input,
 .friend-email-input,
 .map-search-input,
-.radius-select {
+.radius-select,
+.autocomplete > input {
   background: var(--bg-input);
   border: 1px solid var(--border-default);
   color: var(--text-primary);
@@ -3994,9 +3998,30 @@ body.lightbox-open .bottom-nav {
   transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
 
+.autocomplete > input {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: 1rem;
+  outline: none;
+}
+
+.autocomplete > input:focus {
+  border-color: var(--mapr-blue);
+  box-shadow: 0 0 0 3px var(--mapr-blue-soft);
+}
+
+/* Safari renders type="search" with its own native chrome (rounded shape,
+   forced white fill) that ignores the background/border above unless the
+   default appearance is turned off first. */
+input[type='search'] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .field input[type='text'],
 .field input[type='email'],
 .field input[type='password'],
+.field input[type='search'],
 .field select,
 .field textarea {
   padding: 14px 18px;
@@ -4005,6 +4030,7 @@ body.lightbox-open .bottom-nav {
 .field input[type='text']:focus,
 .field input[type='email']:focus,
 .field input[type='password']:focus,
+.field input[type='search']:focus,
 .field select:focus,
 .field textarea:focus,
 .rating-comment:focus,
