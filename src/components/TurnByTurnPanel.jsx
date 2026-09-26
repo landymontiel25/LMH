@@ -12,10 +12,11 @@ function formatDuration(sec) {
   return `${h} hr${m % 60 ? ` ${m % 60} min` : ''}`;
 }
 
-// In-app turn-by-turn for one itinerary stop (data from api/directions.js):
-// total distance and ETA, how much live traffic is adding when driving, and
-// every step. Apple/Google Maps stay one tap away as a fallback.
-export default function TurnByTurnPanel({ stop, loading, error, data, onRefresh, onClose }) {
+// In-app turn-by-turn for one stop (data from api/directions.js): total
+// distance and ETA, how much live traffic is adding when driving, and every
+// step. Start (onStart) switches to live navigation that follows you.
+// Apple/Google Maps stay one tap away as a fallback.
+export default function TurnByTurnPanel({ stop, loading, error, data, onRefresh, onClose, onStart }) {
   const { units } = useUnits();
   const trafficMin =
     data?.mode === 'DRIVE' && data.staticDurationSeconds
@@ -92,6 +93,11 @@ export default function TurnByTurnPanel({ stop, loading, error, data, onRefresh,
           </ol>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {onStart && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={onStart}>
+                {'\u{25B6}\u{FE0F}'} Start
+              </button>
+            )}
             <button type="button" className="btn btn-ghost btn-sm" onClick={onRefresh}>
               {'\u{1F504}'} Refresh from Here
             </button>

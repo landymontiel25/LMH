@@ -36,7 +36,12 @@ describe('api/directions', () => {
             legs: [
               {
                 steps: [
-                  { navigationInstruction: { instructions: 'Turn <b>right</b> onto Washington Ave\nPass by Publix' }, distanceMeters: 1404, staticDuration: '250s' },
+                  {
+                    navigationInstruction: { instructions: 'Turn <b>right</b> onto Washington Ave\nPass by Publix', maneuver: 'TURN_RIGHT' },
+                    distanceMeters: 1404,
+                    staticDuration: '250s',
+                    endLocation: { latLng: { latitude: 40.7, longitude: -120.95 } },
+                  },
                 ],
               },
             ],
@@ -56,7 +61,15 @@ describe('api/directions', () => {
       [40.7, -120.95],
       [43.252, -126.453],
     ]);
-    expect(data.steps).toEqual([{ instruction: 'Turn right onto Washington Ave · Pass by Publix', distanceMeters: 1404, durationSeconds: 250 }]);
+    expect(data.steps).toEqual([
+      {
+        instruction: 'Turn right onto Washington Ave · Pass by Publix',
+        distanceMeters: 1404,
+        durationSeconds: 250,
+        end: [40.7, -120.95],
+        maneuver: 'TURN_RIGHT',
+      },
+    ]);
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(sent.routingPreference).toBe('TRAFFIC_AWARE');
   });

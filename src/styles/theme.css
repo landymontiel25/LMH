@@ -5059,3 +5059,130 @@ h2,
   font-size: 0.82rem;
   color: var(--success);
 }
+
+/* Live navigation (ActiveNavOverlay) over the full-screen Map. */
+.map-nav-active .map-search-btn,
+.map-nav-active .map-search-panel,
+.map-nav-active .map-fab-bar,
+.map-nav-active .map-edit-hint,
+.map-nav-active .leaflet-control-container {
+  display: none !important;
+}
+
+.nav-banner {
+  position: fixed;
+  top: calc(var(--header-h) + 10px);
+  left: 12px;
+  right: 12px;
+  max-width: 520px;
+  margin: 0 auto;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #14532d;
+  color: #fff;
+  box-shadow: var(--shadow-card);
+}
+
+.nav-banner.arrived {
+  background: var(--mapr-blue);
+}
+
+.nav-banner-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.nav-banner-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nav-banner-text strong {
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+
+.nav-banner-text span {
+  font-size: 1rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.nav-bottom {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--nav-h) + 10px);
+  max-width: 520px;
+  margin: 0 auto;
+  z-index: 1002;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgb(var(--color-bg-rgb));
+  box-shadow: var(--shadow-card);
+}
+
+.nav-bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-bottom-row .btn {
+  flex: 1 1 auto;
+}
+
+.nav-bottom-stats {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nav-bottom-stats strong {
+  font-size: 1.35rem;
+  color: var(--success);
+}
+
+.nav-bottom-stats span {
+  font-size: 0.82rem;
+  color: var(--text-secondary, var(--color-parchment-dim));
+}
+
+.nav-bottom-row .nav-round-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--mapr-blue-soft);
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.nav-bottom-row .btn-danger {
+  flex: 0 0 auto;
+}
+
+.itin-trip-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.itin-trip-actions .btn {
+  flex: 1 1 160px;
+  text-align: center;
+}
+
+.route-address {
+  margin: 4px 0 8px;
+  font-size: 0.8rem;
+  color: var(--color-parchment-dim);
+}

@@ -89,3 +89,20 @@ describe('annotateRoute', () => {
     expect(a).toMatchObject({ id: 'a', name: 'A', typicalMinutes: 60, free: false });
   });
 });
+
+describe('googleMapsMultiStopLink', () => {
+  it('puts every stop in order: waypoints, then the last as the destination', async () => {
+    const { googleMapsMultiStopLink } = await import('./routing');
+    const url = new URL(googleMapsMultiStopLink([{ lat: 1, lng: 2 }, { lat: 3, lng: 4 }, { lat: 5, lng: 6 }], { lat: 0, lng: 0 }, 'walking'));
+    expect(url.searchParams.get('origin')).toBe('0,0');
+    expect(url.searchParams.get('waypoints')).toBe('1,2|3,4');
+    expect(url.searchParams.get('destination')).toBe('5,6');
+    expect(url.searchParams.get('travelmode')).toBe('walking');
+  });
+
+  it('is null with no stops, and omits origin when unknown', async () => {
+    const { googleMapsMultiStopLink } = await import('./routing');
+    expect(googleMapsMultiStopLink([], null)).toBeNull();
+    expect(new URL(googleMapsMultiStopLink([{ lat: 1, lng: 2 }], null)).searchParams.has('origin')).toBe(false);
+  });
+});

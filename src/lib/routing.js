@@ -230,3 +230,16 @@ export function mapsDeepLink(destination, destLat, destLng) {
   }
   return `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
 }
+
+// Google Maps with every stop in order (Apple Maps' web links can't take
+// more than one destination). Google allows up to 9 waypoints between
+// origin and destination; with no origin it starts from your location.
+export function googleMapsMultiStopLink(stops, origin, mode = 'driving') {
+  const pt = (s) => `${s.lat},${s.lng}`;
+  const list = stops.slice(0, 10);
+  if (!list.length) return null;
+  const params = new URLSearchParams({ api: '1', destination: pt(list[list.length - 1]), travelmode: mode });
+  if (origin) params.set('origin', pt(origin));
+  if (list.length > 1) params.set('waypoints', list.slice(0, -1).map(pt).join('|'));
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
