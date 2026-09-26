@@ -10,7 +10,7 @@ import { readPersisted, writePersisted } from '../lib/usePersistentState';
 const LAST_EMAIL_KEY = 'auth.lastEmail';
 
 export default function SignInForm({ onSignedUp }) {
-  const { signUpEmail, signInEmail, resetPassword } = useAuth();
+  const { signUpEmail, signInEmail, signInWithGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState(() => readPersisted(LAST_EMAIL_KEY) || '');
@@ -67,6 +67,19 @@ export default function SignInForm({ onSignedUp }) {
     } catch (err) {
       setError(authErrorMessage(err));
     } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setResetSent(false);
+    setBusy(true);
+    try {
+      await signInWithGoogle();
+      onSignedUp?.();
+    } catch (err) {
+      setError(authErrorMessage(err));
       setBusy(false);
     }
   };
@@ -199,6 +212,23 @@ export default function SignInForm({ onSignedUp }) {
           {mode === 'signup' ? 'Create Account' : 'Sign In'}
         </button>
       </form>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0', opacity: 0.5 }}>
+        <div style={{ flex: 1, height: '1px', background: 'currentColor' }} />
+        <span style={{ fontSize: '0.78rem' }}>or</span>
+        <div style={{ flex: 1, height: '1px', background: 'currentColor' }} />
+      </div>
+
+      <button
+        type="button"
+        className="btn btn-ghost btn-block"
+        onClick={handleGoogleSignIn}
+        disabled={busy}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+      >
+        <span style={{ fontSize: '1.2rem' }}>🔐</span>
+        Sign {mode === 'signup' ? 'up' : 'in'} with Google
+      </button>
 
       {mode === 'signin' && (
         <button

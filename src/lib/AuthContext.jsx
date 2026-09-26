@@ -12,6 +12,8 @@ import {
   EmailAuthProvider,
   deleteUser,
   updatePassword,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import { auth, firebaseEnabled } from './firebase';
 import { deleteAccountData } from './accountDeletion';
@@ -54,6 +56,13 @@ export function AuthProvider({ children }) {
   };
 
   const signInEmail = (email, password) => signInWithEmailAndPassword(auth, email, password);
+
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    recordReferralIfPending(result.user).catch(() => {});
+    return result.user;
+  };
 
   const resetPassword = (email) => sendPasswordResetEmail(auth, email);
 
@@ -110,6 +119,7 @@ export function AuthProvider({ children }) {
         firebaseEnabled,
         signUpEmail,
         signInEmail,
+        signInWithGoogle,
         resetPassword,
         resendVerification,
         refreshUser,
