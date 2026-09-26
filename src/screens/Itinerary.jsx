@@ -32,6 +32,12 @@ import EditableTitle from '../components/EditableTitle';
 import { ScreenSkeleton, Skeleton, SkeletonCard, SkeletonList } from '../components/Skeleton';
 
 const ROUTE_BLUE = '#2b7fff';
+// Turn-by-turn's actual route, once directions are up -- distinct from the
+// plain blue planned-order line, which is just a preview, not live
+// directions. The map itself dims around it (.itinerary-map.navigating in
+// theme.css) so it stands out; the satellite imagery has no per-road data
+// we could recolor individually, only what we draw ourselves.
+const NAV_ROUTE_GREEN = '#22c55e';
 
 // Setup used to be its own bottom-nav tab; it's now this modal, opened from
 // here instead -- "Create New Trip" is the only place it's reachable from.
@@ -120,7 +126,7 @@ function ItineraryMap({ origin, stops, onDetails, onInApp, navPoints, navStopId,
   const navigating = navPoints?.length > 1;
 
   return (
-    <div className="itinerary-map">
+    <div className={`itinerary-map ${navigating ? 'navigating' : ''}`}>
       <MapContainer center={linePoints[0] || [25.77, -80.19]} zoom={12} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
         <FitRoute points={navigating ? navPoints : linePoints} />
         <TileLayer url={SAT_TILE.url} attribution={SAT_TILE.attribution} />
@@ -144,7 +150,7 @@ function ItineraryMap({ origin, stops, onDetails, onInApp, navPoints, navStopId,
         {navigating && (
           <>
             <Polyline positions={navPoints} pathOptions={{ color: '#ffffff', weight: 9, opacity: 0.6 }} />
-            <Polyline positions={navPoints} pathOptions={{ color: ROUTE_BLUE, weight: 5, opacity: 1 }} />
+            <Polyline positions={navPoints} pathOptions={{ color: NAV_ROUTE_GREEN, weight: 5, opacity: 1 }} />
           </>
         )}
 

@@ -2562,6 +2562,24 @@ textarea {
   background: var(--color-bg-raised);
 }
 
+/* Once real turn-by-turn is up, dim the satellite imagery so the green
+   route (drawn on top, in the overlay pane -- unaffected by this filter)
+   is the one thing that pops. The imagery has no per-road data to select
+   and recolor individually; this is the closest real equivalent to
+   "grey out everything but the way." */
+.itinerary-map.navigating .leaflet-tile-pane {
+  filter: brightness(0.45) saturate(0.7);
+  transition: filter 0.3s var(--ease);
+}
+
+.map-fullscreen .leaflet-tile-pane {
+  transition: filter 0.3s var(--ease);
+}
+
+.map-nav-open .map-fullscreen .leaflet-tile-pane {
+  filter: brightness(0.45) saturate(0.7);
+}
+
 /* The same panel as a bottom sheet over the full-screen Map tab. */
 .map-nav-sheet {
   position: absolute;
