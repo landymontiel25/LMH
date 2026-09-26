@@ -4974,6 +4974,13 @@ h2,
   border-color: rgba(240, 106, 106, 0.3);
 }
 
+.mapr-action.confirm {
+  flex-direction: column;
+  align-items: flex-start;
+  background: var(--mapr-blue-soft);
+  border-color: var(--mapr-blue-soft);
+}
+
 .mapr-action-buttons {
   display: flex;
   gap: 4px;

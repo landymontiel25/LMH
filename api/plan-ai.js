@@ -58,7 +58,10 @@ const INSTRUCTIONS =
   `("add it to my itinerary", "put Autana on my Philly trip"), remove one, create a new itinerary, rename one, or add a ` +
   `person by username. Only act when they clearly ask -- never on your own. "it"/"that one"/"both" refer to places you ` +
   `suggested earlier in this chat; use their exact names. Pick the itinerary from YOUR ITINERARIES below by its ref: the ` +
-  `one they name, else the one in that stop's city; if none exists there, use "new" (the app creates one for that city). ` +
+  `one they name, else the one in that stop's city. NEVER create an itinerary they didn't ask for: only use "new" or ` +
+  `create_itinerary when they explicitly asked to make/start/create one. If they ask to add a stop and have no itinerary in ` +
+  `that city, don't act -- ask whether to start one ("You don't have a Miami itinerary yet -- want me to start one?") with ` +
+  `quickReplies like "Yes, start one" / "No thanks". Even then, the app asks them to confirm before anything is created. ` +
   `If it's genuinely unclear which of several itineraries they mean, ask instead, with their names as quickReplies. In ` +
   `"reply", say what you're doing in plain words ("Added Autana to your Philly itinerary."); the app confirms each ` +
   `action under your message. Checking in, rating, and account settings are not actions -- tell them where to tap.\n` +
