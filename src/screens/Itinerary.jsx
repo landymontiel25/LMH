@@ -20,6 +20,7 @@ import { getRegion } from '../data/regions';
 import { geocodeLocation } from '../lib/geocode';
 import { useStopAddresses } from '../lib/useStopAddresses';
 import { distanceMeters } from '../lib/geo';
+import { matchesSearch } from '../lib/search';
 import {
   SORT_OPTIONS,
   orderStops,
@@ -570,8 +571,15 @@ export default function Itinerary() {
   const groupPhase = (g) => itineraryPhase(groupKey(g.id), g.landmarkIds, claimedMap, statusOverrides);
   const pastCount = myRegions.filter((rid) => soloPhase(rid) === 'past').length + groupTrips.filter((g) => groupPhase(g) === 'past').length;
   const currentCount = myRegions.length + groupTrips.length - pastCount;
-  const tabSolo = myRegions.filter((rid) => soloPhase(rid) === itinTab);
-  const tabGroups = groupTrips.filter((g) => groupPhase(g) === itinTab);
+  // Typing a city searches Current and Past together, by itinerary name,
+  // city and country, so a 10-city Europe trip is one search away.
+  const [itinQuery, setItinQuery] = useState('');
+  const searching = itinQuery.trim().length > 0;
+  const regionText = (rid) => [getRegion(rid)?.name, getRegion(rid)?.country].join(' ');
+  const soloHits = (rid) => matchesSearch(`${itineraryName(rid)} ${regionText(rid)}`, itinQuery);
+  const groupHits = (g) => matchesSearch(`${g.name} ${regionText(g.regionId)}`, itinQuery);
+  const tabSolo = searching ? myRegions.filter(soloHits) : myRegions.filter((rid) => soloPhase(rid) === itinTab);
+  const tabGroups = searching ? groupTrips.filter(groupHits) : groupTrips.filter((g) => groupPhase(g) === itinTab);
   const pastLabel = (key, landmarkIds) =>
     statusOverrides[key] === 'past' ? 'moved to Past' : `\u{2705} all ${(landmarkIds || []).length} visited`;
   const openPhase = openReg ? soloPhase(openReg) : null;
@@ -633,6 +641,17 @@ export default function Itinerary() {
             compact
           />
         )}
+        <input
+          type="search"
+          className="itin-search"
+          aria-label="Search your itineraries"
+          placeholder={'\u{1F50D} Search your cities'}
+          autoComplete="off"
+          enterKeyHint="search"
+          value={itinQuery}
+          onChange={(e) => setItinQuery(e.target.value)}
+        />
+        {!searching && (
         <div className="tabs" style={{ marginBottom: 14 }}>
           {[
             { id: 'current', label: 'Current', count: currentCount },
@@ -648,12 +667,16 @@ export default function Itinerary() {
             </button>
           ))}
         </div>
-        {itinTab === 'past' && tabGroups.length + tabSolo.length > 0 && (
+        )}
+        {searching && tabGroups.length + tabSolo.length === 0 && (
+          <p className="screen-subtitle">No itinerary matches “{itinQuery.trim()}”.</p>
+        )}
+        {!searching && itinTab === 'past' && tabGroups.length + tabSolo.length > 0 && (
           <p className="screen-subtitle" style={{ marginTop: 0 }}>
             Itineraries move here once you've checked into every landmark on them.
           </p>
         )}
-        {tabGroups.length + tabSolo.length === 0 && !groupsLoading && (
+        {!searching && tabGroups.length + tabSolo.length === 0 && !groupsLoading && (
           <p className="screen-subtitle">
             {itinTab === 'past'
               ? "Nothing here yet. Once you've checked into every landmark on an itinerary, it moves here."
@@ -674,7 +697,7 @@ export default function Itinerary() {
                   <h3 style={{ margin: 0 }}>{t.name}</h3>
                   <p style={{ margin: '4px 0 0', color: 'var(--color-parchment-dim)', fontSize: '0.85rem' }}>
                     {getRegion(t.regionId)?.name} · {(t.memberUids || []).length} member{(t.memberUids || []).length !== 1 ? 's' : ''}
-                    {itinTab === 'past' ? ` · ${pastLabel(groupKey(t.id), t.landmarkIds)}` : ''}
+                    {groupPhase(t) === 'past' ? ` · ${pastLabel(groupKey(t.id), t.landmarkIds)}` : ''}
                   </p>
                 </div>
                 <span className="itin-city-arrow">{'→'}</span>
@@ -682,7 +705,7 @@ export default function Itinerary() {
             ))}
           </div>
         )}
-        {tabSolo.length > 0 && itinTab === 'current' && (
+        {!searching && tabSolo.length > 0 && itinTab === 'current' && (
           <p className="screen-subtitle">
             {tabSolo.length} {tabSolo.length === 1 ? 'itinerary' : 'itineraries'} planned — tap one to see its route.
           </p>
@@ -698,7 +721,7 @@ export default function Itinerary() {
                 <p style={{ margin: '4px 0 0', color: 'var(--color-parchment-dim)', fontSize: '0.85rem' }}>
                   {named !== r?.name ? `${r?.name} · ` : ''}
                   {count} stop{count !== 1 ? 's' : ''}
-                  {itinTab === 'past' ? ` · ${pastLabel(rid, trip.byRegion[rid])}` : ''}
+                  {soloPhase(rid) === 'past' ? ` · ${pastLabel(rid, trip.byRegion[rid])}` : ''}
                 </p>
               </div>
               <span className="itin-city-arrow">{'→'}</span>

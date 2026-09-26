@@ -106,6 +106,12 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
           limit: RESERVE,
         })
       : globalPopularPicks({ excludeIds: exclude, checkinCounts, interests, customMatchIds, limit: RESERVE });
+  // Never leave the row empty when anything at all is left to suggest: a
+  // city with nothing new falls through to the most-visited places anywhere.
+  const anyPicks = (exclude, checkinCounts) => {
+    const list = localPicks(exclude, checkinCounts);
+    return list.length ? list : globalPopularPicks({ excludeIds: exclude, checkinCounts, interests, customMatchIds, limit: RESERVE });
+  };
   // Region in the cache key: picking a city or getting a location fix must
   // replace a global-popularity list right away, not after the TTL.
   const cacheFP = `${tasteFP}.${region || 'global'}`;
@@ -153,11 +159,12 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     const instantFb = readLocalFeedback(user.uid);
     const instantPassed = votedIds(instantFb);
     const cachedInstant = readPicksCache(key);
-    if (cachedInstant) {
-      setQueue(cachedInstant.filter((p) => !instantPassed.includes(p.id) && !excludeIds.includes(p.id)));
+    const cachedLeft = (cachedInstant || []).filter((p) => !instantPassed.includes(p.id) && !excludeIds.includes(p.id));
+    if (cachedLeft.length) {
+      setQueue(cachedLeft);
     } else {
       try {
-        setQueue(localPicks([...excludeIds, ...instantPassed], countsRef.current));
+        setQueue(anyPicks([...excludeIds, ...instantPassed], countsRef.current));
       } catch {
         /* the async path below still runs and will fill the queue */
       }
@@ -168,9 +175,11 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       if (cancelled) return;
       setFeedback(Object.fromEntries(Object.values(fb).map((f) => [f.landmarkId, f.verdict])));
       const passedIds = votedIds(fb);
-      const cached = readPicksCache(key);
-      if (cached) {
-        setQueue(cached.filter((p) => !passedIds.includes(p.id) && !excludeIds.includes(p.id)));
+      // A cached list you've since voted through or visited is a miss, not
+      // an answer -- an empty row here used to stick for the cache's 4 hours.
+      const cachedLeft = (readPicksCache(key) || []).filter((p) => !passedIds.includes(p.id) && !excludeIds.includes(p.id));
+      if (cachedLeft.length) {
+        setQueue(cachedLeft);
         return;
       }
       let countsError = null;
@@ -180,7 +189,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       });
       if (cancelled) return;
       countsRef.current = checkinCounts;
-      const fallback = () => localPicks([...excludeIds, ...passedIds], checkinCounts);
+      const fallback = () => anyPicks([...excludeIds, ...passedIds], checkinCounts);
       // Global popularity is a straight count, so there's nothing for
       // Claude to rank; skip the API call and don't cache it.
       if (!region) {
@@ -240,14 +249,17 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       // that visit with no retry. Fail to an empty queue instead.
       let list = [];
       try {
-        const visited = new Set(excludeIds);
-        list = (next || fallback()).filter((p) => !visited.has(p.id)).slice(0, RESERVE);
+        const skip = new Set([...excludeIds, ...passedIds]);
+        list = (next || []).filter((p) => !skip.has(p.id)).slice(0, RESERVE);
+        // The server's picks were all places you've been or voted on:
+        // use the on-device ones instead of showing nothing.
+        if (!list.length) list = fallback().filter((p) => !skip.has(p.id)).slice(0, RESERVE);
       } catch {
         /* leave list empty rather than leaving the queue stuck at null */
       }
       setQueue(list);
       if (!list.length && apiError) setLoadError(apiError);
-      if (next) writePicksCache(key, list);
+      if (next && list.length) writePicksCache(key, list);
     })();
     return () => {
       cancelled = true;
@@ -345,10 +357,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       let next = (cur || []).filter((x) => x.id !== p.id);
       if (next.length < RESERVE) {
         const seen = new Set([...next.map((x) => x.id), ...Object.keys(nextFeedback), ...excludeIds]);
-        const extra = localPicks([...seen], countsRef.current).filter((x) => !seen.has(x.id));
+        const extra = anyPicks([...seen], countsRef.current).filter((x) => !seen.has(x.id));
         next = [...next, ...extra].slice(0, RESERVE);
       }
-      if (region) writePicksCache(picksCacheKey(user.uid, ratingsCount, origin, cacheFP), next);
+      if (region && next.length) writePicksCache(picksCacheKey(user.uid, ratingsCount, origin, cacheFP), next);
       return next;
     });
   };

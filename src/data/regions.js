@@ -277,8 +277,13 @@ export const INTERESTS = [
   // founder hangouts, hacker houses. The Bay Area catalog is mostly this.
   { id: 'tech', label: 'Tech & Startups', icon: '\u{1F4BB}', added: 14 },
   { id: 'campus-life', label: 'Campus Life', icon: '\u{1F3EB}', added: 3 },
-  { id: 'dorms', label: 'Dorms', icon: '\u{1F6CF}\u{FE0F}', added: 6 },
 ];
+
+// Retired category ids and where their landmarks live now. Dorms folded
+// into Campus Life; saved filters and older custom landmarks may still
+// carry the old id.
+export const CATEGORY_ALIASES = { dorms: 'campus-life' };
+export const normalizeCategories = (cats) => [...new Set((cats || []).map((c) => CATEGORY_ALIASES[c] || c))];
 
 export const INTEREST_ORDERS = [
   { id: 'abc', label: 'A–Z' },

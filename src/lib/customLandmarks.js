@@ -1,3 +1,4 @@
+import { normalizeCategories } from '../data/regions';
 import {
   doc,
   getDoc,
@@ -21,10 +22,12 @@ import { db, storage } from './firebase';
 // to include status: "pending" and nothing here ever changes it -- that's
 // just the rules' own internal enforcement token, not a real approval
 // gate. Nothing in the app reads or shows that value anymore.)
+const withCategories = (l) => (l.categories ? { ...l, categories: normalizeCategories(l.categories) } : l);
+
 export async function getCustomLandmarks() {
   if (!db) return [];
   const snap = await getDocs(collection(db, 'custom_landmarks'));
-  return snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
+  return snap.docs.map((d) => withCategories({ docId: d.id, ...d.data() }));
 }
 
 // Direct lookup by id -- the doc id and the `id` field are always the same
@@ -33,7 +36,7 @@ export async function getCustomLandmarks() {
 export async function getCustomLandmark(id) {
   if (!db || !id) return null;
   const snap = await getDoc(doc(db, 'custom_landmarks', id));
-  return snap.exists() ? { docId: snap.id, ...snap.data() } : null;
+  return snap.exists() ? withCategories({ docId: snap.id, ...snap.data() }) : null;
 }
 
 // Reject after `ms` so a stalled Storage upload never hangs the submission.

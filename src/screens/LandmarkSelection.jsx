@@ -39,9 +39,17 @@ const NEAR_CITY_KM = 80;
 
 const SORT_OPTIONS = [
   { id: 'nearMe', label: '\u{1F4CD} Near Me' },
-  { id: 'popularity', label: '\u{1F525} Popularity' },
-  { id: 'topRated', label: '\u{2B50} Top Rated' },
+  { id: 'popularity', label: '\u{1F525} Popular' },
 ];
+
+// "Popular": the catalog's popularity (0-10) nudged by community ratings,
+// weighted by how many there are so one 5-star review can't jump the list.
+// Curated Top 10 picks still lead, in rank order.
+const popularScore = (l, ratings) => {
+  const r = ratings[l.id];
+  const community = r?.count ? (r.avg - 3) * 2 * (r.count / (r.count + 3)) : 0;
+  return (l.popularity ?? 0) + community;
+};
 
 // Searchable city picker -- a plain multi-city tab row gets unwieldy once
 // there are more than a handful of regions, so this collapses to one control
@@ -195,7 +203,7 @@ export default function LandmarkSelection() {
   // interests chosen, or "All" tapped) means show everything.
   // Starts on "All categories"; the dropdown narrows from there.
   // Search text, category and sort survive leaving the tab or closing the
-  // app (see usePersistentState); visitFilter below already lives on the trip.
+  // app (see usePersistentState).
   const [activeCategories, setActiveCategories] = usePersistentState('landmarks.category', [], {
     ttlMs: DAY,
     isEmpty: NO_CATEGORIES,
@@ -209,20 +217,9 @@ export default function LandmarkSelection() {
   // Tapping a row's thumbnail opens the photo full-screen.
   const [lightbox, setLightbox] = useState(null);
   const [search, setSearch] = usePersistentState('landmarks.search', '', { ttlMs: DAY });
-  const [sortBy, setSortBy] = usePersistentState('landmarks.sort', 'popularity', { isEmpty: NEVER_EMPTY });
-  // Which of Visited/Unvisited are active -- multi-select like the interest
-  // tabs above (both on just means "show everything", same as neither).
-  // Seeded from and written back to trip.visitFilter so it survives
-  // navigating into a landmark's Info page and back (that unmounts this
-  // screen, which would otherwise reset plain local state to []).
-  const [visitFilter, setVisitFilterState] = useState(() => trip.visitFilter ?? []);
-  const setVisitFilter = (updater) => {
-    setVisitFilterState((cur) => {
-      const next = typeof updater === 'function' ? updater(cur) : updater;
-      updateTrip({ visitFilter: next });
-      return next;
-    });
-  };
+  const [savedSort, setSortBy] = usePersistentState('landmarks.sort', 'popularity', { isEmpty: NEVER_EMPTY });
+  // Top Rated folded into Popular; an old saved choice lands there.
+  const sortBy = savedSort === 'nearMe' ? 'nearMe' : 'popularity';
   // Snapshot of each touched region's selection from right before the last
   // "Suggest For Me" applied, so pressing it again can undo exactly that --
   // no separate trip to Clear. Null means the button isn't in its "applied"
@@ -286,14 +283,10 @@ export default function LandmarkSelection() {
   // applies, so a correction shows up here too without a code deploy.
   const editedLandmarks = useMemo(() => ALL_LANDMARKS.map(applyEdit), [applyEdit]);
 
-  // Everything but the search box: city, category and visited filters.
+  // Everything but the search box: city and category filters.
   const passesFilters = (l) => {
     if (cityFilter !== 'all' && l.regionId !== cityFilter) return false;
     if (activeCategories.length && !activeCategories.some((key) => landmarkMatchesCategory(l, key))) return false;
-    if (visitFilter.length) {
-      const visited = !!claimedMap[l.id];
-      if (!visitFilter.some((f) => (f === 'visited' ? visited : !visited))) return false;
-    }
     return true;
   };
 
@@ -311,16 +304,12 @@ export default function LandmarkSelection() {
         const haystack = [l.name, l.summary, getRegion(l.regionId)?.name, ...categoryLabels, ...(l.facts ?? [])].join(' ');
         if (!matchesSearch(haystack, term)) return false;
       }
-      if (visitFilter.length) {
-        const visited = !!claimedMap[l.id];
-        if (!visitFilter.some((f) => (f === 'visited' ? visited : !visited))) return false;
-      }
       return true;
     });
 
     // Typing a name to find it is a lookup, not a browse -- the best match
     // first (then alphabetical) is what makes a known name fast to spot, so
-    // a search term overrides whichever Sort mode (Popularity/Top Rated/Near
+    // a search term overrides whichever Sort mode (Popular/Near
     // Me) is active. Clearing the search goes back to that sort.
     if (term) {
       // Best match first (name matches over description matches), then A-Z.
@@ -330,31 +319,18 @@ export default function LandmarkSelection() {
       return [...filtered].sort((a, b) => score.get(b) - score.get(a) || a.name.localeCompare(b.name));
     }
 
-    if (sortBy === 'popularity') {
-      // Curated editorial Top 10 (if a city has them) lead in rank order, then
-      // everything else falls back to the data-driven popularity score.
-      return [...filtered].sort(
-        (a, b) =>
-          (a.editorialRank ?? 99) - (b.editorialRank ?? 99) ||
-          (b.popularity ?? 0) - (a.popularity ?? 0) ||
-          a.name.localeCompare(b.name)
-      );
-    }
-    if (sortBy === 'topRated') {
-      return [...filtered].sort(
-        (a, b) =>
-          (ratings[b.id]?.avg ?? 0) - (ratings[a.id]?.avg ?? 0) ||
-          (ratings[b.id]?.count ?? 0) - (ratings[a.id]?.count ?? 0) ||
-          (b.popularity ?? 0) - (a.popularity ?? 0)
-      );
-    }
     if (sortBy === 'nearMe' && coords) {
       return [...filtered].sort(
         (a, b) =>
           distanceMeters(coords.lat, coords.lng, a.lat, a.lng) - distanceMeters(coords.lat, coords.lng, b.lat, b.lng)
       );
     }
-    return filtered;
+    return [...filtered].sort(
+      (a, b) =>
+        (a.editorialRank ?? 99) - (b.editorialRank ?? 99) ||
+        popularScore(b, ratings) - popularScore(a, ratings) ||
+        a.name.localeCompare(b.name)
+    );
   }, [
     cityFilter,
     activeCategories,
@@ -363,8 +339,6 @@ export default function LandmarkSelection() {
     sortBy,
     coords,
     ratings,
-    visitFilter,
-    claimedMap,
     normalizedCustomLandmarks,
     editedLandmarks,
   ]);
@@ -390,7 +364,7 @@ export default function LandmarkSelection() {
       )
       .filter((l) => l && !shown.has(`${l.regionId}/${l.id}`) && passesFilters(l));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [smart.ids, landmarks, normalizedCustomLandmarks, editedLandmarks, cityFilter, activeCategories, visitFilter, claimedMap]);
+  }, [smart.ids, landmarks, normalizedCustomLandmarks, editedLandmarks, cityFilter, activeCategories]);
 
   // Toggle: applying it snapshots each touched city's prior selection so a
   // second tap can put it back exactly, instead of making you find Clear.
@@ -438,27 +412,6 @@ export default function LandmarkSelection() {
           ? `${landmarks.length} landmarks matching your interests — pick what you want to see.`
           : `All ${landmarks.length} landmarks — pick everything you want to see.`}
       </p>
-
-      <div className="tabs" style={{ marginBottom: 12 }}>
-        <button
-          className={`tab-btn ${visitFilter.includes('unvisited') ? 'active' : ''}`}
-          onClick={() =>
-            setVisitFilter((cur) =>
-              cur.includes('unvisited') ? cur.filter((f) => f !== 'unvisited') : [...cur, 'unvisited']
-            )
-          }
-        >
-          Unexplored
-        </button>
-        <button
-          className={`tab-btn ${visitFilter.includes('visited') ? 'active' : ''}`}
-          onClick={() =>
-            setVisitFilter((cur) => (cur.includes('visited') ? cur.filter((f) => f !== 'visited') : [...cur, 'visited']))
-          }
-        >
-          Explored
-        </button>
-      </div>
 
       <button
         type="button"

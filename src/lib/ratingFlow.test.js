@@ -31,7 +31,8 @@ describe('rateability gate', () => {
     const ids = INTERESTS.map((i) => i.id);
     expect(ids).toContain('parks-nature');
     expect(ids).toContain('entertainment');
-    expect(ids).toContain('dorms');
+    expect(ids).not.toContain('dorms');
+    expect(ids).toContain('campus-life');
     expect(ids).toContain('airports');
     expect(ids).toContain('food');
     expect(ids).toContain('local-life');
@@ -41,7 +42,7 @@ describe('rateability gate', () => {
     expect(ids).toContain('formula-1');
     expect(ids).toContain('benches');
     expect(ids).toContain('tech');
-    expect(ids).toHaveLength(14);
+    expect(ids).toHaveLength(13);
   });
 
   it('rates airports as airports, whatever else they are tagged', () => {

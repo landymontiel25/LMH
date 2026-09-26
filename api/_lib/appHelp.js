@@ -26,7 +26,12 @@ export const APP_HELP =
   `- Itinerary tab has two subtabs, Current and Past. An itinerary (solo or group) moves to Past on its own once you've ` +
   `checked into every landmark on it (places Mapr found on the web don't count, since they can't be checked into). Open one ` +
   `and tap "📦 Move to Past" or "↩️ Move back to Current" to move it by hand; for a group trip that only moves it for you. ` +
-  `There's no sharing of past itineraries yet.\n` +
+  `There's no sharing of past itineraries yet. A search bar at the top of the Itinerary tab finds an itinerary by city, country ` +
+  `or name across both Current and Past.\n` +
+  `- Landmarks list sorts two ways: "📍 Near Me" and "🔥 Popular" (most popular first, blending how well-known a place is with ` +
+  `community ratings). There's no Explored/Unexplored filter and no separate Top Rated sort anymore. Residence halls are ` +
+  `under Campus Life; there's no separate Dorms category.\n` +
+  `- You can edit your own comment on any landmark you've rated or checked into, from the "Your comment" box on its page.\n` +
   `- Itineraries (Itinerary tab): one per city, plus group trips. Each has a name; tap ✏️ next to the title to rename it. A solo itinerary ` +
   `shows a Members card with you and "➕ Add a user": search anyone by username or pick a friend, and the itinerary becomes a group trip ` +
   `you both can edit (same name, stops and places). In a group trip, any member can rename it, tick landmarks, and invite people with ` +
