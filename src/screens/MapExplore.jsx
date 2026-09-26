@@ -19,12 +19,14 @@ import { getCustomLandmarks, deleteCustomLandmark, updateCustomLandmark } from '
 import { isAdmin } from '../lib/admins';
 import { useAdminMode } from '../lib/AdminModeContext';
 import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
-import { matchesSearch } from '../lib/search';
+import { searchScore } from '../lib/search';
 import CheckInButton from '../components/CheckInButton';
 import DirectionsButton from '../components/DirectionsButton';
 import TurnByTurnPanel from '../components/TurnByTurnPanel';
 import ActiveNavOverlay from '../components/ActiveNavOverlay';
 import { prepareRoute, navProgress } from '../lib/navProgress';
+import { useSmartSearch, landmarkSearchText } from '../lib/smartSearch';
+import SmartSearchLabel from '../components/SmartSearchLabel';
 import { fetchDirections } from '../lib/routing';
 import LandmarkThumb from '../components/LandmarkThumb';
 import QuickRateButton from '../components/QuickRateButton';
@@ -573,11 +575,11 @@ export default function MapExplore() {
     // International Autodrome even though no single field says "Miami F1"
     // verbatim (see matchesSearch: every WORD in the query has to appear
     // somewhere in the haystack, not the whole phrase in one field).
-    const landmarkMatches = ALL_LANDMARKS.filter((l) => {
+    const landmarkMatches = ALL_LANDMARKS.map((l) => {
       const categoryLabels = l.categories?.map((c) => CATEGORY_LABEL[c]).filter(Boolean) ?? [];
-      const haystack = [l.name, l.summary, getRegion(l.regionId)?.name, ...categoryLabels, ...(l.facts ?? [])].join(' ');
-      return matchesSearch(haystack, term);
-    }).map((l) => {
+      const details = [l.summary, getRegion(l.regionId)?.name, ...categoryLabels, ...(l.facts ?? [])].join(' ');
+      return { l, score: searchScore(l.name, details, term) };
+    }).filter((x) => x.score > 0).map(({ l, score }) => {
       // A drag-to-fix correction (savedOverrides) has to win here too, or
       // jumping to a landmark via search flies you back to its original,
       // wrong spot -- right next to where the corrected pin actually sits,
@@ -594,6 +596,7 @@ export default function MapExplore() {
         lat: savedPos?.lat ?? l.lat,
         lng: savedPos?.lng ?? l.lng,
         zoom: 17,
+        score,
       };
     });
     // User-submitted landmarks were never searchable here -- only via the
@@ -602,18 +605,52 @@ export default function MapExplore() {
     // landmark's own id (from customLandmarks.js) is already globally
     // unique on its own.
     const customMatches = customLandmarks
-      .filter((l) => matchesSearch([l.name, l.summary, getRegion(l.region)?.name].join(' '), term))
-      .map((l) => ({
+      .map((l) => ({ l, score: searchScore(l.name, [l.summary, getRegion(l.region)?.name].join(' '), term) }))
+      .filter((x) => x.score > 0)
+      .map(({ l, score }) => ({
         id: `custom-${l.docId}`,
         name: l.name,
         sub: getRegion(l.region)?.name,
         lat: l.lat,
         lng: l.lng,
         zoom: 17,
+        score,
       }));
-    const placeMatches = SEARCHABLE_PLACES.filter((p) => matchesSearch(p.name, term));
-    return [...landmarkMatches, ...customMatches, ...placeMatches].slice(0, 8);
+    const placeMatches = SEARCHABLE_PLACES.map((p) => ({ ...p, score: searchScore(p.name, '', term) })).filter((p) => p.score > 0);
+    // Best match first -- a name match beats a word buried in a description.
+    return [...landmarkMatches, ...customMatches, ...placeMatches].sort((a, b) => b.score - a.score).slice(0, 8);
   }, [searchTerm, savedOverrides, customLandmarks]);
+
+  // AI fallback when the word search finds little: catalog on the server,
+  // custom landmarks sent along.
+  const customSearchItems = useMemo(
+    () => customLandmarks.map((l) => ({ id: `custom:${l.docId}`, text: landmarkSearchText(l, getRegion(l.region)?.name) })),
+    [customLandmarks]
+  );
+  const smart = useSmartSearch({ query: searchTerm, localCount: searchResults.length, catalog: true, items: customSearchItems });
+  const smartResults = useMemo(() => {
+    const seen = new Set(searchResults.map((r) => r.id));
+    return smart.ids
+      .map((id) => {
+        if (id.startsWith('custom:')) {
+          const l = customLandmarks.find((c) => c.docId === id.slice(7));
+          return l && { id: `custom-${l.docId}`, name: l.name, sub: getRegion(l.region)?.name, lat: l.lat, lng: l.lng, zoom: 17 };
+        }
+        const [rid, lid] = id.split('/');
+        const l = ALL_LANDMARKS.find((x) => x.regionId === rid && x.id === lid);
+        if (!l) return null;
+        const savedPos = savedOverrides[`${l.regionId}/${l.id}`];
+        return {
+          id: `landmark-${l.regionId}-${l.id}`,
+          name: l.name,
+          sub: getRegion(l.regionId)?.name,
+          lat: savedPos?.lat ?? l.lat,
+          lng: savedPos?.lng ?? l.lng,
+          zoom: 17,
+        };
+      })
+      .filter((r) => r && !seen.has(r.id));
+  }, [smart.ids, searchResults, customLandmarks, savedOverrides]);
 
   const selectSearchResult = (result) => {
     setSearchFocus(result);
@@ -1168,7 +1205,7 @@ export default function MapExplore() {
               )}
               {searchTerm.trim() && (
                 <div className="map-search-results">
-                  {searchResults.length === 0 && (
+                  {searchResults.length === 0 && !smart.loading && smartResults.length === 0 && (
                     <div className="map-search-empty">Nothing matches "{searchTerm}".</div>
                   )}
                   {searchResults.map((r) => (
@@ -1178,6 +1215,13 @@ export default function MapExplore() {
                       className="map-search-result"
                       onClick={() => selectSearchResult(r)}
                     >
+                      <span className="map-search-result-name">{r.name}</span>
+                      <span className="map-search-result-city">{r.sub}</span>
+                    </button>
+                  ))}
+                  <SmartSearchLabel loading={smart.loading} count={smartResults.length} />
+                  {smartResults.map((r) => (
+                    <button type="button" key={r.id} className="map-search-result" onClick={() => selectSearchResult(r)}>
                       <span className="map-search-result-name">{r.name}</span>
                       <span className="map-search-result-city">{r.sub}</span>
                     </button>

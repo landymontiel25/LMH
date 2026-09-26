@@ -5205,3 +5205,20 @@ h2,
   font: inherit;
   font-size: 0.9rem;
 }
+
+.smart-search-label {
+  padding: 8px 12px 4px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--mapr-blue);
+}
+
+.smart-search-label.loading {
+  color: var(--color-parchment-dim);
+  font-weight: 500;
+}
+
+.checkin-grid-divider {
+  grid-column: 1 / -1;
+}

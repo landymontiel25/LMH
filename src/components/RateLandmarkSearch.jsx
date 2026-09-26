@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ALL_LANDMARKS, INTERESTS, getRegion } from '../data/regions';
-import { matchesSearch } from '../lib/search';
+import { searchScore } from '../lib/search';
+import { useSmartSearch, landmarkSearchText } from '../lib/smartSearch';
+import SmartSearchLabel from './SmartSearchLabel';
 import { getCustomLandmarks } from '../lib/customLandmarks';
 import { createLandmarkFromPlace } from '../lib/placeLandmarks';
 import { searchPlaces, getPlaceDetails, makeSessionToken } from '../lib/places';
@@ -109,17 +111,33 @@ export default function RateLandmarkSearch() {
   ].filter(isRateable);
   const results = q
     ? pool
-        .filter((l) => {
+        .map((l) => {
           // Includes the city/region name and category labels too -- so a
           // query like "Miami F1" finds the Miami International Autodrome
           // even though no single field says "Miami F1" verbatim.
           const categoryLabels = l.categories?.map((c) => INTERESTS.find((i) => i.id === c)?.label).filter(Boolean) ?? [];
-          const haystack = [l.name, l.summary, getRegion(l.regionId)?.name, ...categoryLabels, ...(l.facts ?? [])].join(' ');
-          return matchesSearch(haystack, q);
+          const details = [l.summary, getRegion(l.regionId)?.name, ...categoryLabels, ...(l.facts ?? [])].join(' ');
+          return { l, score: searchScore(l.name, details, q) };
         })
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score || a.l.name.localeCompare(b.l.name))
         .slice(0, 8)
+        .map((x) => x.l)
     : [];
+
+  // AI fallback for descriptions/nicknames/bad spelling, before Google.
+  const customSearchItems = useMemo(
+    () => customLandmarks.map((l) => ({ id: `custom:${l.id}`, text: landmarkSearchText(l, getRegion(l.region)?.name) })),
+    [customLandmarks]
+  );
+  const smart = useSmartSearch({ query: term, localCount: results.length, catalog: true, items: customSearchItems, enabled: open });
+  const smartResults = smart.ids
+    .map((id) =>
+      id.startsWith('custom:')
+        ? pool.find((l) => l.id === id.slice(7))
+        : pool.find((l) => `${l.regionId}/${l.id}` === id)
+    )
+    .filter((l) => l && !results.some((r) => r.id === l.id && r.regionId === l.regionId));
 
   // Only reach for a live Places search once the catalog has genuinely come
   // up empty -- most searches match something already in the app and never
@@ -208,7 +226,8 @@ export default function RateLandmarkSearch() {
               </div>
               {q && (
                 <div className="autocomplete-list" style={{ position: 'static', marginTop: 8, boxShadow: 'none' }}>
-                  {results.map((l) => {
+                  {[...results, ...(smartResults.length ? [null, ...smartResults] : [])].map((l) => {
+                    if (!l) return <SmartSearchLabel key="smart" count={smartResults.length} />;
                     const alreadyRated = !!myReviews[l.id];
                     return (
                       <button
@@ -225,24 +244,25 @@ export default function RateLandmarkSearch() {
                       </button>
                     );
                   })}
-                  {results.length === 0 && remoteLoading && (
+                  {smart.loading && <SmartSearchLabel loading />}
+                  {results.length === 0 && !smart.loading && smartResults.length === 0 && remoteLoading && (
                     <div className="autocomplete-loading" role="status" aria-live="polite">
                       <span className="visually-hidden">Searching…</span>
                       <Skeleton width="70%" height={14} style={{ marginBottom: 6 }} />
                       <Skeleton width="45%" height={11} />
                     </div>
                   )}
-                  {results.length === 0 && !remoteLoading && remoteError && (
+                  {results.length === 0 && !smart.loading && smartResults.length === 0 && !remoteLoading && remoteError && (
                     <ErrorNotice
                       compact
                       message={friendlyError(remoteError, "Couldn't search places right now.")}
                       onRetry={() => setRemoteAttempt((n) => n + 1)}
                     />
                   )}
-                  {results.length === 0 && !remoteLoading && !remoteError && remoteResults.length === 0 && (
+                  {results.length === 0 && !smart.loading && smartResults.length === 0 && !remoteLoading && !remoteError && remoteResults.length === 0 && (
                     <div className="autocomplete-loading">No place matches "{term}".</div>
                   )}
-                  {results.length === 0 &&
+                  {results.length === 0 && !smart.loading && smartResults.length === 0 &&
                     !remoteLoading &&
                     remoteResults.map((s) => (
                       <button

@@ -104,6 +104,10 @@ const APP_HELP =
   `in somewhere you can add or edit your comment any time later, with or without a rating -- from that section or from each row of ` +
   `My Check-ins (Profile → your check-ins). Other people's comments show when their account is public or they're your friend.\n` +
   `- My Check-ins has a search box: type a place, city, something from your comment, your rating ("loved") or a date.\n` +
+  `- Every search box (Map, Landmarks, My Check-ins, Rate a Landmark, city pickers) forgives spelling: typos, swapped or missing ` +
+  `letters, half-typed words, sound-alike spellings ("filadelfia"), and accents. Best matches come first. When that still finds ` +
+  `little and you're signed in, Mapr works out what you meant from a description, nickname or what a place is known for ("the big ` +
+  `clock in London", "Rocky steps", "the city with the Eiffel Tower") and shows those under "✨ Mapr thinks you mean".\n` +
   `- Badges: not shown on Profile itself (that screen is deliberately kept simple) — see them all at Profile → "See Full Stats". Earned ` +
   `automatically from your check-in history — total check-ins (First Steps, Explorer, Adventurer, Legend), distinct cities visited (City Hopper, ` +
   `Globetrotter), daily check-in streaks (3/7/30-Day Streak), and the one-time Welcome badge from onboarding.\n` +
