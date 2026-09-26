@@ -509,6 +509,88 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
     }
 
+    // Mapr chats and projects (src/lib/maprChats.js). A chat's memberUids
+    // always equals its project's memberUids, or just its owner when it's in
+    // no project -- so sharing a project shares its chats, and one
+    // array-contains query lists everything a person can see.
+    function maprProject(id) {
+      return get(/databases/$(database)/documents/mapr_projects/$(id)).data;
+    }
+    function maprChatShapeOk() {
+      let d = request.resource.data;
+      return d.ownerUid is string
+        && d.memberUids is list && d.memberUids.size() >= 1 && d.memberUids.size() <= 25
+        && d.ownerUid in d.memberUids
+        && d.title is string && d.title.size() <= 120
+        && d.messagesJson is string && d.messagesJson.size() <= 900000
+        && d.regionIds is list && d.regionIds.size() <= 30
+        && (d.projectId == null || d.projectId is string);
+    }
+    function maprChatMembersOk() {
+      let d = request.resource.data;
+      return d.projectId == null
+        ? d.memberUids == [d.ownerUid]
+        : (exists(/databases/$(database)/documents/mapr_projects/$(d.projectId))
+           && d.memberUids == maprProject(d.projectId).memberUids);
+    }
+    match /mapr_chats/{id} {
+      allow get, list: if request.auth != null && request.auth.uid in resource.data.memberUids;
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && maprChatShapeOk()
+        && maprChatMembersOk();
+      // (Members-match plus owner-in-members means you can only start a
+      // chat in a project you belong to.)
+      allow update: if request.auth != null
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && maprChatShapeOk()
+        && maprChatMembersOk()
+        && (
+          // Your own chat: anything, including moving it between projects
+          // you belong to.
+          (request.auth.uid == resource.data.ownerUid
+            && (request.resource.data.projectId == null
+                || request.auth.uid in maprProject(request.resource.data.projectId).memberUids))
+          // Someone's chat in a project you're in: continue it, rename it,
+          // or (the project owner) re-sync its members.
+          || (resource.data.projectId != null
+              && request.resource.data.projectId == resource.data.projectId
+              && request.auth.uid in resource.data.memberUids)
+          // The project owner sends a chat back to its owner (removing that
+          // person, or deleting the project).
+          || (resource.data.projectId != null
+              && request.resource.data.projectId == null
+              && exists(/databases/$(database)/documents/mapr_projects/$(resource.data.projectId))
+              && request.auth.uid == maprProject(resource.data.projectId).ownerUid)
+        );
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+    }
+    function maprProjectShapeOk() {
+      let d = request.resource.data;
+      return d.ownerUid is string
+        && d.memberUids is list && d.memberUids.size() >= 1 && d.memberUids.size() <= 25
+        && d.ownerUid in d.memberUids
+        && d.memberNames is map
+        && d.name is string && d.name.size() <= 120
+        && d.instructions is string && d.instructions.size() <= 4000;
+    }
+    match /mapr_projects/{id} {
+      allow get, list: if request.auth != null && request.auth.uid in resource.data.memberUids;
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.memberUids == [request.auth.uid]
+        && maprProjectShapeOk();
+      // Members can rename it and edit its instructions; only the owner
+      // changes who's in it.
+      allow update: if request.auth != null
+        && request.auth.uid in resource.data.memberUids
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && maprProjectShapeOk()
+        && (request.auth.uid == resource.data.ownerUid
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'instructions', 'updatedAt']));
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+    }
+
     // In-app notifications (item i2's non-push slice -- see the lib file for
     // why this project can't wire up real push yet). Only the owning uid can
     // ever read them; an admin can also create one for someone else (e.g.
@@ -534,6 +616,12 @@ service cloud.firestore {
                    get(/databases/$(database)/documents/group_trips/$(request.resource.data.groupTripId)).data.memberUids
                 && request.resource.data.uid in
                    get(/databases/$(database)/documents/group_trips/$(request.resource.data.groupTripId)).data.memberUids)
+            || (request.resource.data.type == 'mapr_project_invite'
+                && exists(/databases/$(database)/documents/mapr_projects/$(request.resource.data.maprProjectId))
+                && request.auth.uid ==
+                   get(/databases/$(database)/documents/mapr_projects/$(request.resource.data.maprProjectId)).data.ownerUid
+                && request.resource.data.uid in
+                   get(/databases/$(database)/documents/mapr_projects/$(request.resource.data.maprProjectId)).data.memberUids)
             || (request.resource.data.type == 'feature_request'
                 && exists(/databases/$(database)/documents/users/$(request.resource.data.uid))
                 && get(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.get('email', '')

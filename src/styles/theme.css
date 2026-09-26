@@ -5334,3 +5334,219 @@ h2,
   font: inherit;
   font-size: 0.92rem;
 }
+
+/* Mapr chats (MaprChatsPanel) */
+.mapr-chat-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mapr-chat-bar-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  background: var(--color-bg-card);
+  color: var(--color-parchment);
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.mapr-chat-bar-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  background: var(--color-bg-card);
+  color: var(--color-parchment);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.mapr-chat-bar-title input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+.mapr-chat-bar-project {
+  flex-shrink: 0;
+  color: var(--color-parchment-dim);
+  font-weight: 500;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mapr-chat-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mapr-chats-backdrop {
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 0;
+}
+.mapr-chats-panel {
+  width: min(360px, 88vw);
+  height: 100%;
+  overflow-y: auto;
+  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 24px);
+  background: var(--color-bg-card);
+  border-right: 1px solid var(--border-default);
+  box-shadow: var(--shadow-float);
+}
+.mapr-chats-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.mapr-chats-head h3 {
+  margin: 0;
+}
+.mapr-chats-section {
+  margin: 14px 0 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-parchment-dim);
+}
+.mapr-chat-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+}
+.mapr-chat-row.active {
+  background: rgba(255, 255, 255, 0.06);
+}
+.mapr-chat-row.editing input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-default);
+  background: var(--color-bg);
+  color: var(--color-parchment);
+  font: inherit;
+}
+.mapr-chat-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  color: var(--color-parchment);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+.mapr-chat-open .mapr-chat-title {
+  width: 100%;
+}
+.mapr-chat-when {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-parchment-dim);
+}
+.mapr-chat-more {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-parchment-dim);
+  font: inherit;
+  cursor: pointer;
+}
+.mapr-chat-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 5;
+  min-width: 190px;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-float);
+}
+.mapr-chat-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-parchment);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.mapr-chat-menu button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.mapr-chat-menu button.danger {
+  color: var(--danger);
+}
+.mapr-project-head {
+  display: flex;
+  align-items: center;
+}
+.mapr-project-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  padding: 8px 6px;
+  border: none;
+  background: none;
+  color: var(--color-parchment);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.mapr-project-chats {
+  margin-left: 14px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-default);
+}
+.mapr-chat-new-in {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  color: var(--color-brass-bright);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
