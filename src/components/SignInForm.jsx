@@ -80,6 +80,7 @@ export default function SignInForm({ onSignedUp }) {
       onSignedUp?.();
     } catch (err) {
       setError(authErrorMessage(err));
+    } finally {
       setBusy(false);
     }
   };

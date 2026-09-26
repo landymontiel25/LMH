@@ -59,9 +59,16 @@ export function AuthProvider({ children }) {
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    recordReferralIfPending(result.user).catch(() => {});
-    return result.user;
+    provider.addScope('profile');
+    provider.addScope('email');
+    try {
+      const result = await signInWithPopup(auth, provider);
+      recordReferralIfPending(result.user).catch(() => {});
+      return result.user;
+    } catch (err) {
+      console.error('Google Sign-In error:', err.code, err.message);
+      throw err;
+    }
   };
 
   const resetPassword = (email) => sendPasswordResetEmail(auth, email);
