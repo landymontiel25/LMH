@@ -10,14 +10,25 @@ import { paletteFor, iconFor } from '../lib/landmarkVisuals';
 // if any -- put first, ahead of the landmark's regular photos, so your own
 // shot becomes the cover picture just for you. onImageClick (if given) opens
 // a photo full-screen instead of just displaying it inline.
+//
+// A photo that fails to load is dropped from the set (so a gallery never
+// shows a broken-image icon); if none load, the colored category card shows
+// instead. Photos shimmer softly until they arrive.
 export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', swipeable = false, myPhotos, onImageClick }) {
   const palette = paletteFor(landmark.id);
   const icon = iconFor(landmark.categories);
   const dims =
     size === 'sm' ? { width: 150, height: 105 } : size === 'lg' ? { width: 320, height: 220 } : { width: 220, height: 150 };
-  const allImages = [...(myPhotos || []), ...(landmark.images || [])];
+  const [failed, setFailed] = useState(() => new Set());
+  const [loaded, setLoaded] = useState(() => new Set());
+  const allImages = [...(myPhotos || []), ...(landmark.images || [])].filter((src) => !failed.has(src));
   const images = allImages.length ? allImages : null;
   const [activeIdx, setActiveIdx] = useState(0);
+  const imgProps = (src) => ({
+    className: `postcard-photo ${loaded.has(src) ? '' : 'img-loading'}`,
+    onLoad: () => setLoaded((cur) => new Set(cur).add(src)),
+    onError: () => setFailed((cur) => new Set(cur).add(src)),
+  });
 
   const handleScroll = (e) => {
     const idx = Math.round(e.target.scrollLeft / e.target.clientWidth);
@@ -34,7 +45,7 @@ export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', 
               key={src}
               src={src}
               alt={`${landmark.name} photo ${i + 1} of ${images.length}`}
-              className="postcard-photo"
+              {...imgProps(src)}
               style={{ width: dims.width, height: dims.height, cursor: onImageClick ? 'zoom-in' : undefined }}
               loading="lazy"
               onClick={onImageClick ? () => onImageClick(src) : undefined}
@@ -53,7 +64,7 @@ export default function LandmarkPostcard({ landmark, size = 'md', rotate = 'l', 
       <img
         src={images[0]}
         alt={landmark.name}
-        className="postcard-photo"
+        {...imgProps(images[0])}
         style={{ width: dims.width, height: dims.height, cursor: onImageClick ? 'zoom-in' : undefined }}
         loading="lazy"
         onClick={onImageClick ? () => onImageClick(images[0]) : undefined}

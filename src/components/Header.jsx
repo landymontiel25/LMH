@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { subscribeLeaderboard } from '../lib/leaderboard';
 import { subscribeMyNotifications } from '../lib/notifications';
+import { Skeleton } from './Skeleton';
 
 // Header identity control. Shows who you're signed in as; hovering (desktop)
 // or tapping (mobile) reveals this week's rank/points, a "Notifications"
@@ -85,9 +86,18 @@ function ProfileMenu() {
       {open && (
         <div className="points-popover">
           <div className="points-popover-joined">This Week</div>
-          <div>
-            {'\u{1F3C6}'} {me?.rank ? `#${me.rank}` : '—'} {'·'} {me ? me.points.toLocaleString() : 0} pts
-          </div>
+          {/* Before the weekly board's first snapshot, "— · 0 pts" would read
+              as a real (and discouraging) answer -- show a placeholder instead. */}
+          {me ? (
+            <div>
+              {'\u{1F3C6}'} {me.rank ? `#${me.rank}` : '—'} {'·'} {me.points.toLocaleString()} pts
+            </div>
+          ) : (
+            <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="visually-hidden">Loading this week's rank…</span>
+              {'\u{1F3C6}'} <Skeleton className="skeleton-inline" width={90} height={13} />
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <button
               type="button"

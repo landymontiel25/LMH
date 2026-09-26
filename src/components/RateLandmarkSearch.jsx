@@ -11,6 +11,16 @@ import { useRatings } from '../lib/RatingsContext';
 import { authErrorMessage } from '../lib/authErrors';
 import { auth } from '../lib/firebase';
 import { isRateable, diversityHint } from '../lib/ratingFlow';
+import { friendlyError, fetchJson } from '../lib/friendlyError';
+import { Skeleton } from './Skeleton';
+import ErrorNotice from './ErrorNotice';
+
+// Our own plain-language messages (and the AI's "reason"), shown as written.
+function userError(message) {
+  const err = new Error(message);
+  err.userMessage = message;
+  return err;
+}
 
 // The first card in "Your Mapr Picks" -- a big "+" tile the same size and
 // shape as a real pick card, so rating something isn't a separate feature
@@ -56,22 +66,26 @@ export default function RateLandmarkSearch() {
 
   const [remoteResults, setRemoteResults] = useState([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
-  const [remoteError, setRemoteError] = useState('');
+  const [remoteError, setRemoteError] = useState(null);
+  const [remoteAttempt, setRemoteAttempt] = useState(0);
   const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
+  // { err, place } -- the place is kept so Try again re-adds the same one.
+  const [createError, setCreateError] = useState(null);
   // One id per Autocomplete+Details "session" (Google's billing unit) --
   // reused across keystrokes, then replaced once a place is actually added.
   const sessionTokenRef = useRef(makeSessionToken());
 
   useEffect(() => {
-    if (open) getCustomLandmarks().then(setCustomLandmarks);
+    // Catalog search still works without these (curated landmarks + the
+    // live Places fallback), so a failed load here just means fewer matches.
+    if (open) getCustomLandmarks().then(setCustomLandmarks).catch(() => {});
   }, [open]);
 
   const openSearch = () => {
     setTerm('');
     setRemoteResults([]);
-    setRemoteError('');
-    setCreateError('');
+    setRemoteError(null);
+    setCreateError(null);
     setOpen(true);
   };
   const close = () => setOpen(false);
@@ -116,24 +130,24 @@ export default function RateLandmarkSearch() {
     if (!open || results.length > 0 || term.trim().length < 2) {
       setRemoteResults([]);
       setRemoteLoading(false);
-      setRemoteError('');
+      setRemoteError(null);
       return;
     }
     setRemoteLoading(true);
-    setRemoteError('');
+    setRemoteError(null);
     const handle = setTimeout(async () => {
       try {
         const suggestions = await searchPlaces(term, null, sessionTokenRef.current);
         setRemoteResults(suggestions);
       } catch (e) {
-        setRemoteError(e.message || 'Address search failed.');
+        setRemoteError(e);
       } finally {
         setRemoteLoading(false);
       }
     }, 300);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [term, results.length, open]);
+  }, [term, results.length, open, remoteAttempt]);
 
   // A place Google knows about but this app's never seen -- research it and
   // save it as a real custom landmark (identical to what Add Landmark does),
@@ -141,11 +155,11 @@ export default function RateLandmarkSearch() {
   // either finds real facts/a real photo for it or leaves them blank.
   const pickRemote = async (s) => {
     if (!user) {
-      setCreateError('Sign in first to add a new place.');
+      setCreateError({ err: userError('Sign in first to add a new place.') });
       return;
     }
     setCreating(true);
-    setCreateError('');
+    setCreateError(null);
     try {
       const details = await getPlaceDetails(s.placeId, sessionTokenRef.current);
       sessionTokenRef.current = makeSessionToken();
@@ -154,19 +168,24 @@ export default function RateLandmarkSearch() {
       // still says unverified for up to an hour, and firestore.rules checks
       // the token's email_verified before accepting the new landmark.
       const idToken = await (auth.currentUser || user).getIdToken(true);
-      const verifyRes = await fetch('/api/verify-landmark', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({
-          name: finalName,
-          categories: [],
-          lat: details.lat,
-          lng: details.lng,
-          imageDataUrl: '',
-          userFacts: [],
-        }),
-      });
-      const verified = await verifyRes.json().catch(() => null);
+      let verified;
+      try {
+        verified = await fetchJson('/api/verify-landmark', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({
+            name: finalName,
+            categories: [],
+            lat: details.lat,
+            lng: details.lng,
+            imageDataUrl: '',
+            userFacts: [],
+          }),
+        });
+      } catch (e) {
+        if (e.code !== 'email-not-verified') throw e;
+        verified = { code: e.code };
+      }
       if (verified?.code === 'email-not-verified') {
         // Same recovery as Add Landmark: try to fire off a fresh link
         // rather than ask them to go dig up the original one.
@@ -178,14 +197,13 @@ export default function RateLandmarkSearch() {
         } catch (e) {
           resendErr = e;
         }
-        throw new Error(
+        throw userError(
           resent
             ? 'Verify your email first — we just sent a fresh link to your inbox (check spam too), then try again.'
             : `Verify your email first — check your inbox for the verification link we already sent you (check spam too), then try again. (Couldn't send another one: ${authErrorMessage(resendErr)})`
         );
       }
-      if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this place — try again.');
-      if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different search.");
+      if (!verified.ok) throw userError(verified.reason || "That doesn't look like a real place — try a different search.");
 
       // Leave it unattributed (shows as "Custom pin") rather than filing it
       // under the nearest curated city when nothing is actually nearby.
@@ -209,7 +227,7 @@ export default function RateLandmarkSearch() {
       });
       pick({ ...created, regionId: created.region });
     } catch (e) {
-      setCreateError(e.message || 'Could not add that place — try again.');
+      setCreateError({ err: e, place: s });
     } finally {
       setCreating(false);
     }
@@ -237,12 +255,16 @@ export default function RateLandmarkSearch() {
               )}
               <div className="field" style={{ marginBottom: 0 }}>
                 <input
-                  type="text"
+                  type="search"
+                  name="rate-search"
+                  aria-label="Search landmarks or any place"
+                  autoComplete="off"
+                  enterKeyHint="search"
                   placeholder={'\u{1F50D} Search landmarks or any place…'}
                   value={term}
                   onChange={(e) => {
                     setTerm(e.target.value);
-                    setCreateError('');
+                    setCreateError(null);
                   }}
                   autoFocus
                   disabled={creating}
@@ -268,10 +290,18 @@ export default function RateLandmarkSearch() {
                     );
                   })}
                   {results.length === 0 && remoteLoading && (
-                    <div className="autocomplete-loading">Searching…</div>
+                    <div className="autocomplete-loading" role="status" aria-live="polite">
+                      <span className="visually-hidden">Searching…</span>
+                      <Skeleton width="70%" height={14} style={{ marginBottom: 6 }} />
+                      <Skeleton width="45%" height={11} />
+                    </div>
                   )}
                   {results.length === 0 && !remoteLoading && remoteError && (
-                    <div className="autocomplete-loading">{remoteError}</div>
+                    <ErrorNotice
+                      compact
+                      message={friendlyError(remoteError, "Couldn't search places right now.")}
+                      onRetry={() => setRemoteAttempt((n) => n + 1)}
+                    />
                   )}
                   {results.length === 0 && !remoteLoading && !remoteError && remoteResults.length === 0 && (
                     <div className="autocomplete-loading">No place matches "{term}".</div>
@@ -298,9 +328,11 @@ export default function RateLandmarkSearch() {
                 </p>
               )}
               {createError && (
-                <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
-                  {createError}
-                </p>
+                <ErrorNotice
+                  compact
+                  message={friendlyError(createError.err, "Couldn't add that place. Try again.")}
+                  onRetry={createError.place ? () => pickRemote(createError.place) : undefined}
+                />
               )}
               <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 16 }} disabled={creating} onClick={close}>
                 Cancel

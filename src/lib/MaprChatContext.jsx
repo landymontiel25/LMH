@@ -12,7 +12,7 @@ export const MAPR_GREETING =
 // (or reloaded) while it was still in flight -- the saved thread ends on the
 // traveler's own message, so offer to resend it instead of leaving it
 // hanging with no answer.
-export const INTERRUPTED_REPLY = "That reply didn't finish before the app closed. Want me to try again?";
+const INTERRUPTED_REPLY = "That reply didn't finish before the app closed. Want me to try again?";
 
 const initialMessages = () => [{ role: 'assistant', text: MAPR_GREETING, stops: [] }];
 

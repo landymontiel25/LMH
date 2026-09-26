@@ -6,6 +6,7 @@ import { useBadges } from '../lib/BadgesContext';
 import { ALL_BADGES, RARITY_ORDER } from '../lib/streaks';
 import { levelProgress } from '../lib/level';
 import CheckinsGallery from '../components/CheckinsGallery';
+import { SkeletonCard } from '../components/Skeleton';
 
 const SORTS = [
   { id: 'oldest', label: 'Oldest' },
@@ -86,17 +87,25 @@ export default function FullStats() {
         {'\u{2190}'} Back to Profile
       </button>
 
-      <div className="card section">
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0 }}>{'\u{1F396}\u{FE0F}'} Level {level}</h3>
-          <span className="screen-subtitle" style={{ margin: 0 }}>
-            {pointsIntoLevel.toLocaleString()} / {pointsForNextLevel.toLocaleString()} pts
-          </span>
+      {/* Until stats land, "Level 1 · 0 pts" would be a wrong answer, not a placeholder. */}
+      {stats ? (
+        <div className="card section">
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0 }}>{'\u{1F396}\u{FE0F}'} Level {level}</h3>
+            <span className="screen-subtitle" style={{ margin: 0 }}>
+              {pointsIntoLevel.toLocaleString()} / {pointsForNextLevel.toLocaleString()} pts
+            </span>
+          </div>
+          <div className="level-bar-track" style={{ marginTop: 10 }}>
+            <div className="level-bar-fill" style={{ width: `${pct * 100}%` }} />
+          </div>
         </div>
-        <div className="level-bar-track" style={{ marginTop: 10 }}>
-          <div className="level-bar-fill" style={{ width: `${pct * 100}%` }} />
+      ) : (
+        <div className="section" role="status" aria-live="polite">
+          <span className="visually-hidden">Loading your level…</span>
+          <SkeletonCard lines={1} />
         </div>
-      </div>
+      )}
 
       <div className="card section">
         <h3 style={{ marginTop: 0 }}>{'\u{1F3C5}'} All Badges</h3>

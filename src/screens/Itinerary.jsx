@@ -23,6 +23,11 @@ import TurnByTurnPanel from '../components/TurnByTurnPanel';
 import DirectionsButton from '../components/DirectionsButton';
 import { useRatings } from '../lib/RatingsContext';
 import { useUnits, formatDistance } from '../lib/UnitsContext';
+import { usePersistentState } from '../lib/usePersistentState';
+import { friendlyError } from '../lib/friendlyError';
+import { useToast } from '../lib/ToastContext';
+import ErrorNotice from '../components/ErrorNotice';
+import { ScreenSkeleton, Skeleton, SkeletonCard, SkeletonList } from '../components/Skeleton';
 
 const ROUTE_BLUE = '#2b7fff';
 
@@ -41,7 +46,7 @@ function CreateTripModal({ onClose }) {
         <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 12 }} onClick={onClose}>
           {'\u{2715}'} Close
         </button>
-        <Suspense fallback={<p className="screen-subtitle">Loading…</p>}>
+        <Suspense fallback={<ScreenSkeleton label="Loading trip setup" />}>
           <TripSetup />
         </Suspense>
       </div>
@@ -205,10 +210,13 @@ export default function Itinerary() {
   const { units } = useUnits();
   const { myPhotos } = useMyPhotos();
   const navigate = useNavigate();
+  const toast = useToast();
 
   // One itinerary per city. Overview lists them; opening one shows its route.
+  // The open city is remembered, so closing the app mid-trip reopens that
+  // city's route instead of the overview.
   const myRegions = regionsWithItineraries();
-  const [openRegion, setOpenRegion] = useState(null);
+  const [openRegion, setOpenRegion] = usePersistentState('itinerary.openRegion', null);
   const [showCreateTrip, setShowCreateTrip] = useState(false);
   const openReg = openRegion && myRegions.includes(openRegion) ? openRegion : null;
   const region = getRegion(openReg);
@@ -230,19 +238,45 @@ export default function Itinerary() {
   // Remembered across itineraries and sessions -- someone who always wants
   // "Highest rated" shouldn't have to re-pick it in every city.
   const [sort, setSort] = useState(() => {
-    const saved = localStorage.getItem('lh-itin-sort');
+    let saved = null;
+    try {
+      saved = localStorage.getItem('lh-itin-sort');
+    } catch {
+      /* storage blocked: default sort */
+    }
     return SORT_OPTIONS.some((o) => o.id === saved) ? saved : 'nearest';
   });
   useEffect(() => {
-    localStorage.setItem('lh-itin-sort', sort);
+    try {
+      localStorage.setItem('lh-itin-sort', sort);
+    } catch {
+      /* storage blocked: sort just won't be remembered */
+    }
   }, [sort]);
   const [pendingRemove, setPendingRemove] = useState(null); // stop awaiting delete confirmation
   const [showRecap, setShowRecap] = useState(false);
   const [groupTrips, setGroupTrips] = useState([]);
+  // Kept apart from "no group trips": a failed load must not look like
+  // (or fall through to) the empty "No itineraries yet" screen.
+  const [groupsLoading, setGroupsLoading] = useState(!!user);
+  const [groupsError, setGroupsError] = useState(null);
   const [groupBusy, setGroupBusy] = useState(false);
 
+  const loadGroupTrips = () => {
+    if (!user) {
+      setGroupsLoading(false);
+      return;
+    }
+    setGroupsLoading(true);
+    setGroupsError(null);
+    listMyGroupTrips(user.uid)
+      .then(setGroupTrips)
+      .catch(setGroupsError)
+      .finally(() => setGroupsLoading(false));
+  };
   useEffect(() => {
-    if (user) listMyGroupTrips(user.uid).then(setGroupTrips).catch(() => setGroupTrips([]));
+    loadGroupTrips();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
   const autoOriginRef = useRef(null);
 
@@ -278,12 +312,14 @@ export default function Itinerary() {
 
     if (trip.startingLocation) {
       setGeocoding(true);
-      geocodeLocation(trip.startingLocation, region).then((geocoded) => {
-        if (!cancelled) {
-          setOrigin(geocoded || region.center);
-          setGeocoding(false);
-        }
-      });
+      geocodeLocation(trip.startingLocation, region)
+        .catch(() => null)
+        .then((geocoded) => {
+          if (!cancelled) {
+            setOrigin(geocoded || region.center);
+            setGeocoding(false);
+          }
+        });
       return () => {
         cancelled = true;
       };
@@ -327,12 +363,16 @@ export default function Itinerary() {
     }
     let cancelled = false;
     setRefiningTimes(true);
-    enhanceRouteWithDrivingTimes(routeOrigin, route).then((enhanced) => {
-      if (!cancelled) {
-        setDrivingRoute(enhanced);
-        setRefiningTimes(false);
-      }
-    });
+    // Driving times only refine the straight-line estimates already on
+    // screen; if the lookup fails, those estimates simply stay.
+    enhanceRouteWithDrivingTimes(routeOrigin, route)
+      .catch(() => route)
+      .then((enhanced) => {
+        if (!cancelled) {
+          setDrivingRoute(enhanced);
+          setRefiningTimes(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -360,7 +400,8 @@ export default function Itinerary() {
       const data = await fetchDirections(from, stop);
       setNav((cur) => (cur?.stop.id === stop.id ? { ...cur, loading: false, data } : cur));
     } catch (e) {
-      setNav((cur) => (cur?.stop.id === stop.id ? { ...cur, loading: false, error: e.message } : cur));
+      const error = friendlyError(e, "Couldn't get directions right now. Try again, or open your maps app.");
+      setNav((cur) => (cur?.stop.id === stop.id ? { ...cur, loading: false, error } : cur));
     }
   };
   // Leaving the city's itinerary drops any directions that were open.
@@ -380,6 +421,28 @@ export default function Itinerary() {
 
   // How many of this city's planned landmarks you've already checked in at.
   const visitedCount = selectedLandmarks.filter((l) => claimedMap[l.id]).length;
+
+  // Nothing planned on this device yet: wait for (or report a failure of)
+  // the group-trip load before deciding this really is a dead end.
+  if (myRegions.length === 0 && groupsLoading) {
+    return (
+      <div>
+        <Skeleton width="60%" height={30} radius={10} style={{ marginBottom: 16 }} />
+        <SkeletonList count={2} label="Loading your itineraries" />
+      </div>
+    );
+  }
+  if (myRegions.length === 0 && groupsError) {
+    return (
+      <div className="empty-state">
+        <ErrorNotice error={groupsError} message={friendlyError(groupsError, "Couldn't load your group trips.")} onRetry={loadGroupTrips} />
+        <button className="btn btn-ghost" style={{ marginTop: 10 }} onClick={() => setShowCreateTrip(true)}>
+          {'\u{2795}'} Create New Trip
+        </button>
+        {showCreateTrip && <CreateTripModal onClose={() => setShowCreateTrip(false)} />}
+      </div>
+    );
+  }
 
   // No personal itineraries AND no group trips -- true dead end.
   if (myRegions.length === 0 && groupTrips.length === 0) {
@@ -407,6 +470,15 @@ export default function Itinerary() {
         <h1 className="screen-title">
           <span>{'\u{1F5FA}\u{FE0F}'}</span> Your Itineraries
         </h1>
+        {groupsLoading && <SkeletonList count={1} label="Loading group trips" />}
+        {groupsError && !groupsLoading && (
+          <ErrorNotice
+            error={groupsError}
+            message={friendlyError(groupsError, "Couldn't load your group trips.")}
+            onRetry={loadGroupTrips}
+            compact
+          />
+        )}
         {groupTrips.length > 0 && (
           <div style={{ marginBottom: 18 }}>
             <h3 style={{ margin: '0 0 8px' }}>{'\u{1F465}'} Group Trips</h3>
@@ -461,10 +533,19 @@ export default function Itinerary() {
     );
   }
 
+  // Same shape as the route that's about to appear: header, tags, then a
+  // card per stop.
   if (geocoding) {
+    const stopCount = Math.min(Math.max(selectedLandmarks.length, 1), 4);
     return (
-      <div className="empty-state">
-        <p>{'\u{1F9ED}'} Mapping your {region.name} route…</p>
+      <div className="skeleton-screen" role="status" aria-live="polite">
+        <span className="visually-hidden">Mapping your {region.name} route…</span>
+        <Skeleton width={130} height={30} radius={999} style={{ marginBottom: 12 }} />
+        <Skeleton width="55%" height={30} radius={10} style={{ marginBottom: 10 }} />
+        <Skeleton width="70%" height={14} style={{ marginBottom: 18 }} />
+        {Array.from({ length: stopCount }, (_, i) => (
+          <SkeletonCard key={i} lines={2} />
+        ))}
       </div>
     );
   }
@@ -517,19 +598,27 @@ export default function Itinerary() {
           style={{ marginBottom: 16 }}
           disabled={groupBusy}
           onClick={async () => {
-            setGroupBusy(true);
-            try {
-              const id = await createGroupTrip({
-                ownerUid: user.uid,
-                ownerName: myUsername || user.displayName || user.email,
-                name: `${region.name} Trip`,
-                regionId: region.id,
-                landmarkIds: selectedLandmarks.map((l) => l.id),
-              });
-              navigate(`/group/${id}`);
-            } finally {
-              setGroupBusy(false);
-            }
+            const start = async () => {
+              setGroupBusy(true);
+              try {
+                const id = await createGroupTrip({
+                  ownerUid: user.uid,
+                  ownerName: myUsername || user.displayName || user.email,
+                  name: `${region.name} Trip`,
+                  regionId: region.id,
+                  landmarkIds: selectedLandmarks.map((l) => l.id),
+                });
+                navigate(`/group/${id}`);
+              } catch (e) {
+                toast.show(friendlyError(e, "Couldn't start the group trip. Try again."), {
+                  actionLabel: 'Retry',
+                  onAction: start,
+                });
+              } finally {
+                setGroupBusy(false);
+              }
+            };
+            await start();
           }}
         >
           {'\u{1F465}'} {groupBusy ? 'Starting…' : 'Start a Group Trip With Friends'}

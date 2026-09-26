@@ -1,1 +1,52 @@
 /* UX pass, area 1: styles for this area's screens. */
+
+/* Mapr chat: Try again / Sign in under a failed reply. */
+.chatlab-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Mapr Picks placeholder cards: same footprint as a real .mapr-pick. */
+.mapr-pick-skeleton {
+  cursor: default;
+}
+.mapr-pick-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px 0;
+  box-sizing: border-box;
+}
+.mapr-pick-skeleton .mapr-pick-actions .skeleton {
+  flex: 1;
+}
+
+/* Address search dropdown: placeholder rows + inline error with retry. */
+.autocomplete-skeleton-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+.autocomplete-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Directions panel: placeholder step list while the route loads. */
+.turn-panel-skeleton-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 14px 0 6px;
+}
+
+/* Ask AI: answer-shaped placeholder while it thinks. */
+.ask-landmark-skeleton {
+  display: block;
+}

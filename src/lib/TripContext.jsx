@@ -70,7 +70,11 @@ export function TripProvider({ children }) {
   const [mapFocusPoint, setMapFocusPoint] = useState(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trip));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(trip));
+    } catch {
+      /* private mode / storage full: the trip still works for this session */
+    }
   }, [trip]);
 
   const updateTrip = (patch) => setTrip((t) => ({ ...t, ...patch }));

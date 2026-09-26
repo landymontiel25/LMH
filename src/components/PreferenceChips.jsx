@@ -3,6 +3,7 @@ import { useTrip } from '../lib/TripContext';
 import { INTERESTS } from '../data/regions';
 import { classifyInterest } from '../lib/interestClassifier';
 import AddInterestChip from './AddInterestChip';
+import { Skeleton } from './Skeleton';
 
 // The actual chip-grid for saved preferences -- shared by Settings' "My
 // Preferences" card, Trip Setup, and the one-time onboarding step right
@@ -54,6 +55,7 @@ export default function PreferenceChips() {
             role="button"
             tabIndex={0}
             className={`chip ${isSelected ? 'selected' : ''}`}
+             aria-busy={classifying.has(text)}
             title={classifying.has(text) ? 'Finding matching landmarks…' : isSelected ? 'Tap to turn off' : 'Tap to turn on'}
             onClick={() => toggleSavedCustomInterestSelected(text)}
             onKeyDown={(e) => {
@@ -64,7 +66,11 @@ export default function PreferenceChips() {
             }}
           >
             <span className="chip-icon">
-              {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
+              {classifying.has(text) ? (
+                  <Skeleton width={16} height={16} radius={16} />
+                ) : (
+                  trip.customInterestEmoji[text] || '\u{2728}'
+                )}
             </span>
             <span>{text}</span>
             <button

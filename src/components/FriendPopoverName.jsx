@@ -3,6 +3,9 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { getUserProfile, sendFriendRequest, hasPendingRequestTo } from '../lib/friends';
 import FriendStatsModal from './FriendStatsModal';
+import { Skeleton } from './Skeleton';
+import { useToast } from '../lib/ToastContext';
+import { friendlyError } from '../lib/friendlyError';
 
 // Wraps a name (leaderboard, full-list page, wherever) so tapping it goes
 // straight to that person's stats if you're already friends -- the same
@@ -15,7 +18,8 @@ export default function FriendPopoverName({ userId, fallbackName, children }) {
   const [open, setOpen] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [status, setStatus] = useState(null); // null | 'sending' | 'sent' | error message
+  const [status, setStatus] = useState(null); // null | 'sent'
+  const toast = useToast();
   const ref = useRef(null);
   const closeTimer = useRef(null);
 
@@ -46,7 +50,9 @@ export default function FriendPopoverName({ userId, fallbackName, children }) {
 
   useEffect(() => {
     if (open && !profile && userId) {
-      getUserProfile(userId).then((p) => setProfile(p || {})).catch(() => setProfile({}));
+      getUserProfile(userId)
+        .then((p) => setProfile(p || {}))
+        .catch(() => setProfile({ loadFailed: true }));
     }
   }, [open, userId, profile]);
 
@@ -75,17 +81,23 @@ export default function FriendPopoverName({ userId, fallbackName, children }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Optimistic: "Sent" right away; if the write fails it flips back to
+  // "Add Friend" and a toast says why, with Retry.
   const addFriend = async () => {
     if (!user || !profile?.uid) return;
-    setStatus('sending');
+    const target = profile;
+    setStatus('sent');
     try {
       await sendFriendRequest(
         { uid: user.uid, username: myUsername, displayName: user.displayName, email: user.email },
-        profile
+        target
       );
-      setStatus('sent');
     } catch (e) {
-      setStatus(e.message || 'Could not send request.');
+      setStatus(null);
+      toast.show(friendlyError(e, `Couldn't send a friend request to @${target.username || fallbackName}.`), {
+        actionLabel: 'Retry',
+        onAction: addFriend,
+      });
     }
   };
 
@@ -108,17 +120,25 @@ export default function FriendPopoverName({ userId, fallbackName, children }) {
       {open && !isFriend && (
         <div className="user-popover-card" onClick={(e) => e.stopPropagation()}>
           <div className="user-popover-username">@{profile?.username || fallbackName}</div>
-          {!isMe && (
-            <button
-              type="button"
-              className="btn btn-primary btn-tight"
-              disabled={!profile || status === 'sending' || status === 'sent'}
-              onClick={addFriend}
-            >
-              {status === 'sent' ? `${'\u{2713}'} Sent` : status === 'sending' ? '…' : `${'\u{2795}'} Add Friend`}
+          {!isMe && !profile && (
+            <span role="status" aria-live="polite">
+              <span className="visually-hidden">Loading profile…</span>
+              <Skeleton width={96} height={26} radius={999} />
+            </span>
+          )}
+          {!isMe && profile?.loadFailed && (
+            <p className="user-popover-note">
+              {friendlyError(null, "Couldn't load their profile.")}{' '}
+              <button type="button" className="btn btn-ghost btn-tight" onClick={() => setProfile(null)}>
+                Try again
+              </button>
+            </p>
+          )}
+          {!isMe && profile && !profile.loadFailed && (
+            <button type="button" className="btn btn-primary btn-tight" disabled={status === 'sent'} onClick={addFriend}>
+              {status === 'sent' ? `${'\u{2713}'} Sent` : `${'\u{2795}'} Add Friend`}
             </button>
           )}
-          {status && status !== 'sending' && status !== 'sent' && <p className="user-popover-note">{status}</p>}
         </div>
       )}
       {showStats && (

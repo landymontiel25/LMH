@@ -33,6 +33,10 @@ import RegionSearch from '../components/RegionSearch';
 import MaprPicksCarousel from '../components/MaprPicksCarousel';
 import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
+import { Skeleton, SkeletonList } from '../components/Skeleton';
+import ErrorNotice from '../components/ErrorNotice';
+import { friendlyError } from '../lib/friendlyError';
+import { usePersistentState } from '../lib/usePersistentState';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
 const TABS = [
@@ -40,6 +44,12 @@ const TABS = [
   { id: 'monthly', label: 'This Month' },
   { id: 'yearly', label: 'This Year' },
 ];
+// The Ranks tabs you last picked stick (this device, no expiry) -- the
+// period key is shared with Full Leaderboard's tabs.
+const REMEMBER = { ttlMs: 0 };
+// subscribeLeaderboard has no error callback: a listener that never
+// delivers a first snapshot is how a failed global read shows up.
+const STALL_MS = 15000;
 const MEDAL = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
 
 function InviteButton({ myUsername }) {
@@ -109,9 +119,11 @@ function FirstCheckInStep({ onDone }) {
   // out to need an actual error message from the field to diagnose, and
   // most people testing this aren't going to open devtools to get one.
   const [saveError, setSaveError] = useState(null);
+  const [saveAttempt, setSaveAttempt] = useState(0);
 
   useEffect(() => {
     if (!user || myProfile?.onboardingCompleted || hasCompletedOnboardingLocally(user.uid)) return;
+    setSaveError(null);
     completeOnboarding(user.uid, myUsername || user.displayName || 'Explorer')
       .then(async () => {
         // Permanent local guard, same idea as BadgesContext's celebration
@@ -133,10 +145,11 @@ function FirstCheckInStep({ onDone }) {
       })
       .catch((err) => {
         console.error('[Onboarding] completeOnboarding failed:', err);
-        setSaveError(`Couldn't save: ${err?.message || err}`);
+        // Details stay in the console; the screen gets a plain sentence.
+        setSaveError(friendlyError(err, "Couldn't finish setting up your account. Try again."));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, myProfile?.onboardingCompleted]);
+  }, [user, myProfile?.onboardingCompleted, saveAttempt]);
 
   const nearest = (() => {
     if (!coords) return null;
@@ -159,11 +172,7 @@ function FirstCheckInStep({ onDone }) {
       </h1>
       <p className="screen-subtitle">One tap to earn your first point.</p>
 
-      {saveError && (
-        <p className="screen-subtitle" style={{ color: 'var(--color-error, #b3503f)' }}>
-          {'⚠️'} {saveError}
-        </p>
-      )}
+      {saveError && <ErrorNotice compact message={saveError} onRetry={() => setSaveAttempt((n) => n + 1)} />}
 
       {!coords && (
         <p className="screen-subtitle">{geoLoading ? 'Finding your location…' : "Can't find your location right now."}</p>
@@ -224,12 +233,21 @@ export default function Profile() {
   const { myReviews: myReviewsById } = useRatings();
   const myReviews = Object.values(myReviewsById).filter((r) => r.ratingTier);
   const ratingsCount = myReviews.length;
-  const [tab, setTab] = useState('weekly'); // weekly | monthly | yearly
-  const [scope, setScope] = useState('friends'); // 'friends' | 'global'
-  const [globalMode, setGlobalMode] = useState('global'); // 'global' | 'regional' (only when scope === 'global')
-  const [regionalRegionId, setRegionalRegionId] = useState(null);
+  const [savedTab, setTab] = usePersistentState('leaderboard.period', 'weekly', REMEMBER); // weekly | monthly | yearly
+  const [savedScope, setScope] = usePersistentState('profile.lbScope', 'friends', REMEMBER); // 'friends' | 'global'
+  // 'global' | 'regional' (only when scope === 'global')
+  const [savedGlobalMode, setGlobalMode] = usePersistentState('profile.lbGlobalMode', 'global', REMEMBER);
+  const [regionalRegionId, setRegionalRegionId] = usePersistentState('profile.lbRegion', null, REMEMBER);
+  // Guard against anything odd left in storage by an older build.
+  const tab = TABS.some((t) => t.id === savedTab) ? savedTab : 'weekly';
+  const scope = savedScope === 'global' ? 'global' : 'friends';
+  const globalMode = savedGlobalMode === 'regional' ? 'regional' : 'global';
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Kept apart from "entries is empty" so a failed read never looks like
+  // "no one has points yet".
+  const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [onboardingStep, setOnboardingStep] = useState(null); // null | 'preferences' | 'tasteIntro' | 'checkin'
   const healedRef = useRef(false);
   const [streakInfoOpen, setStreakInfoOpen] = useState(false);
@@ -265,7 +283,7 @@ export default function Profile() {
     if (globalMode === 'regional' && !regionalRegionId) {
       setRegionalRegionId(trip.activeRegion || stats?.cityIds?.[0] || REGIONS[0]?.id || null);
     }
-  }, [globalMode, regionalRegionId, trip.activeRegion, stats]);
+  }, [globalMode, regionalRegionId, trip.activeRegion, stats, setRegionalRegionId]);
 
   useEffect(() => {
     if (!firebaseEnabled || !user) {
@@ -273,6 +291,7 @@ export default function Profile() {
       return;
     }
     setLoading(true);
+    setLoadError(null);
 
     if (scope === 'friends') {
       let cancelled = false;
@@ -283,9 +302,10 @@ export default function Profile() {
             setLoading(false);
           }
         })
-        .catch(() => {
+        .catch((err) => {
           if (!cancelled) {
             setEntries([]);
+            setLoadError(err);
             setLoading(false);
           }
         });
@@ -308,9 +328,10 @@ export default function Profile() {
             setLoading(false);
           }
         })
-        .catch(() => {
+        .catch((err) => {
           if (!cancelled) {
             setEntries([]);
+            setLoadError(err);
             setLoading(false);
           }
         });
@@ -319,11 +340,33 @@ export default function Profile() {
       };
     }
 
-    return subscribeLeaderboard(period, (data) => {
-      setEntries(data);
+    let arrived = false;
+    const stall = setTimeout(() => {
+      if (!arrived) {
+        setEntries([]);
+        setLoadError(new Error('Leaderboard listener stalled'));
+        setLoading(false);
+      }
+    }, STALL_MS);
+    let unsub = () => {};
+    try {
+      unsub = subscribeLeaderboard(period, (data) => {
+        arrived = true;
+        clearTimeout(stall);
+        setEntries(data);
+        setLoadError(null);
+        setLoading(false);
+      });
+    } catch (err) {
+      clearTimeout(stall);
+      setLoadError(err);
       setLoading(false);
-    });
-  }, [period, firebaseEnabled, user, scope, globalMode, regionalRegionId, friendUids]);
+    }
+    return () => {
+      clearTimeout(stall);
+      unsub();
+    };
+  }, [period, firebaseEnabled, user, scope, globalMode, regionalRegionId, friendUids, loadAttempt]);
 
   if (!firebaseEnabled) {
     return (
@@ -349,7 +392,11 @@ export default function Profile() {
   const displayFor = (e) => (e.userId === user.uid && myUsername ? myUsername : cleanName(e.userName));
 
   let motivator;
-  if (myIdx < 0) {
+  if (loading) {
+    motivator = <Skeleton width="70%" height={13} />;
+  } else if (loadError) {
+    motivator = '';
+  } else if (myIdx < 0) {
     motivator = 'Check in at a landmark to get on the board! 🚀';
   } else if (myIdx === 0) {
     motivator = "👑 You're #1 — don't let anyone catch you!";
@@ -447,11 +494,14 @@ export default function Profile() {
           </div>
         )}
         <div className="rank-hero-top">
-          <div className="rank-hero-rank">{myRank ? `#${myRank}` : '—'}</div>
+          <div className="rank-hero-rank">
+            {loading ? <Skeleton className="skeleton-inline" width={48} height={30} radius={10} /> : myRank ? `#${myRank}` : '—'}
+          </div>
           <div className="rank-hero-meta">
             <div className="rank-hero-name">{myUsername ? `@${myUsername}` : user.displayName || 'Explorer'}</div>
             <div className="rank-hero-pts">
-              {myPoints.toLocaleString()} <span>pts {PERIOD_LABEL[period].toLowerCase()}</span>
+              {loading ? <Skeleton className="skeleton-inline" width={56} height={18} /> : myPoints.toLocaleString()}{' '}
+              <span>pts {PERIOD_LABEL[period].toLowerCase()}</span>
             </div>
           </div>
         </div>
@@ -471,7 +521,7 @@ export default function Profile() {
           <h3 style={{ margin: 0 }}>
             {'\u{1F3C6}'} {leaderboardLabel}
           </h3>
-          {!loading && entries.length > 0 && scope === 'global' && globalMode === 'global' && (
+          {!loading && !loadError && entries.length > 0 && scope === 'global' && globalMode === 'global' && (
             <button
               type="button"
               className="btn btn-ghost btn-tight"
@@ -481,8 +531,14 @@ export default function Profile() {
             </button>
           )}
         </div>
-        {loading && <p className="screen-subtitle">Loading rankings…</p>}
-        {!loading && entries.length === 0 && (
+        {loading && <SkeletonList count={5} variant="rank" label="Loading rankings" />}
+        {!loading && loadError && (
+          <ErrorNotice
+            message={friendlyError(loadError, "We couldn't load the rankings. Check your connection and try again.")}
+            onRetry={() => setLoadAttempt((n) => n + 1)}
+          />
+        )}
+        {!loading && !loadError && entries.length === 0 && (
           <div className="empty-state">
             <p>No points yet {PERIOD_LABEL[period].toLowerCase()} — check in to be first!</p>
           </div>
@@ -513,7 +569,7 @@ export default function Profile() {
           </div>
         )}
 
-        {rest.map((e, idx) => (
+        {!loading && rest.map((e, idx) => (
           <div key={e.id} className={`leaderboard-row ${e.userId === user.uid ? 'me' : ''}`}>
             <div className="leaderboard-rank">#{idx + 4}</div>
             <div style={{ flex: 1 }}>
@@ -527,7 +583,7 @@ export default function Profile() {
           </div>
         ))}
 
-        {myRowOutside && (
+        {!loading && myRowOutside && (
           <div className="leaderboard-row me" style={{ marginTop: 8 }}>
             <div className="leaderboard-rank">#{myRank}</div>
             <div style={{ flex: 1 }}>{myUsername ? `@${myUsername}` : 'You'}</div>
@@ -558,7 +614,9 @@ export default function Profile() {
             className="profile-stat profile-stat-btn"
             onClick={() => stats?.checkins && navigate('/checkins')}
           >
-            <span className="profile-stat-num">{stats ? stats.checkins.toLocaleString() : '…'}</span>
+            <span className="profile-stat-num">
+              {stats ? stats.checkins.toLocaleString() : <Skeleton className="skeleton-inline" width={36} height={22} />}
+            </span>
             <span className="profile-stat-label">check-ins{stats?.checkins ? ' ›' : ''}</span>
           </button>
           <button
@@ -566,7 +624,7 @@ export default function Profile() {
             className="profile-stat profile-stat-btn"
             onClick={() => stats?.cityIds?.length && navigate('/cities')}
           >
-            <span className="profile-stat-num">{stats ? stats.cities : '…'}</span>
+            <span className="profile-stat-num">{stats ? stats.cities : <Skeleton className="skeleton-inline" width={28} height={22} />}</span>
             <span className="profile-stat-label">cities{stats?.cityIds?.length ? ' ›' : ''}</span>
           </button>
           <div style={{ position: 'relative', flex: 1 }}>

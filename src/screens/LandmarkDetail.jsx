@@ -41,7 +41,7 @@ import RatingStars from '../components/RatingStars';
 import DirectionsButton from '../components/DirectionsButton';
 import { pickPhoto } from '../lib/imageUtils';
 import { authHeaders } from '../lib/apiAuth';
-import { LandmarkDetailSkeleton, SkeletonList, SkeletonText } from '../components/Skeleton';
+import { LandmarkDetailSkeleton, Skeleton, SkeletonList, SkeletonText } from '../components/Skeleton';
 import ErrorNotice from '../components/ErrorNotice';
 import { friendlyError, fetchJson } from '../lib/friendlyError';
 import { useToast, runOptimistic } from '../lib/ToastContext';
@@ -178,6 +178,7 @@ export default function LandmarkDetail() {
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   // True right after a successful save: the button itself reads "Rating
   // submitted!" until the user changes something in the flow again.
   const [submitted, setSubmitted] = useState(false);
@@ -383,7 +384,7 @@ export default function LandmarkDetail() {
 
   const isSelected = getRegionSelection(regionId).includes(landmark.id);
   const agg = ratings[landmark.id];
-  const canRate = firebaseEnabled && user && claimedMap[landmark.id];
+  const draftKey = ratingDraftKey(user?.uid, landmark.id);
 
   const onPhotoChange = async () => {
     const f = await pickPhoto();
@@ -408,40 +409,61 @@ export default function LandmarkDetail() {
     const wasEdit = !!savedRating;
     setSaving(true);
     setSaveMsg(null);
+    setSaveError(null);
+    let res;
     try {
-      const res = await submitReview({
+      res = await submitReview({
         userId: user.uid,
         userName: myUsername || user.displayName || 'Explorer',
         landmark,
         rating: myRating,
         photoFiles,
       });
-      await reloadRatings();
-      await loadReviews();
-      await loadMyReview();
-      await reloadMyPhotos();
-      setPhotoFiles([]);
-      setPhotoPreviews([]);
-      setJustEdited(wasEdit);
-      setSubmitted(true);
-      setSaveMsg(res?.photoFailed ? "Rating saved — but your photo couldn't upload." : null);
     } catch (e) {
-      setSaveMsg(e.message || 'Could not save your rating.');
-    } finally {
+      // Your tier/chips/comment and photos all stay put -- Try again
+      // resubmits exactly what's on screen.
+      setSaveError(e);
       setSaving(false);
+      return;
     }
+    clearPersisted(draftKey);
+    setPhotoFiles([]);
+    setPhotoPreviews([]);
+    setJustEdited(wasEdit);
+    setSubmitted(true);
+    setSaveMsg(res?.photoFailed ? "Rating saved — but your photo couldn't upload." : null);
+    setSaving(false);
+    // The rating is saved; these only refresh what's shown, so a hiccup
+    // here must never read as "your rating failed".
+    Promise.all([reloadRatings(), loadReviews({ quiet: true }), loadMyReview(), reloadMyPhotos()]).catch(() => {});
   };
 
-  const handleDeleteMine = async () => {
-    await deleteMyReview(user.uid, landmark.id);
-    setSavedRating(null);
-    setMyRating(null);
-    // The review's own photos are gone, but any check-in gallery photos
-    // (added independently via "My Photos" below) aren't touched by this.
-    setMyPhotos(checkinPhotosNewestFirst(myCheckin));
-    await reloadRatings();
-    await loadReviews();
-    await reloadMyPhotos();
+  // Optimistic: your review disappears the moment you tap Delete; if the
+  // server says no, it's put back with a Retry.
+  const handleDeleteMine = () => {
+    const before = { reviews, savedRating, myPhotos };
+    runOptimistic({
+      apply: () => {
+        setReviews((cur) => cur.filter((r) => r.userId !== user.uid));
+        setSavedRating(null);
+        setMyRating(null);
+        // The review's own photos are gone, but any check-in gallery photos
+        // (added independently via "My Photos" below) aren't touched by this.
+        setMyPhotos(checkinPhotosNewestFirst(myCheckin));
+      },
+      commit: async () => {
+        await deleteMyReview(user.uid, landmark.id);
+        Promise.all([reloadRatings(), loadReviews({ quiet: true }), reloadMyPhotos()]).catch(() => {});
+      },
+      rollback: () => {
+        setReviews(before.reviews);
+        setSavedRating(before.savedRating);
+        setMyPhotos(before.myPhotos);
+      },
+      toast,
+      errorMessage: "Couldn't delete your review, so we put it back.",
+      retry: handleDeleteMine,
+    });
   };
 
   const startEditCheckinDate = () => {
@@ -469,7 +491,7 @@ export default function LandmarkDetail() {
       setMyCheckin((cur) => ({ ...cur, createdAt: { seconds: Math.floor(date.getTime() / 1000) } }));
       setEditingCheckinDate(false);
     } catch (e) {
-      setCheckinDateError(e.message || 'Could not save — try again.');
+      setCheckinDateError(friendlyError(e, 'Could not save — try again.'));
     } finally {
       setCheckinDateSaving(false);
     }
@@ -477,71 +499,106 @@ export default function LandmarkDetail() {
 
   const checkinPhotos = myCheckin?.photoURLs || (myCheckin?.photoURL ? [myCheckin.photoURL] : []);
 
-  const addMyCheckinPhoto = async () => {
-    if (checkinPhotos.length >= MAX_CHECKIN_PHOTOS) return;
-    const f = await pickPhoto();
-    if (!f) return;
+  const uploadCheckinPhoto = async (f) => {
     setCheckinPhotoBusy(true);
     setCheckinPhotoError(null);
+    setFailedCheckinPhoto(null);
     try {
       const url = await addCheckinPhoto(user.uid, landmark.id, f);
       setMyCheckin((prev) => ({ ...prev, photoURLs: [...(prev?.photoURLs || []), url] }));
       setMyPhotos((prev) => (prev.includes(url) ? prev : [url, ...prev]));
-      await reloadMyPhotos();
+      reloadMyPhotos().catch(() => {});
     } catch (e) {
-      setCheckinPhotoError(e.message || "Couldn't upload — try again.");
+      setCheckinPhotoError(friendlyError(e, "Couldn't upload that photo. Try again."));
+      setFailedCheckinPhoto(f);
     } finally {
       setCheckinPhotoBusy(false);
     }
   };
 
-  const removeMyCheckinPhoto = async (url) => {
-    setCheckinPhotoBusy(true);
+  const addMyCheckinPhoto = async () => {
+    if (checkinPhotos.length >= MAX_CHECKIN_PHOTOS) return;
+    const f = await pickPhoto();
+    if (f) uploadCheckinPhoto(f);
+  };
+
+  // Optimistic: the photo vanishes right away; put back (with Retry) if
+  // the server refuses.
+  const removeMyCheckinPhoto = (url) => {
+    const before = { myCheckin, myPhotos };
     setCheckinPhotoError(null);
-    try {
-      await removeCheckinPhoto(user.uid, landmark.id, url);
-      setMyCheckin((prev) => ({
-        ...prev,
-        photoURLs: (prev?.photoURLs || []).filter((u) => u !== url),
-        photoURL: prev?.photoURL === url ? null : prev?.photoURL,
-      }));
-      setMyPhotos((prev) => prev.filter((u) => u !== url));
-      await reloadMyPhotos();
-    } catch (e) {
-      setCheckinPhotoError(e.message || "Couldn't remove — try again.");
-    } finally {
-      setCheckinPhotoBusy(false);
-    }
+    runOptimistic({
+      apply: () => {
+        setMyCheckin((prev) => ({
+          ...prev,
+          photoURLs: (prev?.photoURLs || []).filter((u) => u !== url),
+          photoURL: prev?.photoURL === url ? null : prev?.photoURL,
+        }));
+        setMyPhotos((prev) => prev.filter((u) => u !== url));
+        if (lightboxSrc === url) setLightboxSrc(null);
+      },
+      commit: async () => {
+        await removeCheckinPhoto(user.uid, landmark.id, url);
+        reloadMyPhotos().catch(() => {});
+      },
+      rollback: () => {
+        setMyCheckin(before.myCheckin);
+        setMyPhotos(before.myPhotos);
+      },
+      toast,
+      errorMessage: "Couldn't remove that photo, so we put it back.",
+      retry: () => removeMyCheckinPhoto(url),
+    });
   };
 
-  const handleReport = async (rv) => {
-    setReportedNow((s) => new Set(s).add(rv.id));
-    try {
-      await reportReview({ reporterUid: user.uid, review: rv });
-      await loadReviews();
-    } catch {
-      /* ignore */
-    }
-  };
+  // Report / Block / Report-this-landmark all flip to "✓" instantly and
+  // undo themselves (with a Retry toast) only if the write fails.
+  const handleReport = (rv) =>
+    runOptimistic({
+      apply: () => setReportedNow((s) => new Set(s).add(rv.id)),
+      commit: async () => {
+        await reportReview({ reporterUid: user.uid, review: rv });
+        loadReviews({ quiet: true });
+      },
+      rollback: () =>
+        setReportedNow((s) => {
+          const next = new Set(s);
+          next.delete(rv.id);
+          return next;
+        }),
+      toast,
+      errorMessage: "Couldn't send that report. Nothing was changed.",
+      retry: () => handleReport(rv),
+    });
 
-  const handleBlock = async (rv) => {
-    setBlockedNow((s) => new Set(s).add(rv.userId));
-    try {
-      await blockUser(user.uid, rv.userId, rv.userName);
-      await loadReviews();
-    } catch {
-      /* ignore */
-    }
-  };
+  const handleBlock = (rv) =>
+    runOptimistic({
+      apply: () => setBlockedNow((s) => new Set(s).add(rv.userId)),
+      commit: async () => {
+        await blockUser(user.uid, rv.userId, rv.userName);
+        loadReviews({ quiet: true });
+      },
+      rollback: () =>
+        setBlockedNow((s) => {
+          const next = new Set(s);
+          next.delete(rv.userId);
+          return next;
+        }),
+      toast,
+      errorMessage: `Couldn't block ${rv.userName || 'that person'}. Nothing was changed.`,
+      retry: () => handleBlock(rv),
+    });
 
-  const handleReportLandmark = async () => {
+  const handleReportLandmark = () => {
     if (!customLandmark || !user) return;
-    setLandmarkReported(true);
-    try {
-      await reportCustomLandmark(user.uid, customLandmark.docId);
-    } catch {
-      /* ignore */
-    }
+    runOptimistic({
+      apply: () => setLandmarkReported(true),
+      commit: () => reportCustomLandmark(user.uid, customLandmark.docId),
+      rollback: () => setLandmarkReported(false),
+      toast,
+      errorMessage: "Couldn't send that report. Nothing was changed.",
+      retry: handleReportLandmark,
+    });
   };
 
   const shareVisit = async () => {
@@ -703,7 +760,12 @@ export default function LandmarkDetail() {
                 </li>
               )}
               <li>
-                <span>Checked in:</span> {myCheckin?.createdAt?.seconds ? fmtCheckinTime(myCheckin.createdAt.seconds) : '…'}
+                <span>Checked in:</span>{' '}
+                {myCheckin?.createdAt?.seconds ? (
+                  fmtCheckinTime(myCheckin.createdAt.seconds)
+                ) : (
+                  <Skeleton width={150} height={12} style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+                )}
                 {adminMode && isAdmin(user?.email) && !editingCheckinDate && (
                   <button
                     type="button"
@@ -718,6 +780,8 @@ export default function LandmarkDetail() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, alignItems: 'center' }}>
                     <input
                       type="datetime-local"
+                      name="checkin-time"
+                      aria-label="Check-in date and time"
                       value={checkinDateValue}
                       onChange={(e) => setCheckinDateValue(e.target.value)}
                       disabled={checkinDateSaving}
@@ -811,6 +875,10 @@ export default function LandmarkDetail() {
           <form onSubmit={askAI} style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <input
               type="text"
+              name="question"
+              aria-label={`Ask about ${landmark.name}`}
+              autoComplete="off"
+              enterKeyHint="send"
               placeholder={`Ask about ${landmark.name}…`}
               value={aiQuestion}
               maxLength={500}
@@ -821,11 +889,20 @@ export default function LandmarkDetail() {
               {aiBusy ? '…' : 'Ask'}
             </button>
           </form>
-          {aiBusy && <p className="screen-subtitle" style={{ marginTop: 10, marginBottom: 0 }}>Thinking…</p>}
+          {aiBusy && (
+            // Answer-shaped placeholder, so the reply lands where you're already looking.
+            <div className="ai-answer ai-answer-loading" role="status" aria-live="polite">
+              <span className="visually-hidden">Thinking…</span>
+              <SkeletonText lines={3} />
+            </div>
+          )}
           {aiError && (
-            <p className="tag tag-error" style={{ display: 'block', marginTop: 10, marginBottom: 0 }}>
-              {aiError}
-            </p>
+            <ErrorNotice
+              compact
+              error={aiError}
+              message={friendlyError(aiError, "Couldn't reach the AI. Try again.")}
+              onRetry={() => askAI()}
+            />
           )}
           {aiAnswer && <div className="ai-answer">{aiAnswer}</div>}
           <p className="ai-disclaimer">AI can be wrong — double-check hours &amp; prices before you go.</p>
@@ -900,9 +977,11 @@ export default function LandmarkDetail() {
             </div>
           )}
           {checkinPhotoError && (
-            <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
-              {checkinPhotoError}
-            </p>
+            <ErrorNotice
+              compact
+              message={checkinPhotoError}
+              onRetry={failedCheckinPhoto ? () => uploadCheckinPhoto(failedCheckinPhoto) : undefined}
+            />
           )}
         </div>
       )}
@@ -930,9 +1009,11 @@ export default function LandmarkDetail() {
                 key={landmark.id}
                 landmark={landmark}
                 initial={savedRating?.tier ? savedRating : null}
+                draftKey={draftKey}
                 onChange={(r) => {
                   setMyRating(r);
                   setSubmitted(false);
+                  setSaveError(null);
                 }}
               />
               {photoPreviews.length > 0 && (
@@ -986,12 +1067,45 @@ export default function LandmarkDetail() {
                   {saveMsg}
                 </p>
               )}
+              {saveError && (
+                <ErrorNotice
+                  compact
+                  message={friendlyError(saveError, "Couldn't save your rating. Your picks are still here — try again.")}
+                  onRetry={handleSubmitReview}
+                />
+              )}
             </>
           )}
         </div>
       )}
 
-      {firebaseEnabled && reviews.length > 0 && (
+      {firebaseEnabled && reviewsStatus === 'loading' && (
+        <div className="section">
+          <h3>Visitor Reviews</h3>
+          <SkeletonList count={2} label="Loading reviews" />
+        </div>
+      )}
+
+      {firebaseEnabled && reviewsStatus === 'error' && (
+        <div className="section">
+          <h3>Visitor Reviews</h3>
+          <ErrorNotice
+            message={friendlyError(reviewsError, "Couldn't load reviews right now.")}
+            onRetry={() => loadReviews()}
+          />
+        </div>
+      )}
+
+      {firebaseEnabled && reviewsStatus === 'ready' && reviews.length === 0 && isRateable(landmark) && (
+        <div className="section">
+          <h3>Visitor Reviews</h3>
+          <p className="screen-subtitle" style={{ margin: 0 }}>
+            No reviews yet.
+          </p>
+        </div>
+      )}
+
+      {firebaseEnabled && reviewsStatus === 'ready' && reviews.length > 0 && (
         <div className="section">
           <h3>Visitor Reviews ({reviews.length})</h3>
           {reviews.map((r) => {

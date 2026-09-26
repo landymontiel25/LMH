@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -26,6 +26,11 @@ import TurnByTurnPanel from '../components/TurnByTurnPanel';
 import { fetchDirections } from '../lib/routing';
 import LandmarkThumb from '../components/LandmarkThumb';
 import QuickRateButton from '../components/QuickRateButton';
+import { usePersistentState } from '../lib/usePersistentState';
+import { useToast, runOptimistic } from '../lib/ToastContext';
+import { friendlyError } from '../lib/friendlyError';
+
+const NO_FILTER = (v) => !v?.length;
 
 const CATEGORY_LABEL = Object.fromEntries(INTERESTS.map((i) => [i.id, i.label]));
 
@@ -206,6 +211,7 @@ export default function MapExplore() {
   const mapRef = useRef(null);
   const location = useLocation();
   const [satellite] = useState(true);
+  const toast = useToast();
 
   // "Use the Map" from any Get Directions sheet (DirectionsButton) lands
   // here with location.state.directionsTo. The route runs from your live
@@ -236,7 +242,15 @@ export default function MapExplore() {
     const dest = nav.dest;
     fetchDirections(from, dest)
       .then((data) => !cancelled && setNav((cur) => (cur?.dest === dest ? { ...cur, loading: false, data } : cur)))
-      .catch((e) => !cancelled && setNav((cur) => (cur?.dest === dest ? { ...cur, loading: false, error: e.message } : cur)));
+      .catch(
+        (e) =>
+          !cancelled &&
+          setNav((cur) =>
+            cur?.dest === dest
+              ? { ...cur, loading: false, error: friendlyError(e, "Couldn't get directions right now. Try again.") }
+              : cur
+          )
+      );
     return () => {
       cancelled = true;
     };
@@ -255,14 +269,13 @@ export default function MapExplore() {
   // otherwise only pins whose category is in the set. Grows with INTERESTS,
   // so every category added later is filterable here automatically.
   const [filterOpen, setFilterOpen] = useState(false);
-  const [filterCats, setFilterCats] = useState(() => new Set());
+  // Saved as a plain array so the map reopens with the same categories
+  // showing; the Set is just for fast lookups while rendering pins.
+  const [filterCatList, setFilterCatList] = usePersistentState('map.filterCats', [], { isEmpty: NO_FILTER });
+  const filterCats = useMemo(() => new Set(filterCatList), [filterCatList]);
+  const setFilterCats = (set) => setFilterCatList([...set]);
   const toggleFilterCat = (id) =>
-    setFilterCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setFilterCatList((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
   const passesFilter = (l) => filterCats.size === 0 || (l.categories || []).some((c) => filterCats.has(c));
 
   // "Move pins" mode: built-in landmark markers become draggable and a
@@ -281,12 +294,31 @@ export default function MapExplore() {
   }, [pinSavedNote]);
   const handlePinDragEnd = (l, e) => {
     const { lat, lng } = e.target.getLatLng();
-    setSavedOverrides((prev) => ({ ...prev, [`${l.regionId}/${l.id}`]: { lat, lng } }));
-    setPinSavedNote(l.name);
-    saveLandmarkPosition({ region: l.regionId, id: l.id, name: l.name, lat, lng, userId: user?.uid }).catch(() => {
-      // Firestore write failed -- the corrected pin still shows in the
-      // right spot for this session, it just won't persist for everyone
-      // until it's dragged again with a working connection.
+    savePinPosition(l, { lat, lng });
+  };
+  // Optimistic: the pin stays where you dropped it and says "Saved" right
+  // away; if the write fails it hops back to where it was, with a Retry.
+  const savePinPosition = (l, pos) => {
+    const key = `${l.regionId}/${l.id}`;
+    const before = overridesRef.current[key];
+    runOptimistic({
+      apply: () => {
+        setSavedOverrides((prev) => ({ ...prev, [key]: pos }));
+        setPinSavedNote(l.name);
+      },
+      commit: () => saveLandmarkPosition({ region: l.regionId, id: l.id, name: l.name, ...pos, userId: user?.uid }),
+      rollback: () => {
+        setPinSavedNote(null);
+        setSavedOverrides((prev) => {
+          const next = { ...prev };
+          if (before) next[key] = before;
+          else delete next[key];
+          return next;
+        });
+      },
+      toast,
+      errorMessage: `Couldn't save the new spot for ${l.name}, so it's back where it was.`,
+      retry: () => savePinPosition(l, pos),
     });
   };
 
@@ -326,26 +358,55 @@ export default function MapExplore() {
   // (markers, search, nearby, and the "See it on the Map" highlight pin)
   // instead of falling back to the static source data's position.
   const [savedOverrides, setSavedOverrides] = useState({});
-  useEffect(() => {
-    getLandmarkOverrides().then(setSavedOverrides);
-  }, []);
+  // Latest values for the optimistic handlers below, which live inside
+  // memoized markers and so can hold an older render's closure.
+  const overridesRef = useRef(savedOverrides);
+  overridesRef.current = savedOverrides;
 
   // Custom (user-submitted) landmarks, added via the dedicated "Add
   // Landmark" page and merged onto the map alongside the built-in ones.
   const [customLandmarks, setCustomLandmarks] = useState([]);
+  const customLandmarksRef = useRef(customLandmarks);
+  customLandmarksRef.current = customLandmarks;
 
+  // The built-in pins always show; these two only add community pins and
+  // pin corrections on top. If either fails, one quiet toast offers a retry
+  // instead of the map silently missing pins.
+  const loadSharedPins = useCallback(() => {
+    Promise.allSettled([
+      getLandmarkOverrides().then(setSavedOverrides),
+      getCustomLandmarks().then(setCustomLandmarks),
+    ]).then((results) => {
+      const failed = results.find((r) => r.status === 'rejected');
+      if (failed) {
+        toast.show(friendlyError(failed.reason, "Couldn't load community-added pins."), {
+          actionLabel: 'Try again',
+          onAction: loadSharedPins,
+        });
+      }
+    });
+  }, [toast]);
   useEffect(() => {
-    getCustomLandmarks().then(setCustomLandmarks);
+    loadSharedPins();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const removeCustomLandmark = async (docId) => {
-    setCustomLandmarks((prev) => prev.filter((l) => l.docId !== docId));
-    try {
-      await deleteCustomLandmark(docId);
-    } catch {
-      // Firestore delete failed silently -- it'll reappear on next load,
-      // which is an acceptable failure mode for a rare, low-stakes action.
-    }
+  // Optimistic: the pin disappears on tap and comes back (with Retry) if
+  // the delete is refused.
+  const removeCustomLandmark = (docId) => {
+    const removed = customLandmarksRef.current.find((l) => l.docId === docId);
+    runOptimistic({
+      apply: () => {
+        mapRef.current?.closePopup();
+        setCustomLandmarks((prev) => prev.filter((l) => l.docId !== docId));
+      },
+      commit: () => deleteCustomLandmark(docId),
+      rollback: () =>
+        removed && setCustomLandmarks((prev) => (prev.some((l) => l.docId === docId) ? prev : [...prev, removed])),
+      toast,
+      errorMessage: "Couldn't remove that pin, so we put it back.",
+      retry: () => removeCustomLandmark(docId),
+    });
   };
 
   // The landmark you picked from search results — highlighted the same way
@@ -601,10 +662,14 @@ export default function MapExplore() {
   // own doc, admin-only per firestore.rules.
   const handleCustomPinDragEnd = (l, e) => {
     const { lat, lng } = e.target.getLatLng();
-    setCustomLandmarks((prev) => prev.map((x) => (x.docId === l.docId ? { ...x, lat, lng } : x)));
-    updateCustomLandmark(l.docId, { lat, lng }).catch(() => {
+    runOptimistic({
+      apply: () => setCustomLandmarks((prev) => prev.map((x) => (x.docId === l.docId ? { ...x, lat, lng } : x))),
+      commit: () => updateCustomLandmark(l.docId, { lat, lng }),
       // Revert this one pin on failure -- everything else stays as-is.
-      setCustomLandmarks((prev) => prev.map((x) => (x.docId === l.docId ? { ...x, lat: l.lat, lng: l.lng } : x)));
+      rollback: () =>
+        setCustomLandmarks((prev) => prev.map((x) => (x.docId === l.docId ? { ...x, lat: l.lat, lng: l.lng } : x))),
+      toast,
+      errorMessage: `Couldn't move ${l.name}, so it's back where it was.`,
     });
   };
 
@@ -942,7 +1007,11 @@ export default function MapExplore() {
           {searchOpen && (
             <div className="map-search-panel">
               <input
-                type="text"
+                type="search"
+                name="map-search"
+                aria-label="Search landmarks, states, countries"
+                autoComplete="off"
+                enterKeyHint="search"
                 autoFocus
                 className="map-search-input"
                 placeholder={'\u{1F50D} Search landmarks, states, countries…'}

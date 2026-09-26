@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
+import { usePersistentState } from '../lib/usePersistentState';
 import { useGeo } from '../lib/GeoContext';
 import { INTERESTS } from '../data/regions';
 import { nearestRegionId } from '../lib/geo';
-import LocationAutocomplete from './LocationAutocomplete';
+import LocationAutocomplete, { HomeStartPrefill } from './LocationAutocomplete';
 import MultiRegionSearch from './MultiRegionSearch';
 
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
+const isFalsy = (v) => !v;
+const isSolo = (v) => v === 'solo';
 
 const MOODS = [
   { id: 'energized', icon: '\u{26A1}', label: 'Energized & Active', hint: 'upbeat, on your feet, go-go-go' },
@@ -26,9 +29,12 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
   const navigate = useNavigate();
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState(null);
-  const [preferencesSelected, setPreferencesSelected] = useState(false);
-  const [tripMode, setTripMode] = useState('solo'); // 'solo' | 'group'
-  const [mood, setMood] = useState(null); // null | 'energized' | 'easygoing'
+  // Everything else on the card (start, interests, cities) already lives in
+  // saved trip/chat state; these three were the only picks a closed app
+  // lost. Cleared once the card turns into a chat message.
+  const [preferencesSelected, setPreferencesSelected] = usePersistentState('mapr.planner.prefs', false, { isEmpty: isFalsy });
+  const [tripMode, setTripMode] = usePersistentState('mapr.planner.mode', 'solo', { isEmpty: isSolo }); // 'solo' | 'group'
+  const [mood, setMood] = usePersistentState('mapr.planner.mood', null); // null | 'energized' | 'easygoing'
 
   const applyCoords = ({ lat, lng }) => {
     updateTrip({
@@ -92,6 +98,10 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
     ];
     if (interestLabels.length) parts.push(`I'm interested in: ${interestLabels.join(', ')}.`);
     onPlan(parts.join(' '));
+    // Back to defaults, which the saved copies treat as "nothing to restore".
+    setPreferencesSelected(false);
+    setTripMode('solo');
+    setMood(null);
   };
 
   return (
@@ -119,6 +129,7 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
           {'\u{1F4CD}'} {locating ? 'Locating…' : trip.startingLocation === CURRENT_LOCATION_LABEL ? 'Using Your Current Location' : 'Use My Current Location'}
         </button>
         <LocationAutocomplete
+          name="start-location"
           id="planner-start"
           placeholder="Or type an address, hotel, etc."
           value={trip.startingLocation}
@@ -131,6 +142,7 @@ export default function TripPlannerCard({ regions, onToggleRegion, onClearRegion
             })
           }
         />
+        <HomeStartPrefill />
         {locateError && (
           <p className="tag tag-error" style={{ marginTop: 6 }}>
             {locateError}

@@ -17,6 +17,15 @@ import { ALL_LANDMARKS, PICKABLE_REGIONS, INTERESTS, sortInterests, getRegion } 
 import { getCustomLandmarks } from '../lib/customLandmarks';
 import { useLandmarkEdits } from '../lib/LandmarkEditsContext';
 import { matchesSearch } from '../lib/search';
+import { usePersistentState } from '../lib/usePersistentState';
+import ErrorNotice from '../components/ErrorNotice';
+
+// A null sort (every sort tab toggled off) is a real choice worth keeping.
+const NEVER_EMPTY = () => false;
+const NO_CATEGORIES = (v) => !v?.length;
+// Search/filter choices are handy for a while, not forever -- after a day
+// the list opens fresh instead of mysteriously pre-filtered.
+const DAY = 24 * 60 * 60 * 1000;
 
 const CATEGORY_ICON = Object.fromEntries(INTERESTS.map((i) => [i.id, i.icon]));
 
@@ -66,7 +75,11 @@ function CityDropdown({ value, onChange }) {
       {open && (
         <div className="city-dropdown-panel">
           <input
-            type="text"
+            type="search"
+            name="city-search"
+            aria-label="Search cities"
+            autoComplete="off"
+            enterKeyHint="search"
             placeholder={'\u{1F50D} Search cities…'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -119,9 +132,16 @@ export default function LandmarkSelection() {
   // User-submitted landmarks (via "Add a Landmark") -- merged in below so
   // they're searchable/browsable here too, not just visible on the map.
   const [customLandmarks, setCustomLandmarks] = useState([]);
-  useEffect(() => {
-    getCustomLandmarks().then(setCustomLandmarks);
+  // The built-in catalog shows regardless; this only covers the
+  // community-added extras, so a failure is a small notice, not a blank list.
+  const [customError, setCustomError] = useState(null);
+  const loadCustomLandmarks = useCallback(() => {
+    setCustomError(null);
+    getCustomLandmarks().then(setCustomLandmarks).catch(setCustomError);
   }, []);
+  useEffect(() => {
+    loadCustomLandmarks();
+  }, [loadCustomLandmarks]);
   // Default to the trip's already-chosen region (from Setup) so picking up where you
   // left off doesn't require re-filtering to something you already told the app.
   // Arriving with no trip region yet (e.g. straight from the bottom-nav tab) still
@@ -157,11 +177,22 @@ export default function LandmarkSelection() {
   // said you wanted instead of dumping every landmark on you. Empty selection (no
   // interests chosen, or "All" tapped) means show everything.
   // Starts on "All categories"; the dropdown narrows from there.
-  const [activeCategories, setActiveCategories] = useState([]);
+  // Search text, category and sort survive leaving the tab or closing the
+  // app (see usePersistentState); visitFilter below already lives on the trip.
+  const [activeCategories, setActiveCategories] = usePersistentState('landmarks.category', [], {
+    ttlMs: DAY,
+    isEmpty: NO_CATEGORIES,
+  });
+  // A restored custom interest may have been removed since -- don't leave
+  // the list filtered by something the dropdown can no longer show.
+  useEffect(() => {
+    const key = activeCategories[0];
+    if (key && !INTERESTS.some((i) => i.id === key) && !trip.customInterests.includes(key)) setActiveCategories([]);
+  }, [activeCategories, trip.customInterests, setActiveCategories]);
   // Tapping a row's thumbnail opens the photo full-screen.
   const [lightbox, setLightbox] = useState(null);
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('popularity');
+  const [search, setSearch] = usePersistentState('landmarks.search', '', { ttlMs: DAY });
+  const [sortBy, setSortBy] = usePersistentState('landmarks.sort', 'popularity', { isEmpty: NEVER_EMPTY });
   // Which of Visited/Unvisited are active -- multi-select like the interest
   // tabs above (both on just means "show everything", same as neither).
   // Seeded from and written back to trip.visitFilter so it survives
@@ -383,7 +414,11 @@ export default function LandmarkSelection() {
 
       <div className="field" style={{ marginBottom: 12 }}>
         <input
-          type="text"
+          type="search"
+          name="landmark-search"
+          aria-label="Search landmarks"
+          autoComplete="off"
+          enterKeyHint="search"
           placeholder={'\u{1F50D} Search landmarks…'}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -466,6 +501,14 @@ export default function LandmarkSelection() {
         <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginBottom: 18 }}>
           Finding what's closest to me…
         </p>
+      )}
+
+      {customError && (
+        <ErrorNotice
+          compact
+          message="Couldn't load community-added landmarks — showing the built-in ones."
+          onRetry={loadCustomLandmarks}
+        />
       )}
 
       <div>

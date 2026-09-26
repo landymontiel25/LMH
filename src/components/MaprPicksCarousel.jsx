@@ -377,7 +377,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       </div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>
         {loading
-          ? 'Finding places you\'ll love…'
+          ? "Finding places you'll love…"
           : loadError
           ? "Mapr couldn't line up picks just now."
           : picks.length > 0

@@ -9,6 +9,9 @@ import { useAdminMode } from '../lib/AdminModeContext';
 import { isAdmin } from '../lib/admins';
 import { useAuth } from '../lib/AuthContext';
 import { regionTimezone, tzAbbrev, toZonedInputValue, fromZonedInputValue } from '../lib/timezones';
+import { friendlyError } from '../lib/friendlyError';
+import { SkeletonGrid, SkeletonList } from './Skeleton';
+import ErrorNotice from './ErrorNotice';
 
 
 // Shared "Sep 7, 2026, 10:04 AM" formatting for check-in timestamps.
@@ -31,6 +34,9 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
   const { adminMode } = useAdminMode();
   const canEditDates = adminMode && isAdmin(viewer?.email);
   const [checkins, setCheckins] = useState(null);
+  // A failed read is its own state -- never shown as "No check-ins yet".
+  const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [layout, setLayout] = useState('list'); // 'list' | 'grid'
   // Admin Mode: which row's "when I checked in" is being edited, if any.
   const [editingId, setEditingId] = useState(null);
@@ -70,7 +76,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
       );
       setEditingId(null);
     } catch (e) {
-      setEditError(e.message || 'Could not save — try again.');
+      setEditError(friendlyError(e, "Couldn't save the new date. Try again."));
     } finally {
       setEditSaving(false);
     }
@@ -131,12 +137,14 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
       };
     };
 
+    setLoadError(null);
     (async () => {
       let rows = [];
       try {
         rows = await getUserCheckins(user.uid);
-      } catch {
-        rows = [];
+      } catch (err) {
+        if (!cancelled) setLoadError(err);
+        return;
       }
       // A "Rate a Landmark" claim (ratingOnly, 0 points) isn't a visit --
       // it never belongs here, only in My Mapr Ratings.
@@ -156,7 +164,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
     return () => {
       cancelled = true;
     };
-  }, [user, claimedMap]);
+  }, [user, claimedMap, loadAttempt]);
 
   // Restore once, right after the list has real content to scroll through --
   // and only once, so a later fresh visit to this same page doesn't jump to
@@ -225,7 +233,26 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         </div>
       )}
 
-      {checkins === null && <p className="screen-subtitle">Loading your check-ins…</p>}
+      {checkins === null && loadError && (
+        <div style={{ marginTop: 12 }}>
+          <ErrorNotice
+            message={friendlyError(loadError, "We couldn't load these check-ins. Try again.")}
+            onRetry={() => setLoadAttempt((n) => n + 1)}
+          />
+        </div>
+      )}
+      {checkins === null && !loadError && (
+        <div style={{ marginTop: 12 }}>
+          {layout === 'grid' ? (
+            <div role="status" aria-live="polite">
+              <span className="visually-hidden">Loading check-ins…</span>
+              <SkeletonGrid count={9} />
+            </div>
+          ) : (
+            <SkeletonList count={6} label="Loading check-ins" />
+          )}
+        </div>
+      )}
       {checkins !== null && checkins.length === 0 && (
         <div className="empty-state">
           <p>No check-ins yet — find a landmark and check in with a photo! 📸</p>

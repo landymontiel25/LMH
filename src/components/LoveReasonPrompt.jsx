@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { appendLoveNote, getLoveNote } from '../lib/reviews';
+import { friendlyError } from '../lib/friendlyError';
+import ErrorNotice from './ErrorNotice';
 
 // Fires after the 3rd check-in at a landmark, then every 10th after that
 // (13th, 23rd, ...) -- see shouldPromptLoveReason in leaderboard.js. The
@@ -15,15 +17,23 @@ export default function LoveReasonPrompt() {
   const [text, setText] = useState('');
   const [previousNote, setPreviousNote] = useState(null);
   const [saving, setSaving] = useState(false);
+  // { note, err } for the last failed save -- the prompt stays open with
+  // your text so Try again resends it instead of losing it.
+  const [failed, setFailed] = useState(null);
 
   useEffect(() => {
     setText('');
     setPreviousNote(null);
+    setFailed(null);
     if (!loveReasonPrompt || !user) return;
     let cancelled = false;
-    getLoveNote(user.uid, loveReasonPrompt.landmark.id).then((note) => {
-      if (!cancelled) setPreviousNote(note);
-    });
+    // Only powers the one-tap "same reason" shortcut -- if it can't load,
+    // the prompt simply doesn't offer it.
+    getLoveNote(user.uid, loveReasonPrompt.landmark.id)
+      .then((note) => {
+        if (!cancelled) setPreviousNote(note);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -34,11 +44,15 @@ export default function LoveReasonPrompt() {
   const save = async (note) => {
     if (!note.trim()) return;
     setSaving(true);
+    setFailed(null);
     try {
       await appendLoveNote(user.uid, loveReasonPrompt.landmark.id, loveReasonPrompt.landmark, note);
-    } catch {
-      // Best-effort -- a failed save here shouldn't block the app or make
-      // it look like the check-in itself failed.
+    } catch (err) {
+      // Never reads as the check-in failing (that already counted) -- just
+      // this note, which can be retried or skipped.
+      setFailed({ note, err });
+      setSaving(false);
+      return;
     }
     setSaving(false);
     clearLoveReasonPrompt();
@@ -66,6 +80,9 @@ export default function LoveReasonPrompt() {
         )}
 
         <textarea
+          name="love-reason"
+          aria-label={`Why you love ${loveReasonPrompt.landmark.name}`}
+          autoComplete="off"
           className="rating-comment"
           rows={3}
           maxLength={280}
@@ -74,6 +91,14 @@ export default function LoveReasonPrompt() {
           onChange={(e) => setText(e.target.value)}
           disabled={saving}
         />
+
+        {failed && (
+          <ErrorNotice
+            compact
+            message={friendlyError(failed.err, "Couldn't save that. Your answer is still here — try again.")}
+            onRetry={() => save(failed.note)}
+          />
+        )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <button

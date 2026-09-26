@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -15,6 +15,21 @@ import { useTrip } from '../lib/TripContext';
 import { addCustomLandmark, uploadLandmarkPhoto } from '../lib/customLandmarks';
 import { fileToSmallDataUrl, pickPhoto } from '../lib/imageUtils';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import ErrorNotice from '../components/ErrorNotice';
+import { friendlyError, fetchJson } from '../lib/friendlyError';
+import { readPersisted, writePersisted, clearPersisted } from '../lib/usePersistentState';
+
+// Our own plain-language messages (and the AI's "reason"), which
+// friendlyError should show as written rather than swap for a generic one.
+function userError(message) {
+  const err = new Error(message);
+  err.userMessage = message;
+  return err;
+}
+
+const draftKeyFor = (uid) => (uid ? `addLandmark.${uid}` : null);
+
+const draftHasContent = (d) => !!(d && (d.name || d.addressText || d.categories?.length || d.facts?.length || d.factDraft));
 
 const SAT_TILE = {
   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -82,17 +97,96 @@ export default function AddLandmark() {
     return region?.center || REGIONS[0].center;
   };
 
-  const [position, setPosition] = useState(startingCenter);
-  const [addressText, setAddressText] = useState('');
-  const [name, setName] = useState('');
-  const [categories, setCategories] = useState([]);
+  // Everything typed here (not the photo -- files can't be stored) is kept
+  // on this device as you go, so leaving mid-way and coming back picks up
+  // where you were. A spot handed over from the map's "+" is a fresh,
+  // deliberate choice, so it wins over a saved pin position.
+  const draftKey = draftKeyFor(user?.uid);
+  const [savedDraft] = useState(() => (draftKey && readPersisted(draftKey)) || null);
+  const fromMap = location.state?.lat != null && location.state?.lng != null;
+  // True once the pin was placed on purpose (dragged, searched, "Use My
+  // Location", or handed over from the map) -- a late GPS fix then never
+  // yanks it somewhere else.
+  const pinChosenRef = useRef(fromMap || !!savedDraft?.position);
+
+  const [position, setPosition] = useState(() =>
+    !fromMap && savedDraft?.position ? savedDraft.position : startingCenter()
+  );
+  const [addressText, setAddressText] = useState(() => savedDraft?.addressText || '');
+  const [name, setName] = useState(() => savedDraft?.name || '');
+  const [categories, setCategories] = useState(() => savedDraft?.categories || []);
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
-  const [facts, setFacts] = useState([]);
-  const [factDraft, setFactDraft] = useState('');
+  const [facts, setFacts] = useState(() => savedDraft?.facts || []);
+  const [factDraft, setFactDraft] = useState(() => savedDraft?.factDraft || '');
   const [stage, setStage] = useState('idle'); // idle | verifying | saving
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const busy = stage !== 'idle';
+  const [draftRestored, setDraftRestored] = useState(() => draftHasContent(savedDraft));
+
+  const choosePosition = (pos) => {
+    pinChosenRef.current = true;
+    setPosition(pos);
+  };
+
+  // GPS often lands a moment after this screen opens -- if the pin is still
+  // sitting on the region/default fallback, move it to where you actually
+  // are (once; later GPS ticks never drag it around).
+  const gpsAppliedRef = useRef(!!coords);
+  useEffect(() => {
+    if (!coords || gpsAppliedRef.current) return;
+    gpsAppliedRef.current = true;
+    if (!pinChosenRef.current) setPosition({ lat: coords.lat, lng: coords.lng });
+  }, [coords]);
+
+  // Signed-in state can arrive just after this screen mounts (cold open
+  // straight to Add Landmark) -- pick up the draft then, unless you've
+  // already started typing.
+  const loadedKeyRef = useRef(draftKey);
+  useEffect(() => {
+    if (!draftKey || loadedKeyRef.current === draftKey) return;
+    loadedKeyRef.current = draftKey;
+    const d = readPersisted(draftKey);
+    if (!draftHasContent(d) || name || addressText || categories.length || facts.length || factDraft) return;
+    setName(d.name || '');
+    setAddressText(d.addressText || '');
+    setCategories(d.categories || []);
+    setFacts(d.facts || []);
+    setFactDraft(d.factDraft || '');
+    if (d.position && !fromMap && !pinChosenRef.current) choosePosition(d.position);
+    setDraftRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftKey) return undefined;
+    const t = setTimeout(() => {
+      const draft = { name, addressText, categories, facts, factDraft };
+      if (!draftHasContent(draft)) {
+        clearPersisted(draftKey);
+        return;
+      }
+      // Only a pin you placed yourself is worth restoring; the default
+      // center is recomputed fresh (e.g. from GPS) each time anyway.
+      writePersisted(draftKey, { ...draft, position: pinChosenRef.current ? position : null });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [draftKey, name, addressText, categories, facts, factDraft, position]);
+
+  const discardDraft = () => {
+    clearPersisted(draftKey);
+    setName('');
+    setAddressText('');
+    setCategories([]);
+    setFacts([]);
+    setFactDraft('');
+    if (!fromMap) {
+      pinChosenRef.current = false;
+      setPosition(startingCenter());
+    }
+    setError(null);
+    setDraftRestored(false);
+  };
 
   const regionId = nearestRegionId(position.lat, position.lng);
 
@@ -119,7 +213,7 @@ export default function AddLandmark() {
 
   const submit = async () => {
     if (!canSubmit || busy) return;
-    setError('');
+    setError(null);
     try {
       setStage('verifying');
       const imageDataUrl = photo ? await fileToSmallDataUrl(photo) : '';
@@ -128,19 +222,24 @@ export default function AddLandmark() {
       // the token's email_verified before accepting the new landmark.
       const idToken = await (auth.currentUser || user).getIdToken(true);
       const finalName = name.trim() || addressText.trim() || 'New Landmark';
-      const verifyRes = await fetch('/api/verify-landmark', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({
-          name: finalName,
-          categories,
-          lat: position.lat,
-          lng: position.lng,
-          imageDataUrl,
-          userFacts: facts,
-        }),
-      });
-      const verified = await verifyRes.json().catch(() => null);
+      let verified;
+      try {
+        verified = await fetchJson('/api/verify-landmark', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({
+            name: finalName,
+            categories,
+            lat: position.lat,
+            lng: position.lng,
+            imageDataUrl,
+            userFacts: facts,
+          }),
+        });
+      } catch (e) {
+        if (e.code !== 'email-not-verified') throw e;
+        verified = { code: e.code };
+      }
       if (verified?.code === 'email-not-verified') {
         // The original link is probably buried in an inbox from whenever they
         // signed up -- easier to try firing off a fresh one than ask them to
@@ -160,14 +259,13 @@ export default function AddLandmark() {
           // reason (rate-limited, network, etc.) is something we can act on.
           resendErr = e;
         }
-        throw new Error(
+        throw userError(
           resent
             ? "Verify your email first — we just sent a fresh link to your inbox (check spam too), then try again."
             : `Verify your email first — check your inbox for the verification link we already sent you (check spam too), then try again. (Couldn't send another one: ${authErrorMessage(resendErr)})`
         );
       }
-      if (!verifyRes.ok || !verified) throw new Error(verified?.error || 'Could not verify this submission — try again.');
-      if (!verified.ok) throw new Error(verified.reason || "That doesn't look like a real place — try a different name or add a photo.");
+      if (!verified.ok) throw userError(verified.reason || "That doesn't look like a real place — try a different name or add a photo.");
 
       setStage('saving');
       // Unlike the search-biasing regionId above, this is permanent -- if
@@ -197,9 +295,12 @@ export default function AddLandmark() {
         free: verified.free,
         typicalMinutes: verified.typicalMinutes || undefined,
       });
+      // Submitted -- the saved draft has done its job.
+      clearPersisted(draftKey);
       navigate(`/landmarks/${created.region}/${created.id}`);
     } catch (err) {
-      setError(err.message || 'Could not save — try again.');
+      // Everything you entered (photo included) stays on the form.
+      setError(err);
       setStage('idle');
     }
   };
@@ -217,6 +318,14 @@ export default function AddLandmark() {
         Add a real place that's missing from the map. It goes live right away — we'll research it and fill in whatever
         you leave blank (category, photo, facts, and more).
       </p>
+      {draftRestored && (
+        <p className="draft-restored-note">
+          {'\u{1F4DD}'} Picked up where you left off {'\u{00B7}'}{' '}
+          <button type="button" onClick={discardDraft}>
+            Discard
+          </button>
+        </p>
+      )}
 
       <div className="field">
         <FieldLabel required>Location</FieldLabel>
@@ -235,7 +344,7 @@ export default function AddLandmark() {
               eventHandlers={{
                 dragend: (e) => {
                   const { lat, lng } = e.target.getLatLng();
-                  setPosition({ lat, lng });
+                  choosePosition({ lat, lng });
                   setAddressText('');
                 },
               }}
@@ -248,7 +357,7 @@ export default function AddLandmark() {
           style={{ marginTop: 10 }}
           disabled={!coords}
           onClick={() => {
-            setPosition({ lat: coords.lat, lng: coords.lng });
+            choosePosition({ lat: coords.lat, lng: coords.lng });
             setAddressText('');
           }}
         >
@@ -265,7 +374,7 @@ export default function AddLandmark() {
               // the geocoder's top match is sometimes the nearest known
               // business at that address, not the address itself, and
               // overwriting what was typed with that name is confusing.
-              setPosition({ lat: s.lat, lng: s.lng });
+              choosePosition({ lat: s.lat, lng: s.lng });
             }}
           />
         </div>
@@ -276,7 +385,20 @@ export default function AddLandmark() {
         <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: -4, marginBottom: 10 }}>
           Leave blank and we'll use the address.
         </p>
-        <input type="text" placeholder="e.g. Farley Hall" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
+        {/* autoComplete off: it's a place's name, and browsers would
+            otherwise offer the user's own name/contacts here. */}
+        <input
+          type="text"
+          name="landmark-name"
+          aria-label="Landmark name"
+          autoComplete="off"
+          autoCapitalize="words"
+          enterKeyHint="next"
+          placeholder="e.g. Farley Hall"
+          value={name}
+          maxLength={80}
+          onChange={(e) => setName(e.target.value)}
+        />
       </div>
 
       <div className="field">
@@ -308,6 +430,11 @@ export default function AddLandmark() {
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               type="text"
+              name="fact"
+              aria-label="Add a fact"
+              autoComplete="off"
+              autoCapitalize="sentences"
+              enterKeyHint="done"
               placeholder="e.g. Built by the class of 1998"
               value={factDraft}
               maxLength={160}
@@ -362,7 +489,13 @@ export default function AddLandmark() {
         )}
       </div>
 
-      <button type="button" className="btn btn-primary btn-block" disabled={!canSubmit || busy} onClick={submit}>
+      <button
+        type="button"
+        className="btn btn-primary btn-block"
+        disabled={!canSubmit || busy}
+        aria-busy={busy}
+        onClick={submit}
+      >
         {stage === 'verifying' ? 'Verifying…' : stage === 'saving' ? 'Saving…' : 'Add Landmark'}
       </button>
 
@@ -372,9 +505,10 @@ export default function AddLandmark() {
         </p>
       )}
       {error && (
-        <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
-          {error}
-        </p>
+        <ErrorNotice
+          message={friendlyError(error, "Couldn't add this landmark. Everything you entered is still here — try again.")}
+          onRetry={canSubmit ? submit : undefined}
+        />
       )}
     </div>
   );

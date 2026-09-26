@@ -26,6 +26,10 @@ export default function CategorySelect({ value, onSelect, placeholder = 'Search 
     <div className="autocomplete" ref={ref}>
       <input
         type="text"
+        name="category"
+        aria-label="Category"
+        enterKeyHint="search"
+        spellCheck={false}
         placeholder={placeholder}
         value={open ? query : selected ? `${selected.icon} ${selected.label}` : ''}
         onFocus={() => {

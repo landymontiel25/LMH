@@ -1,5 +1,7 @@
 import { useUnits, formatDistance } from '../lib/UnitsContext';
 import DirectionsButton from './DirectionsButton';
+import ErrorNotice from './ErrorNotice';
+import { Skeleton } from './Skeleton';
 
 const minutes = (sec) => Math.max(1, Math.round(sec / 60));
 
@@ -31,17 +33,27 @@ export default function TurnByTurnPanel({ stop, loading, error, data, onRefresh,
         </button>
       </div>
 
-      {loading && <p className="screen-subtitle">Finding the best route…</p>}
+      {/* Placeholder ETA line and steps, the shape the directions arrive in. */}
+      {loading && (
+        <div role="status" aria-live="polite">
+          <span className="visually-hidden">Finding the best route…</span>
+          <div className="turn-panel-summary" aria-hidden="true">
+            <Skeleton width={80} height={26} radius={8} />
+            <Skeleton width={120} height={14} />
+          </div>
+          <div className="turn-panel-skeleton-steps" aria-hidden="true">
+            {[0, 1, 2, 3].map((n) => (
+              <Skeleton key={n} width={`${85 - n * 12}%`} height={13} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && !loading && (
         <div>
-          <p className="tag tag-error" style={{ display: 'block' }}>
-            {error}
-          </p>
+          {/* error is already a plain-language sentence (see Itinerary's startNav). */}
+          <ErrorNotice message={error} onRetry={onRefresh} compact />
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={onRefresh}>
-              Try Again
-            </button>
             <DirectionsButton name={stop.name} lat={stop.lat} lng={stop.lng} className="btn btn-ghost btn-sm" external>
               Open in Maps App
             </DirectionsButton>

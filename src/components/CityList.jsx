@@ -1,5 +1,7 @@
-import { useState } from 'react';
 import { getRegion } from '../data/regions';
+import { usePersistentState } from '../lib/usePersistentState';
+
+const NEVER_EMPTY = () => false;
 
 const SORTS = [
   { id: 'points', label: 'Points' },
@@ -17,7 +19,8 @@ function fmtDate(seconds) {
 // already have cityIds/cityPoints/cityLastVisit from the same getUserStats
 // shape. onSelect is optional (the friend view has nothing to navigate to).
 export default function CityList({ cityIds, cityPoints, cityLastVisit, onSelect }) {
-  const [sortBy, setSortBy] = useState('newest');
+  // Remembered across visits -- same choice for your own list and a friend's.
+  const [sortBy, setSortBy] = usePersistentState('cities.sort', 'newest', { isEmpty: NEVER_EMPTY });
 
   const sorted = [...(cityIds || [])].sort((a, b) => {
     if (sortBy === 'points') return (cityPoints?.[b] || 0) - (cityPoints?.[a] || 0);

@@ -1,1 +1,8 @@
 /* UX pass, area 3: styles for this area's screens. */
+
+/* A skeleton standing in for a number/word inside a line of text (rank,
+   points, stat tiles) -- .skeleton itself is display:block. */
+.skeleton.skeleton-inline {
+  display: inline-block;
+  vertical-align: middle;
+}

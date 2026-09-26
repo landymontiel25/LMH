@@ -31,6 +31,10 @@ export default function RegionSearch({ region, onSelect, includeAny = false, pla
     <div className="autocomplete" ref={ref}>
       <input
         type="text"
+        name="region-search"
+        aria-label={placeholder}
+        enterKeyHint="search"
+        spellCheck={false}
         placeholder={placeholder}
         value={open ? query : region?.name || ''}
         onFocus={() => {
@@ -38,6 +42,15 @@ export default function RegionSearch({ region, onSelect, includeAny = false, pla
           setOpen(true);
         }}
         onChange={(e) => setQuery(e.target.value)}
+        // Enter picks the top match, so the keyboard's "search" key works.
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && open && q && matches.length > 0) {
+            e.preventDefault();
+            onSelect(matches[0]);
+            setOpen(false);
+            e.currentTarget.blur();
+          }
+        }}
         autoComplete="off"
         autoCapitalize="off"
       />
