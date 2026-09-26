@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
-import { tierStars } from './ratingFlow';
+import { tierStars, COMMENT_MAX } from './ratingFlow';
 import { applyRating } from './tagScores';
 
 // An Error whose message was written for travelers, not developers --
@@ -125,7 +125,7 @@ export async function submitReview({ userId, userName, landmark, rating, photoFi
           highlights: rating.highlights || [],
           lovedOrder: rating.lovedOrder || [],
           dislikedOrder: rating.dislikedOrder || [],
-          comment: (rating.comment || '').slice(0, 280),
+          comment: (rating.comment || '').slice(0, COMMENT_MAX),
           // Denormalized (like landmarkName/region above) so the taste card
           // can tally categories without a read per review.
           categories: landmark.categories || [],
@@ -257,6 +257,29 @@ export async function deleteMyReview(userId, landmarkId) {
     tx.set(aggRef, { sum: newSum, count: newCount, avg: newCount ? newSum / newCount : 0, updatedAt: serverTimestamp() }, { merge: true });
     tx.delete(reviewRef);
   });
+}
+
+/**
+ * Adds or edits just the comment on your check-in, any time after -- with
+ * or without a rating. Lives on the same reviews/{uid}_{landmarkId} doc a
+ * rating does (a merge, so tier, photos and love notes are untouched), and
+ * firestore.rules only allows it once you've checked in there.
+ */
+export async function saveMyComment({ userId, landmark, comment }) {
+  const text = (comment || '').trim().slice(0, COMMENT_MAX);
+  await setDoc(
+    doc(db, 'reviews', `${userId}_${landmark.id}`),
+    {
+      userId,
+      landmarkId: landmark.id,
+      landmarkName: landmark.name,
+      region: landmark.region ?? landmark.regionId,
+      comment: text,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+  return text;
 }
 
 /**
