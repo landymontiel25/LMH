@@ -5009,3 +5009,53 @@ h2,
 .my-comment-compact .review-comment {
   font-size: 0.82rem;
 }
+
+.mapr-rate-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-elevated);
+  border: 1px solid var(--mapr-blue-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mapr-rate-title {
+  font-weight: 600;
+}
+
+.mapr-rate-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mapr-rate-tiers button {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--mapr-blue-soft);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.mapr-rate-tiers button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.mapr-rate-error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--danger);
+}
+
+.mapr-rate-done {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: var(--success);
+}

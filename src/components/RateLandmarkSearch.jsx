@@ -2,16 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ALL_LANDMARKS, INTERESTS, getRegion } from '../data/regions';
 import { matchesSearch } from '../lib/search';
-import { addCustomLandmark, getCustomLandmarks } from '../lib/customLandmarks';
-import { nearestAttributableRegionId } from '../lib/geo';
+import { getCustomLandmarks } from '../lib/customLandmarks';
+import { createLandmarkFromPlace } from '../lib/placeLandmarks';
 import { searchPlaces, getPlaceDetails, makeSessionToken } from '../lib/places';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useAuth } from '../lib/AuthContext';
 import { useRatings } from '../lib/RatingsContext';
-import { authErrorMessage } from '../lib/authErrors';
-import { auth } from '../lib/firebase';
 import { isRateable, diversityHint } from '../lib/ratingFlow';
-import { friendlyError, fetchJson } from '../lib/friendlyError';
+import { friendlyError } from '../lib/friendlyError';
 import { Skeleton } from './Skeleton';
 import ErrorNotice from './ErrorNotice';
 
@@ -163,69 +161,7 @@ export default function RateLandmarkSearch() {
     try {
       const details = await getPlaceDetails(s.placeId, sessionTokenRef.current);
       sessionTokenRef.current = makeSessionToken();
-      const finalName = details.primary || s.primary;
-      // Forced refresh: right after verifying their email, a cached token
-      // still says unverified for up to an hour, and firestore.rules checks
-      // the token's email_verified before accepting the new landmark.
-      const idToken = await (auth.currentUser || user).getIdToken(true);
-      let verified;
-      try {
-        verified = await fetchJson('/api/verify-landmark', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-          body: JSON.stringify({
-            name: finalName,
-            categories: [],
-            lat: details.lat,
-            lng: details.lng,
-            imageDataUrl: '',
-            userFacts: [],
-          }),
-        });
-      } catch (e) {
-        if (e.code !== 'email-not-verified') throw e;
-        verified = { code: e.code };
-      }
-      if (verified?.code === 'email-not-verified') {
-        // Same recovery as Add Landmark: try to fire off a fresh link
-        // rather than ask them to go dig up the original one.
-        let resent = false;
-        let resendErr = null;
-        try {
-          await resendVerification();
-          resent = true;
-        } catch (e) {
-          resendErr = e;
-        }
-        throw userError(
-          resent
-            ? 'Verify your email first — we just sent a fresh link to your inbox (check spam too), then try again.'
-            : `Verify your email first — check your inbox for the verification link we already sent you (check spam too), then try again. (Couldn't send another one: ${authErrorMessage(resendErr)})`
-        );
-      }
-      if (!verified.ok) throw userError(verified.reason || "That doesn't look like a real place — try a different search.");
-
-      // Leave it unattributed (shows as "Custom pin") rather than filing it
-      // under the nearest curated city when nothing is actually nearby.
-      const region = nearestAttributableRegionId(details.lat, details.lng);
-      // Google's address result is often just the street address, not the
-      // business name -- if the AI's research identifies the real place
-      // there, save it under that real name instead.
-      const savedName = verified.resolvedName || finalName;
-      const created = await addCustomLandmark({
-        region,
-        name: savedName,
-        lat: details.lat,
-        lng: details.lng,
-        userId: user.uid,
-        categories: verified.category ? [verified.category] : [],
-        images: verified.imageUrl ? [verified.imageUrl] : [],
-        summary: verified.summary,
-        facts: verified.facts,
-        free: verified.free,
-        typicalMinutes: verified.typicalMinutes || undefined,
-      });
-      pick({ ...created, regionId: created.region });
+      pick(await createLandmarkFromPlace({ details, fallbackName: s.primary, user, resendVerification }));
     } catch (e) {
       setCreateError({ err: e, place: s });
     } finally {

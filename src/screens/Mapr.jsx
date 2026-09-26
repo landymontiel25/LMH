@@ -19,6 +19,7 @@ import DiscoveryStatsCard from '../components/DiscoveryStatsCard';
 import TasteProfileCard from '../components/TasteProfileCard';
 import TasteNudgeCard from '../components/TasteNudgeCard';
 import TripPlannerCard from '../components/TripPlannerCard';
+import MaprRateCard from '../components/MaprRateCard';
 import { authHeaders } from '../lib/apiAuth';
 import { fetchJson, friendlyError } from '../lib/friendlyError';
 import {
@@ -361,7 +362,7 @@ export default function Mapr() {
       // answer by hand.
       setMessages((cur) => [
         ...cur,
-        { id: msgId, role: 'assistant', text: data.reply, stops, raw, quickReplies: data.quickReplies || [], actionResults },
+        { id: msgId, role: 'assistant', text: data.reply, stops, raw, quickReplies: data.quickReplies || [], actionResults, rate: data.rate || null },
       ]);
       if (data.cost) setTotalCost((c) => c + data.cost);
     } catch (err) {
@@ -499,6 +500,7 @@ export default function Mapr() {
                   )}
                 </div>
               )}
+              {m.rate && <MaprRateCard place={m.rate} />}
               {m.error && m.retryText && i === messages.length - 1 && !busy && (
                 <div className="chatlab-error-actions">
                   <button type="button" className="btn btn-sm btn-ghost" onClick={() => send(null, m.retryText, { retry: true })}>

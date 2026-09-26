@@ -195,6 +195,7 @@ export default function CheckInReview() {
                 <RatingFlow
                   key={justCheckedIn.id}
                   landmark={justCheckedIn}
+                  initial={checkInOptions?.initialTier ? { tier: checkInOptions.initialTier } : null}
                   onChange={setRating}
                   requireComment={requireComment}
                   draftKey={draftKey}

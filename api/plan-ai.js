@@ -63,9 +63,15 @@ const INSTRUCTIONS =
   `"reply", say what you're doing in plain words ("Added Autana to your Philly itinerary."); the app confirms each ` +
   `action under your message. Checking in, rating, and account settings are not actions -- tell them where to tap.\n` +
   `- When they push back or ask to adjust ("more nightlife", "skip the museum", "somewhere closer"), revise the picks accordingly.\n` +
+  `- If they say they just left, just finished at, or are leaving a specific place ("I just left the shooting range, want to ` +
+  `go somewhere for dinner", "done at Autana, what next?"), set "rate" to that place so the app can ask them how it was -- and ` +
+  `open your "reply" by asking in plain words ("How was the range -- love it, okay, or not for you?") before answering the rest ` +
+  `of their message as usual. Use its catalog region/id as "match" when it's in the catalog or NEAREST CATALOG LANDMARKS, ` +
+  `otherwise its real name plus any address you know. Only when they clearly say they were there -- never guess, and not for a ` +
+  `place they merely mention or plan to visit. If they already said how it was, still set "rate" (the app lets them save it).\n` +
   `- Never invent a place. Catalog stops must be real region/id values from the catalog below. Web-found stops must be real places you actually found via search, and must include the source URL.\n\n` +
   `Once you're done -- searching or not -- your ENTIRE visible reply must be ONLY a single JSON object. No narration before or after it, not even a note that you're searching:\n` +
-  `{"reply": "<your conversational reply, 1-4 sentences>", "stops": [<catalog stop> | <web stop>, ...], "quickReplies": [<short tappable answer>, ...], "actions": [<action>, ...]}\n` +
+  `{"reply": "<your conversational reply, 1-4 sentences>", "stops": [<catalog stop> | <web stop>, ...], "quickReplies": [<short tappable answer>, ...], "actions": [<action>, ...], "rate": null | {"match": "<region/id>"} | {"name": "<real place name>", "address": "<address or empty>"}}\n` +
   `- Catalog stop: {"match": "<region/id from the catalog>", "reason": "<why this stop, 1 short sentence>"}\n` +
   `- Web stop: {"name": "<real place name>", "place": "<city or neighborhood>", "address": "<street address if your search showed one, else empty>", "url": "<source URL you found it from>", "reason": "<why this stop, 1 short sentence>"}\n` +
   `- "stops" can be an empty array. Only use region/id values that actually appear in the catalog -- for anything else, use the web stop shape instead of inventing a match id.\n` +
@@ -393,11 +399,23 @@ export default async function handler(req, res) {
         username: str(a.username, 40),
       }));
 
+    // A place the traveler says they just left, for the app's "How was it?"
+    // rating card. A catalog match anywhere is fine -- it's only a pointer.
+    let rate = null;
+    const pr = parsed.rate && typeof parsed.rate === 'object' ? parsed.rate : null;
+    if (pr) {
+      const [rid, lid] = String(pr.match || '').split('/');
+      const lm = rid && lid ? ALL_LANDMARKS.find((l) => l.regionId === rid && l.id === lid) : null;
+      if (lm) rate = { region: rid, id: lid, name: lm.name };
+      else if (str(pr.name, 120)) rate = { name: str(pr.name, 120), address: str(pr.address, 160) };
+    }
+
     res.status(200).json({
       reply: String(parsed.reply || '').slice(0, 500) || "Here's what I found:",
       stops,
       quickReplies,
       actions,
+      rate,
       cost: costUsd,
     });
   } catch (err) {
