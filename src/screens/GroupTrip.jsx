@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { getRegion } from '../data/regions';
-import { listFriends } from '../lib/friends';
 import {
   subscribeGroupTrip,
   toggleGroupLandmark,
@@ -10,7 +9,12 @@ import {
   addGroupMember,
   removeGroupMember,
   deleteGroupTrip,
+  renameGroupTrip,
+  removeGroupPlace,
 } from '../lib/groupTrips';
+import AddMemberSheet from '../components/AddMemberSheet';
+import EditableTitle from '../components/EditableTitle';
+import DirectionsButton from '../components/DirectionsButton';
 import { friendlyError } from '../lib/friendlyError';
 import { runOptimistic, useToast } from '../lib/ToastContext';
 import ErrorNotice from '../components/ErrorNotice';
@@ -50,8 +54,7 @@ export default function GroupTrip() {
   const [status, setStatus] = useState('loading');
   const [loadError, setLoadError] = useState(null);
   const [attempt, setAttempt] = useState(0);
-  const [friends, setFriends] = useState([]);
-  const [friendsError, setFriendsError] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
   // Landmark ticks you've made that the server hasn't confirmed yet, so the
   // checkbox flips the instant you tap it. { [landmarkId]: true | false }
   const [pendingLandmarks, setPendingLandmarks] = useState({});
@@ -79,16 +82,6 @@ export default function GroupTrip() {
     );
     return unsub;
   }, [tripId, uid, attempt]);
-
-  const loadFriends = () => {
-    if (!uid) return;
-    setFriendsError(null);
-    listFriends(uid).then(setFriends).catch(setFriendsError);
-  };
-  useEffect(() => {
-    loadFriends();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid]);
 
   const back = (
     <button className="btn btn-ghost btn-sm" style={{ marginBottom: 12 }} onClick={() => navigate('/itinerary')}>
@@ -137,7 +130,6 @@ export default function GroupTrip() {
 
   const region = getRegion(trip.regionId);
   const isOwner = trip.ownerUid === user.uid;
-  const invitable = friends.filter((f) => !trip.memberUids.includes(f.friend));
   const isSelected = (id) => (id in pendingLandmarks ? pendingLandmarks[id] : trip.landmarkIds.includes(id));
   const selectedCount = (region?.landmarks || []).filter((l) => isSelected(l.id)).length;
 
@@ -183,12 +175,26 @@ export default function GroupTrip() {
   // the trip (the snapshot above fires before the server confirms) and are
   // undone the same way if the write is refused -- this just makes sure a
   // refusal is said out loud, with a way to try again.
-  const addMember = (f) =>
+  const addMember = (m) =>
     runOptimistic({
-      commit: () => addGroupMember(trip, f.friend, f.friendName),
+      commit: () => addGroupMember(trip, m.uid, m.name).then(() => toast.show(`Added ${m.name} to ${trip.name}.`, { tone: 'success', durationMs: 3000 })),
       toast,
-      errorMessage: `Couldn't add ${f.friendName || 'that friend'}. Try again.`,
-      retry: () => addMember(f),
+      errorMessage: `Couldn't add ${m.name || 'them'}. Try again.`,
+      retry: () => addMember(m),
+    });
+  const rename = (name) =>
+    runOptimistic({
+      commit: () => renameGroupTrip(trip, name),
+      toast,
+      errorMessage: "Couldn't rename the trip. Try again.",
+      retry: () => rename(name),
+    });
+  const removePlace = (place) =>
+    runOptimistic({
+      commit: () => removeGroupPlace(trip, place.id),
+      toast,
+      errorMessage: `Couldn't remove ${place.name}. Try again.`,
+      retry: () => removePlace(place),
     });
   const removeMember = (memberUid) =>
     runOptimistic({
@@ -214,9 +220,7 @@ export default function GroupTrip() {
   return (
     <div>
       {back}
-      <h1 className="screen-title">
-        <span>{'\u{1F465}'}</span> {trip.name}
-      </h1>
+      <EditableTitle value={trip.name} onSave={rename} prefix={<span>{'\u{1F465}'}</span>} label="Rename group trip" />
       <p className="screen-subtitle">{region?.name} — a trip you're building together</p>
 
       <div className="card section">
@@ -234,27 +238,17 @@ export default function GroupTrip() {
             )}
           </div>
         ))}
-        {isOwner && friendsError && (
-          <ErrorNotice
-            error={friendsError}
-            message={friendlyError(friendsError, "Couldn't load your friends to invite.")}
-            onRetry={loadFriends}
-            compact
+        {/* Always the last row, under whoever joined most recently. */}
+        <button type="button" className="member-add-row" onClick={() => setShowAdd(true)}>
+          {'\u{2795}'} Add
+        </button>
+        {showAdd && (
+          <AddMemberSheet
+            title={`Add someone to ${trip.name}`}
+            excludeUids={trip.memberUids}
+            onPick={(m) => addMember(m)}
+            onClose={() => setShowAdd(false)}
           />
-        )}
-        {isOwner && invitable.length > 0 && (
-          <div style={{ marginTop: 10 }}>
-            <p className="screen-subtitle" style={{ marginTop: 0 }}>
-              Add a friend:
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {invitable.map((f) => (
-                <button key={f.friend} type="button" className="btn btn-ghost btn-tight" onClick={() => addMember(f)}>
-                  {'\u{2795}'} {f.friendName}
-                </button>
-              ))}
-            </div>
-          </div>
         )}
       </div>
 
@@ -286,6 +280,32 @@ export default function GroupTrip() {
           );
         })}
       </div>
+
+      {(trip.places || []).length > 0 && (
+        <div className="card section">
+          <h3 style={{ marginTop: 0 }}>
+            {'\u{1F310}'} Places From Mapr ({trip.places.length})
+          </h3>
+          {trip.places.map((p) => (
+            <div key={p.id} className="friend-row" style={{ alignItems: 'flex-start' }}>
+              <span style={{ minWidth: 0 }}>
+                <strong>{p.name}</strong>
+                {p.address && (
+                  <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.address}</span>
+                )}
+              </span>
+              <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <DirectionsButton name={p.name} lat={p.lat} lng={p.lng} className="btn btn-ghost btn-tight">
+                  {'\u{1F9ED}'}
+                </DirectionsButton>
+                <button type="button" className="btn btn-ghost btn-tight" aria-label={`Remove ${p.name}`} onClick={() => removePlace(p)}>
+                  {'\u{1F5D1}\u{FE0F}'}
+                </button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isOwner && (
         <button type="button" className="btn btn-ghost btn-block" onClick={deleteTrip}>

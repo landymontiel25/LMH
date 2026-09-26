@@ -21,6 +21,10 @@ import TasteNudgeCard from '../components/TasteNudgeCard';
 import TripPlannerCard from '../components/TripPlannerCard';
 import { authHeaders } from '../lib/apiAuth';
 import { fetchJson, friendlyError } from '../lib/friendlyError';
+import { runMaprActions, itinerarySummary, registerUndo, getUndo, forgetUndo } from '../lib/maprActions';
+import { listMyGroupTrips } from '../lib/groupTrips';
+import { writePersisted } from '../lib/usePersistentState';
+import { useToast } from '../lib/ToastContext';
 
 // "You haven't told Mapr what you like yet" nudge -- shown once (per
 // device/account) until either dismissed outright or satisfied by actually
@@ -53,10 +57,38 @@ export default function Mapr() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { myProfile, profileFresh } = useFriends();
+  const { myProfile, profileFresh, myUsername } = useFriends();
+  const toast = useToast();
   const { myPhotos } = useMyPhotos();
   const { myReviews } = useRatings();
-  const { trip } = useTrip();
+  const tripApi = useTrip();
+  const { trip } = tripApi;
+  // Your group trips, so Mapr can add to / rename / invite people to them.
+  const [groupTrips, setGroupTrips] = useState([]);
+  const loadGroupTrips = () => {
+    if (!user) {
+      setGroupTrips([]);
+      return Promise.resolve([]);
+    }
+    return listMyGroupTrips(user.uid)
+      .then((g) => {
+        setGroupTrips(g);
+        return g;
+      })
+      .catch(() => groupTrips);
+  };
+  useEffect(() => {
+    loadGroupTrips();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
+  // Marks one action result as undone (kept in the saved chat, so it stays
+  // marked after leaving and coming back).
+  const markUndone = (msgId, idx) =>
+    setMessages((cur) =>
+      cur.map((m) =>
+        m.id === msgId ? { ...m, actionResults: m.actionResults.map((r, j) => (j === idx ? { ...r, undone: true } : r)) } : m
+      )
+    );
   const { coords, error: geoError } = useGeo();
   // Chat thread, city picks, planner-open state, cost total and busy all
   // live in MaprChatContext (above the router in App.jsx) instead of here
@@ -120,6 +152,11 @@ export default function Mapr() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const openLink = (link) => {
+    if (link.regionId) writePersisted('itinerary.openRegion', link.regionId);
+    navigate(link.to);
+  };
 
   const toggleRegion = (r) => {
     setRegions((cur) => (cur.some((c) => c.id === r.id) ? cur.filter((c) => c.id !== r.id) : [...cur, r]));
@@ -223,6 +260,7 @@ export default function Mapr() {
           tasteIntro: composeTasteIntro(myProfile),
           insiderMode,
           tagScoreSummary,
+          itineraries: itinerarySummary(trip, tripApi, groupTrips),
           location,
           locationStatus: coords ? 'ok' : geoError ? 'unavailable' : 'pending',
           localNow: {
@@ -243,12 +281,39 @@ export default function Mapr() {
       const stops = data.stops || [];
       // A compact record of what this reply actually said, fed back as this
       // turn's "content" next time so the AI remembers its own picks.
-      const raw = data.reply + (stops.length ? `\n(Suggested: ${stops.map((s) => s.name).join(', ')})` : '');
+      // Run anything Mapr was asked to do (add to itinerary, rename, ...)
+      // as this user, against everything suggested in the chat so far.
+      const msgId = `m${Date.now()}`;
+      let actionResults = [];
+      if (data.actions?.length) {
+        const conversationStops = [...history.flatMap((m) => m.stops || []), ...stops];
+        const results = await runMaprActions(data.actions, {
+          trip,
+          tripApi,
+          groupTrips: user ? await loadGroupTrips() : [],
+          user,
+          ownerName: myUsername || user?.displayName || 'Explorer',
+          coords,
+          conversationStops,
+          onGroupsChanged: loadGroupTrips,
+        });
+        actionResults = results.map((r, idx) => {
+          if (r.undo) registerUndo(`${msgId}:${idx}`, r.undo);
+          return { ok: r.ok, text: r.text, link: r.link || null };
+        });
+      }
+      const raw =
+        data.reply +
+        (stops.length ? `\n(Suggested: ${stops.map((s) => s.name).join(', ')})` : '') +
+        (actionResults.length ? `\n(Done in the app: ${actionResults.map((r) => (r.ok ? r.text : `failed: ${r.text}`)).join(' ')})` : '');
       // Short tappable answers to a clarifying question ("Something new" /
       // "Repeat a favorite") -- tapping one just sends that exact text, the
       // same as typing it, so the traveler never has to type a one-word
       // answer by hand.
-      setMessages((cur) => [...cur, { role: 'assistant', text: data.reply, stops, raw, quickReplies: data.quickReplies || [] }]);
+      setMessages((cur) => [
+        ...cur,
+        { id: msgId, role: 'assistant', text: data.reply, stops, raw, quickReplies: data.quickReplies || [], actionResults },
+      ]);
       if (data.cost) setTotalCost((c) => c + data.cost);
     } catch (err) {
       // The user's message stays in the thread; this bubble explains what
@@ -400,6 +465,44 @@ export default function Mapr() {
               {/* Only on the latest message, and only while nothing else is
                   in flight -- an older question's quick replies would be
                   answering a turn the conversation has already moved past. */}
+              {m.actionResults?.length > 0 && (
+                <div className="mapr-actions">
+                  {m.actionResults.map((r, idx) => {
+                    const key = `${m.id}:${idx}`;
+                    const canUndo = r.ok && !r.undone && getUndo(key);
+                    return (
+                      <div key={key} className={`mapr-action ${r.ok ? 'ok' : 'failed'}`}>
+                        <span>
+                          {r.ok ? (r.undone ? '\u{21A9}\u{FE0F}' : '\u{2705}') : '\u{26A0}\u{FE0F}'} {r.undone ? `Undone: ${r.text}` : r.text}
+                        </span>
+                        <span className="mapr-action-buttons">
+                          {r.ok && r.link && !r.undone && (
+                            <button type="button" onClick={() => openLink(r.link)}>
+                              Open
+                            </button>
+                          )}
+                          {canUndo && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await getUndo(key)();
+                                  forgetUndo(key);
+                                  markUndone(m.id, idx);
+                                } catch (err) {
+                                  toast.show(friendlyError(err, "Couldn't undo that. Try again."));
+                                }
+                              }}
+                            >
+                              Undo
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               {m.quickReplies?.length > 0 && i === messages.length - 1 && !busy && (
                 <div className="chatlab-quick-replies">
                   {m.quickReplies.map((qr) => (

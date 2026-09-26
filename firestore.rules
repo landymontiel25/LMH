@@ -446,16 +446,30 @@ service cloud.firestore {
     // can see or touch it at all; only the owner can change who's a member
     // (add/remove), while any member can edit the shared landmark list --
     // two separate permissions enforced by which fields a write touches.
+    function groupTripFieldsOk() {
+      let d = request.resource.data;
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 80
+        && d.memberUids.size() <= 25
+        && d.get('places', []).size() <= 60;
+    }
     match /group_trips/{tripId} {
       allow get: if request.auth != null && request.auth.uid in resource.data.memberUids;
       allow list: if request.auth != null && request.auth.uid in resource.data.memberUids;
       allow create: if request.auth != null
         && request.resource.data.ownerUid == request.auth.uid
-        && request.auth.uid in request.resource.data.memberUids;
+        && request.auth.uid in request.resource.data.memberUids
+        && groupTripFieldsOk();
+      // Any member: edit the shared lists (catalog landmarks and places Mapr
+      // found on the web), rename the trip, and invite people (only ever
+      // adding -- the member list can grow, never shrink). Only the owner
+      // can remove members.
       allow update: if request.auth != null
         && request.auth.uid in resource.data.memberUids
+        && groupTripFieldsOk()
         && (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['landmarkIds'])
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['landmarkIds', 'places', 'name'])
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'memberNames', 'name'])
+              && request.resource.data.memberUids.hasAll(resource.data.memberUids))
           || (request.auth.uid == resource.data.ownerUid
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'memberNames', 'name'])
               && request.resource.data.ownerUid in request.resource.data.memberUids)

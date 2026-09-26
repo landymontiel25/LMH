@@ -4804,3 +4804,111 @@ h2,
   cursor: pointer;
   text-decoration: underline;
 }
+
+/* ✏️ rename on itinerary titles */
+.editable-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rename-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  width: 34px;
+  height: 34px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rename-btn:hover {
+  border-color: var(--mapr-blue-border);
+}
+
+.rename-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 0.5em;
+}
+
+.rename-form input {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.1rem;
+  padding: 10px 16px;
+  background: rgba(10, 13, 22, 0.9);
+  border: 1px solid var(--mapr-blue);
+  border-radius: 999px;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.member-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 0 2px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--mapr-blue);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.place-tag {
+  font-size: 0.72rem;
+}
+
+/* Things Mapr did in the app (added a stop, renamed an itinerary...). */
+.mapr-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.mapr-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  background: rgba(85, 201, 135, 0.1);
+  border: 1px solid rgba(85, 201, 135, 0.3);
+}
+
+.mapr-action.failed {
+  background: rgba(240, 106, 106, 0.08);
+  border-color: rgba(240, 106, 106, 0.3);
+}
+
+.mapr-action-buttons {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.mapr-action-buttons button {
+  background: none;
+  border: none;
+  color: var(--mapr-blue);
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 2px 6px;
+}
