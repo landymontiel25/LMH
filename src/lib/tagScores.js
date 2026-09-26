@@ -193,20 +193,25 @@ export function pendingCapPrompt(profile) {
 
 // Region the traveler is in: nearest landmark's region to a GPS fix, else
 // the region they were last planning or rating.
-export function pickRegion({ origin, fallbackRegions = [] }) {
+// The region to pick from: the one nearest your GPS fix, else the first of
+// `fallbackRegions`. With `excludeIds` (places you've already been to or
+// rated), a region with nothing new left is skipped for the next-nearest --
+// someone who's done every landmark at Villanova gets Philadelphia picks,
+// not an empty row.
+export function pickRegion({ origin, fallbackRegions = [], excludeIds = null }) {
+  const hasNew = (region) => !excludeIds || candidates(region, excludeIds).length > 0;
   if (origin) {
-    let best = null;
-    let bestD = Infinity;
+    const nearest = {};
     for (const l of ALL_LANDMARKS) {
       const d = (l.lat - origin.lat) ** 2 + ((l.lng - origin.lng) * Math.cos((origin.lat * Math.PI) / 180)) ** 2;
-      if (d < bestD) {
-        bestD = d;
-        best = l.regionId;
-      }
+      if (!(l.regionId in nearest) || d < nearest[l.regionId]) nearest[l.regionId] = d;
     }
-    if (best) return best;
+    const byDistance = Object.keys(nearest).sort((a, b) => nearest[a] - nearest[b]);
+    const found = byDistance.find(hasNew);
+    if (found) return found;
+    if (byDistance.length && !excludeIds) return byDistance[0];
   }
-  return fallbackRegions.find(Boolean) || null;
+  return fallbackRegions.filter(Boolean).find(hasNew) || null;
 }
 
 function candidates(region, excludeIds) {

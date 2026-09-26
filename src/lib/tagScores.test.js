@@ -264,6 +264,19 @@ describe('pickRegion', () => {
     expect(pickRegion({ origin: { lat: 45.4642, lng: 9.19 } })).toBe('milan');
     expect(pickRegion({ origin: null, fallbackRegions: [undefined, 'miami'] })).toBe('miami');
   });
+
+  it("skips a region you've already done everything in for the next-nearest one", () => {
+    const villanova = { lat: 40.0356, lng: -75.3437 };
+    expect(pickRegion({ origin: villanova, excludeIds: [] })).toBe('villanova');
+    const allVillanova = ALL_LANDMARKS.filter((l) => l.regionId === 'villanova').map((l) => l.id);
+    const next = pickRegion({ origin: villanova, excludeIds: allVillanova });
+    expect(next).not.toBe('villanova');
+    expect(next).toBe('philly');
+  });
+
+  it('is null when nothing anywhere is left, rather than an empty region', () => {
+    expect(pickRegion({ origin: null, fallbackRegions: ['villanova'], excludeIds: ALL_LANDMARKS.map((l) => l.id) })).toBeNull();
+  });
 });
 
 describe('settleShownPicks', () => {

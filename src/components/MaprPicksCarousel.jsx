@@ -89,6 +89,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   const region = pickRegion({
     origin,
     fallbackRegions: [orderedReviews.at(-1)?.region, ...[...regionIds].reverse()],
+    excludeIds,
   });
   const customMatchIds = (trip.savedCustomInterests || []).flatMap((t) => trip.customInterestMatches?.[t] || []);
   // With no region yet (no location, ratings or saved cities), fall back to

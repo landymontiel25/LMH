@@ -66,7 +66,7 @@ export const APP_HELP =
   `for it anywhere -- it's just how the chat behaves once it's confident enough.\n` +
   `- Mapr chat plans for the time you're asking about, not the time you're typing: say "Saturday night" or "lunch tomorrow" and it favors ` +
   `nightlife or food for that slot on top of your learned taste; with no time given, it plans for right now.\n` +
-  `- Mapr Picks (on Profile): up to 10 landmarks Mapr thinks you'll love next at once, for the city you're in right now. Every rating updates a ` +
+  `- Mapr Picks (on Profile): up to 10 landmarks Mapr thinks you'll love next at once, for the city you're in right now (or, once you've been to everything there, the nearest city with something new). Every rating updates a ` +
   `per-city score for that landmark's category ("I loved it" +10, "It was okay" +2, "Not for me" -15, kept between -100 and 100, fading by half every 90 days; after a category's first 5 ` +
   `ratings, each new one counts half). ` +
   `Mapr shortlists that city's 30 best-scoring places (no more than 12 from any one category, so one favorite can't crowd out the rest) and then picks the final ones with your recent ratings and own words in mind. A few of the 30 are ` +
