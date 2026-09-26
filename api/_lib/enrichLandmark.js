@@ -52,6 +52,10 @@ export const ENRICHMENT_INSTRUCTIONS =
   `Typical visit length: estimate "typicalMinutes" as a whole number of minutes a normal visit takes (e.g. 15, 30, 60, ` +
   `120), based on the category and what you find. A rough estimate is fine; return null only if you have no basis at ` +
   `all to guess.\n\n` +
+  `Hours: if your search turns up this specific place's real, current opening hours, return them as a short one-line ` +
+  `string in "hours" (e.g. "Mon–Sat 10am–11pm, Sun 12pm–8pm", or "Open 24 hours"). Only return hours you actually found ` +
+  `for this exact place -- never guess typical hours for the category, and never invent a schedule. If you're not ` +
+  `confident or search doesn't surface hours, return null.\n\n` +
   `Photo: only if the submitter didn't already attach one AND your search turns up a specific real photo of this ` +
   `exact place on Wikimedia Commons or a Wikipedia page you actually found (not a generic stock photo, not a photo of ` +
   `a different branch/location, not a logo), return that file's exact Wikimedia Commons file name as ` +
@@ -60,7 +64,7 @@ export const ENRICHMENT_INSTRUCTIONS =
   `submitter already has a photo, return null -- never guess or invent a file name; a missing photo is fine, a wrong ` +
   `one is not.\n\n` +
   `Reply with ONLY a JSON object, no other text:\n` +
-  `{"resolvedName": "<the place's real name, or null>", "summary": "<1-2 sentence summary>", "facts": ["<fact>", ...], "free": true|false, "category": "<id from the list, or null>", "typicalMinutes": <number, or null>, "imageFileName": "<exact Wikimedia Commons file name, or null>"}`;
+  `{"resolvedName": "<the place's real name, or null>", "summary": "<1-2 sentence summary>", "facts": ["<fact>", ...], "free": true|false, "category": "<id from the list, or null>", "typicalMinutes": <number, or null>, "imageFileName": "<exact Wikimedia Commons file name, or null>", "hours": "<short hours string, or null>"}`;
 
 // Best-effort reverse geocode for real-world grounding -- never throws.
 export async function reverseGeocode(lat, lng) {
@@ -167,6 +171,9 @@ export async function enrichLandmark({ name, lat, lng, userFacts = [], placeCont
       ? resolvedNameRaw
       : null;
 
+  const hoursRaw = typeof parsed.hours === 'string' ? stripCitationTags(parsed.hours).trim() : '';
+  const hours = hoursRaw && hoursRaw.length <= 200 ? hoursRaw : null;
+
   return {
     resolvedName,
     summary: stripCitationTags(String(parsed.summary || '')).slice(0, 300),
@@ -177,5 +184,6 @@ export async function enrichLandmark({ name, lat, lng, userFacts = [], placeCont
     category,
     typicalMinutes,
     imageUrl,
+    hours,
   };
 }

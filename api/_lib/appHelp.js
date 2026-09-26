@@ -46,12 +46,18 @@ export const APP_HELP =
   `"➕ Add" at the bottom of the Members list; only the owner can remove members. "🗑️ Delete Itinerary" at the bottom of an ` +
   `itinerary deletes it after a confirm (its stops and name; check-ins and ratings stay), with an Undo right after. A group ` +
   `trip's owner has "Delete This Group Trip" there instead, also confirmed, and that one deletes it for everyone with no undo.\n` +
+  `- Mapr's place recommendations (e.g. "good bowling near me") show as a grid of cards under its reply, one per place — not plain chat ` +
+  `text. Each card shows a photo/category icon, the address, distance from you, hours when Mapr's search could confirm them, and a Get ` +
+  `Directions button (same three-choice picker as everywhere else). Tapping a card opens that place's full landmark page. A place Mapr ` +
+  `found on the web that isn't already in the catalog is turned into a real landmark the moment it's recommended (needs a signed-in, ` +
+  `verified-email account) — same as one someone submits by hand: it shows up on the Map, in Landmarks, in search, everywhere, right ` +
+  `away, and can be checked into, rated and commented on immediately. If it can't be created yet (still resolving, or the account isn't ` +
+  `verified), the card instead shows a lighter "found on the web" version with a source link until it resolves.\n` +
   `- Mapr can act on your itineraries when you ask in chat: "add it to my itinerary", "put both on my Philly trip", "remove Wynwood", ` +
   `"make a new itinerary for Miami called Spring Break", "rename my trip to …", "add @username to my Villanova trip". It works for places ` +
-  `from the catalog and places it found on the web (those show as "✨ Found by Mapr" stops with directions and a source link, no check-in ` +
-  `points). Each action shows a ✅ confirmation under Mapr's reply with Open and Undo. Mapr never creates an itinerary on its ` +
-  `own: anything that would start a new one shows "Start a new … itinerary?" with Create it / No thanks, and only happens if ` +
-  `you tap Create it. It can't check in, rate, or change account settings ` +
+  `from the catalog and places it found on the web. Each action shows a ✅ confirmation under Mapr's reply with Open and Undo. Mapr never ` +
+  `creates an itinerary on its own: anything that would start a new one shows "Start a new … itinerary?" with Create it / No thanks, and ` +
+  `only happens if you tap Create it. It can't check in, rate, or change account settings ` +
   `for you.\n` +
   `- Tell Mapr you just left a place ("I just left the shooting range, where should I eat?") and it asks how it was: a card under ` +
   `its reply with "I loved it" / "It was okay" / "Not for me". One tap opens the usual rating (tier already picked, plus a ` +

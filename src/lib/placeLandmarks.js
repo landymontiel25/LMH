@@ -81,6 +81,7 @@ export async function createLandmarkFromPlace({ details, fallbackName, user, res
     facts: verified.facts,
     free: verified.free,
     typicalMinutes: verified.typicalMinutes || undefined,
+    hours: verified.hours || null,
   });
   return { ...created, regionId: created.region };
 }

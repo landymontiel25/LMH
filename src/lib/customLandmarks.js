@@ -70,6 +70,7 @@ export async function addCustomLandmark({
   facts = [],
   free = true,
   typicalMinutes = 15,
+  hours = null,
 }) {
   const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const data = {
@@ -88,6 +89,7 @@ export async function addCustomLandmark({
     createdBy: userId || null,
     createdAt: serverTimestamp(),
   };
+  if (hours) data.hours = hours;
   await setDoc(doc(db, 'custom_landmarks', id), data);
   return { docId: id, ...data };
 }

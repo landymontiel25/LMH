@@ -3786,9 +3786,50 @@ body.lightbox-open .bottom-nav {
 
 .chatlab-stops {
   margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.chatlab-stop-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--chatlab-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chatlab-stop-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--chatlab-text);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.chatlab-stop-card-main:hover .chatlab-stop-text strong {
+  color: var(--chatlab-cyan);
+}
+
+.chatlab-stop-address {
+  font-size: 0.72rem !important;
+  color: var(--chatlab-text-dim);
+}
+
+.chatlab-stop-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.72rem !important;
+  color: var(--chatlab-cyan) !important;
 }
 
 /* Tappable answers to a clarifying question (e.g. "Something new" /
@@ -4412,7 +4453,8 @@ input[type='search'] {
 }
 
 .chatlab-stop,
-.chatlab-stop-external:hover {
+.chatlab-stop-external:hover,
+.chatlab-stop-card {
   background: var(--bg-elevated);
   border-color: var(--border-subtle);
   border-radius: var(--radius-sm);
@@ -4423,6 +4465,10 @@ input[type='search'] {
   border-color: var(--border-default);
 }
 
+.chatlab-stop-card:hover {
+  border-color: var(--border-default);
+}
+
 .chatlab-stop-globe {
   background: var(--bg-card);
   border-color: var(--border-subtle);
@@ -4430,6 +4476,10 @@ input[type='search'] {
 
 .chatlab-stop-links a {
   color: var(--mapr-blue);
+}
+
+.chatlab-stop-meta {
+  color: var(--mapr-blue) !important;
 }
 
 .chatlab-quick-replies button {

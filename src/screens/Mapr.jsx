@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LandmarkThumb from '../components/LandmarkThumb';
 import { useAuth } from '../lib/AuthContext';
+import { landmarkForRating } from '../lib/placeLandmarks';
+import { getLandmark } from '../data/regions';
+import { distanceMeters } from '../lib/geo';
+import { useUnits, formatDistance } from '../lib/UnitsContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
 import { useRatings } from '../lib/RatingsContext';
@@ -67,7 +71,8 @@ function dismissTasteNudge(uid) {
 export default function Mapr() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, resendVerification } = useAuth();
+  const { units } = useUnits();
   const { myProfile, profileFresh, myUsername } = useFriends();
   const toast = useToast();
   const { myPhotos } = useMyPhotos();
@@ -195,6 +200,61 @@ export default function Mapr() {
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, busy]);
+
+  // A place Mapr found on the web isn't checkable-into or directions-ready
+  // until it's a real landmark -- so the moment one shows up in a reply,
+  // silently turn it into one the same way "rate a place you just left"
+  // already does (landmarkForRating), instead of waiting for the traveler
+  // to ask. Best-effort: signed out, unverified email, or "couldn't find
+  // it on the map" all just leave the stop as a plain card with a Source
+  // link -- nothing about the chat reply itself should ever break for this.
+  const creatingStopsRef = useRef(new Set());
+  useEffect(() => {
+    if (!user) return;
+    for (const m of messages) {
+      if (!m.stops?.length) continue;
+      m.stops.forEach((stop, idx) => {
+        if (!stop.external || stop.createdId || stop.createFailed) return;
+        const key = `${m.id || m.msgId || ''}:${idx}:${stop.name}`;
+        if (creatingStopsRef.current.has(key)) return;
+        creatingStopsRef.current.add(key);
+        landmarkForRating({ name: stop.name, address: stop.address || stop.place }, { near: coords, user, resendVerification })
+          .then((created) => {
+            setMessagesFor(activeChat.id, (cur) =>
+              cur.map((mm) =>
+                mm === m
+                  ? {
+                      ...mm,
+                      stops: mm.stops.map((s, i) =>
+                        i === idx
+                          ? {
+                              ...s,
+                              createdId: created.id,
+                              createdRegion: created.region || created.regionId,
+                              lat: created.lat,
+                              lng: created.lng,
+                              images: created.images,
+                              categories: created.categories,
+                              hours: created.hours || null,
+                            }
+                          : s
+                      ),
+                    }
+                  : mm
+              )
+            );
+          })
+          .catch(() => {
+            setMessagesFor(activeChat.id, (cur) =>
+              cur.map((mm) =>
+                mm === m ? { ...mm, stops: mm.stops.map((s, i) => (i === idx ? { ...s, createFailed: true } : s)) } : mm
+              )
+            );
+          });
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, user]);
 
   // Consume the "open the planner" nav state once so it doesn't reopen on
   // every re-render or if you navigate back to Mapr again later. showPlanner
@@ -543,46 +603,96 @@ export default function Mapr() {
               <p>{m.text}</p>
               {m.stops?.length > 0 && (
                 <div className="chatlab-stops">
-                  {m.stops.map((stop) =>
-                    stop.external ? (
-                      <div key={`ext-${stop.url}`} className="chatlab-stop chatlab-stop-external">
-                        <div className="chatlab-stop-globe">{'\u{1F310}'}</div>
-                        <div className="chatlab-stop-text">
-                          <strong>
-                            {stop.name}
-                            {stop.place ? ` — ${stop.place}` : ''}
-                          </strong>
-                          <span>{stop.reason}</span>
-                          <div className="chatlab-stop-links">
-                            <DirectionsButton
-                              name={stop.name}
-                              query={[stop.name, stop.address || stop.place].filter(Boolean).join(', ')}
-                              near={coords}
-                              className="chatlab-stop-link-btn"
-                            >
-                              Directions
-                            </DirectionsButton>
+                  {m.stops.map((stop, idx) => {
+                    // Not resolved into a real landmark yet (still creating,
+                    // or creation failed/wasn't possible -- signed out,
+                    // unverified email, couldn't find it on the map) --
+                    // the plain "found on the web" row, same as before.
+                    if (stop.external && !stop.createdId) {
+                      return (
+                        <div key={`ext-${idx}-${stop.name}`} className="chatlab-stop chatlab-stop-external">
+                          <div className="chatlab-stop-globe">{'\u{1F310}'}</div>
+                          <div className="chatlab-stop-text">
+                            <strong>
+                              {stop.name}
+                              {stop.place ? ` — ${stop.place}` : ''}
+                            </strong>
+                            <span>{stop.reason}</span>
+                            <div className="chatlab-stop-links">
+                              <DirectionsButton
+                                name={stop.name}
+                                query={[stop.name, stop.address || stop.place].filter(Boolean).join(', ')}
+                                near={coords}
+                                className="chatlab-stop-link-btn"
+                              >
+                                Directions
+                              </DirectionsButton>
+                              {stop.url && (
+                                <a href={stop.url} target="_blank" rel="noreferrer">
+                                  Source {'↗'}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // A resolved landmark card -- either already in the
+                    // catalog, or one Mapr just turned a web-found place
+                    // into (createdId/createdRegion), so it's the exact
+                    // same card either way: real coordinates, directions,
+                    // and a tap-through to a full landmark page with
+                    // comments/ratings/check-ins.
+                    const region = stop.createdRegion || stop.region;
+                    const id = stop.createdId || stop.id;
+                    const catalogLm = !stop.external ? getLandmark(stop.region, stop.id) : null;
+                    const lat = stop.lat ?? catalogLm?.lat;
+                    const lng = stop.lng ?? catalogLm?.lng;
+                    const images = stop.images || catalogLm?.images;
+                    const categories = stop.categories || catalogLm?.categories;
+                    const distance = coords && Number.isFinite(lat) && Number.isFinite(lng)
+                      ? formatDistance(distanceMeters(coords.lat, coords.lng, lat, lng), units)
+                      : null;
+
+                    return (
+                      <div key={`${region}/${id}`} className="chatlab-stop-card">
+                        <button
+                          type="button"
+                          className="chatlab-stop-card-main"
+                          onClick={() => navigate(`/landmarks/${region}/${id}`)}
+                        >
+                          <LandmarkThumb landmark={{ id, name: stop.name, images, categories }} size={64} myPhoto={myPhotos[id]?.[0]} />
+                          <div className="chatlab-stop-text">
+                            <strong>{stop.name}</strong>
+                            {stop.address && <span className="chatlab-stop-address">{'\u{1F4CD}'} {stop.address}</span>}
+                            <span className="chatlab-stop-meta">
+                              {distance && <span>{distance}</span>}
+                              {stop.hours && <span>{'\u{1F551}'} {stop.hours}</span>}
+                            </span>
+                            <span>{stop.reason}</span>
+                          </div>
+                        </button>
+                        <div className="chatlab-stop-links" onClick={(e) => e.stopPropagation()}>
+                          <DirectionsButton
+                            name={stop.name}
+                            lat={Number.isFinite(lat) ? lat : undefined}
+                            lng={Number.isFinite(lng) ? lng : undefined}
+                            query={!Number.isFinite(lat) || !Number.isFinite(lng) ? [stop.name, stop.address].filter(Boolean).join(', ') : undefined}
+                            near={coords}
+                            className="chatlab-stop-link-btn"
+                          >
+                            Directions
+                          </DirectionsButton>
+                          {stop.url && (
                             <a href={stop.url} target="_blank" rel="noreferrer">
                               Source {'↗'}
                             </a>
-                          </div>
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      <button
-                        key={`${stop.region}/${stop.id}`}
-                        type="button"
-                        className="chatlab-stop"
-                        onClick={() => navigate(`/landmarks/${stop.region}/${stop.id}`)}
-                      >
-                        <LandmarkThumb landmark={stop} size={44} myPhoto={myPhotos[stop.id]?.[0]} />
-                        <div className="chatlab-stop-text">
-                          <strong>{stop.name}</strong>
-                          <span>{stop.reason}</span>
-                        </div>
-                      </button>
-                    )
-                  )}
+                    );
+                  })}
                 </div>
               )}
               {m.rate && <MaprRateCard place={m.rate} />}
