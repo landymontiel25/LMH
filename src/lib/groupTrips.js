@@ -82,6 +82,15 @@ export async function toggleGroupLandmark(trip, landmarkId, add = !trip.landmark
   });
 }
 
+// Select all / clear all in one write -- same arrayUnion/arrayRemove
+// reasoning as the single toggle above.
+export async function setGroupLandmarks(trip, landmarkIds, add) {
+  if (!landmarkIds.length) return;
+  await updateDoc(doc(db, 'group_trips', trip.id), {
+    landmarkIds: add ? arrayUnion(...landmarkIds) : arrayRemove(...landmarkIds),
+  });
+}
+
 export async function addGroupMember(trip, memberUid, memberName) {
   if (trip.memberUids.includes(memberUid)) return;
   await updateDoc(doc(db, 'group_trips', trip.id), {

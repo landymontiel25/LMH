@@ -370,6 +370,12 @@ export default function LandmarkSelection() {
   // Total across every city; and the count within the currently filtered city.
   const selectedCount = regionsWithItineraries().reduce((n, r) => n + getRegionSelection(r).length, 0);
   const scopeCount = cityFilter === 'all' ? selectedCount : getRegionSelection(cityFilter).length;
+  const unselectedVisible =
+    cityFilter === 'all'
+      ? []
+      : landmarks
+          .filter((l) => l.regionId === cityFilter && !getRegionSelection(cityFilter).includes(l.id))
+          .map((l) => l.id);
 
   return (
     <div>
@@ -425,10 +431,23 @@ export default function LandmarkSelection() {
         />
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
         <button className={`btn btn-sm ${suggestedSnapshot ? 'btn-primary' : 'btn-ghost'}`} onClick={suggestForMe}>
           {'✨'} {suggestedSnapshot ? 'Suggested ✓' : 'Suggest For Me'}
         </button>
+        {/* One city at a time: "select all 74 landmarks everywhere" isn't a
+            trip anyone plans. Adds whatever the current filters show. */}
+        {cityFilter !== 'all' && unselectedVisible.length > 0 && (
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setSuggestedSnapshot(null);
+              setRegionSelection(cityFilter, [...getRegionSelection(cityFilter), ...unselectedVisible]);
+            }}
+          >
+            {'\u{2705}'} Select All ({unselectedVisible.length})
+          </button>
+        )}
         {scopeCount > 0 && (
           <button
             className="btn btn-ghost btn-sm"

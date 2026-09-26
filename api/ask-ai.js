@@ -30,6 +30,8 @@ const APP_HELP =
   `save, the app says what happened in plain words and shows a Try again button; nothing you typed is cleared.\n` +
   `- Trip planning (Plan Your Trip card and Create New Trip) fills in your starting location from your saved home address when home is in the ` +
   `city you picked, with a Clear option. In city search, pressing Enter picks the top match.\n` +
+  `- Select all: on the Landmarks list, once you pick a single city, "✅ Select All" adds every landmark the current filters show to that ` +
+  `city's itinerary ("Clear" undoes it). A group trip's Shared Landmarks card has "Select all" / "Clear all" too, for everyone in the trip.\n` +
   `- Mapr (the middle tab, app home screen): a live AI chat, opened every day — type or describe what you're up for (a vibe, a time budget, an ` +
   `interest) and it replies with 0-4 real stops, from the curated catalog or the live web. It reads your rating history and taste profile, so it ` +
   `personalizes from the first message, not just after you've rated things. It also weighs the CURRENT message's timing/mood ("Saturday night in the ` +
