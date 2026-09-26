@@ -147,9 +147,10 @@ function ProfileMenu() {
 export default function Header() {
   return (
     <header className="app-header">
-      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flex: 1, minWidth: 0 }}>
-        <img src="/logo.svg" alt="Landmark Hunters" />
-        <span className="brand-text">Landmark Hunters</span>
+      {/* Logo only -- the wordmark next to it used to crowd this pill on
+          narrow phones, and the mark alone is identifiable enough. */}
+      <Link to="/" aria-label="Landmark Hunters" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+        <img src="/logo.png" alt="Landmark Hunters" className="brand-mark" />
       </Link>
       <div className="app-header-actions">
         <ProfileMenu />
