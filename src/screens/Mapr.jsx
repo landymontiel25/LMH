@@ -205,56 +205,117 @@ export default function Mapr() {
   // until it's a real landmark -- so the moment one shows up in a reply,
   // silently turn it into one the same way "rate a place you just left"
   // already does (landmarkForRating), instead of waiting for the traveler
-  // to ask. Best-effort: signed out, unverified email, or "couldn't find
-  // it on the map" all just leave the stop as a plain card with a Source
-  // link -- nothing about the chat reply itself should ever break for this.
-  const creatingStopsRef = useRef(new Set());
+  // to ask or tap. Best-effort: signed out, unverified email, or "couldn't
+  // find it on the map" all just leave the stop tappable-to-retry with a
+  // Source link -- nothing about the chat reply itself should ever break.
+  //
+  // Keyed by message id (not the message object itself): several stops on
+  // the same reply resolve concurrently, and matching by object identity
+  // meant whichever one landed last silently overwrote the others' updates
+  // -- a message replaced by one update was no longer `===` the reference
+  // a second in-flight update still held, so that second update's setState
+  // matched nothing and was dropped. Matching by id is safe against that
+  // no matter how many resolve out of order.
+  //
+  // `creatingPromisesRef` holds the in-flight promise per stop (not just a
+  // "started" flag) so a tap on a card the background effect already
+  // started creating awaits that same request instead of firing a second,
+  // duplicate creation.
+  const creatingPromisesRef = useRef(new Map());
+  const [creatingKeys, setCreatingKeys] = useState(() => new Set());
+  const stopKey = (msgId, idx, name) => `${msgId}:${idx}:${name}`;
+
+  const ensureStopCreated = (m, idx, stop) => {
+    if (stop.createdId) {
+      return Promise.resolve({ id: stop.createdId, region: stop.createdRegion, lat: stop.lat, lng: stop.lng });
+    }
+    const key = stopKey(m.id, idx, stop.name);
+    const existing = creatingPromisesRef.current.get(key);
+    if (existing) return existing;
+
+    setCreatingKeys((cur) => new Set(cur).add(key));
+    const promise = landmarkForRating({ name: stop.name, address: stop.address || stop.place }, { near: coords, user, resendVerification })
+      .then((created) => {
+        setMessagesFor(activeChat.id, (cur) =>
+          cur.map((mm) =>
+            mm.id === m.id
+              ? {
+                  ...mm,
+                  stops: mm.stops.map((s, i) =>
+                    i === idx
+                      ? {
+                          ...s,
+                          createdId: created.id,
+                          createdRegion: created.region || created.regionId,
+                          lat: created.lat,
+                          lng: created.lng,
+                          images: created.images,
+                          categories: created.categories,
+                          hours: created.hours || null,
+                          createFailed: false,
+                        }
+                      : s
+                  ),
+                }
+              : mm
+          )
+        );
+        return created;
+      })
+      .catch((err) => {
+        setMessagesFor(activeChat.id, (cur) =>
+          cur.map((mm) => (mm.id === m.id ? { ...mm, stops: mm.stops.map((s, i) => (i === idx ? { ...s, createFailed: true } : s)) } : mm))
+        );
+        throw err;
+      })
+      .finally(() => {
+        creatingPromisesRef.current.delete(key);
+        setCreatingKeys((cur) => {
+          const next = new Set(cur);
+          next.delete(key);
+          return next;
+        });
+      });
+    creatingPromisesRef.current.set(key, promise);
+    return promise;
+  };
+
   useEffect(() => {
     if (!user) return;
     for (const m of messages) {
       if (!m.stops?.length) continue;
       m.stops.forEach((stop, idx) => {
-        if (!stop.external || stop.createdId || stop.createFailed) return;
-        const key = `${m.id || m.msgId || ''}:${idx}:${stop.name}`;
-        if (creatingStopsRef.current.has(key)) return;
-        creatingStopsRef.current.add(key);
-        landmarkForRating({ name: stop.name, address: stop.address || stop.place }, { near: coords, user, resendVerification })
-          .then((created) => {
-            setMessagesFor(activeChat.id, (cur) =>
-              cur.map((mm) =>
-                mm === m
-                  ? {
-                      ...mm,
-                      stops: mm.stops.map((s, i) =>
-                        i === idx
-                          ? {
-                              ...s,
-                              createdId: created.id,
-                              createdRegion: created.region || created.regionId,
-                              lat: created.lat,
-                              lng: created.lng,
-                              images: created.images,
-                              categories: created.categories,
-                              hours: created.hours || null,
-                            }
-                          : s
-                      ),
-                    }
-                  : mm
-              )
-            );
-          })
-          .catch(() => {
-            setMessagesFor(activeChat.id, (cur) =>
-              cur.map((mm) =>
-                mm === m ? { ...mm, stops: mm.stops.map((s, i) => (i === idx ? { ...s, createFailed: true } : s)) } : mm
-              )
-            );
-          });
+        if (!stop.external || stop.createdId) return;
+        const key = stopKey(m.id, idx, stop.name);
+        if (creatingPromisesRef.current.has(key)) return;
+        ensureStopCreated(m, idx, stop).catch(() => {});
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, user]);
+
+  // Tapping any stop -- a resolved card or one still "found on the web" --
+  // opens its landmark page. If it isn't created yet, waits on (or starts)
+  // that creation first, and navigates from the resolved value directly
+  // rather than the next render, so this never races the background effect.
+  const openStop = async (m, idx, stop) => {
+    if (!stop.external) {
+      navigate(`/landmarks/${stop.region}/${stop.id}`);
+      return;
+    }
+    if (stop.createdId) {
+      navigate(`/landmarks/${stop.createdRegion}/${stop.createdId}`);
+      return;
+    }
+    try {
+      const created = await ensureStopCreated(m, idx, stop);
+      navigate(`/landmarks/${created.region || created.regionId}/${created.id}`);
+    } catch {
+      // Couldn't create it (signed out, unverified, not found on the map --
+      // already reflected as createFailed) -- stays put, Source link still
+      // works, tapping again retries.
+    }
+  };
 
   // Consume the "open the planner" nav state once so it doesn't reopen on
   // every re-render or if you navigate back to Mapr again later. showPlanner
@@ -604,47 +665,15 @@ export default function Mapr() {
               {m.stops?.length > 0 && (
                 <div className="chatlab-stops">
                   {m.stops.map((stop, idx) => {
-                    // Not resolved into a real landmark yet (still creating,
-                    // or creation failed/wasn't possible -- signed out,
-                    // unverified email, couldn't find it on the map) --
-                    // the plain "found on the web" row, same as before.
-                    if (stop.external && !stop.createdId) {
-                      return (
-                        <div key={`ext-${idx}-${stop.name}`} className="chatlab-stop chatlab-stop-external">
-                          <div className="chatlab-stop-globe">{'\u{1F310}'}</div>
-                          <div className="chatlab-stop-text">
-                            <strong>
-                              {stop.name}
-                              {stop.place ? ` — ${stop.place}` : ''}
-                            </strong>
-                            <span>{stop.reason}</span>
-                            <div className="chatlab-stop-links">
-                              <DirectionsButton
-                                name={stop.name}
-                                query={[stop.name, stop.address || stop.place].filter(Boolean).join(', ')}
-                                near={coords}
-                                className="chatlab-stop-link-btn"
-                              >
-                                Directions
-                              </DirectionsButton>
-                              {stop.url && (
-                                <a href={stop.url} target="_blank" rel="noreferrer">
-                                  Source {'↗'}
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    // A resolved landmark card -- either already in the
-                    // catalog, or one Mapr just turned a web-found place
-                    // into (createdId/createdRegion), so it's the exact
-                    // same card either way: real coordinates, directions,
-                    // and a tap-through to a full landmark page with
-                    // comments/ratings/check-ins.
-                    const region = stop.createdRegion || stop.region;
+                    // Every card is tappable right away, whether it's a
+                    // catalog stop, one Mapr already turned into a real
+                    // landmark (createdId/createdRegion), or one still
+                    // being turned into one -- tapping it starts/awaits
+                    // that creation and opens it the moment it's ready
+                    // instead of leaving it dead until some other flow
+                    // (Directions -> Use Map -> back) happened to refresh it.
+                    const key = stopKey(m.id, idx, stop.name);
+                    const creating = creatingKeys.has(key);
                     const id = stop.createdId || stop.id;
                     const catalogLm = !stop.external ? getLandmark(stop.region, stop.id) : null;
                     const lat = stop.lat ?? catalogLm?.lat;
@@ -654,23 +683,34 @@ export default function Mapr() {
                     const distance = coords && Number.isFinite(lat) && Number.isFinite(lng)
                       ? formatDistance(distanceMeters(coords.lat, coords.lng, lat, lng), units)
                       : null;
+                    const resolved = !stop.external || !!stop.createdId;
 
                     return (
-                      <div key={`${region}/${id}`} className="chatlab-stop-card">
+                      <div key={`${m.id}-${idx}`} className="chatlab-stop-card">
                         <button
                           type="button"
                           className="chatlab-stop-card-main"
-                          onClick={() => navigate(`/landmarks/${region}/${id}`)}
+                          disabled={creating}
+                          onClick={() => openStop(m, idx, stop)}
                         >
-                          <LandmarkThumb landmark={{ id, name: stop.name, images, categories }} size={64} myPhoto={myPhotos[id]?.[0]} />
+                          {resolved ? (
+                            <LandmarkThumb landmark={{ id, name: stop.name, images, categories }} size={64} myPhoto={myPhotos[id]?.[0]} />
+                          ) : (
+                            <div className="chatlab-stop-globe">{creating ? '\u{23F3}' : '\u{1F310}'}</div>
+                          )}
                           <div className="chatlab-stop-text">
-                            <strong>{stop.name}</strong>
+                            <strong>
+                              {stop.name}
+                              {!resolved && stop.place ? ` — ${stop.place}` : ''}
+                            </strong>
                             {stop.address && <span className="chatlab-stop-address">{'\u{1F4CD}'} {stop.address}</span>}
-                            <span className="chatlab-stop-meta">
-                              {distance && <span>{distance}</span>}
-                              {stop.hours && <span>{'\u{1F551}'} {stop.hours}</span>}
-                            </span>
+                            {(distance || creating) && (
+                              <span className="chatlab-stop-meta">
+                                {creating ? <span>Give me a couple seconds while I set this up…</span> : <span>{distance}</span>}
+                              </span>
+                            )}
                             <span>{stop.reason}</span>
+                            {stop.createFailed && <span className="chatlab-stop-address">Couldn't open this one — tap to try again, or use Directions/Source below.</span>}
                           </div>
                         </button>
                         <div className="chatlab-stop-links" onClick={(e) => e.stopPropagation()}>
@@ -678,7 +718,7 @@ export default function Mapr() {
                             name={stop.name}
                             lat={Number.isFinite(lat) ? lat : undefined}
                             lng={Number.isFinite(lng) ? lng : undefined}
-                            query={!Number.isFinite(lat) || !Number.isFinite(lng) ? [stop.name, stop.address].filter(Boolean).join(', ') : undefined}
+                            query={!Number.isFinite(lat) || !Number.isFinite(lng) ? [stop.name, stop.address || stop.place].filter(Boolean).join(', ') : undefined}
                             near={coords}
                             className="chatlab-stop-link-btn"
                           >
