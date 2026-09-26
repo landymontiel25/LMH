@@ -12,6 +12,8 @@ const MESSAGES = {
   'auth/too-many-requests': 'Too many attempts — wait a bit before trying again.',
   'auth/popup-closed-by-user': 'Sign-in was cancelled before it finished — try again.',
   'auth/requires-recent-login': 'For your security, sign out and back in, then try that again.',
+  'auth/unauthorized-domain': 'Google Sign-In is not configured for this domain yet. Please try again in a moment.',
+  'auth/operation-not-supported-in-this-environment': 'Google Sign-In is not available in this browser. Try using a different browser or device.',
   'auth/internal-error': 'Something went wrong on our end — try again in a moment.',
 };
 
