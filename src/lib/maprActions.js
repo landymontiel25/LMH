@@ -1,5 +1,5 @@
 import { ALL_LANDMARKS, getRegion } from '../data/regions';
-import { lookupPlace, nearestRegionId, placeId } from './placeLookup';
+import { lookupPlace, nearestRegionId, placeId, reverseGeocodePlace } from './placeLookup';
 import {
   addGroupMember,
   addGroupPlace,
@@ -11,6 +11,8 @@ import {
 } from './groupTrips';
 import { findUserByUsername } from './friends';
 import { friendlyError } from './friendlyError';
+import { createLandmarkFromPlace } from './placeLandmarks';
+import { searchPlaces, getPlaceDetails, makeSessionToken } from './places';
 
 // Mapr can do what a traveler could do by hand with their itineraries: add
 // or remove a stop, create, rename, and invite someone. The AI only
@@ -24,7 +26,7 @@ import { friendlyError } from './friendlyError';
 // needsConfirm, and only runs once the traveler taps "Create it" (which
 // re-runs it with ctx.allowCreate).
 
-export const ACTION_TYPES = ['add_stop', 'remove_stop', 'create_itinerary', 'rename_itinerary', 'add_member'];
+export const ACTION_TYPES = ['add_stop', 'remove_stop', 'create_itinerary', 'rename_itinerary', 'add_member', 'create_landmark_here'];
 
 // Undo handlers for actions Mapr ran this session, keyed by message id +
 // index. Module-level so they survive leaving the Mapr tab and coming
@@ -319,12 +321,68 @@ async function addMember(action, ctx) {
   return { ok: true, text: `Added ${member.name}. ${target.name} is now a group trip you both can edit.`, link: groupLink(id) };
 }
 
+// "Make a landmark for where I am" -- identifies the real place at the
+// traveler's exact GPS point (or, if they named one, searches for that
+// name near them instead -- covers both the original ask and a correction
+// like "no, I'm at the visitor center"), then asks them to confirm before
+// creating anything, the same needsConfirm/allowCreate pattern as starting
+// a new itinerary. Re-resolves on the confirm step too rather than caching
+// across the round trip -- simpler, and the traveler hasn't moved in the
+// few seconds since.
+async function createLandmarkHere(action, ctx) {
+  if (!ctx.user) return { ok: false, text: 'Sign in first — adding a landmark needs an account.' };
+  if (!ctx.coords) return { ok: false, text: "I don't have your location yet — turn on location and try again." };
+
+  let resolved;
+  const nameOverride = String(action.nameOverride || '').trim();
+  if (nameOverride) {
+    const token = makeSessionToken();
+    const viewbox = {
+      minLat: ctx.coords.lat - 0.01,
+      maxLat: ctx.coords.lat + 0.01,
+      minLng: ctx.coords.lng - 0.01,
+      maxLng: ctx.coords.lng + 0.01,
+    };
+    const [top] = await searchPlaces(nameOverride, { viewbox }, token);
+    if (!top) return { ok: false, text: `Couldn't find "${nameOverride}" near you.` };
+    const details = await getPlaceDetails(top.placeId, token);
+    resolved = { name: details.primary || nameOverride, lat: details.lat, lng: details.lng, address: details.secondary || '' };
+  } else {
+    const nearby = await reverseGeocodePlace(ctx.coords.lat, ctx.coords.lng);
+    if (!nearby?.name) {
+      return { ok: false, text: "I can't tell exactly what's at your location -- try naming the place (\"make a landmark for the visitor center here\")." };
+    }
+    resolved = nearby;
+  }
+
+  if (!ctx.allowCreate) {
+    return {
+      ok: false,
+      needsConfirm: true,
+      text: `Just to confirm -- you're at ${resolved.name}${resolved.address ? ` (${resolved.address})` : ''}, right?`,
+    };
+  }
+
+  const created = await createLandmarkFromPlace({
+    details: { primary: resolved.name, lat: resolved.lat, lng: resolved.lng },
+    fallbackName: resolved.name,
+    user: ctx.user,
+    resendVerification: ctx.resendVerification,
+  });
+  return {
+    ok: true,
+    text: `Added ${created.name} as a new landmark -- you can rate it, check in, and comment on it now.`,
+    link: { to: `/landmarks/${created.regionId}/${created.id}` },
+  };
+}
+
 const RUNNERS = {
   add_stop: addStop,
   remove_stop: removeStop,
   create_itinerary: createItinerary,
   rename_itinerary: renameItin,
   add_member: addMember,
+  create_landmark_here: createLandmarkHere,
 };
 
 export async function runMaprActions(actions, baseCtx) {

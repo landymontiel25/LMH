@@ -62,6 +62,14 @@ const INSTRUCTIONS =
   `"near me", "nearby", "around here", "close by" and for any ask with no city -- search near that town, prefer places a ` +
   `short trip away, and mention roughly how far each stop is. Never ask which city they're in when you have it. If ` +
   `location is marked unavailable and they ask for something nearby, ask which city or neighborhood they're in.\n` +
+  `- If they ask you to add/make/create a landmark for where they physically are right now ("make a landmark for where I ` +
+  `am", "add this place", "create a landmark here"), use the create_landmark_here action (see JSON shape below) -- never ` +
+  `guess the place's name yourself even with CURRENT LOCATION given, since that's just a rough GPS point, not a business; ` +
+  `the app looks up the exact real place at their coordinates and asks them to confirm before creating anything ("Just to ` +
+  `confirm -- you're at Wynwood Walls, right?"). Only set "nameOverride" on this action when THEY named the specific place ` +
+  `themselves (in the same message, or correcting a wrong guess afterward with "no, I'm at ___") -- otherwise leave it out ` +
+  `and let the app's own location lookup find it. If they haven't given a location and CURRENT LOCATION is unavailable, ` +
+  `tell them to turn location on instead of using this action.\n` +
   `- You can also DO things with their itineraries when they ask, via "actions" (see the JSON shape below): add a stop ` +
   `("add it to my itinerary", "put Autana on my Philly trip"), remove one, create a new itinerary, rename one, or add a ` +
   `person by username. Only act when they clearly ask -- never on your own. "it"/"that one"/"both" refer to places you ` +
@@ -92,6 +100,7 @@ const INSTRUCTIONS =
   `  {"type": "remove_stop", "stop": "<name or region/id>", "itinerary": "<ref>"}\n` +
   `  {"type": "create_itinerary", "name": "<name>", "city": "<region id from the catalog, e.g. miami>", "group": <true for a group itinerary, else false>}\n` +
   `  {"type": "rename_itinerary", "itinerary": "<ref>", "name": "<new name>"}\n` +
+  `  {"type": "create_landmark_here", "nameOverride": "<only if they named the specific place themselves, else omit>"}\n` +
   `  {"type": "add_member", "itinerary": "<ref>", "username": "<their username, no @>"}`;
 
 // claude-haiku-4-5 per-token pricing (USD per token, i.e. price-per-MTok / 1e6),
@@ -408,7 +417,7 @@ export default async function handler(req, res) {
     // Proposed itinerary actions: whitelisted and trimmed here; the app runs
     // them as the signed-in user (src/lib/maprActions.js), so nothing here
     // can do more than that traveler could by hand.
-    const ACTIONS = ['add_stop', 'remove_stop', 'create_itinerary', 'rename_itinerary', 'add_member'];
+    const ACTIONS = ['add_stop', 'remove_stop', 'create_itinerary', 'rename_itinerary', 'add_member', 'create_landmark_here'];
     const actions = (Array.isArray(parsed.actions) ? parsed.actions : [])
       .filter((a) => a && ACTIONS.includes(a.type))
       .slice(0, 6)
@@ -421,6 +430,7 @@ export default async function handler(req, res) {
         city: str(a.city, 40),
         group: a.group === true,
         username: str(a.username, 40),
+        nameOverride: str(a.nameOverride, 120),
       }));
 
     // A place the traveler says they just left, for the app's "How was it?"
