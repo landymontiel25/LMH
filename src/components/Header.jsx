@@ -185,7 +185,11 @@ export default function Header() {
       <Link to="/" aria-label="Landmark Hunters" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
         <img src="/logo.png" alt="Landmark Hunters" className="brand-mark" />
       </Link>
-      <StreakBadge />
+      {/* Sits in the flex gap between the logo and the profile pill, so a
+          long @username can only shrink this space, never sit under it. */}
+      <div className="app-header-center">
+        <StreakBadge />
+      </div>
       <div className="app-header-actions">
         <ProfileMenu />
       </div>

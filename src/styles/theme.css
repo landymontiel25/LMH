@@ -1767,14 +1767,19 @@ textarea {
   flex-shrink: 0;
 }
 
-/* Dead center of the header pill -- .app-header is itself a positioned
-   element (sticky), so this needs no extra wrapper. */
-.header-streak {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+/* Sits in the flex gap between the logo and the profile pill (see
+   .app-header-center), never on top of either -- a long @username can
+   only ever shrink this middle space, not get covered by it. */
+.app-header-center {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
+  justify-content: center;
+}
+
+.header-streak {
+  display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 4px;
   padding: 5px 12px;
@@ -1830,7 +1835,10 @@ textarea {
 }
 
 .app-header-actions {
-  margin-left: auto;
+  /* The flex:1 .app-header-center between this and the logo already
+     absorbs the row's slack, so this needs no margin-left: auto of its
+     own -- kept flex-shrink: 0 so a long @username never squeezes it. */
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 10px;
