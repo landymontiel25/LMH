@@ -6,6 +6,7 @@ import { listFriends } from '../lib/friends';
 import {
   subscribeGroupTrip,
   toggleGroupLandmark,
+  setGroupLandmarks,
   addGroupMember,
   removeGroupMember,
   deleteGroupTrip,
@@ -157,6 +158,27 @@ export default function GroupTrip() {
     });
   };
 
+  const regionLandmarks = region?.landmarks || [];
+  const allSelected = regionLandmarks.length > 0 && selectedCount === regionLandmarks.length;
+  const setAll = (add) => {
+    const ids = regionLandmarks.filter((l) => isSelected(l.id) !== add).map((l) => l.id);
+    if (!ids.length) return;
+    const clearPending = () =>
+      setPendingLandmarks((cur) => {
+        const next = { ...cur };
+        ids.forEach((id) => delete next[id]);
+        return next;
+      });
+    runOptimistic({
+      apply: () => setPendingLandmarks((cur) => ({ ...cur, ...Object.fromEntries(ids.map((id) => [id, add])) })),
+      commit: () => setGroupLandmarks(trip, ids, add).then(clearPending),
+      rollback: clearPending,
+      toast,
+      errorMessage: add ? "Couldn't select them all, so we put the list back." : "Couldn't clear the list, so we put it back.",
+      retry: () => setAll(add),
+    });
+  };
+
   // Member changes show up right away through Firestore's own local copy of
   // the trip (the snapshot above fires before the server confirms) and are
   // undone the same way if the write is refused -- this just makes sure a
@@ -237,9 +259,16 @@ export default function GroupTrip() {
       </div>
 
       <div className="card section">
-        <h3 style={{ marginTop: 0 }}>
-          {'\u{1F5FA}\u{FE0F}'} Shared Landmarks ({selectedCount})
-        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>
+            {'\u{1F5FA}\u{FE0F}'} Shared Landmarks ({selectedCount})
+          </h3>
+          {regionLandmarks.length > 0 && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAll(!allSelected)}>
+              {allSelected ? 'Clear all' : '\u{2705} Select all'}
+            </button>
+          )}
+        </div>
         {(region?.landmarks || []).map((l) => {
           const selected = isSelected(l.id);
           return (
