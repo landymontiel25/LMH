@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useTheme } from '../lib/useTheme';
@@ -59,7 +60,7 @@ function DraftRestoredNote({ onDiscard }) {
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, firebaseEnabled, signOutUser, resendVerification, refreshUser } = useAuth();
+  const { user, firebaseEnabled, signOutUser, resendVerification, refreshUser, changePassword } = useAuth();
   const { myProfile, reload: reloadFriends } = useFriends();
   const { theme, toggleTheme } = useTheme();
   const { units, mode, setMode, autoCountry } = useUnits();
@@ -91,6 +92,12 @@ export default function Settings() {
   const contextPrefs = context.value;
   const [verifyMsg, setVerifyMsg] = useState(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState(null);
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   // Catches "verified in another tab, then came back to Settings" without
   // requiring a full sign-out/sign-in.
@@ -197,6 +204,43 @@ export default function Settings() {
       habitInFlightRef.current = false;
       setHabitOverride(null);
     });
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordMsg(null);
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordMsg('Please fill in all fields.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg("New passwords don't match.");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordMsg('New password must be different from current password.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordMsg('New password must be at least 6 characters.');
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setPasswordMsg('Password changed successfully.');
+      setTimeout(() => {
+        setChangePasswordOpen(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setPasswordMsg(null);
+      }, 1500);
+    } catch (e) {
+      setPasswordMsg(authErrorMessage(e) || 'Could not change password.');
+    } finally {
+      setPasswordBusy(false);
+    }
   };
 
   return (
@@ -470,6 +514,9 @@ export default function Settings() {
               Privacy Policy & Terms of Service
             </Link>
           </p>
+          <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={() => setChangePasswordOpen(true)}>
+            Change Password
+          </button>
           <button className="btn btn-ghost btn-block" style={{ marginTop: 12 }} onClick={signOutUser}>
             Sign Out
           </button>
@@ -495,6 +542,75 @@ export default function Settings() {
           </p>
         </div>
       )}
+
+      {changePasswordOpen &&
+        createPortal(
+          <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setChangePasswordOpen(false)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ marginTop: 0 }}>Change Password</h3>
+              <form onSubmit={handleChangePassword}>
+                <div className="field">
+                  <label htmlFor="current-password">Current Password</label>
+                  <input
+                    id="current-password"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    disabled={passwordBusy}
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="new-password">New Password</label>
+                  <input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    disabled={passwordBusy}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="confirm-password">Confirm New Password</label>
+                  <input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    disabled={passwordBusy}
+                    autoComplete="new-password"
+                  />
+                </div>
+                {passwordMsg && (
+                  <p
+                    className={`tag ${passwordMsg.includes('successfully') ? 'tag-free' : 'tag-error'}`}
+                    style={{ display: 'block', marginBottom: 12 }}
+                  >
+                    {passwordMsg}
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="submit" className="btn btn-primary btn-block" disabled={passwordBusy}>
+                    {passwordBusy ? 'Changing…' : 'Change Password'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-block"
+                    onClick={() => setChangePasswordOpen(false)}
+                    disabled={passwordBusy}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

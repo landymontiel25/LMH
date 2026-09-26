@@ -11,6 +11,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   deleteUser,
+  updatePassword,
 } from 'firebase/auth';
 import { auth, firebaseEnabled } from './firebase';
 import { deleteAccountData } from './accountDeletion';
@@ -94,6 +95,13 @@ export function AuthProvider({ children }) {
     await deleteUser(current);
   };
 
+  const changePassword = async (currentPassword, newPassword) => {
+    const current = auth.currentUser;
+    const cred = EmailAuthProvider.credential(current.email, currentPassword);
+    await reauthenticateWithCredential(current, cred);
+    await updatePassword(current, newPassword);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -107,6 +115,7 @@ export function AuthProvider({ children }) {
         refreshUser,
         signOutUser,
         deleteAccount,
+        changePassword,
       }}
     >
       {children}
