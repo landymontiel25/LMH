@@ -110,3 +110,30 @@ describe('Mapr Picks never sticks on an empty row', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('Mapr Picks dots', () => {
+  it('lights the last dot once you scroll to the end of the row', async () => {
+    net.feedback = async () => ({});
+    net.counts = async () => ({});
+    vi.stubGlobal('fetch', () => never());
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    await act(async () =>
+      createRoot(container).render(
+        <MemoryRouter>
+          <MaprPicksCarousel reviews={[]} checkedInIds={[]} />
+        </MemoryRouter>
+      )
+    );
+    const dots = () => [...container.querySelectorAll('.mapr-picks-dot')];
+    expect(dots().length).toBeGreaterThan(1);
+    const track = container.querySelector('.mapr-picks-track');
+    // jsdom has no layout: give the row the sizes a phone would.
+    const sizes = { scrollWidth: 2000, clientWidth: 390, scrollLeft: 1610 };
+    Object.entries(sizes).forEach(([k, v]) => Object.defineProperty(track, k, { value: v, configurable: true }));
+    track.firstElementChild.getBoundingClientRect = () => ({ width: 250 });
+    await act(async () => track.dispatchEvent(new Event('scroll')));
+    expect(dots().at(-1).classList.contains('active')).toBe(true);
+    vi.unstubAllGlobals();
+  });
+});
