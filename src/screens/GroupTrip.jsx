@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useTrip } from '../lib/TripContext';
+import { useCheckIn } from '../lib/useCheckIn';
+import { itineraryPhase, groupKey } from '../lib/itineraryStatus';
 import { getRegion } from '../data/regions';
 import {
   subscribeGroupTrip,
@@ -17,6 +19,7 @@ import AddMemberSheet from '../components/AddMemberSheet';
 import EditableTitle from '../components/EditableTitle';
 import DirectionsButton from '../components/DirectionsButton';
 import { friendlyError } from '../lib/friendlyError';
+import { writePersisted } from '../lib/usePersistentState';
 import { runOptimistic, useToast } from '../lib/ToastContext';
 import ErrorNotice from '../components/ErrorNotice';
 import { Skeleton, SkeletonList } from '../components/Skeleton';
@@ -60,7 +63,8 @@ export default function GroupTrip() {
   // checkbox flips the instant you tap it. { [landmarkId]: true | false }
   const [pendingLandmarks, setPendingLandmarks] = useState({});
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const { setMapFocus, setMapFocusStops } = useTrip();
+  const { trip: myTrip, setMapFocus, setMapFocusStops, setItineraryStatus } = useTrip();
+  const { claimedMap } = useCheckIn();
 
   const uid = user?.uid;
   useEffect(() => {
@@ -327,6 +331,26 @@ export default function GroupTrip() {
           ))}
         </div>
       )}
+
+      {(() => {
+        // Current/Past is per person (on this device), not for the whole group.
+        const past = itineraryPhase(groupKey(trip.id), landmarkIds, claimedMap, myTrip.itineraryStatus) === 'past';
+        return (
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            style={{ marginBottom: 12 }}
+            onClick={() => {
+              setItineraryStatus(groupKey(trip.id), past ? 'current' : 'past');
+              writePersisted('itinerary.tab', past ? 'current' : 'past');
+              toast.show(`Moved ${trip.name} to ${past ? 'Current' : 'Past'}.`, { tone: 'success' });
+              navigate('/itinerary');
+            }}
+          >
+            {past ? `${'\u{21A9}\u{FE0F}'} Move back to Current` : `${'\u{1F4E6}'} Move to Past`}
+          </button>
+        );
+      })()}
 
       {isOwner && (
         <button type="button" className="btn btn-danger btn-block" onClick={() => setConfirmDelete(true)}>

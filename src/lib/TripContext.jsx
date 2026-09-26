@@ -42,6 +42,9 @@ const DEFAULT_TRIP = {
   // catalog) that you added to that city's itinerary:
   // { id, name, address, lat, lng, url }
   placesByRegion: {},
+  // { [regionId | `group:<id>`]: 'past' | 'current' } -- a manual "Move to
+  // Past" / "Move back to Current" (see src/lib/itineraryStatus.js).
+  itineraryStatus: {},
 };
 
 function loadTrip() {
@@ -60,6 +63,7 @@ function loadTrip() {
     t.byRegion = t.byRegion || {};
     t.itineraryNames = t.itineraryNames || {};
     t.placesByRegion = t.placesByRegion || {};
+    t.itineraryStatus = t.itineraryStatus || {};
     // Retired interest ids (e.g. the old "food-local-life") become their
     // replacements, so a saved preference keeps filtering after a split.
     t.interests = migrateInterests(t.interests);
@@ -191,10 +195,21 @@ export function TripProvider({ children }) {
       const byRegion = { ...t.byRegion };
       const placesByRegion = { ...t.placesByRegion };
       const itineraryNames = { ...t.itineraryNames };
+      const itineraryStatus = { ...t.itineraryStatus };
       delete byRegion[regionId];
       delete placesByRegion[regionId];
       delete itineraryNames[regionId];
-      return { ...t, byRegion, placesByRegion, itineraryNames };
+      delete itineraryStatus[regionId];
+      return { ...t, byRegion, placesByRegion, itineraryNames, itineraryStatus };
+    });
+
+  // 'past' | 'current' to move an itinerary by hand; null goes back to automatic.
+  const setItineraryStatus = (key, status) =>
+    setTrip((t) => {
+      const itineraryStatus = { ...t.itineraryStatus };
+      if (status) itineraryStatus[key] = status;
+      else delete itineraryStatus[key];
+      return { ...t, itineraryStatus };
     });
 
   const clearRegion = (regionId) =>
@@ -266,6 +281,7 @@ export function TripProvider({ children }) {
         removePlace,
         renameItinerary,
         removeItinerary,
+        setItineraryStatus,
         itineraryName,
         setRegionSelection,
         clearRegion,

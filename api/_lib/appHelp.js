@@ -23,6 +23,10 @@ export const APP_HELP =
   `group) zooms it to fit every stop in that itinerary.\n` +
   `- Select all: on the Landmarks list, once you pick a single city, "✅ Select All" adds every landmark the current filters show to that ` +
   `city's itinerary ("Clear" undoes it). A group trip's Shared Landmarks card has "Select all" / "Clear all" too, for everyone in the trip.\n` +
+  `- Itinerary tab has two subtabs, Current and Past. An itinerary (solo or group) moves to Past on its own once you've ` +
+  `checked into every landmark on it (places Mapr found on the web don't count, since they can't be checked into). Open one ` +
+  `and tap "📦 Move to Past" or "↩️ Move back to Current" to move it by hand; for a group trip that only moves it for you. ` +
+  `There's no sharing of past itineraries yet.\n` +
   `- Itineraries (Itinerary tab): one per city, plus group trips. Each has a name; tap ✏️ next to the title to rename it. A solo itinerary ` +
   `shows a Members card with you and "➕ Add a user": search anyone by username or pick a friend, and the itinerary becomes a group trip ` +
   `you both can edit (same name, stops and places). In a group trip, any member can rename it, tick landmarks, and invite people with ` +
