@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { migrateInterests, getRegion } from '../data/regions';
 
 const STORAGE_KEY = 'landmarkhunters.trip.v1';
@@ -77,9 +77,16 @@ export function TripProvider({ children }) {
   // Which city the Map should frame — set only when you actively view a city
   // this session (list / detail / itinerary). Deliberately NOT persisted, so a
   // fresh app launch falls back to your GPS location instead of the last city.
-  const [mapFocus, setMapFocus] = useState(null);
+  const [mapFocus, setMapFocusRegion] = useState(null);
   // One-shot "fly to this exact landmark" request from a detail page — {lat,lng}.
   const [mapFocusPoint, setMapFocusPoint] = useState(null);
+  // Every stop of the itinerary you're looking at ({lat,lng}[]), so opening
+  // the Map from it frames all of them. Framing a plain city clears it.
+  const [mapFocusStops, setMapFocusStops] = useState(null);
+  const setMapFocus = useCallback((regionId) => {
+    setMapFocusRegion(regionId);
+    setMapFocusStops(null);
+  }, []);
 
   useEffect(() => {
     try {
@@ -278,6 +285,8 @@ export function TripProvider({ children }) {
         setMapFocus,
         mapFocusPoint,
         setMapFocusPoint,
+        mapFocusStops,
+        setMapFocusStops,
       }}
     >
       {children}
