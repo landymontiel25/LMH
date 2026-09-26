@@ -22,6 +22,9 @@ const APP_HELP =
   `HOW LANDMARK HUNTERS WORKS (for questions about the app itself, not a landmark):\n` +
   `- Navigation: 5 tabs — Map, Landmarks, Mapr, Itinerary, Profile.\n` +
   `- AI features (Mapr chat, Mapr Picks, Ask AI, custom-interest matching) need you to be signed in. There's no daily limit.\n` +
+  `- Your progress is saved on this device as you go: the Mapr conversation, half-typed messages and questions, a landmark you were adding, a ` +
+  `rating in progress, feature-request drafts, and your Landmarks search/filters come back if you close the app. If something fails to load or ` +
+  `save, the app says what happened in plain words and shows a Try again button; nothing you typed is cleared.\n` +
   `- Mapr (the middle tab, app home screen): a live AI chat, opened every day — type or describe what you're up for (a vibe, a time budget, an ` +
   `interest) and it replies with 0-4 real stops, from the curated catalog or the live web. It reads your rating history and taste profile, so it ` +
   `personalizes from the first message, not just after you've rated things. It also weighs the CURRENT message's timing/mood ("Saturday night in the ` +
