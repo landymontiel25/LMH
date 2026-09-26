@@ -10,7 +10,8 @@ import { useGeo } from '../lib/GeoContext';
 import { effectiveTagScores, pickRegion } from '../lib/tagScores';
 import { useMaprChat } from '../lib/MaprChatContext';
 import MultiRegionSearch from '../components/MultiRegionSearch';
-import { mapsDeepLink } from '../lib/routing';
+import DirectionsButton from '../components/DirectionsButton';
+import { reverseLocality } from '../lib/geocode';
 import { computeTasteConfidence, hasInsiderMode } from '../lib/tasteProfile';
 import { composeTasteIntro, baselineToSyntheticReviews } from '../lib/tasteQuestions';
 import { logPlanningEvent } from '../lib/timeSaved';
@@ -56,7 +57,7 @@ export default function Mapr() {
   const { myPhotos } = useMyPhotos();
   const { myReviews } = useRatings();
   const { trip } = useTrip();
-  const { coords } = useGeo();
+  const { coords, error: geoError } = useGeo();
   // Chat thread, city picks, planner-open state, cost total and busy all
   // live in MaprChatContext (above the router in App.jsx) instead of here
   // -- this screen unmounts like any other route the moment you tap over
@@ -199,6 +200,16 @@ export default function Mapr() {
           ])
           .filter(([, m]) => Object.keys(m).length)
       );
+      // Where the traveler is right now, so "near me" works without asking.
+      // The town lookup is best-effort and capped at a few seconds.
+      const location = coords
+        ? {
+            lat: Math.round(coords.lat * 1e4) / 1e4,
+            lng: Math.round(coords.lng * 1e4) / 1e4,
+            accuracy: Math.round(coords.accuracy || 0),
+            label: await reverseLocality(coords.lat, coords.lng),
+          }
+        : null;
       const now = new Date();
       const startedAt = performance.now();
       const data = await fetchJson('/api/plan-ai', {
@@ -212,6 +223,8 @@ export default function Mapr() {
           tasteIntro: composeTasteIntro(myProfile),
           insiderMode,
           tagScoreSummary,
+          location,
+          locationStatus: coords ? 'ok' : geoError ? 'unavailable' : 'pending',
           localNow: {
             day: now.getDay(),
             hour: now.getHours(),
@@ -341,9 +354,14 @@ export default function Mapr() {
                           </strong>
                           <span>{stop.reason}</span>
                           <div className="chatlab-stop-links">
-                            <a href={mapsDeepLink(`${stop.name} ${stop.place}`)} target="_blank" rel="noreferrer">
+                            <DirectionsButton
+                              name={stop.name}
+                              query={[stop.name, stop.address || stop.place].filter(Boolean).join(', ')}
+                              near={coords}
+                              className="chatlab-stop-link-btn"
+                            >
                               Directions
-                            </a>
+                            </DirectionsButton>
                             <a href={stop.url} target="_blank" rel="noreferrer">
                               Source {'↗'}
                             </a>

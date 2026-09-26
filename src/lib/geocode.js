@@ -57,3 +57,32 @@ export async function geocodeLocation(text, region) {
     return region?.center ?? null;
   }
 }
+
+// "Radnor, Pennsylvania, United States" for a GPS fix -- the town Mapr is
+// told the traveler is in. Cached per ~1 km so a moving phone doesn't hit
+// Nominatim on every message. Null on any failure; never throws.
+const localityCache = new Map();
+export async function reverseLocality(lat, lng) {
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+  if (localityCache.has(key)) return localityCache.get(key);
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lng), format: 'json', zoom: '14' });
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 3500);
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const a = (await res.json())?.address || {};
+    const town = a.neighbourhood || a.suburb || a.village || a.town || a.city || a.hamlet || a.county;
+    const city = a.city && a.city !== town ? a.city : null;
+    const label = [town, city, a.state, a.country].filter(Boolean).join(', ') || null;
+    localityCache.set(key, label);
+    return label;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
