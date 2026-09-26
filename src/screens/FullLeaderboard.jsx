@@ -4,8 +4,18 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { subscribeLeaderboard, cleanName } from '../lib/leaderboard';
 import FriendPopoverName from '../components/FriendPopoverName';
+import { SkeletonList } from '../components/Skeleton';
+import ErrorNotice from '../components/ErrorNotice';
+import { friendlyError } from '../lib/friendlyError';
+import { readPersisted, writePersisted } from '../lib/usePersistentState';
 
 const PERIOD_LABEL = { weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
+// Shared with Profile's period tabs, so "This Month" stays picked across
+// both screens and across visits.
+const PERIOD_KEY = 'leaderboard.period';
+// subscribeLeaderboard has no error callback -- a listener that never
+// delivers a first snapshot is how a failed read shows up here.
+const STALL_MS = 15000;
 const TABS = [
   { id: 'weekly', label: 'This Week' },
   { id: 'monthly', label: 'This Month' },
@@ -20,9 +30,17 @@ export default function FullLeaderboard() {
   const { user, firebaseEnabled } = useAuth();
   const { myUsername } = useFriends();
   const [searchParams, setSearchParams] = useSearchParams();
-  const period = TABS.some((t) => t.id === searchParams.get('period')) ? searchParams.get('period') : 'weekly';
+  const isPeriod = (p) => TABS.some((t) => t.id === p);
+  const saved = readPersisted(PERIOD_KEY);
+  const period = isPeriod(searchParams.get('period'))
+    ? searchParams.get('period')
+    : isPeriod(saved)
+    ? saved
+    : 'weekly';
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!firebaseEnabled) {
@@ -30,12 +48,43 @@ export default function FullLeaderboard() {
       return;
     }
     setLoading(true);
-    const unsub = subscribeLeaderboard(period, (data) => {
-      setEntries(data);
+    setLoadFailed(false);
+    let arrived = false;
+    const stall = setTimeout(() => {
+      if (!arrived) {
+        setLoadFailed(true);
+        setLoading(false);
+      }
+    }, STALL_MS);
+    let unsub = () => {};
+    try {
+      unsub = subscribeLeaderboard(period, (data) => {
+        arrived = true;
+        clearTimeout(stall);
+        setEntries(data);
+        setLoadFailed(false);
+        setLoading(false);
+      }, 200, () => {
+        arrived = true;
+        clearTimeout(stall);
+        setLoadFailed(true);
+        setLoading(false);
+      });
+    } catch {
+      clearTimeout(stall);
+      setLoadFailed(true);
       setLoading(false);
-    }, 200);
-    return unsub;
-  }, [period, firebaseEnabled]);
+    }
+    return () => {
+      clearTimeout(stall);
+      unsub();
+    };
+  }, [period, firebaseEnabled, attempt]);
+
+  const pickPeriod = (id) => {
+    writePersisted(PERIOD_KEY, id);
+    setSearchParams({ period: id });
+  };
 
   const displayFor = (e) => (user && e.userId === user.uid && myUsername ? myUsername : cleanName(e.userName));
 
@@ -54,7 +103,7 @@ export default function FullLeaderboard() {
           <button
             key={t.id}
             className={`tab-btn ${period === t.id ? 'active' : ''}`}
-            onClick={() => setSearchParams({ period: t.id })}
+            onClick={() => pickPeriod(t.id)}
           >
             {t.label}
           </button>
@@ -67,9 +116,16 @@ export default function FullLeaderboard() {
         </div>
       )}
 
-      {firebaseEnabled && loading && <p className="screen-subtitle">Loading rankings…</p>}
+      {firebaseEnabled && loading && <SkeletonList count={8} variant="rank" label="Loading rankings" />}
 
-      {firebaseEnabled && !loading && entries.length === 0 && (
+      {firebaseEnabled && !loading && loadFailed && (
+        <ErrorNotice
+          message={friendlyError(null, "We couldn't load the rankings. Check your connection and try again.")}
+          onRetry={() => setAttempt((n) => n + 1)}
+        />
+      )}
+
+      {firebaseEnabled && !loading && !loadFailed && entries.length === 0 && (
         <div className="empty-state">
           <p>No points yet {PERIOD_LABEL[period].toLowerCase()} — check in to be first!</p>
         </div>
@@ -77,6 +133,7 @@ export default function FullLeaderboard() {
 
       {firebaseEnabled &&
         !loading &&
+        !loadFailed &&
         entries.map((e, idx) => (
           <div key={e.id} className={`leaderboard-row ${user && e.userId === user.uid ? 'me' : ''}`}>
             <div className="leaderboard-rank">#{idx + 1}</div>

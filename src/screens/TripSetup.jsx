@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTrip } from '../lib/TripContext';
+import { usePersistentState } from '../lib/usePersistentState';
+import { friendlyError } from '../lib/friendlyError';
+import ErrorNotice from '../components/ErrorNotice';
+import { Skeleton, SkeletonList } from '../components/Skeleton';
 import { useGeo } from '../lib/GeoContext';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
@@ -10,17 +14,18 @@ import { classifyInterest } from '../lib/interestClassifier';
 import { listFriends } from '../lib/friends';
 import { matchesSearch } from '../lib/search';
 import { createGroupTrip } from '../lib/groupTrips';
-import LocationAutocomplete from '../components/LocationAutocomplete';
+import LocationAutocomplete, { HomeStartPrefill } from '../components/LocationAutocomplete';
 import AddInterestChip from '../components/AddInterestChip';
 import RegionSearch from '../components/RegionSearch';
 import PreferenceChips from '../components/PreferenceChips';
 
 const CURRENT_LOCATION_LABEL = 'Your Current Location';
+const isEmptyList = (v) => !v?.length;
 
 // Friend multi-select shown once "Group" is picked as the trip type -- lets
 // you invite friends to the group trip right at creation instead of adding
 // them one at a time after, from GroupTrip's own member list.
-function GroupFriendPicker({ friends, query, onQueryChange, selected, onToggle }) {
+function GroupFriendPicker({ friends, loading, error, onRetry, query, onQueryChange, selected, onToggle }) {
   const q = query.trim();
   const filtered = q ? friends.filter((f) => matchesSearch(f.friendName, q)) : friends;
 
@@ -29,14 +34,23 @@ function GroupFriendPicker({ friends, query, onQueryChange, selected, onToggle }
       <p className="screen-subtitle" style={{ marginTop: 0 }}>
         Add friends to build this trip together — everyone added can see and edit the shared landmark list.
       </p>
-      {friends.length === 0 ? (
+      {/* A failed load isn't "no friends yet" -- say so and offer a retry. */}
+      {loading ? (
+        <SkeletonList count={3} label="Loading your friends" />
+      ) : error ? (
+        <ErrorNotice error={error} message={friendlyError(error, "Couldn't load your friends. Try again.")} onRetry={onRetry} compact />
+      ) : friends.length === 0 ? (
         <p className="screen-subtitle" style={{ marginBottom: 0 }}>
           No friends yet — add some from your <Link to="/profile">Profile</Link> first.
         </p>
       ) : (
         <>
           <input
-            type="text"
+            type="search"
+            name="friend-search"
+            aria-label="Search friends"
+            autoComplete="off"
+            enterKeyHint="search"
             placeholder="Search friends…"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
@@ -89,24 +103,38 @@ export default function TripSetup() {
   // the end of the solo flow (Itinerary's "Start a Group Trip" button,
   // after building your own landmark list); this makes it a choice up
   // front instead.
-  const [tripMode, setTripMode] = useState(null); // null | 'solo' | 'group'
+  // Saved with the rest of the half-built trip (region, start and
+  // interests already persist in TripContext), so closing the modal or the
+  // app mid-setup doesn't lose the Solo/Group pick or the friends ticked.
+  const draftKey = user ? `tripsetup.${user.uid}` : null;
+  const [tripMode, setTripMode] = usePersistentState(draftKey && `${draftKey}.mode`, null); // null | 'solo' | 'group'
   const [friends, setFriends] = useState([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendsError, setFriendsError] = useState(null);
   const [friendQuery, setFriendQuery] = useState('');
-  const [selectedFriendUids, setSelectedFriendUids] = useState(() => new Set());
+  const [selectedFriendList, setSelectedFriendList] = usePersistentState(draftKey && `${draftKey}.friends`, [], {
+    isEmpty: isEmptyList,
+  });
+  const selectedFriendUids = new Set(selectedFriendList);
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [groupError, setGroupError] = useState(null);
 
+  const loadFriends = () => {
+    if (!user) return;
+    setFriendsLoading(true);
+    setFriendsError(null);
+    listFriends(user.uid)
+      .then(setFriends)
+      .catch(setFriendsError)
+      .finally(() => setFriendsLoading(false));
+  };
   useEffect(() => {
-    if (user) listFriends(user.uid).then(setFriends).catch(() => setFriends([]));
+    loadFriends();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const toggleFriendSelected = (uid) => {
-    setSelectedFriendUids((cur) => {
-      const next = new Set(cur);
-      if (next.has(uid)) next.delete(uid);
-      else next.add(uid);
-      return next;
-    });
+    setSelectedFriendList((cur) => (cur.includes(uid) ? cur.filter((u) => u !== uid) : [...cur, uid]));
   };
 
   // The app already keeps a live, continuously-updating fix in GeoContext
@@ -194,9 +222,13 @@ export default function TripSetup() {
           .filter((f) => selectedFriendUids.has(f.friend))
           .map((f) => ({ uid: f.friend, name: f.friendName })),
       });
+      // Submitted: the saved Solo/Group pick and friend ticks are done with.
+      setTripMode(null);
+      setSelectedFriendList([]);
       navigate(`/group/${id}`);
     } catch (e) {
-      setGroupError(e.message || 'Could not start the group trip — try again.');
+      // Everything picked stays as it was, ready for Try again.
+      setGroupError(e);
     } finally {
       setCreatingGroup(false);
     }
@@ -236,6 +268,7 @@ export default function TripSetup() {
           {'\u{1F4CD}'} {locating ? 'Locating…' : 'Use My Current Location'}
         </button>
         <LocationAutocomplete
+          name="start-location"
           id="start"
           placeholder="Or type an address, hotel, etc."
           value={trip.startingLocation}
@@ -253,6 +286,7 @@ export default function TripSetup() {
             {locateError}
           </p>
         )}
+        <HomeStartPrefill />
         {!trip.startingLocation && (
           <p style={{ fontSize: '0.78rem', color: 'var(--color-parchment-dim)', marginTop: 6 }}>
             No starting point set — the itinerary will route from wherever you are.
@@ -296,10 +330,15 @@ export default function TripSetup() {
               key={text}
               className="chip selected"
               style={{ cursor: 'default' }}
-              title={classifying.has(text) ? 'Finding matching landmarks…' : undefined}
+               aria-busy={classifying.has(text)}
+            title={classifying.has(text) ? 'Finding matching landmarks…' : undefined}
             >
               <span className="chip-icon">
-                {classifying.has(text) ? '\u{23F3}' : trip.customInterestEmoji[text] || '\u{2728}'}
+                {classifying.has(text) ? (
+                  <Skeleton width={16} height={16} radius={16} />
+                ) : (
+                  trip.customInterestEmoji[text] || '\u{2728}'
+                )}
               </span>
               <span>{text}</span>
               <button
@@ -347,6 +386,9 @@ export default function TripSetup() {
         {tripMode === 'group' && user && (
           <GroupFriendPicker
             friends={friends}
+            loading={friendsLoading}
+            error={friendsError}
+            onRetry={loadFriends}
             query={friendQuery}
             onQueryChange={setFriendQuery}
             selected={selectedFriendUids}
@@ -355,16 +397,25 @@ export default function TripSetup() {
         )}
       </div>
 
-      {groupError && (
-        <p className="tag tag-error" style={{ display: 'block', marginBottom: 10 }}>
-          {groupError}
-        </p>
+      {groupError && !creatingGroup && (
+        <ErrorNotice
+          message={friendlyError(groupError, "Couldn't start the group trip. Try again.")}
+          onRetry={startGroupTrip}
+          compact
+        />
       )}
       <button
         type="button"
         className="btn btn-primary btn-block"
         disabled={!canContinue || creatingGroup}
-        onClick={tripMode === 'group' ? startGroupTrip : () => navigate('/landmarks')}
+        onClick={
+          tripMode === 'group'
+            ? startGroupTrip
+            : () => {
+                setTripMode(null);
+                navigate('/landmarks');
+              }
+        }
       >
         {tripMode === 'group'
           ? creatingGroup

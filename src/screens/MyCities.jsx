@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useBadges } from '../lib/BadgesContext';
 import CityList from '../components/CityList';
+import { SkeletonList } from '../components/Skeleton';
 
 // Just the cities list, on its own -- Your Stats' "cities" tile used to open
 // a modal; this is a real page instead, matching "check-ins" and the friend
@@ -30,7 +31,13 @@ export default function MyCities() {
       <h1 className="screen-title">
         <span>{'\u{1F3D9}\u{FE0F}'}</span> Cities you've visited
       </h1>
-      <CityList cityIds={stats?.cityIds} cityPoints={stats?.cityPoints} cityLastVisit={stats?.cityLastVisit} />
+      {/* stats is null until BadgesContext's first read lands -- an empty
+          CityList there would read as "no cities yet". */}
+      {stats ? (
+        <CityList cityIds={stats.cityIds} cityPoints={stats.cityPoints} cityLastVisit={stats.cityLastVisit} />
+      ) : (
+        <SkeletonList count={4} label="Loading your cities" />
+      )}
     </div>
   );
 }

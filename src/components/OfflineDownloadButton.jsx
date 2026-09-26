@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { downloadRegionTiles, isRegionDownloaded } from '../lib/offlineMap';
+import { friendlyError } from '../lib/friendlyError';
+import ErrorNotice from './ErrorNotice';
 
 export default function OfflineDownloadButton({ region }) {
   const [downloaded, setDownloaded] = useState(() => isRegionDownloaded(region.id));
@@ -14,8 +16,8 @@ export default function OfflineDownloadButton({ region }) {
     try {
       await downloadRegionTiles(region, { onProgress: setProgress });
       setDownloaded(true);
-    } catch {
-      setError('Could not finish downloading — try again with a stronger connection.');
+    } catch (e) {
+      setError(friendlyError(e, 'Could not finish downloading — try again with a stronger connection.'));
     } finally {
       setDownloading(false);
     }
@@ -33,16 +35,12 @@ export default function OfflineDownloadButton({ region }) {
         </p>
       )}
       {downloading && (
-        <p className="screen-subtitle" style={{ margin: '0 0 8px' }}>
+        <p className="screen-subtitle" style={{ margin: '0 0 8px' }} role="status" aria-live="polite">
           Downloading… {Math.round(progress * 100)}%
         </p>
       )}
-      {error && (
-        <p className="tag tag-error" style={{ display: 'block', marginBottom: 8 }}>
-          {error}
-        </p>
-      )}
-      {!downloading && (
+      {error && !downloading && <ErrorNotice compact message={error} onRetry={start} />}
+      {!downloading && !error && (
         <button type="button" className="btn btn-ghost btn-block" onClick={start}>
           {downloaded ? 'Re-download' : 'Download for Offline'}
         </button>

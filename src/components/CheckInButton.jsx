@@ -34,8 +34,10 @@ export default function CheckInButton({ landmark, user, firebaseEnabled, claimed
     onCheckIn(landmark);
   };
 
+  // While the server confirms the claim, say so in words (not a bare
+  // "…") -- the server is still what decides whether it counted.
   const label = busy
-    ? '…'
+    ? '\u{23F3} Checking in…'
     : !user
     ? 'Sign in to Check In'
     : noLocation
@@ -49,8 +51,9 @@ export default function CheckInButton({ landmark, user, firebaseEnabled, claimed
   return (
     <button
       type="button"
-      className={`btn btn-sm ${alreadyVisited ? 'btn-success' : 'btn-primary'} ${className}`}
+      className={`btn btn-sm ${alreadyVisited ? 'btn-success' : 'btn-primary'} ${busy ? 'is-busy' : ''} ${className}`}
       disabled={!user || busy || noLocation || tooFar}
+      aria-busy={busy}
       title={!user ? 'Sign in to check in' : tooFar ? `You need to be within ${radius}m of this spot` : 'Check in'}
       onClick={handleClick}
     >

@@ -17,6 +17,15 @@ import { db } from './firebase';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
+// Our own validation errors are already written for people -- tagging them
+// with userMessage lets friendlyError() show them as-is instead of falling
+// back to a generic "Something went wrong".
+function userError(message) {
+  const err = new Error(message);
+  err.userMessage = message;
+  return err;
+}
+
 export async function getUserProfile(uid) {
   if (!db || !uid) return null;
   const snap = await getDoc(doc(db, 'users', uid));
@@ -46,14 +55,14 @@ export function subscribeUserProfile(uid, onProfile, onError) {
 export async function claimUsername(user, rawName) {
   const username = (rawName || '').trim().toLowerCase();
   if (!USERNAME_RE.test(username)) {
-    throw new Error('3–20 characters: lowercase letters, numbers, or _');
+    throw userError('3–20 characters: lowercase letters, numbers, or _');
   }
   const unameRef = doc(db, 'usernames', username);
   const userRef = doc(db, 'users', user.uid);
   await runTransaction(db, async (tx) => {
     const existing = await tx.get(unameRef);
     if (existing.exists() && existing.data().uid !== user.uid) {
-      throw new Error('That username is already taken.');
+      throw userError('That username is already taken.');
     }
     const me = await tx.get(userRef);
     const oldName = me.exists() ? me.data().username : null;
@@ -252,9 +261,9 @@ export async function hasPendingRequestTo(fromUid, toUid) {
 }
 
 export async function sendFriendRequest(fromUser, toUser) {
-  if (fromUser.uid === toUser.uid) throw new Error("That's your own account.");
+  if (fromUser.uid === toUser.uid) throw userError("That's your own account.");
   const edge = await getDoc(doc(db, 'friend_edges', `${fromUser.uid}_${toUser.uid}`));
-  if (edge.exists()) throw new Error('You two are already friends.');
+  if (edge.exists()) throw userError('You two are already friends.');
   await setDoc(doc(db, 'friend_requests', `${fromUser.uid}_${toUser.uid}`), {
     from: fromUser.uid,
     fromName: fromUser.username || fromUser.displayName || fromUser.email,

@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getUserStats } from '../lib/leaderboard';
 import { getUserProfile } from '../lib/friends';
 import CheckinsGallery from '../components/CheckinsGallery';
+import ErrorNotice from '../components/ErrorNotice';
+import { friendlyError } from '../lib/friendlyError';
+import { Skeleton, SkeletonList } from '../components/Skeleton';
 
 // A friend's check-ins gallery as its own page, reached from FriendStats'
 // "check-ins" tile -- self-sufficient (fetches its own name/points) so it
@@ -12,11 +15,13 @@ export default function FriendCheckins() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [totalPoints, setTotalPoints] = useState(0);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     (async () => {
       try {
         const [profile, stats] = await Promise.all([getUserProfile(uid), getUserStats(uid)]);
@@ -24,22 +29,36 @@ export default function FriendCheckins() {
         setName(profile?.username || 'this user');
         setTotalPoints(stats.totalPoints);
         setLoaded(true);
-      } catch {
-        if (!cancelled) setError(true);
+      } catch (err) {
+        if (!cancelled) setError(err);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [uid]);
+  }, [uid, attempt]);
 
   return (
     <div>
       <button type="button" className="btn btn-ghost btn-block" style={{ marginBottom: 24 }} onClick={() => navigate(-1)}>
         {'←'} Back
       </button>
-      {error && <p className="screen-subtitle">Could not load their check-ins — try again.</p>}
-      {!error && !loaded && <p className="screen-subtitle">Loading…</p>}
+      {error && (
+        <ErrorNotice
+          message={friendlyError(error, "We couldn't load their check-ins. Try again.")}
+          onRetry={() => setAttempt((n) => n + 1)}
+        />
+      )}
+      {!error && !loaded && (
+        <div className="section">
+          {/* Same shape as the gallery about to replace it: points card, heading, rows. */}
+          <div className="card" style={{ textAlign: 'center', marginBottom: 14 }} aria-hidden="true">
+            <Skeleton width="50%" height={28} style={{ margin: '0 auto' }} />
+          </div>
+          <Skeleton width="55%" height={20} style={{ marginBottom: 12 }} />
+          <SkeletonList count={5} label="Loading their check-ins" />
+        </div>
+      )}
       {loaded && (
         <CheckinsGallery
           user={{ uid }}

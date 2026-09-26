@@ -26,7 +26,8 @@ export default class ErrorBoundary extends Component {
       <div style={{ padding: '24px 20px' }}>
         <h1 className="screen-title">{'\u{26A0}\u{FE0F}'} Something went wrong</h1>
         <p className="screen-subtitle">
-          This screen hit an unexpected error. Try again, or head back to the map.
+          This screen hit a snag on our end. Anything you were typing is saved on this device, so trying again
+          picks up where you left off.
         </p>
         {/* A full reload, not just clearing local state: the most common
             real cause here is a stale JS chunk reference from before the

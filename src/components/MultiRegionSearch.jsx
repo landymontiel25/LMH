@@ -34,12 +34,25 @@ export default function MultiRegionSearch({ selectedIds, onToggle, onClearAll, p
       <div className="autocomplete">
         <input
           type="text"
+          name="city-search"
+          aria-label={placeholder}
+          enterKeyHint="search"
+          spellCheck={false}
           placeholder={placeholder}
           value={query}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
+          }}
+          // Enter adds the top match, so the keyboard's "search" key does
+          // something instead of nothing.
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && q && matches.length > 0) {
+              e.preventDefault();
+              onToggle(matches[0]);
+              setQuery('');
+            }
           }}
           autoComplete="off"
           autoCapitalize="off"

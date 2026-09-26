@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserStats, getUserCheckins, isRealCheckin } from '../lib/leaderboard';
 import { getRegion } from '../data/regions';
+import { friendlyError } from '../lib/friendlyError';
+import { Skeleton } from './Skeleton';
+import ErrorNotice from './ErrorNotice';
 
 // A friend's quick summary -- points/check-ins/cities/last check-in -- as a
 // popup modal. Check-ins and Cities are buttons that navigate to their own
@@ -12,9 +15,11 @@ import { getRegion } from '../data/regions';
 export default function FriendStatsModal({ uid, name, onClose }) {
   const navigate = useNavigate();
   const [state, setState] = useState({ loading: true });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setState({ loading: true });
     Promise.all([getUserStats(uid), getUserCheckins(uid)])
       .then(([stats, checkins]) => {
         // A "Rate a Landmark" claim isn't a visit -- skip it for
@@ -22,13 +27,13 @@ export default function FriendStatsModal({ uid, name, onClose }) {
         const recent = checkins.find(isRealCheckin) || null;
         if (!cancelled) setState({ loading: false, stats, recent });
       })
-      .catch(() => {
-        if (!cancelled) setState({ loading: false, error: true });
+      .catch((err) => {
+        if (!cancelled) setState({ loading: false, error: err });
       });
     return () => {
       cancelled = true;
     };
-  }, [uid]);
+  }, [uid, attempt]);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -36,8 +41,28 @@ export default function FriendStatsModal({ uid, name, onClose }) {
         <h3 style={{ marginTop: 0 }}>
           {'\u{1F464}'} @{name}
         </h3>
-        {state.loading && <p className="screen-subtitle">Loading…</p>}
-        {state.error && <p className="screen-subtitle">Could not load their stats — try again.</p>}
+        {state.loading && (
+          // Same three tiles + "last check-in" line that are about to appear.
+          <div role="status" aria-live="polite">
+            <span className="visually-hidden">Loading their stats…</span>
+            <div className="profile-stats" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="profile-stat">
+                  <Skeleton width={40} height={22} style={{ margin: '0 auto 6px' }} />
+                  <Skeleton width={56} height={10} style={{ margin: '0 auto' }} />
+                </div>
+              ))}
+            </div>
+            <Skeleton width="70%" height={12} style={{ marginTop: 14 }} />
+          </div>
+        )}
+        {state.error && (
+          <ErrorNotice
+            compact
+            message={friendlyError(state.error, "We couldn't load their stats. Try again.")}
+            onRetry={() => setAttempt((n) => n + 1)}
+          />
+        )}
         {state.stats && (
           <>
             <div className="profile-stats">

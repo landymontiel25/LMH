@@ -4,6 +4,7 @@ import { useFriends } from '../lib/FriendsContext';
 import { answerTagCapPrompt } from '../lib/friends';
 import { pendingCapPrompt } from '../lib/tagScores';
 import { categoryLabel } from '../lib/ratingFlow';
+import { useToast, runOptimistic } from '../lib/ToastContext';
 
 // Shows once per tag, the first time a rating pushes that tag's score to
 // the cap in any region (see tagScores.js). "Yes" adds a 1.5x ranking boost
@@ -12,8 +13,8 @@ import { categoryLabel } from '../lib/ratingFlow';
 export default function TagCapPrompt() {
   const { user } = useAuth();
   const { myProfile, profileFresh } = useFriends();
+  const toast = useToast();
   const [note, setNote] = useState('');
-  const [saving, setSaving] = useState(false);
   // Hides the card the moment you answer, before the profile listener
   // delivers the saved answer back.
   const [answered, setAnswered] = useState(() => new Set());
@@ -22,17 +23,27 @@ export default function TagCapPrompt() {
   const pending = pendingCapPrompt(myProfile);
   if (!pending || answered.has(pending.tag)) return null;
 
-  const answer = async (choice) => {
-    setSaving(true);
-    try {
-      await answerTagCapPrompt(user.uid, pending.tag, choice, note);
-    } catch {
-      // Best-effort: if the write fails, the prompt comes back next session.
-    }
-    setAnswered((cur) => new Set(cur).add(pending.tag));
-    setNote('');
-    setSaving(false);
-  };
+  // Optimistic: the card closes on tap. If the save fails it comes back
+  // with your note still typed, plus a Retry toast.
+  const answer = (choice, tag = pending.tag, text = note) =>
+    runOptimistic({
+      apply: () => {
+        setAnswered((cur) => new Set(cur).add(tag));
+        setNote('');
+      },
+      commit: () => answerTagCapPrompt(user.uid, tag, choice, text),
+      rollback: () => {
+        setAnswered((cur) => {
+          const next = new Set(cur);
+          next.delete(tag);
+          return next;
+        });
+        setNote((cur) => cur || text);
+      },
+      toast,
+      errorMessage: "Couldn't save your answer.",
+      retry: () => answer(choice, tag, text),
+    });
 
   return (
     <div className="modal-backdrop">
@@ -45,20 +56,22 @@ export default function TagCapPrompt() {
         </p>
 
         <textarea
+          name="tag-note"
+          aria-label="Anything else you want us to know?"
+          autoComplete="off"
           className="rating-comment"
           rows={3}
           maxLength={500}
           placeholder="Anything else you want us to know?"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          disabled={saving}
         />
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-          <button type="button" className="btn btn-primary btn-block" disabled={saving} onClick={() => answer('yes')}>
+          <button type="button" className="btn btn-primary btn-block" onClick={() => answer('yes')}>
             Yes
           </button>
-          <button type="button" className="btn btn-ghost btn-block" disabled={saving} onClick={() => answer('no')}>
+          <button type="button" className="btn btn-ghost btn-block" onClick={() => answer('no')}>
             No
           </button>
         </div>

@@ -22,6 +22,8 @@ import {
 } from '../lib/tagScores';
 import RateLandmarkSearch from './RateLandmarkSearch';
 import { authHeaders } from '../lib/apiAuth';
+import { Skeleton } from './Skeleton';
+import ErrorNotice from './ErrorNotice';
 
 // "Your Mapr Picks": landmarks Mapr thinks you'll love next, as a
 // swipeable card row under the taste card. Capped at RESERVE (10) on
@@ -57,6 +59,11 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // it out of the immediate refill in vote() below) but, unlike ✓/✗, is
   // never permanently blacklisted -- see votedIds in pickFeedback.js.
   const [feedback, setFeedback] = useState({});
+  // Set only when nothing could be loaded at all (the API and the on-device
+  // fallback both came up empty after a failed fetch) -- so a real outage
+  // shows "couldn't load, try again" instead of the "no picks yet" note.
+  const [loadError, setLoadError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
   // Region check-in counts once fetched, for on-device picks after that.
   const countsRef = useRef({});
   const trackRef = useRef(null);
@@ -135,6 +142,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
       return;
     }
     let cancelled = false;
+    setLoadError(null);
     const key = picksCacheKey(user.uid, ratingsCount, origin, cacheFP);
 
     // Paint something right away -- the cached list is already synchronous,
@@ -165,7 +173,11 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         setQueue(cached.filter((p) => !passedIds.includes(p.id) && !excludeIds.includes(p.id)));
         return;
       }
-      const checkinCounts = await (region ? getRegionCheckinCounts(region) : getGlobalCheckinCounts()).catch(() => ({}));
+      let countsError = null;
+      const checkinCounts = await (region ? getRegionCheckinCounts(region) : getGlobalCheckinCounts()).catch((e) => {
+        countsError = e;
+        return {};
+      });
       if (cancelled) return;
       countsRef.current = checkinCounts;
       const fallback = () => localPicks([...excludeIds, ...passedIds], checkinCounts);
@@ -179,10 +191,12 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
           /* empty rather than stuck at null */
         }
         setQueue(list);
+        if (!list.length && countsError) setLoadError(countsError);
         return;
       }
       const caps = capMaps(myProfile);
       let next = null;
+      let apiError = null;
       try {
         const r = await fetch('/api/mapr-picks', {
           method: 'POST',
@@ -212,8 +226,10 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         });
         const data = await r.json().catch(() => null);
         if (r.ok && data?.picks?.length) next = data.picks;
-      } catch {
+        else if (!r.ok) apiError = Object.assign(new Error(data?.error || `HTTP ${r.status}`), { status: r.status });
+      } catch (e) {
         /* offline -- fall through to on-device picks */
+        apiError = e;
       }
       if (cancelled) return;
       // Drop anything checked into since the picks were made. The on-device
@@ -230,6 +246,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         /* leave list empty rather than leaving the queue stuck at null */
       }
       setQueue(list);
+      if (!list.length && apiError) setLoadError(apiError);
       if (next) writePicksCache(key, list);
     })();
     return () => {
@@ -239,7 +256,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
     // anything they've told Mapr about taste changes; the other inputs
     // ride along with those.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, ratingsCount, locKey, tasteFP, region]);
+  }, [user?.uid, ratingsCount, locKey, tasteFP, region, attempt]);
 
   // A pick counts as shown (for ignored-pick tracking) only once at least
   // half of its card has been on screen for a full second, like an ad
@@ -342,6 +359,7 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
   // queue has something in it.
   if (!user) return null;
   const picks = queue || [];
+  const loading = queue === null;
 
   return (
     <div className="mapr-picks">
@@ -358,12 +376,40 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
         </button>
       </div>
       <p className="taste-card-note" style={{ margin: '0 0 10px' }}>
-        {picks.length > 0
+        {loading
+          ? "Finding places you'll love…"
+          : loadError
+          ? "Mapr couldn't line up picks just now."
+          : picks.length > 0
           ? `${origin ? 'Near you right now. ' : region ? '' : 'Most-visited across every city. Turn on location or pick a city for picks near you. '}Tap a card to go there. ${'\u{2713}'} / ${'\u{2715}'} teach Mapr what you like -- not sure yet? Skip it without saying either way.`
           : "Rate a place directly, or check in somewhere to start getting picks."}
       </p>
       <div className="mapr-picks-track" ref={trackRef} onScroll={onScroll}>
         <RateLandmarkSearch />
+        {/* Placeholder cards in the real cards' shape while the first list
+            is still coming in, so the row doesn't jump when they land. */}
+        {loading && (
+          <>
+            <span className="visually-hidden" role="status">
+              Loading your Mapr Picks…
+            </span>
+            {[0, 1].map((n) => (
+              <div key={n} className="mapr-pick mapr-pick-skeleton" aria-hidden="true">
+                <Skeleton height={150} radius={0} />
+                <div className="mapr-pick-skeleton-lines">
+                  <Skeleton width={90} height={18} radius={999} />
+                  <Skeleton width="70%" height={16} />
+                  <Skeleton width="90%" height={12} />
+                </div>
+                <div className="mapr-pick-actions">
+                  <Skeleton height={30} radius={999} />
+                  <Skeleton height={30} radius={999} />
+                  <Skeleton height={30} radius={999} />
+                </div>
+              </div>
+            ))}
+          </>
+        )}
         {picks.map((p) => {
           return (
             <div key={`${p.region}/${p.id}`} className="mapr-pick" data-pick-key={`${p.region}/${p.id}`}>
@@ -400,6 +446,9 @@ export default function MaprPicksCarousel({ reviews, interests = [], checkedInId
           );
         })}
       </div>
+      {loadError && !picks.length && (
+        <ErrorNotice error={loadError} onRetry={() => setAttempt((a) => a + 1)} compact />
+      )}
       {picks.length > 1 && (
         <div className="mapr-picks-dots" aria-hidden="true">
           {picks.map((p, i) => (

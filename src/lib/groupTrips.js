@@ -1,4 +1,17 @@
-import { doc, addDoc, updateDoc, deleteDoc, onSnapshot, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  getDocs,
+  collection,
+  query,
+  where,
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+} from 'firebase/firestore';
 import { db } from './firebase';
 import { notifyUser } from './notifications';
 
@@ -38,8 +51,19 @@ export async function createGroupTrip({ ownerUid, ownerName, name, regionId, lan
   return ref.id;
 }
 
-export function subscribeGroupTrip(tripId, onData) {
-  return onSnapshot(doc(db, 'group_trips', tripId), (snap) => onData(snap.exists() ? { id: snap.id, ...snap.data() } : null));
+// onData(null) = no such trip. onError gets the Firestore error -- note a
+// trip you're not a member of (or one that was deleted) reads back as
+// permission-denied, since the rules can't tell those two apart for you.
+export function subscribeGroupTrip(tripId, onData, onError) {
+  if (!db) {
+    onData(null);
+    return () => {};
+  }
+  return onSnapshot(
+    doc(db, 'group_trips', tripId),
+    (snap) => onData(snap.exists() ? { id: snap.id, ...snap.data() } : null),
+    (err) => onError?.(err)
+  );
 }
 
 export async function listMyGroupTrips(uid) {
@@ -48,11 +72,14 @@ export async function listMyGroupTrips(uid) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function toggleGroupLandmark(trip, landmarkId) {
-  const next = trip.landmarkIds.includes(landmarkId)
-    ? trip.landmarkIds.filter((id) => id !== landmarkId)
-    : [...trip.landmarkIds, landmarkId];
-  await updateDoc(doc(db, 'group_trips', trip.id), { landmarkIds: next });
+// `add` says which way to flip it (defaults to the opposite of what `trip`
+// shows). arrayUnion/arrayRemove rather than writing the whole list, so two
+// members ticking different landmarks at once don't overwrite each other,
+// and a retry after a failure can't undo someone else's change.
+export async function toggleGroupLandmark(trip, landmarkId, add = !trip.landmarkIds.includes(landmarkId)) {
+  await updateDoc(doc(db, 'group_trips', trip.id), {
+    landmarkIds: add ? arrayUnion(landmarkId) : arrayRemove(landmarkId),
+  });
 }
 
 export async function addGroupMember(trip, memberUid, memberName) {

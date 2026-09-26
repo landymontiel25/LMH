@@ -4,7 +4,10 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useRatings } from '../lib/RatingsContext';
 import { useMyPhotos } from '../lib/MyPhotosContext';
-import { submitReview } from '../lib/reviews';
+import { submitReview, ratingDraftKey } from '../lib/reviews';
+import { clearPersisted } from '../lib/usePersistentState';
+import { friendlyError } from '../lib/friendlyError';
+import ErrorNotice from './ErrorNotice';
 import { attachCheckinPhoto } from '../lib/leaderboard';
 import { pickPhoto } from '../lib/imageUtils';
 import { isRateable, diversityHint } from '../lib/ratingFlow';
@@ -35,6 +38,9 @@ export default function CheckInReview() {
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  // The check-in write itself failed: shown with Try again, and everything
+  // you picked (rating, comment, photos) stays in the form.
+  const [postError, setPostError] = useState(null);
   const [posted, setPosted] = useState(false);
   // The full-screen blast shows the instant a check-in posts, then hands
   // off to the quieter "Checked in! +100" panel below.
@@ -47,6 +53,7 @@ export default function CheckInReview() {
       setPhotoFiles([]);
       setPhotoPreviews([]);
       setMsg(null);
+      setPostError(null);
       setPosted(false);
       setBlast(false);
     }
@@ -55,6 +62,7 @@ export default function CheckInReview() {
   if (!justCheckedIn) return null;
 
   const rateable = isRateable(justCheckedIn);
+  const draftKey = ratingDraftKey(user?.uid, justCheckedIn.id);
 
   const onPhoto = async () => {
     const f = await pickPhoto();
@@ -79,12 +87,16 @@ export default function CheckInReview() {
     }
     setSaving(true);
     setMsg(null);
+    setPostError(null);
     try {
+      // The server stays the gate here: nothing reads as "checked in" (and
+      // no points show) until this resolves, so a refused or failed claim
+      // can never look like it counted.
       await commitCheckIn();
     } catch (e) {
       // The check-in write itself failed -- no points awarded, nothing to
       // show as posted.
-      setMsg(e.message || 'Could not check in — try again.');
+      setPostError(e);
       setSaving(false);
       return;
     }
@@ -109,8 +121,10 @@ export default function CheckInReview() {
         photoFiles,
       })
         .then(async (res) => {
-          await reloadRatings();
-          await reloadMyPhotos();
+          // Saved -- the in-progress copy on this device isn't needed. (On
+          // failure it's kept, so the landmark page reopens with it.)
+          clearPersisted(draftKey);
+          await Promise.all([reloadRatings(), reloadMyPhotos()]).catch(() => {});
           if (res?.photoFailed) setMsg("Your photo couldn't upload — you can try again from the landmark page.");
         })
         .catch(() => {
@@ -183,6 +197,7 @@ export default function CheckInReview() {
                   landmark={justCheckedIn}
                   onChange={setRating}
                   requireComment={requireComment}
+                  draftKey={draftKey}
                 />
               </>
             ) : (
@@ -228,11 +243,19 @@ export default function CheckInReview() {
                 {msg}
               </p>
             )}
+            {postError && (
+              <ErrorNotice
+                compact
+                message={friendlyError(postError, "Couldn't check in. Nothing was counted — try again.")}
+                onRetry={submit}
+              />
+            )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button
                 className="btn btn-primary btn-block"
                 disabled={saving || (rateable && !rating) || (rateable && requireComment && !rating?.comment?.trim())}
+                aria-busy={saving}
                 onClick={submit}
               >
                 {saving ? 'Posting…' : rateable ? 'Post' : 'Confirm check-in \u{2713}'}

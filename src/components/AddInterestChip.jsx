@@ -70,6 +70,9 @@ export default function AddInterestChip({ existing, onAdd }) {
     <div className="autocomplete" ref={ref}>
       <input
         type="text"
+        name="custom-interest"
+        aria-label="Add your own interest"
+        enterKeyHint="done"
         autoFocus
         className="autocomplete-chip-input"
         placeholder="Type your own, Enter to add…"

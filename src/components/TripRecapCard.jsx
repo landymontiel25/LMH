@@ -24,8 +24,13 @@ export default function TripRecapCard({ regionName, visitedLandmarks, onClose })
         setShareMsg('Copied — paste it anywhere!');
         setTimeout(() => setShareMsg(null), 4000);
       }
-    } catch {
-      /* user dismissed the share sheet */
+    } catch (e) {
+      // Closing the share sheet isn't a failure; anything else (clipboard
+      // blocked, share target crashed) gets a plain note so it isn't silent.
+      if (e?.name !== 'AbortError') {
+        setShareMsg("Couldn't share that. Try again.");
+        setTimeout(() => setShareMsg(null), 4000);
+      }
     }
   };
 

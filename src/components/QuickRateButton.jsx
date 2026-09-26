@@ -4,7 +4,10 @@ import { useAuth } from '../lib/AuthContext';
 import { useFriends } from '../lib/FriendsContext';
 import { useCheckIn } from '../lib/useCheckIn';
 import { useRatings } from '../lib/RatingsContext';
-import { submitReview } from '../lib/reviews';
+import { submitReview, ratingDraftKey } from '../lib/reviews';
+import { clearPersisted } from '../lib/usePersistentState';
+import { friendlyError } from '../lib/friendlyError';
+import ErrorNotice from './ErrorNotice';
 import { isRateable } from '../lib/ratingFlow';
 import RatingFlow from './RatingFlow';
 
@@ -25,9 +28,10 @@ export default function QuickRateButton({ landmark }) {
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null);
+  const [error, setError] = useState(null);
 
   if (!firebaseEnabled || !user || !claimedMap[landmark.id] || !isRateable(landmark)) return null;
+  const draftKey = ratingDraftKey(user.uid, landmark.id);
 
   // Only a review made through the tier + chips flow counts as "rated". A
   // pre-tier review (plain stars, no ratingTier) still shows "Rate" and
@@ -45,7 +49,7 @@ export default function QuickRateButton({ landmark }) {
 
   const openModal = (e) => {
     e.stopPropagation();
-    setMsg(null);
+    setError(null);
     setRating(null);
     setOpen(true);
   };
@@ -57,7 +61,7 @@ export default function QuickRateButton({ landmark }) {
   const save = async () => {
     if (!rating || saving) return;
     setSaving(true);
-    setMsg(null);
+    setError(null);
     try {
       await submitReview({
         userId: user.uid,
@@ -65,13 +69,16 @@ export default function QuickRateButton({ landmark }) {
         landmark,
         rating,
       });
-      await reloadRatings();
-      setOpen(false);
     } catch (e) {
-      setMsg(e.message || 'Could not save — try again.');
-    } finally {
+      // Modal stays open with every pick intact; Try again resends it.
+      setError(e);
       setSaving(false);
+      return;
     }
+    clearPersisted(draftKey);
+    setSaving(false);
+    setOpen(false);
+    reloadRatings().catch(() => {});
   };
 
   return (
@@ -96,14 +103,22 @@ export default function QuickRateButton({ landmark }) {
                   ? 'Already rated — change anything below and save.'
                   : 'How was it? One tap is enough — the rest is optional.'}
               </p>
-              <RatingFlow key={`${landmark.id}-${open}`} landmark={landmark} initial={initial} onChange={setRating} />
-              {msg && (
-                <p className="screen-subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
-                  {msg}
-                </p>
+              <RatingFlow
+                key={`${landmark.id}-${open}`}
+                landmark={landmark}
+                initial={initial}
+                draftKey={draftKey}
+                onChange={setRating}
+              />
+              {error && (
+                <ErrorNotice
+                  compact
+                  message={friendlyError(error, "Couldn't save your rating. Your picks are still here — try again.")}
+                  onRetry={save}
+                />
               )}
               <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                <button className="btn btn-primary btn-block" disabled={saving || !rating} onClick={save}>
+                <button className="btn btn-primary btn-block" disabled={saving || !rating} aria-busy={saving} onClick={save}>
                   {saving ? 'Saving…' : mine ? 'Save changes' : 'Save rating'}
                 </button>
                 <button className="btn btn-ghost" onClick={close} disabled={saving}>

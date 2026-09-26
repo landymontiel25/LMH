@@ -1,6 +1,11 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authHeaders } from '../lib/apiAuth';
+import { useAuth } from '../lib/AuthContext';
+import { fetchJson, friendlyError } from '../lib/friendlyError';
+import { usePersistentState } from '../lib/usePersistentState';
+import ErrorNotice from './ErrorNotice';
+import { SkeletonText } from './Skeleton';
 
 // Global AI helper, available from anywhere in the app (not just a landmark's
 // own detail page): identifies a place from a vague description, answers
@@ -9,30 +14,31 @@ import { authHeaders } from '../lib/apiAuth';
 // server-side lookup is grounded in the actual catalog, never invented.
 export default function AskLandmarkWidget() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [question, setQuestion] = useState('');
+  // A half-typed question survives closing the panel or the app; it's
+  // cleared the moment an answer comes back (see ask below).
+  const [question, setQuestion] = usePersistentState(`ask.question.${user?.uid || 'anon'}`, '', { ttlMs: 24 * 60 * 60 * 1000 });
   const [answer, setAnswer] = useState('');
   const [match, setMatch] = useState(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
 
   const ask = async (e) => {
     e?.preventDefault?.();
     const q = question.trim();
     if (!q || busy) return;
     setBusy(true);
-    setError('');
+    setError(null);
     setAnswer('');
     setMatch(null);
     try {
-      const r = await fetch('/api/ask-ai', {
+      const data = await fetchJson('/api/ask-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({ question: q }),
       });
-      const data = await r.json().catch(() => null);
-      if (!r.ok || !data) throw new Error(data?.error || 'Something went wrong.');
       setAnswer(data.answer);
       setMatch(data.match);
       // Clear the box and refocus so the next question is one tap away — no more
@@ -40,7 +46,8 @@ export default function AskLandmarkWidget() {
       setQuestion('');
       inputRef.current?.focus();
     } catch (err) {
-      setError(err.message || 'Could not reach the AI. Try again.');
+      // The question stays in the box so Try again (or a tweak) is one tap.
+      setError(err);
     } finally {
       setBusy(false);
     }
@@ -70,6 +77,10 @@ export default function AskLandmarkWidget() {
               <input
                 ref={inputRef}
                 type="text"
+                name="ask-ai-question"
+                aria-label="Your question"
+                autoComplete="off"
+                enterKeyHint="send"
                 placeholder="e.g. how do I complete onboarding? · best gelato in Milan?"
                 value={question}
                 maxLength={300}
@@ -107,11 +118,14 @@ export default function AskLandmarkWidget() {
               {busy ? '…' : 'Ask'}
             </button>
           </form>
-          {busy && <p className="screen-subtitle" style={{ marginTop: 10, marginBottom: 0 }}>Thinking…</p>}
-          {error && (
-            <p className="tag tag-error" style={{ display: 'block', marginTop: 10, marginBottom: 0 }}>
-              {error}
-            </p>
+          {busy && (
+            <div className="ai-answer ask-landmark-skeleton" role="status">
+              <span className="visually-hidden">Thinking…</span>
+              <SkeletonText lines={3} />
+            </div>
+          )}
+          {error && !busy && (
+            <ErrorNotice message={friendlyError(error, "Couldn't reach the AI. Try again.")} onRetry={() => ask()} compact />
           )}
           {answer && (
             <>

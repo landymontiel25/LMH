@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { saveTasteIntro } from '../lib/friends';
+import { friendlyError } from '../lib/friendlyError';
+import { usePersistentState } from '../lib/usePersistentState';
+import ErrorNotice from '../components/ErrorNotice';
 
 // Optional onboarding step: "tell Mapr what you already love," in your own
 // words -- "I love racing, steak, pickleball, the boat... I like fancy,
@@ -11,17 +14,26 @@ import { saveTasteIntro } from '../lib/friends';
 // and the same text can be added or edited anytime later from Settings.
 export default function TasteIntroStep({ onDone }) {
   const { user } = useAuth();
-  const [text, setText] = useState('');
+  // Same draft key as Settings' "Tell Mapr What You Love" box, so text typed
+  // here (and not saved -- skipped, or the save failed) is waiting there.
+  const [text, setText, clearDraft] = usePersistentState(user ? `tasteIntro.${user.uid}` : null, '');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const saveAndContinue = async () => {
     if (!text.trim()) return;
     setSaving(true);
+    setSaveError(null);
     try {
       await saveTasteIntro(user.uid, text);
-    } catch {
-      // Best-effort -- never block onboarding on this write failing.
+    } catch (err) {
+      // Stay here with the text intact and say so -- Skip still moves on
+      // (onboarding never blocks on this), and the draft survives for Settings.
+      setSaving(false);
+      setSaveError(err);
+      return;
     }
+    clearDraft();
     setSaving(false);
     onDone();
   };
@@ -43,6 +55,10 @@ export default function TasteIntroStep({ onDone }) {
 
       <textarea
         className="rating-comment"
+        name="taste-intro"
+        autoComplete="off"
+        autoCapitalize="sentences"
+        aria-label="What you love"
         rows={5}
         maxLength={2000}
         placeholder="What are you already into?"
@@ -50,6 +66,14 @@ export default function TasteIntroStep({ onDone }) {
         onChange={(e) => setText(e.target.value)}
         disabled={saving}
       />
+
+      {saveError && (
+        <ErrorNotice
+          compact
+          message={friendlyError(saveError, "Couldn't save that. Your text is still here — try again, or skip for now.")}
+          onRetry={saveAndContinue}
+        />
+      )}
 
       <button
         type="button"

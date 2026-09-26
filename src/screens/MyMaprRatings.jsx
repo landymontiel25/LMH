@@ -6,6 +6,10 @@ import { getUserCheckins } from '../lib/leaderboard';
 import { deleteMyReview } from '../lib/reviews';
 import { getRegion } from '../data/regions';
 import { TIERS, tierById, chipLabel } from '../lib/ratingFlow';
+import { useToast, runOptimistic } from '../lib/ToastContext';
+import { friendlyError } from '../lib/friendlyError';
+import { SkeletonList } from '../components/Skeleton';
+import ErrorNotice from '../components/ErrorNotice';
 
 // Everything rated through "Rate a Landmark" on Mapr Picks -- separate from
 // the check-ins list, since these are ratings-only claims (0 points, never
@@ -18,18 +22,34 @@ export default function MyMaprRatings() {
   const navigate = useNavigate();
   const { user, firebaseEnabled } = useAuth();
   const { myReviews, reload: reloadRatings } = useRatings();
+  const toast = useToast();
   const [ratingOnlyIds, setRatingOnlyIds] = useState(null); // null = still loading
+  const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [tab, setTab] = useState(TABS[0].id);
-  const [removingId, setRemovingId] = useState(null);
+  // Removed rows disappear right away; the delete runs behind them and the
+  // row comes back (with a Retry toast) if it fails.
+  const [hiddenIds, setHiddenIds] = useState(() => new Set());
 
-  const removeRating = async (r) => {
-    setRemovingId(r.landmarkId);
-    try {
-      await deleteMyReview(user.uid, r.landmarkId);
-      await reloadRatings();
-    } finally {
-      setRemovingId(null);
-    }
+  const removeRating = (r) => {
+    const hide = (on) =>
+      setHiddenIds((cur) => {
+        const next = new Set(cur);
+        if (on) next.add(r.landmarkId);
+        else next.delete(r.landmarkId);
+        return next;
+      });
+    runOptimistic({
+      apply: () => hide(true),
+      commit: async () => {
+        await deleteMyReview(user.uid, r.landmarkId);
+        await reloadRatings();
+      },
+      rollback: () => hide(false),
+      toast,
+      errorMessage: friendlyError(null, `Couldn't remove your rating for ${r.landmarkName || 'that place'}, so it's back.`),
+      retry: () => removeRating(r),
+    });
   };
 
   useEffect(() => {
@@ -38,6 +58,7 @@ export default function MyMaprRatings() {
       return;
     }
     let cancelled = false;
+    setLoadError(null);
     getUserCheckins(user.uid)
       .then((rows) => {
         if (cancelled) return;
@@ -52,13 +73,13 @@ export default function MyMaprRatings() {
           )
         );
       })
-      .catch(() => {
-        if (!cancelled) setRatingOnlyIds(new Set());
+      .catch((err) => {
+        if (!cancelled) setLoadError(err);
       });
     return () => {
       cancelled = true;
     };
-  }, [user, firebaseEnabled]);
+  }, [user, firebaseEnabled, loadAttempt]);
 
   if (!firebaseEnabled || !user) {
     return (
@@ -72,7 +93,11 @@ export default function MyMaprRatings() {
   }
 
   const loading = ratingOnlyIds === null;
-  const rated = loading ? [] : Object.values(myReviews).filter((r) => ratingOnlyIds.has(r.landmarkId) && r.ratingTier);
+  const rated = loading
+    ? []
+    : Object.values(myReviews).filter(
+        (r) => ratingOnlyIds.has(r.landmarkId) && r.ratingTier && !hiddenIds.has(r.landmarkId)
+      );
   const byTier = { 'highly-recommend': [], 'worth-trying': [], 'probably-skip': [] };
   for (const r of rated) {
     if (byTier[r.ratingTier]) byTier[r.ratingTier].push(r);
@@ -105,7 +130,13 @@ export default function MyMaprRatings() {
         ))}
       </div>
 
-      {loading && <p className="screen-subtitle">Loading…</p>}
+      {loading && loadError && (
+        <ErrorNotice
+          message={friendlyError(loadError, "We couldn't load your ratings. Try again.")}
+          onRetry={() => setLoadAttempt((n) => n + 1)}
+        />
+      )}
+      {loading && !loadError && <SkeletonList count={4} label="Loading your ratings" />}
 
       {!loading && shown.length === 0 && (
         <div className="empty-state">
@@ -141,13 +172,12 @@ export default function MyMaprRatings() {
             type="button"
             className="btn btn-ghost btn-sm"
             style={{ flexShrink: 0 }}
-            disabled={removingId === r.landmarkId}
             onClick={(e) => {
               e.stopPropagation();
               removeRating(r);
             }}
           >
-            {removingId === r.landmarkId ? '…' : `${'\u{1F5D1}\u{FE0F}'} Remove`}
+            {`${'\u{1F5D1}\u{FE0F}'} Remove`}
           </button>
         </div>
       ))}

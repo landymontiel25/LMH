@@ -6,6 +6,7 @@ import { saveTasteBaseline, saveTasteIntro } from '../lib/friends';
 import { computeTasteConfidence } from '../lib/tasteProfile';
 import { baselineToSyntheticReviews, extractLegacyBaselineFromIntro } from '../lib/tasteQuestions';
 import TasteNudgeCard from './TasteNudgeCard';
+import { Skeleton } from './Skeleton';
 
 // Taste Profile Score -- Mapr's own leave-one-out prediction confidence
 // (see computeTasteConfidence), NOT an activity counter. It only goes up
@@ -97,14 +98,14 @@ export default function TasteProfileCard() {
   // with nothing -- against data that simply isn't here yet.
   if (!profileFresh && !justSaved && !editing) {
     return (
-      <div className="card section taste-profile-card">
+      <div className="card section taste-profile-card" role="status" aria-live="polite">
+        <span className="visually-hidden">Loading your taste profile…</span>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{'\u{1F9E9}'} Taste Profile</h3>
-          <span className="tag" style={{ fontSize: '0.65rem' }}>Loading…</span>
+          <Skeleton width={64} height={28} radius={999} />
         </div>
-        <p className="screen-subtitle" style={{ margin: '6px 0 0' }}>
-          Loading what you've told Mapr…
-        </p>
+        <Skeleton height={8} radius={999} style={{ marginTop: 10 }} />
+        <Skeleton width="80%" height={11} style={{ marginTop: 10 }} />
       </div>
     );
   }
@@ -129,9 +130,13 @@ export default function TasteProfileCard() {
   const { confidence, sampleCount } = computeTasteConfidence(reviews);
   const hasBaseline = !!(effectiveBaseline && Object.keys(effectiveBaseline).length);
 
-  const closeEditor = async (saved) => {
+  // `committed` (from an optimistic Save) settles once the write does; if it
+  // fails, TasteNudgeCard has already said so with a Retry toast, and we
+  // just fall back to the server copy below.
+  const closeEditor = async (saved, committed) => {
     if (saved) setJustSaved(saved);
     setEditing(false);
+    if (committed) await committed.catch(() => {});
     await reloadFriends();
     // myProfile is caught up now (or this was just a dismiss with nothing
     // to catch up on) -- go back to trusting it as the single source of

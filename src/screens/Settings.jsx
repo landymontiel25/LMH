@@ -9,6 +9,46 @@ import { useAdminMode } from '../lib/AdminModeContext';
 import { authErrorMessage } from '../lib/authErrors';
 import PreferenceChips from '../components/PreferenceChips';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import { useToast, runOptimistic } from '../lib/ToastContext';
+import { friendlyError } from '../lib/friendlyError';
+import { usePersistentState, readPersisted } from '../lib/usePersistentState';
+
+const CONTEXT_KEYS = ['weekday', 'weekend', 'chill', 'active'];
+const contextFrom = (prefs) => Object.fromEntries(CONTEXT_KEYS.map((k) => [k, prefs?.[k] || '']));
+const sameContext = (a, b) => CONTEXT_KEYS.every((k) => (a?.[k] || '') === (b?.[k] || ''));
+const isNull = (v) => v == null;
+
+// A Settings text field whose unsaved edits survive leaving the screen.
+// The server copy (`saved`, from myProfile) is what shows until you type;
+// from then on your draft wins -- including over a profile read that lands
+// late -- until it's saved (or discarded). `restored` is true when a draft
+// from an earlier visit was brought back and still differs from the
+// server copy, so the screen can say so.
+function useDraft(key, saved, same = (a, b) => a === b) {
+  const [draft, setDraft] = usePersistentState(key, null, { isEmpty: isNull });
+  const [hadDraft, setHadDraft] = useState(() => (key ? readPersisted(key) != null : false));
+  const value = draft ?? saved;
+  const restored = hadDraft && draft != null && !same(draft, saved);
+  const discard = () => {
+    setDraft(null);
+    setHadDraft(false);
+  };
+  // Only drops the draft if it's still exactly what was saved -- anything
+  // typed while the save was in flight stays.
+  const settle = (sent) => setDraft((cur) => (cur != null && same(cur, sent) ? null : cur));
+  return { value, setDraft, restored, discard, settle };
+}
+
+function DraftRestoredNote({ onDiscard }) {
+  return (
+    <p className="draft-restored-note">
+      Unsaved changes restored {'\u{00B7}'}{' '}
+      <button type="button" onClick={onDiscard}>
+        Discard
+      </button>
+    </p>
+  );
+}
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -17,28 +57,28 @@ export default function Settings() {
   const { theme, toggleTheme } = useTheme();
   const { units, mode, setMode, autoCountry } = useUnits();
   const { adminMode, canUseAdminMode, setAdminMode } = useAdminMode();
-  const [visBusy, setVisBusy] = useState(false);
-  const [visMsg, setVisMsg] = useState(null);
-  const [homeAddress, setHomeAddress] = useState(myProfile?.homeAddress || '');
-  const [homeBusy, setHomeBusy] = useState(false);
-  const [homeMsg, setHomeMsg] = useState(null);
-  const [tasteIntro, setTasteIntro] = useState(myProfile?.tasteIntro || '');
-  const [tasteBusy, setTasteBusy] = useState(false);
+  const toast = useToast();
+  const uid = user?.uid;
+  // Privacy flips instantly; visOverride holds the new value until the
+  // server confirms (then myProfile carries it) or it's rolled back.
+  const [visOverride, setVisOverride] = useState(null);
+  const visInFlightRef = useRef(false);
+  const isPublic = visOverride ?? !!myProfile?.public;
+  // Drafts are per account (uid in the key). myProfile loads asynchronously
+  // (FriendsContext); until you type, each field simply shows the server copy
+  // whenever it lands. The taste-intro key is shared with onboarding's
+  // TasteIntroStep, so text typed there but never saved shows up here.
+  const home = useDraft(uid ? `homeAddress.${uid}` : null, myProfile?.homeAddress || '');
+  // Shown as "Saved: …" right away after picking an address, before the
+  // server write (and profile reload) confirm it.
+  const [homePending, setHomePending] = useState(null);
+  const taste = useDraft(uid ? `tasteIntro.${uid}` : null, myProfile?.tasteIntro || '');
   const [tasteMsg, setTasteMsg] = useState(null);
-  const [contextPrefs, setContextPrefs] = useState(() => ({
-    weekday: myProfile?.contextPreferences?.weekday || '',
-    weekend: myProfile?.contextPreferences?.weekend || '',
-    chill: myProfile?.contextPreferences?.chill || '',
-    active: myProfile?.contextPreferences?.active || '',
-  }));
-  const [contextBusy, setContextBusy] = useState(false);
+  const context = useDraft(uid ? `contextPrefs.${uid}` : null, contextFrom(myProfile?.contextPreferences), sameContext);
   const [contextMsg, setContextMsg] = useState(null);
-  // Tracks whether the traveler has touched a context-preference field yet
-  // this visit -- same reasoning as tasteIntro's sync-in-once effect below:
-  // myProfile loads asynchronously, so without this a field they've already
-  // started typing into would get silently overwritten the moment the real
-  // profile lands.
-  const contextTouchedRef = useRef(false);
+  const homeAddress = home.value;
+  const tasteIntro = taste.value;
+  const contextPrefs = context.value;
   const [verifyMsg, setVerifyMsg] = useState(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
 
@@ -49,87 +89,84 @@ export default function Settings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // myProfile loads asynchronously (FriendsContext), so the field would
-  // otherwise start permanently blank whenever this screen mounts before
-  // that first read lands -- sync it in once it does, but only if the user
-  // hasn't already started typing over it.
-  useEffect(() => {
-    if (myProfile?.tasteIntro && !tasteIntro) setTasteIntro(myProfile.tasteIntro);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myProfile?.tasteIntro]);
-
-  useEffect(() => {
-    if (contextTouchedRef.current || !myProfile?.contextPreferences) return;
-    setContextPrefs({
-      weekday: myProfile.contextPreferences.weekday || '',
-      weekend: myProfile.contextPreferences.weekend || '',
-      chill: myProfile.contextPreferences.chill || '',
-      active: myProfile.contextPreferences.active || '',
+  // Saves below are optimistic: "Saved." shows (and the field stays
+  // editable) right away; the draft is only dropped once the write lands,
+  // so a failure loses nothing -- it just says so, with Retry.
+  const saveTaste = () => {
+    const text = tasteIntro;
+    runOptimistic({
+      apply: () => setTasteMsg('Saved.'),
+      commit: async () => {
+        await saveTasteIntro(user.uid, text);
+        await reloadFriends();
+        taste.settle(text);
+      },
+      rollback: () => setTasteMsg(null),
+      toast,
+      errorMessage: friendlyError(null, "Couldn't save what you love. Your text is still here."),
+      retry: saveTaste,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myProfile?.contextPreferences]);
-
-  const saveTaste = async () => {
-    setTasteBusy(true);
-    setTasteMsg(null);
-    try {
-      await saveTasteIntro(user.uid, tasteIntro);
-      await reloadFriends();
-      setTasteMsg('Saved.');
-    } catch (e) {
-      setTasteMsg(e.message || 'Could not save — try again.');
-    } finally {
-      setTasteBusy(false);
-    }
   };
 
-  const saveContext = async () => {
-    setContextBusy(true);
-    setContextMsg(null);
-    try {
-      await saveContextPreferences(user.uid, contextPrefs);
-      await reloadFriends();
-      setContextMsg('Saved.');
-    } catch (e) {
-      setContextMsg(e.message || 'Could not save — try again.');
-    } finally {
-      setContextBusy(false);
-    }
+  const saveContext = () => {
+    const prefs = contextPrefs;
+    runOptimistic({
+      apply: () => setContextMsg('Saved.'),
+      commit: async () => {
+        await saveContextPreferences(user.uid, prefs);
+        await reloadFriends();
+        context.settle(prefs);
+      },
+      rollback: () => setContextMsg(null),
+      toast,
+      errorMessage: friendlyError(null, "Couldn't save your situational preferences. They're still filled in."),
+      retry: saveContext,
+    });
   };
 
-  const pickHome = async (s) => {
-    setHomeAddress(s.primary);
-    setHomeMsg(null);
-    setHomeBusy(true);
-    try {
-      await saveHomeLocation(user.uid, { address: s.primary, lat: s.lat, lng: s.lng });
-      await reloadFriends();
-    } catch (e) {
-      setHomeMsg(e.message || 'Could not save — try again.');
-    } finally {
-      setHomeBusy(false);
-    }
+  const pickHome = (s) => {
+    home.setDraft(s.primary);
+    runOptimistic({
+      apply: () => setHomePending(s.primary),
+      commit: async () => {
+        await saveHomeLocation(user.uid, { address: s.primary, lat: s.lat, lng: s.lng });
+        await reloadFriends();
+        home.settle(s.primary);
+        setHomePending(null);
+      },
+      rollback: () => setHomePending(null),
+      toast,
+      errorMessage: friendlyError(null, "Couldn't save your home address. It's still typed in."),
+      retry: () => pickHome(s),
+    });
   };
 
-  const toggleVisibility = async () => {
-    setVisBusy(true);
-    setVisMsg(null);
-    const next = !myProfile?.public;
-    try {
-      await setProfileVisibility(user.uid, next);
-      // Read straight back from the server (not the cache) to confirm the
-      // write actually stuck -- surfaces a rules/permission problem right
-      // away instead of only discovering it on the next reload.
-      const fresh = await getUserProfile(user.uid);
-      if (!fresh || !!fresh.public !== next) {
-        setVisMsg("That didn't save — try again.");
-      }
-      await reloadFriends();
-    } catch (e) {
-      setVisMsg(e.message || 'Could not update — try again.');
-    } finally {
-      setVisBusy(false);
-    }
+  const toggleVisibility = () => {
+    // One write at a time -- a second tap mid-flight would race the
+    // read-back check below.
+    if (visInFlightRef.current) return;
+    visInFlightRef.current = true;
+    const next = !isPublic;
+    runOptimistic({
+      apply: () => setVisOverride(next),
+      commit: async () => {
+        await setProfileVisibility(user.uid, next);
+        // Read straight back from the server (not the cache) to confirm the
+        // write actually stuck -- surfaces a rules/permission problem right
+        // away instead of only discovering it on the next reload.
+        const fresh = await getUserProfile(user.uid);
+        if (!fresh || !!fresh.public !== next) throw new Error('Visibility did not persist');
+        await reloadFriends();
+      },
+      rollback: () => setVisOverride(null),
+      toast,
+      errorMessage: friendlyError(null, `Couldn't make your profile ${next ? 'public' : 'private'}, so it's back to ${next ? 'private' : 'public'}.`),
+      retry: toggleVisibility,
+    }).finally(() => {
+      visInFlightRef.current = false;
+      // Server truth (myProfile) takes over again either way.
+      setVisOverride(null);
+    });
   };
 
   return (
@@ -200,23 +237,30 @@ export default function Settings() {
             In your own words -- "I love racing, steak, pickleball, the boat... I like fancy, luxurious things." Mapr
             reads this directly, no rating required.
           </p>
+          {taste.restored && <DraftRestoredNote onDiscard={taste.discard} />}
           <textarea
             className="rating-comment"
+            name="taste-intro"
+            aria-label="What you love"
+            autoComplete="off"
+            autoCapitalize="sentences"
             rows={3}
             maxLength={2000}
             placeholder="What are you already into?"
             value={tasteIntro}
-            onChange={(e) => setTasteIntro(e.target.value)}
-            disabled={tasteBusy}
+            onChange={(e) => {
+              setTasteMsg(null);
+              taste.setDraft(e.target.value);
+            }}
           />
           <button
             type="button"
             className="btn btn-ghost btn-block"
             style={{ marginTop: 10 }}
-            disabled={tasteBusy || !tasteIntro.trim()}
+            disabled={!tasteIntro.trim()}
             onClick={saveTaste}
           >
-            {tasteBusy ? 'Saving…' : 'Save'}
+            Save
           </button>
           {tasteMsg && (
             <p className="screen-subtitle" style={{ marginTop: 8 }}>
@@ -235,6 +279,7 @@ export default function Settings() {
             the one that fits the moment (today's actual day, or the mood you're clearly asking for), never all of
             them at once.
           </p>
+          {context.restored && <DraftRestoredNote onDiscard={context.discard} />}
           {[
             { key: 'weekday', icon: '\u{1F4C5}', label: 'On weekdays', placeholder: 'e.g. "Quiet dinners, coffee shops, nothing too late"' },
             { key: 'weekend', icon: '\u{1F389}', label: 'On weekends', placeholder: 'e.g. "I\'m up for a bar or a club, later nights"' },
@@ -247,27 +292,24 @@ export default function Settings() {
               </label>
               <textarea
                 id={`ctx-${f.key}`}
+                name={`context-${f.key}`}
                 className="rating-comment"
+                autoComplete="off"
+                autoCapitalize="sentences"
                 rows={2}
                 maxLength={1000}
                 placeholder={f.placeholder}
                 value={contextPrefs[f.key]}
                 onChange={(e) => {
-                  contextTouchedRef.current = true;
-                  setContextPrefs((cur) => ({ ...cur, [f.key]: e.target.value }));
+                  const text = e.target.value;
+                  setContextMsg(null);
+                  context.setDraft((cur) => ({ ...(cur ?? contextPrefs), [f.key]: text }));
                 }}
-                disabled={contextBusy}
               />
             </div>
           ))}
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            style={{ marginTop: 10 }}
-            disabled={contextBusy}
-            onClick={saveContext}
-          >
-            {contextBusy ? 'Saving…' : 'Save'}
+          <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={saveContext}>
+            Save
           </button>
           {contextMsg && (
             <p className="screen-subtitle" style={{ marginTop: 8 }}>
@@ -283,26 +325,17 @@ export default function Settings() {
           <p className="screen-subtitle" style={{ marginTop: 0 }}>
             Helps Mapr learn your taste around where you actually live.
           </p>
+          {home.restored && !homePending && <DraftRestoredNote onDiscard={home.discard} />}
           <LocationAutocomplete
             id="home-address"
             placeholder="Enter your home address"
             value={homeAddress}
-            onChange={setHomeAddress}
+            onChange={home.setDraft}
             onSelect={pickHome}
           />
-          {homeBusy && (
+          {(homePending || myProfile?.homeCoords) && (
             <p className="screen-subtitle" style={{ marginTop: 8 }}>
-              Saving…
-            </p>
-          )}
-          {myProfile?.homeCoords && !homeBusy && (
-            <p className="screen-subtitle" style={{ marginTop: 8 }}>
-              Saved: {myProfile.homeAddress}
-            </p>
-          )}
-          {homeMsg && (
-            <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
-              {homeMsg}
+              Saved: {homePending || myProfile.homeAddress}
             </p>
           )}
         </div>
@@ -310,29 +343,20 @@ export default function Settings() {
 
       {firebaseEnabled && user && (
         <div className="card section">
-          <h3 style={{ marginTop: 0 }}>{myProfile?.public ? '\u{1F30E}' : '\u{1F512}'} Privacy</h3>
+          <h3 style={{ marginTop: 0 }}>{isPublic ? '\u{1F30E}' : '\u{1F512}'} Privacy</h3>
           <p className="screen-subtitle" style={{ marginTop: 0 }}>
-            {myProfile?.public
+            {isPublic
               ? 'Your reviews and check-in photos are visible to everyone.'
               : 'Your reviews and check-in photos are only visible to friends.'}
           </p>
           <button
             type="button"
-            className={`btn btn-block ${myProfile?.public ? 'btn-success' : 'btn-ghost'}`}
-            disabled={visBusy}
+            className={`btn btn-block ${isPublic ? 'btn-success' : 'btn-ghost'}`}
+            aria-pressed={isPublic}
             onClick={toggleVisibility}
           >
-            {visBusy
-              ? '…'
-              : myProfile?.public
-              ? `${'\u{1F30E}'} Public — tap to make Private`
-              : `${'\u{1F512}'} Private — tap to make Public`}
+            {isPublic ? `${'\u{1F30E}'} Public — tap to make Private` : `${'\u{1F512}'} Private — tap to make Public`}
           </button>
-          {visMsg && (
-            <p className="tag tag-error" style={{ display: 'block', marginTop: 10 }}>
-              {visMsg}
-            </p>
-          )}
         </div>
       )}
 

@@ -587,7 +587,10 @@ export async function hasFriendTagTeam(userId, friendUids, checkins) {
   });
 }
 
-export function subscribeLeaderboard(period, onData, topN = 50) {
+// onError (optional): called if the listener fails (offline too long,
+// permission change), so callers can show "couldn't load" instead of an
+// endless skeleton.
+export function subscribeLeaderboard(period, onData, topN = 50, onError) {
   const keys = periodKeys();
   const q = query(
     collection(db, 'leaderboard_entries'),
@@ -596,7 +599,11 @@ export function subscribeLeaderboard(period, onData, topN = 50) {
     orderBy('points', 'desc'),
     limit(topN)
   );
-  return onSnapshot(q, (snap) => {
-    onData(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    },
+    (err) => onError?.(err)
+  );
 }
