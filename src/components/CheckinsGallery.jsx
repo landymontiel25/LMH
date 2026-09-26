@@ -13,6 +13,7 @@ import { friendlyError } from '../lib/friendlyError';
 import { SkeletonGrid, SkeletonList } from './Skeleton';
 import ErrorNotice from './ErrorNotice';
 import MyCommentEditor from './MyCommentEditor';
+import { matchesSearch } from '../lib/search';
 
 
 // Shared "Sep 7, 2026, 10:04 AM" formatting for check-in timestamps.
@@ -41,6 +42,7 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
   const [loadError, setLoadError] = useState(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [layout, setLayout] = useState('list'); // 'list' | 'grid'
+  const [search, setSearch] = useState('');
   // Admin Mode: which row's "when I checked in" is being edited, if any.
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -187,8 +189,13 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
   // its ‹ › arrows can step to the previous / next check-in without coming
   // back here. Each step replaces the history entry, so Back still returns
   // to this list (at the saved scroll position) no matter how far you paged.
-  const shown = checkins ? sortCheckins(checkins, sort) : null;
-  const hiddenCount = checkins && shown ? checkins.length - shown.length : 0;
+  const sorted = checkins ? sortCheckins(checkins, sort) : null;
+  const hiddenCount = checkins && sorted ? checkins.length - sorted.length : 0;
+  // Search by place, city, your comment, your rating or the date.
+  const q = search.trim();
+  const shown = sorted
+    ? sorted.filter((c) => matchesSearch([c.name, c.city, c.comment, c.tierLabel, c.date].filter(Boolean).join(' '), q))
+    : null;
 
   const go = (it) => {
     sessionStorage.setItem(scrollKey, String(window.scrollY));
@@ -217,6 +224,20 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
           </button>
         </div>
       </div>
+
+      {checkins && checkins.length > 0 && (
+        <input
+          type="search"
+          className="checkin-search"
+          name="checkin-search"
+          aria-label="Search your check-ins"
+          autoComplete="off"
+          enterKeyHint="search"
+          placeholder={'\u{1F50D} Search by place, city, or comment…'}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      )}
 
       {checkins && checkins.length > 0 && (
         <div className="itin-toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
@@ -264,7 +285,11 @@ export default function CheckinsGallery({ user, claimedMap, navigate, totalPoint
         </div>
       )}
       {shown && checkins.length > 0 && shown.length === 0 && (
-        <p className="screen-subtitle">Nothing rateable here yet — switch back to Most recent to see everything.</p>
+        <p className="screen-subtitle">
+          {q && sorted.length > 0
+            ? `No check-ins match "${q}".`
+            : 'Nothing rateable here yet — switch back to Most recent to see everything.'}
+        </p>
       )}
 
       {shown && shown.length > 0 && layout === 'list' && (
