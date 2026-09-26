@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ALL_LANDMARKS, getRegion } from '../src/data/regions.js';
 import { guardAiRequest } from './_lib/aiGuard.js';
+import { APP_HELP } from './_lib/appHelp.js';
 import { TIME_SLOTS, WEEKEND_NIGHT_BOOSTS, timeSlotFor } from '../src/lib/tagScores.js';
 
 // Backs the Mapr tab's chat interface -- the app's home screen, the one
@@ -46,6 +47,11 @@ const INSTRUCTIONS =
   `- Repeat check-ins are a real, encouraged feature here (see the app's own rules), so it's fine to bring back a spot they've already loved alongside something new -- if it's genuinely unclear which they want, ask in plain words, never a bare "new or repeat?" fragment: something like "Want me to stick to places you haven't been, or is it fine to bring back a favorite too?"\n` +
   `- Whenever you ask a clarifying question that has a small set of short, natural answers (new vs. a repeat favorite, indoor vs. outdoor, morning vs. evening, etc.), ALSO fill "quickReplies" with 2-4 of those answers verbatim, each just a few words, in the exact words a traveler would tap rather than type -- the app shows these as tappable buttons under your message. Leave "quickReplies" empty whenever you're not asking that kind of question (recommending stops, just chatting, an open-ended "what are you into?" with no short-answer shape).\n` +
   `- If they're just chatting (thanks, small talk, a question about a place you already suggested, or a question about their own taste/interests), reply naturally with no stops.\n` +
+  `- You're also the app's only assistant, so answer anything else they ask: history, tips, what to see or eat, or the ` +
+  `best time to go for a landmark or city (say that hours/prices may vary), or which landmark they mean from a vague ` +
+  `description or nickname (return it as a catalog stop so they can open it). For "how do I..." / "what is..." ` +
+  `questions about the app itself, answer from HOW LANDMARK HUNTERS WORKS below as ground truth -- never invent a ` +
+  `feature it doesn't list. These answers can run a bit longer than 4 sentences when the question needs it.\n` +
   `- Plan for the time the stops are FOR, not the time they're asking. Work that out from their message ("tonight", ` +
   `"Saturday night", "lunch tomorrow", a time they name); only if they don't say, assume RIGHT NOW. At that planned ` +
   `time, favor the categories the TIME SLOTS table lists for it, on top of their TAG SCORES. Never favor a category ` +
@@ -74,7 +80,7 @@ const INSTRUCTIONS =
   `place they merely mention or plan to visit. If they already said how it was, still set "rate" (the app lets them save it).\n` +
   `- Never invent a place. Catalog stops must be real region/id values from the catalog below. Web-found stops must be real places you actually found via search, and must include the source URL.\n\n` +
   `Once you're done -- searching or not -- your ENTIRE visible reply must be ONLY a single JSON object. No narration before or after it, not even a note that you're searching:\n` +
-  `{"reply": "<your conversational reply, 1-4 sentences>", "stops": [<catalog stop> | <web stop>, ...], "quickReplies": [<short tappable answer>, ...], "actions": [<action>, ...], "rate": null | {"match": "<region/id>"} | {"name": "<real place name>", "address": "<address or empty>"}}\n` +
+  `{"reply": "<your conversational reply, usually 1-4 sentences>", "stops": [<catalog stop> | <web stop>, ...], "quickReplies": [<short tappable answer>, ...], "actions": [<action>, ...], "rate": null | {"match": "<region/id>"} | {"name": "<real place name>", "address": "<address or empty>"}}\n` +
   `- Catalog stop: {"match": "<region/id from the catalog>", "reason": "<why this stop, 1 short sentence>"}\n` +
   `- Web stop: {"name": "<real place name>", "place": "<city or neighborhood>", "address": "<street address if your search showed one, else empty>", "url": "<source URL you found it from>", "reason": "<why this stop, 1 short sentence>"}\n` +
   `- "stops" can be an empty array. Only use region/id values that actually appear in the catalog -- for anything else, use the web stop shape instead of inventing a match id.\n` +
@@ -128,7 +134,7 @@ export default async function handler(req, res) {
     res.status(503).json({ error: 'AI is not set up yet. Add ANTHROPIC_API_KEY in Vercel.' });
     return;
   }
-  // Tighter than ask-ai's limit -- web_search makes each call more expensive.
+  // A tight limit -- web_search makes each call more expensive.
   if (!(await guardAiRequest(req, res, { key: 'plan-ai', limit: 10, windowMs: 10 * 60 * 1000 }))) return;
 
   try {
@@ -300,6 +306,7 @@ export default async function handler(req, res) {
       max_tokens: 1200,
       system: [
         { type: 'text', text: INSTRUCTIONS },
+        { type: 'text', text: APP_HELP },
         { type: 'text', text: catalog, cache_control: { type: 'ephemeral' } },
         ...(profile ? [{ type: 'text', text: profile }] : []),
         ...(insiderMode
@@ -414,7 +421,7 @@ export default async function handler(req, res) {
     }
 
     res.status(200).json({
-      reply: String(parsed.reply || '').slice(0, 500) || "Here's what I found:",
+      reply: String(parsed.reply || '').slice(0, 1500) || "Here's what I found:",
       stops,
       quickReplies,
       actions,

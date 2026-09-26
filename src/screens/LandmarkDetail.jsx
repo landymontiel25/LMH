@@ -41,10 +41,9 @@ import CheckInButton from '../components/CheckInButton';
 import RatingStars from '../components/RatingStars';
 import DirectionsButton from '../components/DirectionsButton';
 import { pickPhoto } from '../lib/imageUtils';
-import { authHeaders } from '../lib/apiAuth';
-import { LandmarkDetailSkeleton, Skeleton, SkeletonList, SkeletonText } from '../components/Skeleton';
+import { LandmarkDetailSkeleton, Skeleton, SkeletonList } from '../components/Skeleton';
 import ErrorNotice from '../components/ErrorNotice';
-import { friendlyError, fetchJson } from '../lib/friendlyError';
+import { friendlyError } from '../lib/friendlyError';
 import { useToast, runOptimistic } from '../lib/ToastContext';
 import { clearPersisted } from '../lib/usePersistentState';
 
@@ -206,32 +205,14 @@ export default function LandmarkDetail() {
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuestion, setAiQuestion] = useState('');
-  const [aiAnswer, setAiAnswer] = useState('');
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiError, setAiError] = useState(null);
 
-  // The question stays in the box on failure, so Try again (or a small edit)
-  // doesn't mean retyping it.
-  const askAI = async (e, preset) => {
+  // Questions go to Mapr (the app's one assistant): it opens the chat with
+  // this landmark named and asks there.
+  const askAI = (e, preset) => {
     e?.preventDefault?.();
     const q = (preset ?? aiQuestion).trim();
-    if (!q || aiBusy) return;
-    if (preset) setAiQuestion(preset);
-    setAiBusy(true);
-    setAiError(null);
-    setAiAnswer('');
-    try {
-      const data = await fetchJson('/api/ask-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-        body: JSON.stringify({ landmark: landmark?.name, city: region?.name, question: q }),
-      });
-      setAiAnswer(data.answer);
-    } catch (err) {
-      setAiError(err);
-    } finally {
-      setAiBusy(false);
-    }
+    if (!q) return;
+    navigate('/mapr', { state: { ask: `About ${landmark.name}${region?.name ? ` in ${region.name}` : ''}: ${q}` } });
   };
 
   // Remember which city this landmark belongs to, so tapping Back returns to
@@ -883,18 +864,18 @@ export default function LandmarkDetail() {
         style={{ marginBottom: aiOpen ? 10 : 12 }}
         onClick={() => setAiOpen((o) => !o)}
       >
-        {'✨'} Ask AI about {landmark.name}
+        {'✨'} Ask Mapr about {landmark.name}
       </button>
 
       {aiOpen && (
         <div className="card section ai-box" style={{ marginBottom: 12 }}>
           <p className="screen-subtitle" style={{ marginTop: 0 }}>
-            Ask anything — history, tips, what to see or eat, best time to go…
+            Ask anything — history, tips, what to see or eat, best time to go. Mapr answers in its chat.
           </p>
           <div className="ai-chips">
             {['Give me a quick overview', 'Best time to visit?', 'What should I not miss?', 'Where should I eat nearby?'].map(
               (chip) => (
-                <button key={chip} type="button" className="tag ai-chip" onClick={(e) => askAI(e, chip)} disabled={aiBusy}>
+                <button key={chip} type="button" className="tag ai-chip" onClick={(e) => askAI(e, chip)}>
                   {chip}
                 </button>
               )
@@ -913,26 +894,11 @@ export default function LandmarkDetail() {
               onChange={(e) => setAiQuestion(e.target.value)}
               style={{ flex: 1 }}
             />
-            <button className="btn btn-primary btn-sm" type="submit" disabled={aiBusy || !aiQuestion.trim()}>
-              {aiBusy ? '…' : 'Ask'}
+            <button className="btn btn-primary btn-sm" type="submit" disabled={!aiQuestion.trim()}>
+              Ask Mapr
             </button>
           </form>
-          {aiBusy && (
-            // Answer-shaped placeholder, so the reply lands where you're already looking.
-            <div className="ai-answer ai-answer-loading" role="status" aria-live="polite">
-              <span className="visually-hidden">Thinking…</span>
-              <SkeletonText lines={3} />
-            </div>
-          )}
-          {aiError && (
-            <ErrorNotice
-              compact
-              error={aiError}
-              message={friendlyError(aiError, "Couldn't reach the AI. Try again.")}
-              onRetry={() => askAI()}
-            />
-          )}
-          {aiAnswer && <div className="ai-answer">{aiAnswer}</div>}
+
           <p className="ai-disclaimer">AI can be wrong — double-check hours &amp; prices before you go.</p>
         </div>
       )}

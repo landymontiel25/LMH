@@ -2485,17 +2485,6 @@ textarea {
   font-size: 0.72rem;
 }
 
-.ai-answer {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  background: rgba(91, 140, 255, 0.10);
-  border: 1px solid var(--glass-border);
-  color: var(--color-parchment);
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
 .ai-disclaimer {
   margin: 10px 0 0;
   font-size: 0.68rem;
@@ -2595,10 +2584,6 @@ textarea {
   margin: 0;
   background: rgb(var(--color-bg-rgb));
   box-shadow: var(--shadow-card);
-}
-
-.map-nav-open .ask-landmark-fab {
-  display: none;
 }
 
 .map-nav-sheet .turn-steps {
@@ -2911,38 +2896,6 @@ textarea {
 .map-fullscreen .leaflet-container {
   height: 100%;
   width: 100%;
-}
-
-.ask-landmark-fab {
-  /* Stacked directly above .map-locate-btn (bottom: nav-h + 16px, 44px tall)
-     so the two never overlap -- recenter stays put, AI sits above it. */
-  position: fixed;
-  right: 16px;
-  bottom: calc(var(--nav-h) + 74px);
-  z-index: 1000;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 1px solid var(--border-default);
-  background: rgb(var(--color-bg-rgb));
-  box-shadow: var(--shadow-float);
-  font-size: 1.3rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.ask-landmark-panel {
-  position: fixed;
-  right: 16px;
-  left: 16px;
-  bottom: calc(var(--nav-h) + 134px);
-  z-index: 1000;
-  max-width: 420px;
-  margin: 0 0 0 auto;
-  max-height: 60vh;
-  overflow-y: auto;
 }
 
 .map-fab-bar {
@@ -3370,12 +3323,8 @@ textarea {
    only the crosshair reticle and Cancel/Done controls stay on screen. */
 body.pin-placing .app-header,
 body.pin-placing .bottom-nav,
-body.pin-placing .ask-landmark-fab,
-body.pin-placing .ask-landmark-panel,
 body.lightbox-open .app-header,
-body.lightbox-open .bottom-nav,
-body.lightbox-open .ask-landmark-fab,
-body.lightbox-open .ask-landmark-panel {
+body.lightbox-open .bottom-nav {
   display: none;
 }
 
@@ -4140,8 +4089,7 @@ body.lightbox-open .ask-landmark-panel {
 
 .map-search-btn,
 .map-locate-btn,
-.map-edit-btn,
-.ask-landmark-fab {
+.map-edit-btn {
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   color: var(--text-primary);
