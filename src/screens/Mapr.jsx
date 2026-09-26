@@ -797,7 +797,7 @@ export default function Mapr() {
                               </span>
                             )}
                             <span>{stop.reason}</span>
-                            {stop.createFailed && <span className="chatlab-stop-address">Couldn't open this one — tap to try again, or use Directions/Source below.</span>}
+                            {stop.createFailed && <span className="chatlab-stop-address">Couldn't open this one — tap to try again, or use Directions below.</span>}
                           </div>
                         </button>
                         <div className="chatlab-stop-links" onClick={(e) => e.stopPropagation()}>
@@ -811,11 +811,6 @@ export default function Mapr() {
                           >
                             Directions
                           </DirectionsButton>
-                          {stop.url && (
-                            <a href={stop.url} target="_blank" rel="noreferrer">
-                              Source {'↗'}
-                            </a>
-                          )}
                         </div>
                       </div>
                     );

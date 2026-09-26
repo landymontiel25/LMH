@@ -19,8 +19,17 @@ function userError(message) {
  * researches real facts/a photo for it or leaves them blank -- nothing is
  * invented. Needs a verified email (firestore.rules).
  */
-export async function createLandmarkFromPlace({ details, fallbackName, user, resendVerification }) {
-  const finalName = details.primary || fallbackName;
+export async function createLandmarkFromPlace({ details, fallbackName, trustedName, user, resendVerification }) {
+  // trustedName wins outright: when the caller already has a real, specific
+  // name for this exact place (Mapr's own web research, not derived from
+  // this geocode), that beats whatever Places resolved -- a Places text
+  // search sometimes matches the road/address the place sits on instead of
+  // the business itself (e.g. "Pike Lanes" -> the "Pike" road nearby), and
+  // trusting `details.primary` there silently renamed the landmark to the
+  // street. Without a trustedName, keep the original priority (a Places
+  // suggestion resolved via Details is more reliable than the raw
+  // autocomplete text a caller might pass as fallbackName).
+  const finalName = trustedName || details.primary || fallbackName;
   // Forced refresh: right after verifying their email, a cached token
   // still says unverified for up to an hour, and firestore.rules checks
   // the token's email_verified before accepting the new landmark.
@@ -122,5 +131,9 @@ export async function landmarkForRating(place, { near, user, resendVerification 
   const details = await getPlaceDetails(top.placeId, token);
   const sameSpot = customs.find((l) => distanceMeters(l.lat, l.lng, details.lat, details.lng) <= SAME_SPOT_METERS);
   if (sameSpot) return sameSpot;
-  return createLandmarkFromPlace({ details, fallbackName: top.primary, user, resendVerification });
+  // place.name is already a real, specific name here (Mapr's own web
+  // research recommending it, or naming the place it heard you just left),
+  // not something derived from this geocode -- trust it over whatever
+  // Places resolved (see createLandmarkFromPlace's trustedName).
+  return createLandmarkFromPlace({ details, fallbackName: top.primary, trustedName: place.name, user, resendVerification });
 }
