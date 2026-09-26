@@ -77,7 +77,7 @@ export async function listMyGroupTrips(uid) {
 // shows). arrayUnion/arrayRemove rather than writing the whole list, so two
 // members ticking different landmarks at once don't overwrite each other,
 // and a retry after a failure can't undo someone else's change.
-export async function toggleGroupLandmark(trip, landmarkId, add = !trip.landmarkIds.includes(landmarkId)) {
+export async function toggleGroupLandmark(trip, landmarkId, add = !(trip.landmarkIds || []).includes(landmarkId)) {
   await updateDoc(doc(db, 'group_trips', trip.id), {
     landmarkIds: add ? arrayUnion(landmarkId) : arrayRemove(landmarkId),
   });
@@ -93,7 +93,7 @@ export async function setGroupLandmarks(trip, landmarkIds, add) {
 }
 
 export async function addGroupMember(trip, memberUid, memberName) {
-  if (trip.memberUids.includes(memberUid)) return;
+  if ((trip.memberUids || []).includes(memberUid)) return;
   await updateDoc(doc(db, 'group_trips', trip.id), {
     memberUids: arrayUnion(memberUid),
     [`memberNames.${memberUid}`]: memberName,
@@ -109,7 +109,7 @@ export async function removeGroupMember(trip, memberUid) {
   const memberNames = { ...trip.memberNames };
   delete memberNames[memberUid];
   await updateDoc(doc(db, 'group_trips', trip.id), {
-    memberUids: trip.memberUids.filter((u) => u !== memberUid),
+    memberUids: (trip.memberUids || []).filter((u) => u !== memberUid),
     memberNames,
     name: trip.name,
   });

@@ -209,7 +209,7 @@ async function removeStop(action, ctx) {
   const n = norm(action.stop);
   if (target?.kind === 'group') {
     const trip = target.trip;
-    if (stop?.kind === 'landmark' && trip.landmarkIds.includes(stop.id)) {
+    if (stop?.kind === 'landmark' && (trip.landmarkIds || []).includes(stop.id)) {
       await setGroupLandmarks(trip, [stop.id], false);
       return { ok: true, text: `Removed ${stop.name} from ${trip.name}.`, undo: () => setGroupLandmarks(trip, [stop.id], true), link: groupLink(trip.id) };
     }
@@ -285,7 +285,7 @@ async function addMember(action, ctx) {
   if (found.uid === ctx.user.uid) return { ok: false, text: "That's you." };
   const member = { uid: found.uid, name: found.username || found.displayName || username };
   if (target.kind === 'group') {
-    if (target.trip.memberUids.includes(member.uid)) return { ok: true, text: `${member.name} is already on ${target.name}.`, link: groupLink(target.trip.id) };
+    if ((target.trip.memberUids || []).includes(member.uid)) return { ok: true, text: `${member.name} is already on ${target.name}.`, link: groupLink(target.trip.id) };
     await addGroupMember(target.trip, member.uid, member.name);
     ctx.onGroupsChanged?.();
     return { ok: true, text: `Added ${member.name} to ${target.name}.`, link: groupLink(target.trip.id) };
