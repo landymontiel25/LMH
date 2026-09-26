@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
+import { useTrip } from '../lib/TripContext';
 import { getRegion } from '../data/regions';
 import {
   subscribeGroupTrip,
@@ -58,6 +59,7 @@ export default function GroupTrip() {
   // Landmark ticks you've made that the server hasn't confirmed yet, so the
   // checkbox flips the instant you tap it. { [landmarkId]: true | false }
   const [pendingLandmarks, setPendingLandmarks] = useState({});
+  const { setMapFocus, setMapFocusStops } = useTrip();
 
   const uid = user?.uid;
   useEffect(() => {
@@ -82,6 +84,19 @@ export default function GroupTrip() {
     );
     return unsub;
   }, [tripId, uid, attempt]);
+
+  // Tapping Map from here frames this trip's city, then every stop in it.
+  useEffect(() => {
+    if (!trip?.regionId) return;
+    const region = getRegion(trip.regionId);
+    const ids = trip.landmarkIds || [];
+    const pts = [...(region?.landmarks || []).filter((l) => ids.includes(l.id)), ...(trip.places || [])]
+      .filter((p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lng))
+      .map((p) => ({ lat: p.lat, lng: p.lng }));
+    setMapFocus(trip.regionId);
+    setMapFocusStops(pts.length ? pts : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip]);
 
   const back = (
     <button className="btn btn-ghost btn-sm" style={{ marginBottom: 12 }} onClick={() => navigate('/itinerary')}>

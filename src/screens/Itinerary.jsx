@@ -219,6 +219,7 @@ export default function Itinerary() {
     regionsWithItineraries,
     updateTrip,
     setMapFocus,
+    setMapFocusStops,
     itineraryName,
     renameItinerary,
     removePlace,
@@ -326,6 +327,14 @@ export default function Itinerary() {
     }));
     return [...region.landmarks.filter((l) => ids.includes(l.id)), ...places];
   }, [region, trip.byRegion, trip.placesByRegion]);
+
+  // Tapping Map from here frames every stop in this itinerary. Declared
+  // after the effect above that calls setMapFocus (which clears it).
+  useEffect(() => {
+    const pts = selectedLandmarks.filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng)).map((l) => ({ lat: l.lat, lng: l.lng }));
+    setMapFocusStops(openReg && pts.length ? pts : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openReg, selectedLandmarks]);
 
   // Adding someone to a solo itinerary turns it into a group trip: same
   // name, stops and places, you as owner, them as a member.

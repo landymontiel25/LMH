@@ -131,7 +131,7 @@ function zoomForRadiusMiles(map, lat, miles) {
   return Math.log2((EARTH_MPP_ZOOM0 * Math.cos((lat * Math.PI) / 180)) / metersPerPixel);
 }
 
-function InitialView({ loading, coords, bounds, regionBounds, focusPoint, radiusMiles }) {
+function InitialView({ loading, coords, bounds, regionBounds, stopBounds, focusPoint, radiusMiles }) {
   const map = useMap();
   const centered = useRef(false);
 
@@ -142,11 +142,15 @@ function InitialView({ loading, coords, bounds, regionBounds, focusPoint, radius
 
   useEffect(() => {
     if (centered.current) return;
-    // Priority: a specific landmark ("See it on the Map") → the city you're
-    // browsing → your GPS location → the whole collection.
+    // Priority: a specific landmark ("See it on the Map") → every stop of
+    // the itinerary you came from → the city you're browsing → your GPS
+    // location → the whole collection.
     if (focusPoint) {
       centered.current = true;
       map.setView([focusPoint.lat, focusPoint.lng], 17);
+    } else if (stopBounds) {
+      centered.current = true;
+      map.fitBounds(stopBounds, { padding: [50, 50], maxZoom: 16 });
     } else if (regionBounds) {
       centered.current = true;
       map.fitBounds(regionBounds, { padding: [40, 40] });
@@ -158,7 +162,7 @@ function InitialView({ loading, coords, bounds, regionBounds, focusPoint, radius
       map.fitBounds(bounds, { padding: [30, 30] });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, coords, regionBounds, focusPoint]);
+  }, [loading, coords, regionBounds, stopBounds, focusPoint]);
 
   return null;
 }
@@ -204,7 +208,7 @@ function FitNavRoute({ points }) {
 }
 
 export default function MapExplore() {
-  const { toggleLandmark, getRegionSelection, trip, mapFocus, mapFocusPoint, setMapFocusPoint } = useTrip();
+  const { toggleLandmark, getRegionSelection, trip, mapFocus, mapFocusPoint, setMapFocusPoint, mapFocusStops } = useTrip();
   const { user, firebaseEnabled, claimedMap, checkingIn, checkIn } = useCheckIn();
   const { adminMode } = useAdminMode();
   const { applyEdit } = useLandmarkEdits();
@@ -451,6 +455,18 @@ export default function MapExplore() {
       [Math.max(...lats), Math.max(...lngs)],
     ];
   }, [trip.activeRegion]);
+
+  // Opened from an itinerary: frame all of its stops (captured once, so
+  // later changes don't yank the map around while you're using it).
+  const [stopBounds] = useState(() => {
+    if (!mapFocusStops?.length) return null;
+    const lats = mapFocusStops.map((p) => p.lat);
+    const lngs = mapFocusStops.map((p) => p.lng);
+    return [
+      [Math.min(...lats), Math.min(...lngs)],
+      [Math.max(...lats), Math.max(...lngs)],
+    ];
+  });
 
   const handleRadiusChange = (e) => {
     const miles = Number(e.target.value);
@@ -810,6 +826,7 @@ export default function MapExplore() {
             coords={coords}
             bounds={ALL_LANDMARKS_BOUNDS}
             regionBounds={regionBounds}
+            stopBounds={stopBounds}
             focusPoint={focusLandmarkPos}
             radiusMiles={radiusMiles}
           />

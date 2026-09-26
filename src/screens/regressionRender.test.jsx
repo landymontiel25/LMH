@@ -70,12 +70,15 @@ describe('GroupTrip renders without crashing on real-world trip shapes', () => {
       removeGroupPlace: vi.fn(),
     }));
     const { default: GroupTrip } = await import('./GroupTrip.jsx');
+    const { TripProvider } = await import('../lib/TripContext');
     return mount(
-      <MemoryRouter initialEntries={['/group/g1']}>
-        <Routes>
-          <Route path="/group/:tripId" element={<GroupTrip />} />
-        </Routes>
-      </MemoryRouter>
+      <TripProvider>
+        <MemoryRouter initialEntries={['/group/g1']}>
+          <Routes>
+            <Route path="/group/:tripId" element={<GroupTrip />} />
+          </Routes>
+        </MemoryRouter>
+      </TripProvider>
     );
   }
 

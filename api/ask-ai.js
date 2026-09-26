@@ -31,7 +31,8 @@ const APP_HELP =
   `- Trip planning (Plan Your Trip card and Create New Trip) fills in your starting location from your saved home address when home is in the ` +
   `city you picked, with a Clear option. "Use My Current Location" fills in the street address you're at (or the business, ` +
   `if you're standing in one). In city search, pressing Enter picks the top match.\n` +
-  `- On the Map, landmarks you've checked into show as green pins.\n` +
+  `- On the Map, landmarks you've checked into show as green pins. Opening the Map right after looking at an itinerary (solo or ` +
+  `group) zooms it to fit every stop in that itinerary.\n` +
   `- Select all: on the Landmarks list, once you pick a single city, "✅ Select All" adds every landmark the current filters show to that ` +
   `city's itinerary ("Clear" undoes it). A group trip's Shared Landmarks card has "Select all" / "Clear all" too, for everyone in the trip.\n` +
   `- Itineraries (Itinerary tab): one per city, plus group trips. Each has a name; tap ✏️ next to the title to rename it. A solo itinerary ` +
