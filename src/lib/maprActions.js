@@ -36,6 +36,17 @@ export function forgetUndo(key) {
   undoRegistry.delete(key);
 }
 
+// The stops mentioned earlier in a chat (catalog matches and web finds),
+// keyed by message id -- a failed action's Retry button re-resolves "it"/
+// exact names against the same conversation, not just what's in this reply.
+const conversationStopsRegistry = new Map();
+export function registerConversationStops(msgId, stops) {
+  conversationStopsRegistry.set(msgId, stops);
+}
+export function getConversationStops(msgId) {
+  return conversationStopsRegistry.get(msgId) || [];
+}
+
 // TripContext's state only refreshes on the next render, so several
 // actions in one reply track what they've already created/renamed here.
 function soloExists(ctx, regionId) {
@@ -91,9 +102,21 @@ function findItinerary(ref, ctx) {
   return null;
 }
 
+// Throws a plain-language Error (never the raw "No match"/"No coordinates"
+// from lookupPlace) so a failed lookup reads as a real answer, not a crash.
 async function placeFor(stop, near) {
   const query = [stop.name, stop.address || stop.place].filter(Boolean).join(', ');
-  const spot = await lookupPlace(query, near);
+  let spot;
+  try {
+    spot = await lookupPlace(query, near);
+  } catch {
+    // .userMessage is friendlyError's convention for "this text is already
+    // safe to show" (see fetchJson) -- without it, a plain Error's message
+    // is treated as raw/technical and replaced with the generic fallback.
+    const err = new Error('Place lookup failed');
+    err.userMessage = `Couldn't find "${stop.name}" on the map${stop.address ? ` at ${stop.address}` : ''}. It may be closed, or the name might not match what Google has -- try the exact business name.`;
+    throw err;
+  }
   return {
     id: placeId(stop.name, spot.lat, spot.lng),
     name: stop.name.slice(0, 120),
@@ -298,12 +321,22 @@ export async function runMaprActions(actions, baseCtx) {
     const run = RUNNERS[action?.type];
     if (!run) continue;
     try {
-      results.push(await run(action, ctx));
+      results.push({ ...(await run(action, ctx)), action });
     } catch (err) {
-      results.push({ ok: false, text: friendlyError(err, "That didn't go through. Try again.") });
+      // A place lookup throws its own plain-language Error (see placeFor);
+      // anything else (a rules rejection, a dropped connection) falls back
+      // to a generic one. Either way the failed action itself -- not just
+      // the whole message -- can be retried without retyping the request.
+      results.push({ ok: false, text: friendlyError(err, "That didn't go through. Try again."), action });
     }
   }
   return results;
+}
+
+/** Re-runs exactly one previously-failed action, e.g. from a Retry button. */
+export async function retryMaprAction(action, baseCtx) {
+  const [result] = await runMaprActions([action], baseCtx);
+  return result;
 }
 
 // What Mapr is told about your itineraries, so "add it to my itinerary"

@@ -17,7 +17,7 @@ vi.mock('./friends', () => ({
   findUserByUsername: vi.fn(async (u) => (u === 'orlando' ? { uid: 'u-orlando', username: 'orlando' } : null)),
 }));
 
-import { runMaprActions } from './maprActions';
+import { runMaprActions, retryMaprAction } from './maprActions';
 import { setGroupLandmarks, createGroupTrip, addGroupMember } from './groupTrips';
 import { ALL_LANDMARKS } from '../data/regions';
 
@@ -120,5 +120,24 @@ describe('Mapr actions', () => {
   it('ignores action types it does not know', async () => {
     const results = await runMaprActions([{ type: 'delete_account' }], ctx());
     expect(results).toEqual([]);
+  });
+
+  it('gives a specific message when the place lookup fails, and Retry succeeds once it works', async () => {
+    const { lookupPlace } = await import('./placeLookup');
+    lookupPlace.mockRejectedValueOnce(new Error('No match'));
+    const stops = [{ external: true, name: 'Puyero Venezuelan Flavor', place: 'Villanova', address: '789 Lancaster Ave', url: 'https://x.test' }];
+    const action = { type: 'add_stop', stop: 'Puyero Venezuelan Flavor', itinerary: 'new' };
+    const [failed] = await runMaprActions([action], ctx({ conversationStops: stops }));
+    expect(failed.ok).toBe(false);
+    expect(failed.text).not.toMatch(/didn't go through/i);
+    expect(failed.text).toMatch(/Puyero Venezuelan Flavor/);
+    expect(failed.action).toEqual(action);
+
+    // The place shouldn't have been added on the failed attempt: retrying
+    // re-resolves the same action against a fresh lookup and succeeds once
+    // the API cooperates.
+    const retried = await retryMaprAction(failed.action, ctx({ conversationStops: stops }));
+    expect(retried.ok).toBe(true);
+    expect(t.trip.placesByRegion.miami?.[0]).toMatchObject({ name: 'Puyero Venezuelan Flavor' });
   });
 });
